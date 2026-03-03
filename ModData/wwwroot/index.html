@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlayLoRWithMe</title>
+  <style>
+    body { font-family: monospace; background: #1a1a2e; color: #e0e0e0; margin: 2rem; }
+    h1 { color: #c9a227; }
+    #status { margin-bottom: 1rem; }
+    #status.connected { color: #4caf50; }
+    #status.disconnected { color: #f44336; }
+    #state-box {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 4px;
+      padding: 1rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 4rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>PlayLoRWithMe</h1>
+  <p id="status" class="disconnected">Connecting…</p>
+  <h2>Game State</h2>
+  <div id="state-box">—</div>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const stateEl  = document.getElementById('state-box');
+
+    function connect() {
+      const ws = new WebSocket(`ws://${location.host}/`);
+
+      ws.onopen = () => {
+        statusEl.textContent = 'Connected';
+        statusEl.className = 'connected';
+      };
+
+      ws.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          stateEl.textContent = JSON.stringify(data, null, 2);
+        } catch {
+          stateEl.textContent = ev.data;
+        }
+      };
+
+      ws.onclose = () => {
+        statusEl.textContent = 'Disconnected — reconnecting in 3 s…';
+        statusEl.className = 'disconnected';
+        setTimeout(connect, 3000);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    connect();
+  </script>
+</body>
+</html>
