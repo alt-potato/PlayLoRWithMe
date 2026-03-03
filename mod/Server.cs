@@ -15,7 +15,7 @@ namespace PlayLoRWithMe
     {
         public const int Port = 8080;
 
-        // Path resolution: DLL is in ModData/Assemblies/, wwwroot is in ModData/wwwroot/
+        // DLL is in <mod root>/Assemblies/; wwwroot is a sibling of Assemblies/
         private static readonly string ModRootPath = Path.GetDirectoryName(
             Path.GetDirectoryName(
                 System.Reflection.Assembly.GetExecutingAssembly().Location));
