@@ -68,7 +68,7 @@
         StageModInfo.xml
         Data\...
         Resource\...
-        wwwroot\...     ← copied directly from frontend\dist\
+        wwwroot\...     <- copied directly from frontend\.output\public\
         Assemblies\
           PlayLoRWithMe.dll
           PlayLoRWithMe.pdb   (Debug only)
@@ -79,10 +79,10 @@
 
   <Target Name="AfterBuild">
     <!-- Build the Vue frontend if it has been scaffolded -->
-    <Exec Command="npm install"
+    <Exec Command="npm i"
           WorkingDirectory="$(FrontendDir)"
           Condition="Exists('$(FrontendDir)\package.json')" />
-    <Exec Command="npm run build"
+    <Exec Command="npm run generate --logLevel=silent"
           WorkingDirectory="$(FrontendDir)"
           Condition="Exists('$(FrontendDir)\package.json')" />
 
@@ -97,10 +97,10 @@
           SkipUnchangedFiles="true" />
 
     <!-- Copy the Vite build output directly into wwwroot\ in the output.
-         %(RecursiveDir) is relative to the frontend\dist\ wildcard base. -->
+         %(RecursiveDir) is relative to the frontend\.output\public\ wildcard base. -->
     <ItemGroup>
-      <FrontendDistFiles Include="$(FrontendDir)\dist\**\*"
-                         Condition="Exists('$(FrontendDir)\dist')" />
+      <FrontendDistFiles Include="$(FrontendDir)\.output\public\**\*"
+                         Condition="Exists('$(FrontendDir)\.output\public')" />
     </ItemGroup>
     <Copy SourceFiles="@(FrontendDistFiles)"
           DestinationFiles="@(FrontendDistFiles->'$(OutputPath)PlayLoRWithMe\wwwroot\%(RecursiveDir)%(Filename)%(Extension)')"
