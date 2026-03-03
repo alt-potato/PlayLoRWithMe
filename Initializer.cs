@@ -8,6 +8,6 @@ namespace PlayLoRWithMe
 {
     public class Initializer : ModInitializer
     {
-        public static string packageId = "meconeco.playlorwithme";
+        public static string packageId = "meconeko.playlorwithme";
     }
 }
