@@ -58,6 +58,7 @@
     <Compile Include="Initializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Server.cs" />
+    <Compile Include="StateBroadcaster.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -128,6 +129,13 @@
       SourceFiles="$(OutputPath)$(AssemblyName).pdb"
       DestinationFolder="$(OutputPath)PlayLoRWithMe\Assemblies\"
       Condition="Exists('$(OutputPath)$(AssemblyName).pdb')"
+    />
+
+    <!-- Copy third-party dependencies into Assemblies\ -->
+    <Copy
+      SourceFiles="packages\Lib.Harmony.2.3.3\lib\net48\0Harmony.dll"
+      DestinationFolder="$(OutputPath)PlayLoRWithMe\Assemblies\"
+      SkipUnchangedFiles="true"
     />
   </Target>
 </Project>
