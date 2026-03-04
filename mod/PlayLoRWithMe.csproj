@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <Import
+    Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props"
+    Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')"
+  />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
@@ -79,12 +82,16 @@
 
   <Target Name="AfterBuild">
     <!-- Build the Vue frontend if it has been scaffolded -->
-    <Exec Command="npm i"
-          WorkingDirectory="$(FrontendDir)"
-          Condition="Exists('$(FrontendDir)\package.json')" />
-    <Exec Command="npm run generate --logLevel=silent"
-          WorkingDirectory="$(FrontendDir)"
-          Condition="Exists('$(FrontendDir)\package.json')" />
+    <Exec
+      Command="npm i"
+      WorkingDirectory="$(FrontendDir)"
+      Condition="Exists('$(FrontendDir)\package.json')"
+    />
+    <Exec
+      Command="npm run generate --logLevel=silent"
+      WorkingDirectory="$(FrontendDir)"
+      Condition="Exists('$(FrontendDir)\package.json')"
+    />
 
     <!-- Copy ModData contents (everything except wwwroot) into the output root.
          %(RecursiveDir) is relative to the ModData\ wildcard base, so the
@@ -92,25 +99,35 @@
     <ItemGroup>
       <ModDataFiles Include="ModData\**\*" />
     </ItemGroup>
-    <Copy SourceFiles="@(ModDataFiles)"
-          DestinationFiles="@(ModDataFiles->'$(OutputPath)PlayLoRWithMe\%(RecursiveDir)%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
+    <Copy
+      SourceFiles="@(ModDataFiles)"
+      DestinationFiles="@(ModDataFiles->'$(OutputPath)PlayLoRWithMe\%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+    />
 
     <!-- Copy the Vite build output directly into wwwroot\ in the output.
          %(RecursiveDir) is relative to the frontend\.output\public\ wildcard base. -->
     <ItemGroup>
-      <FrontendDistFiles Include="$(FrontendDir)\.output\public\**\*"
-                         Condition="Exists('$(FrontendDir)\.output\public')" />
+      <FrontendDistFiles
+        Include="$(FrontendDir)\.output\public\**\*"
+        Condition="Exists('$(FrontendDir)\.output\public')"
+      />
     </ItemGroup>
-    <Copy SourceFiles="@(FrontendDistFiles)"
-          DestinationFiles="@(FrontendDistFiles->'$(OutputPath)PlayLoRWithMe\wwwroot\%(RecursiveDir)%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
+    <Copy
+      SourceFiles="@(FrontendDistFiles)"
+      DestinationFiles="@(FrontendDistFiles->'$(OutputPath)PlayLoRWithMe\wwwroot\%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+    />
 
     <!-- Place the compiled DLL (and PDB if present) in Assemblies\ -->
-    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll"
-          DestinationFolder="$(OutputPath)PlayLoRWithMe\Assemblies\" />
-    <Copy SourceFiles="$(OutputPath)$(AssemblyName).pdb"
-          DestinationFolder="$(OutputPath)PlayLoRWithMe\Assemblies\"
-          Condition="Exists('$(OutputPath)$(AssemblyName).pdb')" />
+    <Copy
+      SourceFiles="$(OutputPath)$(AssemblyName).dll"
+      DestinationFolder="$(OutputPath)PlayLoRWithMe\Assemblies\"
+    />
+    <Copy
+      SourceFiles="$(OutputPath)$(AssemblyName).pdb"
+      DestinationFolder="$(OutputPath)PlayLoRWithMe\Assemblies\"
+      Condition="Exists('$(OutputPath)$(AssemblyName).pdb')"
+    />
   </Target>
 </Project>

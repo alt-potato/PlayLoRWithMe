@@ -14,13 +14,13 @@ namespace PlayLoRWithMe
 
         // DLL is in <mod root>/Assemblies/; wwwroot is a sibling of Assemblies/
         private static readonly string ModRootPath = Path.GetDirectoryName(
-            Path.GetDirectoryName(
-                System.Reflection.Assembly.GetExecutingAssembly().Location));
+            Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
+        );
 
         private static readonly string WwwRootPath = Path.Combine(ModRootPath, "wwwroot");
 
         private HttpListener _listener;
-        private Thread       _listenerThread;
+        private Thread _listenerThread;
 
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         private readonly ConcurrentDictionary<Guid, SseClient> _clients =
@@ -39,7 +39,11 @@ namespace PlayLoRWithMe
             _listener.Prefixes.Add($"http://localhost:{Port}/");
             _listener.Start();
 
-            _listenerThread = new Thread(ListenLoop) { IsBackground = true, Name = "PlayLoRWithMe-HTTP" };
+            _listenerThread = new Thread(ListenLoop)
+            {
+                IsBackground = true,
+                Name = "PlayLoRWithMe-HTTP",
+            };
             _listenerThread.Start();
 
             Debug.Log($"[PlayLoRWithMe] Server listening at http://localhost:{Port}/");
@@ -64,8 +68,14 @@ namespace PlayLoRWithMe
                     var ctx = _listener.GetContext();
                     ThreadPool.QueueUserWorkItem(_ => HandleContext(ctx));
                 }
-                catch (HttpListenerException) when (_cts.IsCancellationRequested) { break; }
-                catch (Exception ex) { Debug.LogError($"[PlayLoRWithMe] Accept error: {ex}"); }
+                catch (HttpListenerException) when (_cts.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"[PlayLoRWithMe] Accept error: {ex}");
+                }
             }
         }
 
@@ -85,11 +95,11 @@ namespace PlayLoRWithMe
                     return;
                 }
 
-                string path   = ctx.Request.Url.AbsolutePath;
+                string path = ctx.Request.Url.AbsolutePath;
                 string method = ctx.Request.HttpMethod;
 
                 if (method == "GET" && path == "/events")
-                    HandleEvents(ctx);                   // blocks until client disconnects
+                    HandleEvents(ctx); // blocks until client disconnects
                 else if (method == "GET" && path == "/state")
                     SendJson(ctx, GameStateSerializer.Serialize());
                 else if (method == "POST" && path == "/action")
@@ -109,7 +119,12 @@ namespace PlayLoRWithMe
             catch (Exception ex)
             {
                 Debug.LogError($"[PlayLoRWithMe] Handler error: {ex}");
-                try { ctx.Response.StatusCode = 500; ctx.Response.Close(); } catch { }
+                try
+                {
+                    ctx.Response.StatusCode = 500;
+                    ctx.Response.Close();
+                }
+                catch { }
             }
         }
 
@@ -119,14 +134,14 @@ namespace PlayLoRWithMe
 
         private void HandleEvents(HttpListenerContext ctx)
         {
-            var id  = Guid.NewGuid();
+            var id = Guid.NewGuid();
             var rsp = ctx.Response;
 
             WriteCorsHeaders(rsp);
-            rsp.ContentType  = "text/event-stream; charset=utf-8";
-            rsp.SendChunked  = true;
-            rsp.Headers.Add("Cache-Control",      "no-cache");
-            rsp.Headers.Add("X-Accel-Buffering",  "no");
+            rsp.ContentType = "text/event-stream; charset=utf-8";
+            rsp.SendChunked = true;
+            rsp.Headers.Add("Cache-Control", "no-cache");
+            rsp.Headers.Add("X-Accel-Buffering", "no");
 
             var client = new SseClient(id, rsp);
             _clients[id] = client;
@@ -139,12 +154,17 @@ namespace PlayLoRWithMe
             while (!_cts.IsCancellationRequested && client.IsAlive)
             {
                 bool cancelled = _cts.Token.WaitHandle.WaitOne(millisecondsTimeout: 15_000);
-                if (cancelled) break;
+                if (cancelled)
+                    break;
                 client.SendKeepAlive();
             }
 
             _clients.TryRemove(id, out _);
-            try { rsp.Close(); } catch { }
+            try
+            {
+                rsp.Close();
+            }
+            catch { }
             Debug.Log($"[PlayLoRWithMe] SSE client disconnected ({id})");
         }
 
@@ -181,15 +201,14 @@ namespace PlayLoRWithMe
                 _response = response;
             }
 
-            public void Send(string json) =>
-                Write(Encoding.UTF8.GetBytes($"data: {json}\n\n"));
+            public void Send(string json) => Write(Encoding.UTF8.GetBytes($"data: {json}\n\n"));
 
-            public void SendKeepAlive() =>
-                Write(Encoding.UTF8.GetBytes(":\n\n"));
+            public void SendKeepAlive() => Write(Encoding.UTF8.GetBytes(":\n\n"));
 
             private void Write(byte[] bytes)
             {
-                if (!IsAlive) return;
+                if (!IsAlive)
+                    return;
                 try
                 {
                     lock (_lock)
@@ -213,7 +232,7 @@ namespace PlayLoRWithMe
         {
             byte[] bytes = Encoding.UTF8.GetBytes(json);
             WriteCorsHeaders(ctx.Response);
-            ctx.Response.ContentType     = "application/json; charset=utf-8";
+            ctx.Response.ContentType = "application/json; charset=utf-8";
             ctx.Response.ContentLength64 = bytes.Length;
             ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
             ctx.Response.Close();
@@ -222,7 +241,8 @@ namespace PlayLoRWithMe
         private static void ServeStaticFile(HttpListenerContext ctx, string urlPath)
         {
             string relative = urlPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-            if (string.IsNullOrEmpty(relative)) relative = "index.html";
+            if (string.IsNullOrEmpty(relative))
+                relative = "index.html";
 
             string filePath = Path.GetFullPath(Path.Combine(WwwRootPath, relative));
 
@@ -244,7 +264,7 @@ namespace PlayLoRWithMe
             }
 
             byte[] bytes = File.ReadAllBytes(filePath);
-            ctx.Response.ContentType     = MimeType(Path.GetExtension(filePath));
+            ctx.Response.ContentType = MimeType(Path.GetExtension(filePath));
             ctx.Response.ContentLength64 = bytes.Length;
             ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
             ctx.Response.Close();
@@ -254,25 +274,36 @@ namespace PlayLoRWithMe
         {
             switch (ext.ToLowerInvariant())
             {
-                case ".html":            return "text/html; charset=utf-8";
-                case ".js": 
-                case ".mjs":             return "application/javascript; charset=utf-8";
-                case ".css":             return "text/css; charset=utf-8";
-                case ".json":            return "application/json; charset=utf-8";
-                case ".ico":             return "image/x-icon";
-                case ".png":             return "image/png";
-                case ".jpg": 
-                case ".jpeg":            return "image/jpeg";
-                case ".svg":             return "image/svg+xml";
-                case ".woff":            return "font/woff";
-                case ".woff2":           return "font/woff2";
-                default:                 return "application/octet-stream";
+                case ".html":
+                    return "text/html; charset=utf-8";
+                case ".js":
+                case ".mjs":
+                    return "application/javascript; charset=utf-8";
+                case ".css":
+                    return "text/css; charset=utf-8";
+                case ".json":
+                    return "application/json; charset=utf-8";
+                case ".ico":
+                    return "image/x-icon";
+                case ".png":
+                    return "image/png";
+                case ".jpg":
+                case ".jpeg":
+                    return "image/jpeg";
+                case ".svg":
+                    return "image/svg+xml";
+                case ".woff":
+                    return "font/woff";
+                case ".woff2":
+                    return "font/woff2";
+                default:
+                    return "application/octet-stream";
             }
         }
 
         private static void WriteCorsHeaders(HttpListenerResponse response)
         {
-            response.Headers.Add("Access-Control-Allow-Origin",  "*");
+            response.Headers.Add("Access-Control-Allow-Origin", "*");
             response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
             response.Headers.Add("Access-Control-Allow-Headers", "Content-Type");
         }

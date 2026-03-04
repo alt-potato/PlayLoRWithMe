@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<BattleDialogRoot xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<BattleDialogRoot
+  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+>
   <Version>1.1</Version>
   <Character ID="1">
     <Type ID="START_BATTLE">
