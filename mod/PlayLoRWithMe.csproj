@@ -54,6 +54,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActionInjector.cs" />
+    <Compile Include="JsonWriter.cs" />
     <Compile Include="GameStateSerializer.cs" />
     <Compile Include="Initializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

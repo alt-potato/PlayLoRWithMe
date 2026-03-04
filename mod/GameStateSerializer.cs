@@ -1,4 +1,3 @@
-using System.Text;
 using UnityEngine;
 
 namespace PlayLoRWithMe
@@ -17,7 +16,7 @@ namespace PlayLoRWithMe
             catch (System.Exception ex)
             {
                 Debug.LogError($"[PlayLoRWithMe] GameStateSerializer error: {ex}");
-                return "{\"scene\":\"error\"}";
+                return new JsonWriter().Add("scene", "error").Build();
             }
         }
 
@@ -25,60 +24,47 @@ namespace PlayLoRWithMe
         {
             var gsm = GameSceneManager.Instance;
             if (gsm == null)
-                return "{\"scene\":\"loading\"}";
-
-            var sb = new StringBuilder("{");
+                return new JsonWriter().Add("scene", "loading").Build();
 
             if (gsm.battleScene != null && gsm.battleScene.gameObject.activeSelf)
-            {
-                sb.Append("\"scene\":\"battle\"");
-                AppendBattleState(sb);
-            }
-            else if (gsm.uIController != null && gsm.uIController.gameObject.activeSelf)
-            {
-                sb.Append("\"scene\":\"main\"");
-                var uic = UI.UIController.Instance;
-                if (uic != null)
-                {
-                    sb.Append(",\"uiPhase\":\"");
-                    sb.Append(uic.CurrentUIPhase.ToString());
-                    sb.Append('"');
-                }
-            }
-            else if (gsm.storyRoot != null && gsm.storyRoot.gameObject.activeSelf)
-            {
-                sb.Append("\"scene\":\"story\"");
-            }
-            else if (gsm.titleScene != null && gsm.titleScene.gameObject.activeSelf)
-            {
-                sb.Append("\"scene\":\"title\"");
-            }
-            else
-            {
-                sb.Append("\"scene\":\"transition\"");
-            }
+                return BuildBattleJson();
 
-            sb.Append('}');
-            return sb.ToString();
+            if (gsm.uIController != null && gsm.uIController.gameObject.activeSelf)
+                return BuildMainJson();
+
+            if (gsm.storyRoot != null && gsm.storyRoot.gameObject.activeSelf)
+                return new JsonWriter().Add("scene", "story").Build();
+
+            if (gsm.titleScene != null && gsm.titleScene.gameObject.activeSelf)
+                return new JsonWriter().Add("scene", "title").Build();
+
+            return new JsonWriter().Add("scene", "transition").Build();
         }
 
-        private static void AppendBattleState(StringBuilder sb)
+        private static string BuildBattleJson()
         {
+            var w = new JsonWriter().Add("scene", "battle");
+
             var sc = Singleton<StageController>.Instance;
-            if (sc == null)
-                return;
+            if (sc != null)
+            {
+                w.Add("stageState", sc.State.ToString())
+                 .Add("battleState", sc.battleState.ToString())
+                 .Add("phase", sc.Phase.ToString());
+            }
 
-            sb.Append(",\"stageState\":\"");
-            sb.Append(sc.State.ToString());
-            sb.Append('"');
+            return w.Build();
+        }
 
-            sb.Append(",\"battleState\":\"");
-            sb.Append(sc.battleState.ToString());
-            sb.Append('"');
+        private static string BuildMainJson()
+        {
+            var w = new JsonWriter().Add("scene", "main");
 
-            sb.Append(",\"phase\":\"");
-            sb.Append(sc.Phase.ToString());
-            sb.Append('"');
+            var uic = UI.UIController.Instance;
+            if (uic != null)
+                w.Add("uiPhase", uic.CurrentUIPhase.ToString());
+
+            return w.Build();
         }
     }
 }
