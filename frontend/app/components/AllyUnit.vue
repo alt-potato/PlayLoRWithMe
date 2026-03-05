@@ -1,9 +1,10 @@
 <!--
   AllyUnit.vue
 
-  Displays a single ally unit card. During SelectCard phase the hand becomes
-  interactive: cards are shown as tappable card shapes; selecting one reveals
-  hexagonal slot-picker dice below the hand row.
+  Displays a single ally unit card. Header shows turn state, name, light pips,
+  and emotion level. During SelectCard phase the hand becomes interactive.
+  Everything else (hand read-only, EGO, team pages, passives, abnormalities,
+  resistances) is collapsed into a single details section.
 
   Props:
     unit – ally unit object from the game state snapshot
@@ -48,32 +49,106 @@ const sortedDice = computed(() =>
   }),
 );
 
+function dieColor(sc: any): string {
+  if (sc.clash) return ARROW_COLORS.clash;
+  if (sc.targetUnitId != null) return ARROW_COLORS.outgoing;
+  return myColor.value; // Instance / untargeted
+}
+
 function targetLabel(sc: any): string {
   if (sc?.targetUnitId == null) return "";
   const u = allUnits.value.find((u: any) => u.id === sc.targetUnitId);
   const prefix = sc.clash ? "⚔" : "↗";
   return `${prefix} ${u?.name ?? `#${sc.targetUnitId}`} ·${sc.targetSlot}`;
 }
+
+const hasDetails = computed(() => {
+  const u = props.unit;
+  return (
+    (!isSelectPhase.value && u.hand?.length) ||
+    u.ego?.length ||
+    u.teamHand?.length ||
+    u.passives?.length ||
+    u.abnormalities?.length ||
+    u.keyPage
+  );
+});
+
+const detailsLabel = computed(() => {
+  const u = props.unit;
+  const parts: string[] = [];
+  if (!isSelectPhase.value && u.hand?.length)
+    parts.push(`Hand (${u.hand.length})`);
+  if (u.ego?.length) parts.push(`EGO (${u.ego.length})`);
+  if (u.teamHand?.length) parts.push(`Team (${u.teamHand.length})`);
+  if (u.passives?.length) parts.push(`Passives (${u.passives.length})`);
+  if (u.abnormalities?.length) parts.push(`Abn. (${u.abnormalities.length})`);
+  if (u.keyPage) parts.push("Res.");
+  return parts.length ? parts.join(" · ") : "Details";
+});
 </script>
 
 <template>
-  <div
-    class="unit-card"
-    :style="{ '--accent': myColor, borderRightColor: myColor }"
-  >
+  <div class="unit-card">
     <!-- ── Header ── -->
     <div class="unit-header">
-      <span class="unit-name">{{
-        unit.name ?? unit.keyPage?.name ?? `Unit #${unit.id}`
-      }}</span>
-      <span
-        class="turn-badge"
-        :style="{ background: turnColor(unit.turnState) }"
-        >{{ unit.turnState }}</span
-      >
+      <!-- row 1: turn badge, name -->
+      <div class="unit-header-1">
+        <span
+          class="state-badge"
+          :style="{ background: turnColor(unit.turnState) }"
+          >{{ turnLabel(unit.turnState) }}</span
+        >
+        <span class="unit-name">{{
+          unit.name ?? unit.keyPage?.name ?? `Unit #${unit.id}`
+        }}</span>
+      </div>
+
+      <!-- row 2: light pips, emotion level -->
+      <div class="unit-header-2">
+        <div
+          v-if="unit.maxPlayPoint"
+          class="ap-pips"
+          :title="`Light: ${unit.playPoint}/${unit.maxPlayPoint}`"
+        >
+          <span
+            v-for="n in unit.maxPlayPoint"
+            :key="n"
+            class="ap-pip"
+            :class="{ 'ap-pip--lit': n <= unit.playPoint }"
+          />
+        </div>
+        <div class="unit-meta">
+          <div v-if="unit.emotionCoins?.max" class="emotion-meta">
+            <div class="epips">
+              <span
+                v-for="n in unit.emotionCoins.positive"
+                :key="'p' + n"
+                class="epip epip--pos"
+              />
+              <span
+                v-for="n in unit.emotionCoins.negative"
+                :key="'n' + n"
+                class="epip epip--neg"
+              />
+              <span
+                v-for="n in Math.max(
+                  0,
+                  unit.emotionCoins.max -
+                    unit.emotionCoins.positive -
+                    unit.emotionCoins.negative,
+                )"
+                :key="'e' + n"
+                class="epip epip--empty"
+              />
+            </div>
+            <span class="em-level">Em{{ unit.emotionLevel }}</span>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- ── HP / SG bars + Light + Emotion ── -->
+    <!-- ── HP / SG bars ── -->
     <UnitStatus :unit="unit" />
 
     <!-- ── Speed dice + slotted cards ── -->
@@ -89,7 +164,7 @@ function targetLabel(sc: any): string {
           class="hex-wrap"
           :class="{ staggered: d.staggered }"
           :data-die="`${unit.id}-${d.slot}`"
-          :style="sc !== null && !d.staggered ? { background: myColor } : {}"
+          :style="sc !== null && !d.staggered ? { background: dieColor(sc) } : {}"
         >
           <span class="hex-inner">{{ d.staggered ? "✕" : d.value }}</span>
         </span>
@@ -125,13 +200,11 @@ function targetLabel(sc: any): string {
       >
     </div>
 
-    <!-- ── Hand ── -->
-    <template v-if="unit.hand?.length">
-      <!-- Interactive card shapes during SelectCard phase -->
-      <div v-if="isSelectPhase" class="hand-section">
+    <!-- ── Interactive hand (select phase only) ── -->
+    <template v-if="isSelectPhase && unit.hand?.length">
+      <div class="hand-section">
         <span class="section-label">Hand</span>
 
-        <!-- Card shapes -->
         <div class="hand-row">
           <div
             v-for="(c, i) in unit.hand"
@@ -162,7 +235,6 @@ function targetLabel(sc: any): string {
           </div>
         </div>
 
-        <!-- Slot picker: shows hex dice after a card is selected -->
         <transition name="picker">
           <div v-if="selectingSlotFor?.unitId === unit.id" class="slot-picker">
             <span class="picker-label">Slot</span>
@@ -195,10 +267,15 @@ function targetLabel(sc: any): string {
           </div>
         </transition>
       </div>
+    </template>
 
-      <!-- Collapsed read-only outside select phase -->
-      <details v-else class="collapse">
-        <summary>Hand ({{ unit.hand.length }})</summary>
+    <!-- ── Collapsed details ── -->
+    <details v-if="hasDetails" class="collapse">
+      <summary>{{ detailsLabel }}</summary>
+
+      <!-- Hand (read-only, outside select phase) -->
+      <template v-if="!isSelectPhase && unit.hand?.length">
+        <div class="det-label">Hand</div>
         <div class="clist">
           <div
             v-for="c in unit.hand"
@@ -210,65 +287,71 @@ function targetLabel(sc: any): string {
             <span class="centry-range">{{ c.range }}</span>
           </div>
         </div>
-      </details>
-    </template>
+      </template>
 
-    <!-- ── EGO ── -->
-    <details v-if="unit.ego?.length" class="collapse">
-      <summary>EGO ({{ unit.ego.length }})</summary>
-      <div class="clist">
-        <div
-          v-for="c in unit.ego"
-          :key="c.id.id + c.id.packageId"
-          class="centry"
-          :class="{ unavailable: !c.available }"
-        >
-          <span class="centry-cost">{{ c.cost }}</span>
-          <span>{{ c.name }}</span>
-          <span class="centry-range">{{ c.available ? "✓" : "…" }}</span>
+      <!-- EGO -->
+      <template v-if="unit.ego?.length">
+        <div class="det-label">EGO</div>
+        <div class="clist">
+          <div
+            v-for="c in unit.ego"
+            :key="c.id.id + c.id.packageId"
+            class="centry"
+            :class="{ unavailable: !c.available }"
+          >
+            <span class="centry-cost">{{ c.cost }}</span>
+            <span>{{ c.name }}</span>
+            <span class="centry-range">{{ c.available ? "✓" : "…" }}</span>
+          </div>
         </div>
-      </div>
-    </details>
+      </template>
 
-    <!-- ── Team pages ── -->
-    <details v-if="unit.teamHand?.length" class="collapse">
-      <summary>Team Pages ({{ unit.teamHand.length }})</summary>
-      <div class="clist">
-        <div
-          v-for="c in unit.teamHand"
-          :key="c.id.id + c.id.packageId"
-          class="centry"
-        >
-          <span class="centry-cost">{{ c.cost }}</span>
-          <span>{{ c.name }}</span>
+      <!-- Team pages -->
+      <template v-if="unit.teamHand?.length">
+        <div class="det-label">Team Pages</div>
+        <div class="clist">
+          <div
+            v-for="c in unit.teamHand"
+            :key="c.id.id + c.id.packageId"
+            class="centry"
+          >
+            <span class="centry-cost">{{ c.cost }}</span>
+            <span>{{ c.name }}</span>
+          </div>
         </div>
-      </div>
-    </details>
+      </template>
 
-    <!-- ── Passives ── -->
-    <details v-if="unit.passives?.length" class="collapse">
-      <summary>Passives ({{ unit.passives.length }})</summary>
-      <div class="clist">
-        <div
-          v-for="p in unit.passives"
-          :key="p.id.id + p.id.packageId"
-          class="centry"
-          :class="{ unavailable: p.disabled }"
-        >
-          <span>{{ p.name }}</span>
+      <!-- Passives -->
+      <template v-if="unit.passives?.length">
+        <div class="det-label">Passives</div>
+        <div class="clist">
+          <div
+            v-for="p in unit.passives"
+            :key="p.id.id + p.id.packageId"
+            class="centry"
+            :class="{ unavailable: p.disabled }"
+          >
+            <span>{{ p.name }}</span>
+          </div>
         </div>
-      </div>
-    </details>
+      </template>
 
-    <!-- ── Abnormalities ── -->
-    <details v-if="unit.abnormalities?.length" class="collapse">
-      <summary>Abnormalities ({{ unit.abnormalities.length }})</summary>
-      <div class="clist">
-        <div v-for="ab in unit.abnormalities" :key="ab.id" class="centry">
-          <span>{{ ab.name }}</span>
-          <span class="centry-range">Lv{{ ab.emotionLevel }}</span>
+      <!-- Abnormalities -->
+      <template v-if="unit.abnormalities?.length">
+        <div class="det-label">Abnormalities</div>
+        <div class="clist">
+          <div v-for="ab in unit.abnormalities" :key="ab.id" class="centry">
+            <span>{{ ab.name }}</span>
+            <span class="centry-range">Lv{{ ab.emotionLevel }}</span>
+          </div>
         </div>
-      </div>
+      </template>
+
+      <!-- Resistances -->
+      <template v-if="unit.keyPage">
+        <div class="det-label">Resistances</div>
+        <ResistanceTable :resistances="unit.keyPage?.resistances" />
+      </template>
     </details>
   </div>
 </template>
@@ -280,13 +363,16 @@ function targetLabel(sc: any): string {
   border-right: 2px solid var(--gold-dim);
 }
 
-/* ── Header — ally: name right, badge left ───────────────────────────────── */
+/* ── Header — ally: meta left, name center, badge right (via row-reverse) ── */
 .unit-header {
   display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.unit-header div {
+  display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-  flex-direction: row-reverse;
+  gap: 0.4rem;
 }
 .unit-name {
   text-align: right;
@@ -296,14 +382,14 @@ function targetLabel(sc: any): string {
 .slot-list {
   display: flex;
   flex-direction: column;
-  gap: 0.09rem;
-  margin-left: -1.8rem; /* die centerpoint at card left border */
+  gap: 0.07rem;
+  margin-left: -1.8rem;
 }
 .slot-row {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.08rem 0.15rem 0.08rem 0;
+  padding: 0.06rem 0.15rem 0.06rem 0;
 }
 .remove-btn {
   margin-left: auto;
@@ -327,7 +413,6 @@ function targetLabel(sc: any): string {
   flex-direction: column;
   gap: 0.4rem;
 }
-
 .section-label {
   font-family: var(--font-display);
   font-size: 0.58rem;
@@ -342,7 +427,6 @@ function targetLabel(sc: any): string {
   gap: 0.35rem;
   flex-wrap: wrap;
 }
-
 .hcard {
   flex-shrink: 0;
   width: 3.8rem;
@@ -380,7 +464,6 @@ function targetLabel(sc: any): string {
   opacity: 0.28;
   pointer-events: none;
 }
-
 .hcard-cost {
   width: 1.25rem;
   height: 1.25rem;
@@ -418,7 +501,7 @@ function targetLabel(sc: any): string {
   align-self: flex-end;
 }
 
-/* ── Slot picker (hex dice for slot selection) ───────────────────────────── */
+/* ── Slot picker ─────────────────────────────────────────────────────────── */
 .slot-picker {
   display: flex;
   align-items: center;
@@ -428,7 +511,6 @@ function targetLabel(sc: any): string {
   background: #091509;
   border: 1px solid var(--green-hi);
 }
-
 .picker-label {
   font-family: var(--font-display);
   font-size: 0.58rem;
@@ -436,8 +518,6 @@ function targetLabel(sc: any): string {
   text-transform: uppercase;
   color: #4caf50;
 }
-
-/* Slot picker hex dice — slightly larger for easy tapping */
 .shex-outer {
   display: inline-flex;
   align-items: center;
@@ -465,7 +545,6 @@ function targetLabel(sc: any): string {
     background 0.1s,
     color 0.1s;
 }
-
 .shex-outer.shex-open {
   background: var(--green-hi);
   cursor: pointer;
@@ -481,7 +560,6 @@ function targetLabel(sc: any): string {
   background: #102010;
   color: #fff;
 }
-
 .shex-outer.shex-occupied {
   background: var(--border);
   opacity: 0.4;
@@ -491,7 +569,6 @@ function targetLabel(sc: any): string {
   background: var(--bg-card);
   color: var(--text-3);
 }
-
 .shex-outer.shex-staggered {
   background: var(--crimson-dim);
   cursor: not-allowed;
@@ -500,7 +577,6 @@ function targetLabel(sc: any): string {
   background: #1a0606;
   color: var(--crimson-hi);
 }
-
 .picker-cancel {
   background: transparent;
   border: 1px solid var(--crimson);
@@ -516,7 +592,7 @@ function targetLabel(sc: any): string {
   color: #fff;
 }
 
-/* Slot picker slide-in animation */
+/* Slot picker slide-in */
 .picker-enter-active {
   transition:
     opacity 0.15s,
@@ -531,5 +607,17 @@ function targetLabel(sc: any): string {
 .picker-leave-to {
   opacity: 0;
   transform: translateY(-4px);
+}
+
+/* ── Detail sub-section labels ───────────────────────────────────────────── */
+.det-label {
+  font-family: var(--font-display);
+  font-size: 0.53rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-3);
+  margin-top: 0.35rem;
+  padding-bottom: 0.1rem;
+  border-bottom: 1px solid var(--border);
 }
 </style>

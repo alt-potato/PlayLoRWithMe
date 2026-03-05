@@ -2,8 +2,8 @@
   EnemyUnit.vue
 
   Displays a single enemy unit card. Speed dice protrude from the right edge
-  toward the battlefield centre (centerpoint at card border). Each slot row
-  shows card info on the left and the die on the right.
+  toward the battlefield centre. Header shows turn state, name, light pips,
+  and emotion level. Passives, abnormalities, and resistances are collapsed.
 
   Props:
     unit – enemy unit object from the game state snapshot
@@ -30,23 +30,88 @@ const sortedSlots = computed(() =>
         null,
     })),
 );
+
+function dieColor(sc: any): string {
+  if (sc.clash) return ARROW_COLORS.clash;
+  return ARROW_COLORS.incoming; // enemy targeting ally (one-sided or clash already handled)
+}
+
+const hasDetails = computed(() => {
+  const u = props.unit;
+  return u.passives?.length || u.abnormalities?.length || u.keyPage;
+});
+
+const detailsLabel = computed(() => {
+  const u = props.unit;
+  const parts: string[] = [];
+  if (u.passives?.length) parts.push(`Passives (${u.passives.length})`);
+  if (u.abnormalities?.length) parts.push(`Abn. (${u.abnormalities.length})`);
+  if (u.keyPage) parts.push("Res.");
+  return parts.length ? parts.join(" · ") : "Details";
+});
 </script>
 
 <template>
   <div class="unit-card">
     <!-- ── Header ── -->
     <div class="unit-header">
-      <span
-        class="turn-badge"
-        :style="{ background: turnColor(unit.turnState) }"
-        >{{ unit.turnState }}</span
-      >
-      <span class="unit-name">{{
-        unit.name ?? unit.keyPage?.name ?? `Unit #${unit.id}`
-      }}</span>
+      <!-- row 1: name, turn badge -->
+      <div class="unit-header-1">
+        <span class="unit-name">{{
+          unit.name ?? unit.keyPage?.name ?? `Unit #${unit.id}`
+        }}</span>
+        <span
+          class="state-badge"
+          :style="{ background: turnColor(unit.turnState) }"
+          >{{ turnLabel(unit.turnState) }}</span
+        >
+      </div>
+
+      <!-- row 2: emotion level, light pips -->
+      <div class="unit-header-2">
+        <div class="unit-meta">
+          <div v-if="unit.emotionCoins?.max" class="emotion-meta">
+            <span class="em-level">Em{{ unit.emotionLevel }}</span>
+            <div class="epips">
+              <span
+                v-for="n in unit.emotionCoins.positive"
+                :key="'p' + n"
+                class="epip epip--pos"
+              />
+              <span
+                v-for="n in unit.emotionCoins.negative"
+                :key="'n' + n"
+                class="epip epip--neg"
+              />
+              <span
+                v-for="n in Math.max(
+                  0,
+                  unit.emotionCoins.max -
+                    unit.emotionCoins.positive -
+                    unit.emotionCoins.negative,
+                )"
+                :key="'e' + n"
+                class="epip epip--empty"
+              />
+            </div>
+          </div>
+        </div>
+        <div
+          v-if="unit.maxPlayPoint"
+          class="ap-pips"
+          :title="`Light: ${unit.playPoint}/${unit.maxPlayPoint}`"
+        >
+          <span
+            v-for="n in unit.maxPlayPoint"
+            :key="n"
+            class="ap-pip"
+            :class="{ 'ap-pip--lit': n <= unit.playPoint }"
+          />
+        </div>
+      </div>
     </div>
 
-    <!-- ── HP / SG bars + Light + Emotion ── -->
+    <!-- ── HP / SG bars ── -->
     <UnitStatus :unit="unit" />
 
     <!-- ── Speed dice + slotted cards ── -->
@@ -93,6 +158,7 @@ const sortedSlots = computed(() =>
           :class="{ staggered: d.staggered }"
           :data-die="`${unit.id}-${d.slot}`"
           :title="`Slot ${d.slot}`"
+          :style="sc !== null && !d.staggered ? { background: dieColor(sc) } : {}"
         >
           <span class="hex-inner">{{ d.staggered ? "✕" : d.value }}</span>
         </span>
@@ -106,29 +172,38 @@ const sortedSlots = computed(() =>
       >
     </div>
 
-    <!-- ── Collapsible sections ── -->
-    <details v-if="unit.passives?.length" class="collapse">
-      <summary>Passives ({{ unit.passives.length }})</summary>
-      <div class="clist">
-        <div
-          v-for="p in unit.passives"
-          :key="p.id.id + p.id.packageId"
-          class="centry"
-          :class="{ unavailable: p.disabled }"
-        >
-          <span>{{ p.name }}</span>
-        </div>
-      </div>
-    </details>
+    <!-- ── Collapsed details ── -->
+    <details v-if="hasDetails" class="collapse">
+      <summary>{{ detailsLabel }}</summary>
 
-    <details v-if="unit.abnormalities?.length" class="collapse">
-      <summary>Abnormalities ({{ unit.abnormalities.length }})</summary>
-      <div class="clist">
-        <div v-for="ab in unit.abnormalities" :key="ab.id" class="centry">
-          <span>{{ ab.name }}</span>
-          <span class="centry-range">Lv{{ ab.emotionLevel }}</span>
+      <template v-if="unit.passives?.length">
+        <div class="det-label">Passives</div>
+        <div class="clist">
+          <div
+            v-for="p in unit.passives"
+            :key="p.id.id + p.id.packageId"
+            class="centry"
+            :class="{ unavailable: p.disabled }"
+          >
+            <span>{{ p.name }}</span>
+          </div>
         </div>
-      </div>
+      </template>
+
+      <template v-if="unit.abnormalities?.length">
+        <div class="det-label">Abnormalities</div>
+        <div class="clist">
+          <div v-for="ab in unit.abnormalities" :key="ab.id" class="centry">
+            <span>{{ ab.name }}</span>
+            <span class="centry-range">Lv{{ ab.emotionLevel }}</span>
+          </div>
+        </div>
+      </template>
+
+      <template v-if="unit.keyPage">
+        <div class="det-label">Resistances</div>
+        <ResistanceTable :resistances="unit.keyPage?.resistances" />
+      </template>
     </details>
   </div>
 </template>
@@ -140,26 +215,30 @@ const sortedSlots = computed(() =>
   border-left: 2px solid var(--crimson);
 }
 
-/* ── Header — enemy: badge left, name right ──────────────────────────────── */
+/* ── Header — enemy: badge left, name center, meta right ─────────────────── */
 .unit-header {
   display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.unit-header div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
 }
 
 /* ── Slot list (die on right, protrudes beyond card edge) ────────────────── */
 .slot-list {
   display: flex;
   flex-direction: column;
-  gap: 0.09rem;
-  margin-right: -1.8rem; /* die centerpoint at card right border */
+  gap: 0.07rem;
+  margin-right: -1.8rem;
 }
 .slot-row {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.08rem 0 0.08rem 0.15rem;
+  padding: 0.06rem 0 0.06rem 0.15rem;
 }
 .slot-content {
   flex: 1;
@@ -174,6 +253,7 @@ const sortedSlots = computed(() =>
   align-items: baseline;
   min-width: 0;
 }
+
 /* ── Incoming attack chips ───────────────────────────────────────────────── */
 .incoming-row {
   display: flex;
@@ -190,5 +270,17 @@ const sortedSlots = computed(() =>
 }
 .chip-mass {
   font-weight: bold;
+}
+
+/* ── Detail sub-section labels ───────────────────────────────────────────── */
+.det-label {
+  font-family: var(--font-display);
+  font-size: 0.53rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-3);
+  margin-top: 0.35rem;
+  padding-bottom: 0.1rem;
+  border-bottom: 1px solid var(--border);
 }
 </style>

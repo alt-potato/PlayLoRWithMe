@@ -142,7 +142,7 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.turn-badge {
+.state-badge {
   font-family: var(--font-mono);
   font-size: 0.52rem;
   padding: 0.1rem 0.3rem;
@@ -234,6 +234,23 @@ details[open] > summary::before { content: '▾ '; }
   font-family: var(--font-mono);
 }
 .centry-range { color: var(--text-3); margin-left: auto; font-size: 0.6rem; font-family: var(--font-mono); }
+
+/* ── Unit header meta (light pips + emotion, inline in header) ─────────────── */
+.unit-meta { display: flex; gap: 0.25rem; align-items: center; flex-shrink: 0; }
+
+/* ── Light pips ─────────────────────────────────────────────────────────────── */
+.ap-pips { display: flex; gap: 0.08rem; align-items: center; flex-wrap: wrap; }
+.ap-pip { width: 0.62rem; height: 0.54rem; clip-path: var(--hex); background: var(--border-hi); flex-shrink: 0; transition: background 0.15s; }
+.ap-pip--lit { background: var(--gold); }
+
+/* ── Emotion display ─────────────────────────────────────────────────────────── */
+.emotion-meta { display: flex; align-items: center; gap: 0.2rem; }
+.em-level { font-family: var(--font-mono); font-size: 0.55rem; color: var(--text-2); white-space: nowrap; flex-shrink: 0; }
+.epips { display: flex; gap: 0.09rem; align-items: center; flex-wrap: wrap; }
+.epip { width: 0.45rem; height: 0.45rem; border-radius: 50%; flex-shrink: 0; }
+.epip--pos { background: #4caf50; }
+.epip--neg { background: #e53935; }
+.epip--empty { background: var(--border-mid); }
 </style>
 
 <style scoped>

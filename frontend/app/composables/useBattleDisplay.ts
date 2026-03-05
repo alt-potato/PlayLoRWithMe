@@ -15,6 +15,27 @@ export const RESIST_COLORS: Record<string, string> = {
   Immune:      '#6a1b9a',
 }
 
+/** Arrow / die highlight colours shared between ArrowOverlay and unit components. */
+export const ARROW_COLORS = {
+  incoming: '#c62828',
+  clash:    '#c9a227',
+  outgoing: '#4fc3f7',
+} as const
+
+/** Maps TurnState enum string → human-readable label. */
+export const TURNSTATE_LABELS: Record<string, string> = {
+  WAIT_CARD:      'READY',
+  WAIT_TURN:      'WAITING',
+  DONE_ACTION:    'DONE',
+  BREAK:          'STAGGERED',
+  DEAD:           'DEAD',
+  MOVE:           'MOVING',
+  STAND_BY:       'STANDBY',
+}
+
+/** Human-readable turn state label. */
+export function turnLabel(val: string) { return TURNSTATE_LABELS[val] ?? val }
+
 /** Maps TurnState enum string → badge background colour. */
 export const TURNSTATE_COLORS: Record<string, string> = {
   WAIT_CARD:       '#c9a227',

@@ -36,11 +36,7 @@ interface Arrow {
 
 const arrows = ref<Arrow[]>([])
 
-const COLORS: Record<Arrow['type'], string> = {
-  incoming: '#c62828',
-  clash:    '#c9a227',
-  outgoing: '#4fc3f7',
-}
+// ARROW_COLORS is auto-imported from useBattleDisplay.ts
 
 /** Center of the inner edge of a die: right edge for enemies, left edge for allies. */
 function diePoint(unitId: number, slot: number, allyIds: Set<number>): { x: number; y: number } | null {
@@ -138,7 +134,16 @@ function visible(a: Arrow): boolean {
         refX="7" refY="3"
         orient="auto"
       >
-        <polygon points="0 0, 8 3, 0 6" :fill="COLORS[t]" />
+        <polygon points="0 0, 8 3, 0 6" :fill="ARROW_COLORS[t]" />
+      </marker>
+      <!-- Reverse marker for clash: arrowhead at the source end -->
+      <marker
+        id="ah-clash-start"
+        markerWidth="8" markerHeight="6"
+        refX="7" refY="3"
+        orient="auto-start-reverse"
+      >
+        <polygon points="0 0, 8 3, 0 6" :fill="ARROW_COLORS['clash']" />
       </marker>
     </defs>
 
@@ -146,11 +151,12 @@ function visible(a: Arrow): boolean {
       v-for="(a, i) in arrows" :key="i"
       v-show="visible(a)"
       :d="pipePath(a)"
-      :stroke="COLORS[a.type]"
+      :stroke="ARROW_COLORS[a.type]"
       :stroke-width="a.dashed ? 1.5 : 2"
       :stroke-dasharray="a.dashed ? '5 4' : undefined"
       stroke-linecap="round"
       fill="none"
+      :marker-start="a.type === 'clash' ? 'url(#ah-clash-start)' : undefined"
       :marker-end="`url(#ah-${a.type})`"
     />
   </svg>
