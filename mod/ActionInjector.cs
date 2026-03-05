@@ -35,7 +35,9 @@ namespace PlayLoRWithMe
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[PlayLoRWithMe] ActionInjector: {ex.Message}\n{ex.StackTrace}");
+                    Debug.LogError(
+                        $"[PlayLoRWithMe] ActionInjector: {ex.Message}\n{ex.StackTrace}"
+                    );
                 }
             }
         }
@@ -56,13 +58,20 @@ namespace PlayLoRWithMe
         {
             var r = new JsonReader(json);
             string type = r.GetString("type");
-            if (type == null) return;
+            if (type == null)
+                return;
 
             switch (type)
             {
-                case "playCard":   DoPlayCard(r);   break;
-                case "removeCard": DoRemoveCard(r); break;
-                case "confirm":    DoConfirm();     break;
+                case "playCard":
+                    DoPlayCard(r);
+                    break;
+                case "removeCard":
+                    DoRemoveCard(r);
+                    break;
+                case "confirm":
+                    DoConfirm();
+                    break;
                 default:
                     Debug.LogWarning($"[PlayLoRWithMe] Unknown action type: '{type}'");
                     break;
@@ -83,9 +92,12 @@ namespace PlayLoRWithMe
 
         private static void DoPlayCard(JsonReader r)
         {
-            if (!r.TryGetInt("unitId",    out int unitId))    return;
-            if (!r.TryGetInt("cardIndex", out int cardIndex)) return;
-            if (!r.TryGetInt("diceSlot",  out int diceSlot))  return;
+            if (!r.TryGetInt("unitId", out int unitId))
+                return;
+            if (!r.TryGetInt("cardIndex", out int cardIndex))
+                return;
+            if (!r.TryGetInt("diceSlot", out int diceSlot))
+                return;
 
             var unit = FindAlly(unitId);
             if (unit == null)
@@ -107,7 +119,10 @@ namespace PlayLoRWithMe
             // so passing the unit itself is safe.  For all other ranges a real target is needed.
             BattleUnitModel target;
             int targetSlot;
-            if (r.TryGetInt("targetUnitId", out int targetId) && r.TryGetInt("targetDiceSlot", out targetSlot))
+            if (
+                r.TryGetInt("targetUnitId", out int targetId)
+                && r.TryGetInt("targetDiceSlot", out targetSlot)
+            )
             {
                 target = FindAnyUnit(targetId);
                 if (target == null)
@@ -126,7 +141,9 @@ namespace PlayLoRWithMe
             unit.cardOrder = diceSlot;
             unit.cardSlotDetail.AddCard(card, target, targetSlot);
             SingletonBehavior<BattleManagerUI>.Instance?.ui_TargetArrow?.UpdateTargetList();
-            Debug.Log($"[PlayLoRWithMe] playCard: unit={unitId} card='{card.GetName()}' slot={diceSlot} target={target.id} targetSlot={targetSlot}");
+            Debug.Log(
+                $"[PlayLoRWithMe] playCard: unit={unitId} card='{card.GetName()}' slot={diceSlot} target={target.id} targetSlot={targetSlot}"
+            );
         }
 
         // -------------------------------------------------------------------------
@@ -138,11 +155,14 @@ namespace PlayLoRWithMe
 
         private static void DoRemoveCard(JsonReader r)
         {
-            if (!r.TryGetInt("unitId",   out int unitId))   return;
-            if (!r.TryGetInt("diceSlot", out int diceSlot)) return;
+            if (!r.TryGetInt("unitId", out int unitId))
+                return;
+            if (!r.TryGetInt("diceSlot", out int diceSlot))
+                return;
 
             var unit = FindAlly(unitId);
-            if (unit == null) return;
+            if (unit == null)
+                return;
 
             unit.cardOrder = diceSlot;
             unit.cardSlotDetail.AddCard(null, null, 0);
@@ -157,7 +177,8 @@ namespace PlayLoRWithMe
         private static void DoConfirm()
         {
             var sc = Singleton<StageController>.Instance;
-            if (sc == null) return;
+            if (sc == null)
+                return;
 
             sc.CompleteApplyingLibrarianCardPhase(auto: false);
             Debug.Log("[PlayLoRWithMe] confirm");
@@ -170,27 +191,32 @@ namespace PlayLoRWithMe
         private static BattleUnitModel FindAlly(int unitId)
         {
             var bom = BattleObjectManager.instance;
-            if (bom == null) return null;
+            if (bom == null)
+                return null;
             return FindUnit(bom.GetList(Faction.Player), unitId);
         }
 
         private static BattleUnitModel FindAnyUnit(int unitId)
         {
             var bom = BattleObjectManager.instance;
-            if (bom == null) return null;
+            if (bom == null)
+                return null;
             foreach (Faction f in Enum.GetValues(typeof(Faction)))
             {
                 var u = FindUnit(bom.GetList(f), unitId);
-                if (u != null) return u;
+                if (u != null)
+                    return u;
             }
             return null;
         }
 
         private static BattleUnitModel FindUnit(List<BattleUnitModel> list, int unitId)
         {
-            if (list == null) return null;
+            if (list == null)
+                return null;
             foreach (var u in list)
-                if (u.id == unitId) return u;
+                if (u.id == unitId)
+                    return u;
             return null;
         }
     }

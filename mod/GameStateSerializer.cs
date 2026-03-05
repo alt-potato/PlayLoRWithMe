@@ -11,7 +11,10 @@ namespace PlayLoRWithMe
     {
         public static string Serialize()
         {
-            try { return BuildJson(); }
+            try
+            {
+                return BuildJson();
+            }
             catch (System.Exception ex)
             {
                 Debug.LogError($"[PlayLoRWithMe] GameStateSerializer error: {ex}");
@@ -65,32 +68,41 @@ namespace PlayLoRWithMe
             if (sc != null)
             {
                 w.Add("stageState", sc.State.ToString())
-                 .Add("battleState", sc.battleState.ToString())
-                 .Add("phase", sc.Phase.ToString())
-                 .AddObject("stage", s =>
-                 {
-                     s.Add("wave", sc.CurrentWave)
-                      .Add("round", sc.RoundTurn)
-                      .Add("floor", sc.CurrentFloor.ToString());
-                     var stageModel = sc.GetStageModel();
-                     if (stageModel?.ClassInfo != null)
-                         s.Add("chapter", stageModel.ClassInfo.chapter);
-                 });
+                    .Add("battleState", sc.battleState.ToString())
+                    .Add("phase", sc.Phase.ToString())
+                    .AddObject(
+                        "stage",
+                        s =>
+                        {
+                            s.Add("wave", sc.CurrentWave)
+                                .Add("round", sc.RoundTurn)
+                                .Add("floor", sc.CurrentFloor.ToString());
+                            var stageModel = sc.GetStageModel();
+                            if (stageModel?.ClassInfo != null)
+                                s.Add("chapter", stageModel.ClassInfo.chapter);
+                        }
+                    );
             }
 
             var bom = BattleObjectManager.instance;
             if (bom != null)
             {
-                w.AddArray("allies", arr =>
-                {
-                    foreach (var unit in bom.GetList(Faction.Player))
-                        WriteUnit(arr, unit, isAlly: true);
-                });
-                w.AddArray("enemies", arr =>
-                {
-                    foreach (var unit in bom.GetList(Faction.Enemy))
-                        WriteUnit(arr, unit, isAlly: false);
-                });
+                w.AddArray(
+                    "allies",
+                    arr =>
+                    {
+                        foreach (var unit in bom.GetList(Faction.Player))
+                            WriteUnit(arr, unit, isAlly: true);
+                    }
+                );
+                w.AddArray(
+                    "enemies",
+                    arr =>
+                    {
+                        foreach (var unit in bom.GetList(Faction.Enemy))
+                            WriteUnit(arr, unit, isAlly: false);
+                    }
+                );
             }
 
             return w.Build();
@@ -102,23 +114,23 @@ namespace PlayLoRWithMe
 
         private static void WriteUnit(JsonArrayWriter arr, BattleUnitModel unit, bool isAlly)
         {
-            if (unit == null) return;
+            if (unit == null)
+                return;
             arr.AddObject(w =>
             {
                 w.Add("id", unit.id)
-                 .Add("index", unit.index)
-                 .Add("name", unit.UnitData?.unitData?.name)
-                 .Add("turnState", unit.turnState.ToString())
-                 .Add("hp", (int)unit.hp)
-                 .Add("maxHp", unit.MaxHp)
-                 .Add("staggerGauge", unit.breakDetail.breakGauge)
-                 .Add("maxStaggerGauge", unit.breakDetail.GetDefaultBreakGauge())
-                 .Add("staggerThreshold", unit.breakDetail.breakLife)
-                 .Add("targetable", unit.IsTargetable(null));
+                    .Add("index", unit.index)
+                    .Add("name", unit.UnitData?.unitData?.name)
+                    .Add("turnState", unit.turnState.ToString())
+                    .Add("hp", (int)unit.hp)
+                    .Add("maxHp", unit.MaxHp)
+                    .Add("staggerGauge", unit.breakDetail.breakGauge)
+                    .Add("maxStaggerGauge", unit.breakDetail.GetDefaultBreakGauge())
+                    .Add("staggerThreshold", unit.breakDetail.breakLife)
+                    .Add("targetable", unit.IsTargetable(null));
 
                 if (isAlly)
-                    w.Add("playPoint", unit.PlayPoint)
-                     .Add("maxPlayPoint", unit.MaxPlayPoint);
+                    w.Add("playPoint", unit.PlayPoint).Add("maxPlayPoint", unit.MaxPlayPoint);
 
                 if (unit.Book != null)
                     WriteKeyPage(w, unit);
@@ -142,27 +154,57 @@ namespace PlayLoRWithMe
         {
             var book = unit.Book;
             var bufs = unit.bufListDetail;
-            w.AddObject("keyPage", k =>
-            {
-                if (book.ClassInfo != null)
-                    AddLorId(k, "id", book.ClassInfo.id);
+            w.AddObject(
+                "keyPage",
+                k =>
+                {
+                    if (book.ClassInfo != null)
+                        AddLorId(k, "id", book.ClassInfo.id);
 
-                k.Add("name", book.Name)
-                 .Add("speedDiceCount", book.equipeffect.SpeedDiceNum)
-                 .Add("speedMin", book.equipeffect.SpeedMin)
-                 .Add("speedMax", book.equipeffect.Speed)
-                 .AddObject("resistances", r =>
-                 {
-                     // Route through bufListDetail so mid-battle resistance changes
-                     // (e.g. from abnormality page buffs like Blessing) are reflected.
-                     r.Add("slashHp",  bufs.GetResistHP(book.sHpResist, BehaviourDetail.Slash).ToString())
-                      .Add("pierceHp", bufs.GetResistHP(book.pHpResist, BehaviourDetail.Penetrate).ToString())
-                      .Add("bluntHp",  bufs.GetResistHP(book.hHpResist, BehaviourDetail.Hit).ToString())
-                      .Add("slashBp",  bufs.GetResistBP(book.sBpResist, BehaviourDetail.Slash).ToString())
-                      .Add("pierceBp", bufs.GetResistBP(book.pBpResist, BehaviourDetail.Penetrate).ToString())
-                      .Add("bluntBp",  bufs.GetResistBP(book.hBpResist, BehaviourDetail.Hit).ToString());
-                 });
-            });
+                    k.Add("name", book.Name)
+                        .Add("speedDiceCount", book.equipeffect.SpeedDiceNum)
+                        .Add("speedMin", book.equipeffect.SpeedMin)
+                        .Add("speedMax", book.equipeffect.Speed)
+                        .AddObject(
+                            "resistances",
+                            r =>
+                            {
+                                // Route through bufListDetail so mid-battle resistance changes
+                                // (e.g. from abnormality page buffs like Blessing) are reflected.
+                                r.Add(
+                                        "slashHp",
+                                        bufs.GetResistHP(book.sHpResist, BehaviourDetail.Slash)
+                                            .ToString()
+                                    )
+                                    .Add(
+                                        "pierceHp",
+                                        bufs.GetResistHP(book.pHpResist, BehaviourDetail.Penetrate)
+                                            .ToString()
+                                    )
+                                    .Add(
+                                        "bluntHp",
+                                        bufs.GetResistHP(book.hHpResist, BehaviourDetail.Hit)
+                                            .ToString()
+                                    )
+                                    .Add(
+                                        "slashBp",
+                                        bufs.GetResistBP(book.sBpResist, BehaviourDetail.Slash)
+                                            .ToString()
+                                    )
+                                    .Add(
+                                        "pierceBp",
+                                        bufs.GetResistBP(book.pBpResist, BehaviourDetail.Penetrate)
+                                            .ToString()
+                                    )
+                                    .Add(
+                                        "bluntBp",
+                                        bufs.GetResistBP(book.hBpResist, BehaviourDetail.Hit)
+                                            .ToString()
+                                    );
+                            }
+                        );
+                }
+            );
         }
 
         // -------------------------------------------------------------------------
@@ -171,20 +213,23 @@ namespace PlayLoRWithMe
 
         private static void WriteSpeedDice(JsonWriter w, BattleUnitModel unit)
         {
-            w.AddArray("speedDice", arr =>
-            {
-                var dice = unit.speedDiceResult;
-                if (dice == null) return;
-                for (int i = 0; i < dice.Count; i++)
+            w.AddArray(
+                "speedDice",
+                arr =>
                 {
-                    var d = dice[i];
-                    int slot = i;
-                    arr.AddObject(o => o
-                        .Add("slot", slot)
-                        .Add("value", d.value)
-                        .Add("staggered", d.breaked));
+                    var dice = unit.speedDiceResult;
+                    if (dice == null)
+                        return;
+                    for (int i = 0; i < dice.Count; i++)
+                    {
+                        var d = dice[i];
+                        int slot = i;
+                        arr.AddObject(o =>
+                            o.Add("slot", slot).Add("value", d.value).Add("staggered", d.breaked)
+                        );
+                    }
                 }
-            });
+            );
         }
 
         // -------------------------------------------------------------------------
@@ -193,39 +238,63 @@ namespace PlayLoRWithMe
 
         private static void WriteSlottedCards(JsonWriter w, BattleUnitModel unit)
         {
-            w.AddArray("slottedCards", arr =>
-            {
-                var slots = unit.cardSlotDetail?.cardAry;
-                if (slots == null) return;
-                for (int i = 0; i < slots.Count; i++)
+            w.AddArray(
+                "slottedCards",
+                arr =>
                 {
-                    var slot = slots[i];
-                    if (slot?.card == null) continue;
-                    int slotIdx = i;
-                    arr.AddObject(o =>
+                    var slots = unit.cardSlotDetail?.cardAry;
+                    if (slots == null)
+                        return;
+                    for (int i = 0; i < slots.Count; i++)
                     {
-                        o.Add("slot", slotIdx);
-                        AddLorId(o, "cardId", slot.card.GetID());
-                        o.Add("name", slot.card.GetName())
-                         .Add("cost", slot.card.GetSpec().Cost)
-                         .Add("range", slot.card.GetSpec().Ranged.ToString());
-                        if (slot.target != null)
+                        var slot = slots[i];
+                        if (slot?.card == null)
+                            continue;
+                        int slotIdx = i;
+                        arr.AddObject(o =>
                         {
-                            // Mirror of the in-game clash check in UpdateTargetListData:
-                            // A[slotIdx]→B[targetSlotOrder] is a clash iff B[targetSlotOrder]→A[slotIdx].
-                            var opposing = slot.target.cardSlotDetail?.cardAry;
-                            bool isClash = opposing != null
-                                && slot.targetSlotOrder < opposing.Count
-                                && opposing[slot.targetSlotOrder]?.card != null
-                                && opposing[slot.targetSlotOrder].target == unit
-                                && opposing[slot.targetSlotOrder].targetSlotOrder == slotIdx;
-                            o.Add("targetUnitId", slot.target.id)
-                             .Add("targetSlot", slot.targetSlotOrder)
-                             .Add("clash", isClash);
-                        }
-                    });
+                            o.Add("slot", slotIdx);
+                            AddLorId(o, "cardId", slot.card.GetID());
+                            o.Add("name", slot.card.GetName())
+                                .Add("cost", slot.card.GetSpec().Cost)
+                                .Add("range", slot.card.GetSpec().Ranged.ToString());
+                            if (slot.target != null)
+                            {
+                                // Mirror of the in-game clash check in UpdateTargetListData:
+                                // A[slotIdx] -> B[targetSlotOrder] is a clash iff B[targetSlotOrder] -> A[slotIdx].
+                                var opposing = slot.target.cardSlotDetail?.cardAry;
+                                bool isClash =
+                                    opposing != null
+                                    && slot.targetSlotOrder < opposing.Count
+                                    && opposing[slot.targetSlotOrder]?.card != null
+                                    && opposing[slot.targetSlotOrder].target == unit
+                                    && opposing[slot.targetSlotOrder].targetSlotOrder == slotIdx;
+                                o.Add("targetUnitId", slot.target.id)
+                                    .Add("targetSlot", slot.targetSlotOrder)
+                                    .Add("clash", isClash);
+                                if (slot.subTargets != null && slot.subTargets.Count > 0)
+                                {
+                                    o.AddArray(
+                                        "subTargets",
+                                        arr2 =>
+                                        {
+                                            foreach (var st in slot.subTargets)
+                                            {
+                                                if (st?.target == null)
+                                                    continue;
+                                                arr2.AddObject(o2 =>
+                                                    o2.Add("targetUnitId", st.target.id)
+                                                        .Add("targetSlot", st.targetSlotOrder)
+                                                );
+                                            }
+                                        }
+                                    );
+                                }
+                            }
+                        });
+                    }
                 }
-            });
+            );
         }
 
         // -------------------------------------------------------------------------
@@ -234,21 +303,25 @@ namespace PlayLoRWithMe
 
         private static void WritePassives(JsonWriter w, BattleUnitModel unit)
         {
-            w.AddArray("passives", arr =>
-            {
-                var list = unit.passiveDetail?.PassiveList;
-                if (list == null) return;
-                foreach (var p in list)
+            w.AddArray(
+                "passives",
+                arr =>
                 {
-                    if (p == null || p.destroyed) continue;
-                    arr.AddObject(o =>
+                    var list = unit.passiveDetail?.PassiveList;
+                    if (list == null)
+                        return;
+                    foreach (var p in list)
                     {
-                        AddLorId(o, "id", p.id);
-                        o.Add("name", p.name)
-                         .Add("disabled", p.disabled);
-                    });
+                        if (p == null || p.destroyed)
+                            continue;
+                        arr.AddObject(o =>
+                        {
+                            AddLorId(o, "id", p.id);
+                            o.Add("name", p.name).Add("disabled", p.disabled);
+                        });
+                    }
                 }
-            });
+            );
         }
 
         // -------------------------------------------------------------------------
@@ -257,22 +330,26 @@ namespace PlayLoRWithMe
 
         private static void WriteBuffs(JsonWriter w, BattleUnitModel unit)
         {
-            w.AddArray("buffs", arr =>
-            {
-                var list = unit.bufListDetail?.GetActivatedBufList();
-                if (list == null) return;
-                foreach (var buf in list)
+            w.AddArray(
+                "buffs",
+                arr =>
                 {
-                    if (buf == null) continue;
-                    var kwType = buf.bufType;
-                    string typeName = kwType != KeywordBuf.None
-                        ? kwType.ToString()
-                        : buf.GetType().Name.Replace("BattleUnitBuf_", "");
-                    arr.AddObject(o => o
-                        .Add("type", typeName)
-                        .Add("stacks", buf.stack));
+                    var list = unit.bufListDetail?.GetActivatedBufList();
+                    if (list == null)
+                        return;
+                    foreach (var buf in list)
+                    {
+                        if (buf == null)
+                            continue;
+                        var kwType = buf.bufType;
+                        string typeName =
+                            kwType != KeywordBuf.None
+                                ? kwType.ToString()
+                                : buf.GetType().Name.Replace("BattleUnitBuf_", "");
+                        arr.AddObject(o => o.Add("type", typeName).Add("stacks", buf.stack));
+                    }
                 }
-            });
+            );
         }
 
         // -------------------------------------------------------------------------
@@ -282,30 +359,40 @@ namespace PlayLoRWithMe
         private static void WriteEmotion(JsonWriter w, BattleUnitModel unit)
         {
             var ed = unit.emotionDetail;
-            if (ed == null) return;
+            if (ed == null)
+                return;
 
             w.Add("emotionLevel", ed.EmotionLevel)
-             .Add("maxEmotionLevel", ed.MaximumEmotionLevel)
-             .AddObject("emotionCoins", c =>
-             {
-                 c.Add("positive", ed.PositiveCoins.Count)
-                  .Add("negative", ed.NegativeCoins.Count)
-                  .Add("total", ed.AllEmotionCoins.Count)
-                  .Add("max", ed.MaximumCoinNumber);
-             })
-             .AddArray("abnormalities", arr =>
-             {
-                 var passiveList = ed.PassiveList;
-                 if (passiveList == null) return;
-                 foreach (var ab in passiveList)
-                 {
-                     if (ab?.XmlInfo == null) continue;
-                     arr.AddObject(o => o
-                         .Add("id", ab.XmlInfo.id)
-                         .Add("name", ab.XmlInfo.Name)
-                         .Add("emotionLevel", ab.XmlInfo.EmotionLevel));
-                 }
-             });
+                .Add("maxEmotionLevel", ed.MaximumEmotionLevel)
+                .AddObject(
+                    "emotionCoins",
+                    c =>
+                    {
+                        c.Add("positive", ed.PositiveCoins.Count)
+                            .Add("negative", ed.NegativeCoins.Count)
+                            .Add("total", ed.AllEmotionCoins.Count)
+                            .Add("max", ed.MaximumCoinNumber);
+                    }
+                )
+                .AddArray(
+                    "abnormalities",
+                    arr =>
+                    {
+                        var passiveList = ed.PassiveList;
+                        if (passiveList == null)
+                            return;
+                        foreach (var ab in passiveList)
+                        {
+                            if (ab?.XmlInfo == null)
+                                continue;
+                            arr.AddObject(o =>
+                                o.Add("id", ab.XmlInfo.id)
+                                    .Add("name", ab.XmlInfo.Name)
+                                    .Add("emotionLevel", ab.XmlInfo.EmotionLevel)
+                            );
+                        }
+                    }
+                );
         }
 
         // -------------------------------------------------------------------------
@@ -323,21 +410,25 @@ namespace PlayLoRWithMe
             var egoHand = unit.personalEgoDetail?.GetHand();
             if (egoAll != null)
             {
-                w.AddArray("ego", arr =>
-                {
-                    foreach (var card in egoAll)
+                w.AddArray(
+                    "ego",
+                    arr =>
                     {
-                        if (card == null) continue;
-                        bool available = egoHand != null && egoHand.Contains(card);
-                        arr.AddObject(o =>
+                        foreach (var card in egoAll)
                         {
-                            AddLorId(o, "id", card.GetID());
-                            o.Add("name", card.GetName())
-                             .Add("cost", card.GetSpec().Cost)
-                             .Add("available", available);
-                        });
+                            if (card == null)
+                                continue;
+                            bool available = egoHand != null && egoHand.Contains(card);
+                            arr.AddObject(o =>
+                            {
+                                AddLorId(o, "id", card.GetID());
+                                o.Add("name", card.GetName())
+                                    .Add("cost", card.GetSpec().Cost)
+                                    .Add("available", available);
+                            });
+                        }
                     }
-                });
+                );
             }
 
             // Team abnormality hand and in-use (shared across the floor)
@@ -346,21 +437,26 @@ namespace PlayLoRWithMe
 
         private static void WriteCardList(JsonWriter w, string key, List<BattleDiceCardModel> cards)
         {
-            w.AddArray(key, arr =>
-            {
-                if (cards == null) return;
-                foreach (var card in cards)
+            w.AddArray(
+                key,
+                arr =>
                 {
-                    if (card == null) continue;
-                    arr.AddObject(o =>
+                    if (cards == null)
+                        return;
+                    foreach (var card in cards)
                     {
-                        AddLorId(o, "id", card.GetID());
-                        o.Add("name", card.GetName())
-                         .Add("cost", card.GetSpec().Cost)
-                         .Add("range", card.GetSpec().Ranged.ToString());
-                    });
+                        if (card == null)
+                            continue;
+                        arr.AddObject(o =>
+                        {
+                            AddLorId(o, "id", card.GetID());
+                            o.Add("name", card.GetName())
+                                .Add("cost", card.GetSpec().Cost)
+                                .Add("range", card.GetSpec().Ranged.ToString());
+                        });
+                    }
                 }
-            });
+            );
         }
 
         // -------------------------------------------------------------------------
@@ -369,9 +465,10 @@ namespace PlayLoRWithMe
 
         private static void AddLorId(JsonWriter w, string key, LorId lorId)
         {
-            w.AddObject(key, o => o
-                .Add("id", lorId?.id ?? -1)
-                .Add("packageId", lorId?.packageId ?? ""));
+            w.AddObject(
+                key,
+                o => o.Add("id", lorId?.id ?? -1).Add("packageId", lorId?.packageId ?? "")
+            );
         }
     }
 }

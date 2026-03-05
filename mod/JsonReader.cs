@@ -15,7 +15,8 @@ namespace PlayLoRWithMe
         // Matches "key":"string-value" or "key":integer
         private static readonly Regex _pattern = new Regex(
             "\"(\\w+)\"\\s*:\\s*(?:\"([^\"]*)\"|(-?\\d+))",
-            RegexOptions.Compiled);
+            RegexOptions.Compiled
+        );
 
         private readonly Dictionary<string, string> _fields;
 

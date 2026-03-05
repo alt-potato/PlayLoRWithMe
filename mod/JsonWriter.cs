@@ -13,7 +13,8 @@ namespace PlayLoRWithMe
 
         private JsonWriter Comma()
         {
-            if (_hasEntry) _sb.Append(',');
+            if (_hasEntry)
+                _sb.Append(',');
             _hasEntry = true;
             return this;
         }
@@ -25,14 +26,26 @@ namespace PlayLoRWithMe
             {
                 switch (c)
                 {
-                    case '"':  sb.Append("\\\""); break;
-                    case '\\': sb.Append("\\\\"); break;
-                    case '\n': sb.Append("\\n");  break;
-                    case '\r': sb.Append("\\r");  break;
-                    case '\t': sb.Append("\\t");  break;
+                    case '"':
+                        sb.Append("\\\"");
+                        break;
+                    case '\\':
+                        sb.Append("\\\\");
+                        break;
+                    case '\n':
+                        sb.Append("\\n");
+                        break;
+                    case '\r':
+                        sb.Append("\\r");
+                        break;
+                    case '\t':
+                        sb.Append("\\t");
+                        break;
                     default:
-                        if (c < 0x20) sb.AppendFormat("\\u{0:x4}", (int)c);
-                        else sb.Append(c);
+                        if (c < 0x20)
+                            sb.AppendFormat("\\u{0:x4}", (int)c);
+                        else
+                            sb.Append(c);
                         break;
                 }
             }
@@ -50,8 +63,10 @@ namespace PlayLoRWithMe
         public JsonWriter Add(string key, string value)
         {
             Key(key);
-            if (value == null) _sb.Append("null");
-            else AppendEscaped(_sb, value);
+            if (value == null)
+                _sb.Append("null");
+            else
+                AppendEscaped(_sb, value);
             return this;
         }
 
@@ -100,7 +115,8 @@ namespace PlayLoRWithMe
 
         private JsonArrayWriter Comma()
         {
-            if (_hasEntry) _sb.Append(',');
+            if (_hasEntry)
+                _sb.Append(',');
             _hasEntry = true;
             return this;
         }
@@ -108,8 +124,10 @@ namespace PlayLoRWithMe
         public JsonArrayWriter AddString(string value)
         {
             Comma();
-            if (value == null) _sb.Append("null");
-            else JsonWriter.AppendEscaped(_sb, value);
+            if (value == null)
+                _sb.Append("null");
+            else
+                JsonWriter.AppendEscaped(_sb, value);
             return this;
         }
 
