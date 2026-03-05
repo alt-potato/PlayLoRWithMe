@@ -113,7 +113,8 @@ namespace PlayLoRWithMe
                  .Add("maxHp", unit.MaxHp)
                  .Add("staggerGauge", unit.breakDetail.breakGauge)
                  .Add("maxStaggerGauge", unit.breakDetail.GetDefaultBreakGauge())
-                 .Add("staggerThreshold", unit.breakDetail.breakLife);
+                 .Add("staggerThreshold", unit.breakDetail.breakLife)
+                 .Add("targetable", unit.IsTargetable(null));
 
                 if (isAlly)
                     w.Add("playPoint", unit.PlayPoint)
@@ -206,11 +207,21 @@ namespace PlayLoRWithMe
                         o.Add("slot", slotIdx);
                         AddLorId(o, "cardId", slot.card.GetID());
                         o.Add("name", slot.card.GetName())
-                         .Add("cost", slot.card.GetSpec().Cost);
+                         .Add("cost", slot.card.GetSpec().Cost)
+                         .Add("range", slot.card.GetSpec().Ranged.ToString());
                         if (slot.target != null)
                         {
+                            // Mirror of the in-game clash check in UpdateTargetListData:
+                            // A[slotIdx]→B[targetSlotOrder] is a clash iff B[targetSlotOrder]→A[slotIdx].
+                            var opposing = slot.target.cardSlotDetail?.cardAry;
+                            bool isClash = opposing != null
+                                && slot.targetSlotOrder < opposing.Count
+                                && opposing[slot.targetSlotOrder]?.card != null
+                                && opposing[slot.targetSlotOrder].target == unit
+                                && opposing[slot.targetSlotOrder].targetSlotOrder == slotIdx;
                             o.Add("targetUnitId", slot.target.id)
-                             .Add("targetSlot", slot.targetSlotOrder);
+                             .Add("targetSlot", slot.targetSlotOrder)
+                             .Add("clash", isClash);
                         }
                     });
                 }

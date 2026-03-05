@@ -94,5 +94,16 @@ namespace PlayLoRWithMe
                 Broadcast();
             }
         }
+
+        // ------------------------------------------------------------------
+        // Card slot changes — broadcast whenever AddCard is called, whether
+        // triggered by the in-game UI or our own ActionInjector.
+        // ------------------------------------------------------------------
+
+        [HarmonyPatch(typeof(BattlePlayingCardSlotDetail), "AddCard")]
+        static class Patch_AddCard
+        {
+            static void Postfix() => Broadcast();
+        }
     }
 }
