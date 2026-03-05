@@ -31,6 +31,13 @@ const emit = defineEmits<{
 function pick(unitId: number, diceSlot: number) {
   emit('pick', unitId, diceSlot)
 }
+
+/** Returns the current state of an enemy die slot based on its slotted card. */
+function dieState(enemy: any, dieSlot: number): 'clash' | 'incoming' | 'empty' {
+  const sc = (enemy.slottedCards ?? []).find((sc: any) => sc.slot === dieSlot)
+  if (!sc) return 'empty'
+  return sc.clash ? 'clash' : 'incoming'
+}
 </script>
 
 <template>
@@ -64,7 +71,11 @@ function pick(unitId: number, diceSlot: number) {
             v-for="d in unit.speedDice"
             :key="d.slot"
             class="die-hex-outer"
-            :class="{ staggered: d.staggered }"
+            :class="{
+              staggered: d.staggered,
+              'die-clash':    !d.staggered && dieState(unit, d.slot) === 'clash',
+              'die-incoming': !d.staggered && dieState(unit, d.slot) === 'incoming',
+            }"
             :disabled="!unit.targetable"
             :title="d.staggered ? `Target slot ${d.slot} (broken)` : `Target slot ${d.slot}`"
             @click="pick(unit.id, d.slot)"
@@ -199,7 +210,10 @@ function pick(unitId: number, diceSlot: number) {
   transition: background 0.12s;
   padding: 0;
 }
-.die-hex-outer:hover:not(:disabled) { background: #1a4080; }
+.die-hex-outer.die-incoming { background: #2a0a0a; }
+.die-hex-outer.die-incoming:hover:not(:disabled) { background: #7a1010; }
+.die-hex-outer.die-clash { background: #3d2e00; }
+.die-hex-outer.die-clash:hover:not(:disabled) { background: #7a6118; }
 .die-hex-outer.staggered { background: var(--crimson-dim); }
 .die-hex-outer.staggered:hover:not(:disabled) { background: var(--crimson); }
 .die-hex-outer:disabled { opacity: 0.3; cursor: not-allowed; }
@@ -219,7 +233,8 @@ function pick(unitId: number, diceSlot: number) {
   pointer-events: none;
   transition: background 0.12s, color 0.12s;
 }
-.die-hex-outer:hover:not(:disabled) .die-hex-inner { background: #0d2040; color: #fff; }
+.die-hex-outer.die-incoming:hover:not(:disabled) .die-hex-inner { background: #1a0505; color: #fff; }
+.die-hex-outer.die-clash:hover:not(:disabled) .die-hex-inner { background: #261c00; color: #fff; }
 .die-hex-outer.staggered .die-hex-inner { background: #220808; color: var(--crimson-hi); }
 .die-hex-outer.staggered:hover:not(:disabled) .die-hex-inner { background: #3d0a0a; color: #fff; }
 
