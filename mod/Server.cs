@@ -36,7 +36,7 @@ namespace PlayLoRWithMe
         {
             Instance = this;
             _listener = new HttpListener();
-            _listener.Prefixes.Add($"http://localhost:{Port}/");
+            _listener.Prefixes.Add($"http://*:{Port}/");
             _listener.Start();
 
             _listenerThread = new Thread(ListenLoop)
@@ -46,7 +46,7 @@ namespace PlayLoRWithMe
             };
             _listenerThread.Start();
 
-            Debug.Log($"[PlayLoRWithMe] Server listening at http://localhost:{Port}/");
+            Debug.Log($"[PlayLoRWithMe] Server listening on http://*:{Port}/");
         }
 
         public void Stop()
