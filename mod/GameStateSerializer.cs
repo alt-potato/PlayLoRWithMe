@@ -127,10 +127,8 @@ namespace PlayLoRWithMe
                     .Add("staggerGauge", unit.breakDetail.breakGauge)
                     .Add("maxStaggerGauge", unit.breakDetail.GetDefaultBreakGauge())
                     .Add("staggerThreshold", unit.breakDetail.breakLife)
-                    .Add("targetable", unit.IsTargetable(null));
-
-                if (isAlly)
-                    w.Add("playPoint", unit.PlayPoint).Add("maxPlayPoint", unit.MaxPlayPoint);
+                    .Add("targetable", unit.IsTargetable(null))
+                    .Add("playPoint", unit.PlayPoint).Add("maxPlayPoint", unit.MaxPlayPoint);
 
                 if (unit.Book != null)
                     WriteKeyPage(w, unit);
