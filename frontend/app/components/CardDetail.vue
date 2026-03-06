@@ -121,7 +121,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
 }
 
 .card-range {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -138,7 +138,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
   justify-content: center;
   font-size: 0.82rem;
   color: var(--gold-bright);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-weight: bold;
   flex-shrink: 0;
 }
@@ -175,7 +175,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
   font-size: 0.58rem;
   padding: 0.08rem 0.35rem;
   border: 1px solid;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -259,7 +259,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
 }
 
 .die-range {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 1rem;
   font-weight: 600;
 }

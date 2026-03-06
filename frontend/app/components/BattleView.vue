@@ -455,7 +455,7 @@ provide(BATTLE_CTX, {
 .teaser-item {
   font-size: 0.72rem;
   color: var(--text-2);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
 }
 .teaser-item .k {
   font-family: var(--font-display);
@@ -518,7 +518,7 @@ provide(BATTLE_CTX, {
   background: #1a1400;
   border-top: 2px solid var(--gold-dim);
   font-size: 0.72rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   z-index: 99;
 }
 .targeting-card {
@@ -548,7 +548,7 @@ provide(BATTLE_CTX, {
   border: 1px solid var(--border-mid);
   color: var(--text-2);
   font-size: 0.65rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   padding: 0.1rem 0.4rem;
   cursor: pointer;
   white-space: nowrap;
@@ -578,7 +578,7 @@ provide(BATTLE_CTX, {
 .banner-error {
   padding: 0.3rem 0.75rem;
   font-size: 0.72rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   background: #180808;
   border: 1px solid var(--crimson);
   color: #ef9a9a;

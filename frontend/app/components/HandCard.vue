@@ -162,7 +162,7 @@ function handleClick() {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-3);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -177,7 +177,7 @@ function handleClick() {
   justify-content: center;
   font-size: 0.68rem;
   color: var(--gold-bright);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-weight: bold;
   flex-shrink: 0;
 }
@@ -226,7 +226,7 @@ function handleClick() {
 }
 
 .hcard-die-range {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.5rem;
 }
 </style>

@@ -165,7 +165,7 @@ body {
   white-space: nowrap;
 }
 .state-badge {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.52rem;
   padding: 0.1rem 0.3rem;
   color: #000;
@@ -195,7 +195,7 @@ body {
   height: 1.75rem;
   clip-path: var(--hex);
   background: var(--bg-card-2);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.82rem;
   color: var(--text-1);
   pointer-events: none;
@@ -262,7 +262,7 @@ body {
   background: #1c1000;
   border: 1px solid #4a2800;
   color: #ff9800;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
 }
 
 /* ── Slot card content ─────────────────────────────────────────────────────── */
@@ -295,7 +295,7 @@ body {
   font-size: 0.62rem;
   flex-shrink: 0;
   color: var(--text-2);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
 }
 .sc-clash {
   font-weight: bold;
@@ -365,13 +365,13 @@ details[open] > summary::before {
   font-size: 0.58rem;
   color: var(--gold);
   flex-shrink: 0;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
 }
 .centry-range {
   color: var(--text-3);
   margin-left: auto;
   font-size: 0.6rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
 }
 
 /* ── Unit header meta (light pips + emotion, inline in header) ─────────────── */
@@ -404,6 +404,64 @@ details[open] > summary::before {
   background: var(--gold-dim);
 }
 
+/* ── Passive list ────────────────────────────────────────────────────────────── */
+.passive-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.2rem;
+}
+.passive-entry {
+  border-left: 2px solid var(--border-mid);
+  padding-left: 0.4rem;
+  padding-top: 0.15rem;
+  padding-bottom: 0.15rem;
+}
+.passive-entry + .passive-entry {
+  border-top: 1px solid var(--border);
+}
+.passive-entry.rarity-uncommon { border-left-color: #56a348; }
+.passive-entry.rarity-rare     { border-left-color: #4169c4; }
+.passive-entry.rarity-unique   { border-left-color: var(--gold); }
+.passive-entry.rarity-special  { border-left-color: var(--crimson-hi); }
+.passive-entry.unavailable { opacity: 0.42; }
+
+.passive-name {
+  font-size: 0.7rem;
+  color: var(--text-1);
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  cursor: default;
+  user-select: none;
+  line-height: 1.4;
+}
+.passive-name::marker,
+.passive-name::-webkit-details-marker {
+  display: none;
+}
+details.passive-entry > .passive-name {
+  cursor: pointer;
+}
+details.passive-entry > .passive-name::before {
+  content: "▸ ";
+  font-size: 0.5rem;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+details[open].passive-entry > .passive-name::before {
+  content: "▾ ";
+}
+.passive-negative > .passive-name {
+  color: var(--crimson-hi);
+}
+.passive-desc {
+  font-size: 0.68rem;
+  color: var(--text-2);
+  line-height: 1.45;
+  margin: 0.2rem 0 0.05rem;
+}
+
 /* ── Emotion display ─────────────────────────────────────────────────────────── */
 .emotion-meta {
   display: flex;
@@ -411,7 +469,7 @@ details[open] > summary::before {
   gap: 0.2rem;
 }
 .em-level {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.55rem;
   color: var(--text-2);
   white-space: nowrap;
@@ -469,7 +527,7 @@ header {
 
 .conn {
   font-size: 0.68rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
 }
 .conn.connecting {
   color: var(--text-2);

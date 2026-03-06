@@ -144,12 +144,12 @@ export function cardBorderColor(card: any): string {
 export const DIE_TYPE_COLORS: Record<string, string> = {
   Atk: "#c62828",
   Def: "#4fc3f7",
-  Standby: "#786e5e",
+  Standby: "#c9a227",
 };
 
 /** CSS colour for a die type label. */
 export function dieTypeColor(type: string): string {
-  return DIE_TYPE_COLORS[type] ?? "#786e5e";
+  return DIE_TYPE_COLORS[type] ?? "#888";
 }
 
 /** Sort speed dice (staggered first, then descending value) and pair with slotted cards. */

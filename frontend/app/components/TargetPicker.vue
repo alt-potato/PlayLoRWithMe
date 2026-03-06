@@ -164,7 +164,7 @@ function dieState(enemy: any, dieSlot: number): "clash" | "incoming" | "empty" {
   font-size: 0.7rem;
   color: var(--text-2);
   white-space: nowrap;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
 }
 .close-btn {
   background: transparent;
@@ -268,7 +268,7 @@ function dieState(enemy: any, dieSlot: number): "clash" | "incoming" | "empty" {
   height: 3.4rem;
   clip-path: var(--hex);
   background: var(--bg-card-2);
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 1.35rem;
   color: var(--text-1);
   pointer-events: none;

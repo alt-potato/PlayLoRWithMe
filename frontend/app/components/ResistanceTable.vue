@@ -57,7 +57,7 @@ defineProps<{ resistances: any }>();
   border-collapse: collapse;
   width: 100%;
   font-size: 0.68rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
 }
 .resist-table th {
   color: var(--text-3);

@@ -76,7 +76,7 @@ defineProps<{
 .sc-target {
   flex-shrink: 0;
   font-size: 0.62rem;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
 }
 
 .sc-clash {
@@ -111,7 +111,7 @@ defineProps<{
 }
 
 .sc-die-range {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.48rem;
 }
 </style>

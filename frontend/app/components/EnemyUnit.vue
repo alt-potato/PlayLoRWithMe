@@ -46,6 +46,15 @@ const detailsLabel = computed(() => {
   if (u.keyPage) parts.push("Res.");
   return parts.length ? parts.join(" · ") : "Details";
 });
+
+function passiveClass(p: any) {
+  const cls: Record<string, boolean> = {
+    unavailable: !!p.disabled,
+    "passive-negative": !!p.isNegative,
+  };
+  if (p.rare) cls[`rarity-${p.rare.toLowerCase()}`] = true;
+  return cls;
+}
 </script>
 
 <template>
@@ -217,15 +226,19 @@ const detailsLabel = computed(() => {
 
       <template v-if="unit.passives?.length">
         <div class="det-label">Passives</div>
-        <div class="clist">
-          <div
+        <div class="passive-list">
+          <template
             v-for="p in unit.passives"
             :key="p.id.id + p.id.packageId"
-            class="centry"
-            :class="{ unavailable: p.disabled }"
           >
-            <span>{{ p.name }}</span>
-          </div>
+            <details v-if="p.desc" class="passive-entry" :class="passiveClass(p)">
+              <summary class="passive-name">{{ p.name }}</summary>
+              <p class="passive-desc">{{ p.desc }}</p>
+            </details>
+            <div v-else class="passive-entry" :class="passiveClass(p)">
+              <span class="passive-name">{{ p.name }}</span>
+            </div>
+          </template>
         </div>
       </template>
 
@@ -323,7 +336,7 @@ const detailsLabel = computed(() => {
   cursor: pointer;
   padding: 0 0.15rem;
   flex-shrink: 0;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-style: italic;
   font-weight: bold;
   line-height: 1;
@@ -344,7 +357,7 @@ const detailsLabel = computed(() => {
   background: transparent;
   border: 1px solid;
   white-space: nowrap;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
 }
 .chip-mass {
   font-weight: bold;

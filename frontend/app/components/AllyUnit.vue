@@ -84,6 +84,15 @@ const detailsLabel = computed(() => {
   if (u.keyPage) parts.push("Res.");
   return parts.length ? parts.join(" · ") : "Details";
 });
+
+function passiveClass(p: any) {
+  const cls: Record<string, boolean> = {
+    unavailable: !!p.disabled,
+    "passive-negative": !!p.isNegative,
+  };
+  if (p.rare) cls[`rarity-${p.rare.toLowerCase()}`] = true;
+  return cls;
+}
 </script>
 
 <template>
@@ -344,35 +353,22 @@ const detailsLabel = computed(() => {
         </div>
       </template>
 
-      <!-- EGO -->
-      <template v-if="unit.ego?.length">
-        <div class="det-label">EGO</div>
-        <div class="clist">
-          <div
-            v-for="c in unit.ego"
-            :key="c.id.id + c.id.packageId"
-            class="centry"
-            :class="{ unavailable: !c.available }"
-          >
-            <span class="centry-cost">{{ c.cost }}</span>
-            <span>{{ c.name }}</span>
-            <span class="centry-range">{{ c.available ? "✓" : "…" }}</span>
-          </div>
-        </div>
-      </template>
-
       <!-- Passives -->
       <template v-if="unit.passives?.length">
         <div class="det-label">Passives</div>
-        <div class="clist">
-          <div
+        <div class="passive-list">
+          <template
             v-for="p in unit.passives"
             :key="p.id.id + p.id.packageId"
-            class="centry"
-            :class="{ unavailable: p.disabled }"
           >
-            <span>{{ p.name }}</span>
-          </div>
+            <details v-if="p.desc" class="passive-entry" :class="passiveClass(p)">
+              <summary class="passive-name">{{ p.name }}</summary>
+              <p class="passive-desc">{{ p.desc }}</p>
+            </details>
+            <div v-else class="passive-entry" :class="passiveClass(p)">
+              <span class="passive-name">{{ p.name }}</span>
+            </div>
+          </template>
         </div>
       </template>
 
@@ -459,7 +455,7 @@ const detailsLabel = computed(() => {
   font-size: 0.8rem;
   padding: 0 0.15rem;
   line-height: 1;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
 }
 .remove-btn:hover {
   color: var(--crimson-hi);

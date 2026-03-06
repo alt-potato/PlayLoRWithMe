@@ -57,7 +57,7 @@ defineProps<{ unit: any }>();
   color: var(--text-2);
   width: 4.2rem;
   text-align: right;
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 0.62rem;
   flex-shrink: 0;
 }

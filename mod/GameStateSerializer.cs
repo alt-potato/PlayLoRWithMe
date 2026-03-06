@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using LOR_DiceSystem;
 using UnityEngine;
 
@@ -256,7 +257,7 @@ namespace PlayLoRWithMe
                             o.Add("slot", slotIdx);
                             AddLorId(o, "cardId", slot.card.GetID());
                             o.Add("name", slot.card.GetName())
-                                .Add("cost", slot.card.GetSpec().Cost)
+                                .Add("cost", slot.card.GetCost())
                                 .Add("range", slot.card.GetSpec().Ranged.ToString());
                             WriteCardFields(o, slot.card);
                             if (slot.target != null)
@@ -311,14 +312,16 @@ namespace PlayLoRWithMe
                     var list = unit.passiveDetail?.PassiveList;
                     if (list == null)
                         return;
-                    foreach (var p in list)
+                    foreach (var p in list.Where(p => p != null && !p.destroyed && !p.isHide))
                     {
-                        if (p == null || p.destroyed)
-                            continue;
                         arr.AddObject(o =>
                         {
                             AddLorId(o, "id", p.id);
-                            o.Add("name", p.name).Add("disabled", p.disabled);
+                            o.Add("name", p.name)
+                             .Add("desc", p.desc)
+                             .Add("rare", p.rare.ToString())
+                             .Add("disabled", p.disabled)
+                             .Add("isNegative", p.isNegative);
                         });
                     }
                 }
@@ -424,7 +427,7 @@ namespace PlayLoRWithMe
                             {
                                 AddLorId(o, "id", card.GetID());
                                 o.Add("name", card.GetName())
-                                    .Add("cost", card.GetSpec().Cost)
+                                    .Add("cost", card.GetCost())
                                     .Add("range", card.GetSpec().Ranged.ToString())
                                     .Add("allyTarget", card.IsOnlyAllyUnit())
                                     .Add("available", available)
@@ -461,7 +464,7 @@ namespace PlayLoRWithMe
                         {
                             AddLorId(o, "id", card.GetID());
                             o.Add("name", card.GetName())
-                                .Add("cost", card.GetSpec().Cost)
+                                .Add("cost", card.GetCost())
                                 .Add("range", card.GetSpec().Ranged.ToString())
                                 .Add("allyTarget", card.IsOnlyAllyUnit());
                             if (unit != null)
@@ -480,8 +483,7 @@ namespace PlayLoRWithMe
         private static void WriteCardFields(JsonWriter o, BattleDiceCardModel card)
         {
             var xml = card.XmlData;
-            var descList = Singleton<BattleCardDescXmlList>.Instance;
-            var textId = card.GetTextId();
+            var abilityDescList = Singleton<BattleCardAbilityDescXmlList>.Instance;
 
             o.Add("rarity", card.GetRarity().ToString())
                 .Add("emotionLimit", card.GetSpec().emotionLimit);
@@ -497,8 +499,10 @@ namespace PlayLoRWithMe
                     }
                 );
 
-            // Scripted ability description (blank for most normal cards)
-            var abilityDesc = descList?.GetAbilityDesc(textId) ?? "";
+            // Card-level ability text — mirrors BattleDiceCardUI which uses
+            // BattleCardAbilityDescXmlList keyed by Script name (not the old BattleCardDescXmlList).
+            // GetAbilityDescString also prepends default text for FarArea / ExhaustOnUse.
+            var abilityDesc = abilityDescList?.GetAbilityDescString(xml) ?? "";
             if (!string.IsNullOrEmpty(abilityDesc))
                 o.Add("abilityDesc", abilityDesc);
 
@@ -508,17 +512,16 @@ namespace PlayLoRWithMe
                     "dice",
                     arr =>
                     {
-                        for (int i = 0; i < xml.DiceBehaviourList.Count; i++)
+                        foreach (var d in xml.DiceBehaviourList)
                         {
-                            var d = xml.DiceBehaviourList[i];
                             arr.AddObject(die =>
                             {
                                 die.Add("type", d.Type.ToString())
                                     .Add("detail", d.Detail.ToString())
                                     .Add("min", d.Min)
                                     .Add("max", d.Dice);
-                                // Prefer localized description; fall back to XML Desc attribute
-                                var desc = descList?.GetBehaviourDesc(textId, i) ?? "";
+                                // Per-die ability text (Script → BattleCardAbilityText.xml entry)
+                                var desc = abilityDescList?.GetAbilityDesc(d) ?? "";
                                 if (string.IsNullOrEmpty(desc))
                                     desc = d.Desc ?? "";
                                 if (!string.IsNullOrEmpty(desc))
