@@ -21,7 +21,7 @@ export interface BattleCtx {
    * Set when a hand card is tapped first (card-first flow).
    * Cleared when the player picks a slot or cancels.
    */
-  selectingSlotFor: Ref<{ unitId: number; cardIndex: number } | null>
+  selectingSlotFor: Ref<{ unitId: number; cardIndex: number; isEgo: boolean } | null>
 
   /**
    * Set after a non-Instance card's slot is chosen and the player must
@@ -29,12 +29,21 @@ export interface BattleCtx {
    * Carries display info needed by TargetPicker.
    */
   selectingTargetFor: Ref<{
-    unitId: number; cardIndex: number; diceSlot: number;
+    unitId: number; cardIndex: number; isEgo: boolean; diceSlot: number;
     cardName: string; cardRange: string;
   } | null>
 
+  /**
+   * Set after an Instance card with allyTarget=true has its slot chosen.
+   * Player must now tap an ally unit to complete the play.
+   */
+  selectingAllyTargetFor: Ref<{
+    unitId: number; cardIndex: number; isEgo: boolean; diceSlot: number;
+    cardName: string;
+  } | null>
+
   /** Toggle card selection; second tap on same card cancels. */
-  onCardClick: (unitId: number, cardIndex: number) => void
+  onCardClick: (unitId: number, cardIndex: number, isEgo?: boolean) => void
 
   /**
    * Called when the player picks a dice slot to play a card into.
@@ -45,6 +54,9 @@ export interface BattleCtx {
 
   /** Called when the player picks any unit/die as the target. */
   onTargetDieClick: (targetUnitId: number, targetDiceSlot: number) => Promise<void>
+
+  /** Called when the player picks an ally unit as the target (for allyTarget Instance cards). */
+  onAllyTargetClick: (targetUnitId: number) => Promise<void>
 
   /** Return a slotted card to the unit's hand. */
   onRemoveCard: (unitId: number, diceSlot: number) => Promise<void>

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using HarmonyLib;
 using UnityEngine;
 
@@ -19,25 +20,50 @@ namespace PlayLoRWithMe
     /// </summary>
     public static class ActionInjector
     {
-        private static readonly ConcurrentQueue<string> _queue = new ConcurrentQueue<string>();
+        private sealed class PendingAction
+        {
+            public readonly string Json;
+            public bool Ok;
+            public string Error;
+            public readonly ManualResetEventSlim Done = new ManualResetEventSlim(false);
+            public PendingAction(string json) { Json = json; }
+        }
 
-        /// <summary>Called from the HTTP server background thread to enqueue an action.</summary>
-        public static void Enqueue(string actionJson) => _queue.Enqueue(actionJson);
+        private static readonly ConcurrentQueue<PendingAction> _queue = new ConcurrentQueue<PendingAction>();
+
+        /// <summary>
+        /// Called from the HTTP server background thread. Blocks until the Unity main
+        /// thread executes the action (or 500 ms timeout). Returns (ok, error).
+        /// </summary>
+        public static (bool ok, string error) EnqueueAndWait(string actionJson)
+        {
+            var pending = new PendingAction(actionJson);
+            _queue.Enqueue(pending);
+            if (!pending.Done.Wait(500))
+                return (false, "Action timed out");
+            return (pending.Ok, pending.Error);
+        }
 
         /// <summary>Called each frame from the Unity main thread to execute queued actions.</summary>
         public static void DrainQueue()
         {
-            while (_queue.TryDequeue(out string json))
+            while (_queue.TryDequeue(out var pending))
             {
                 try
                 {
-                    Execute(json);
+                    pending.Ok = Execute(pending.Json, out pending.Error);
                 }
                 catch (Exception ex)
                 {
+                    pending.Ok = false;
+                    pending.Error = ex.Message;
                     Debug.LogError(
                         $"[PlayLoRWithMe] ActionInjector: {ex.Message}\n{ex.StackTrace}"
                     );
+                }
+                finally
+                {
+                    pending.Done.Set();
                 }
             }
         }
@@ -54,31 +80,32 @@ namespace PlayLoRWithMe
         // Dispatch
         // -------------------------------------------------------------------------
 
-        private static void Execute(string json)
+        private static bool Execute(string json, out string error)
         {
+            error = null;
             var r = new JsonReader(json);
             string type = r.GetString("type");
             if (type == null)
-                return;
+            {
+                error = "Missing type";
+                return false;
+            }
 
+            bool ok;
             switch (type)
             {
-                case "playCard":
-                    DoPlayCard(r);
-                    break;
-                case "removeCard":
-                    DoRemoveCard(r);
-                    break;
-                case "confirm":
-                    DoConfirm();
-                    break;
+                case "playCard":   ok = DoPlayCard(r, out error);   break;
+                case "removeCard": ok = DoRemoveCard(r, out error); break;
+                case "confirm":    ok = DoConfirm(out error);       break;
                 default:
-                    Debug.LogWarning($"[PlayLoRWithMe] Unknown action type: '{type}'");
-                    break;
+                    error = $"Unknown action: '{type}'";
+                    Debug.LogWarning($"[PlayLoRWithMe] {error}");
+                    return false;
             }
 
             // Push a fresh snapshot so all clients immediately see the result.
             StateBroadcaster.Broadcast();
+            return ok;
         }
 
         // -------------------------------------------------------------------------
@@ -90,27 +117,43 @@ namespace PlayLoRWithMe
         // self-buff cards the target parameter is ignored, so we pass the unit itself.
         // -------------------------------------------------------------------------
 
-        private static void DoPlayCard(JsonReader r)
+        private static bool DoPlayCard(JsonReader r, out string error)
         {
+            error = null;
+
             if (!r.TryGetInt("unitId", out int unitId))
-                return;
+            {
+                error = "Missing unitId";
+                return false;
+            }
             if (!r.TryGetInt("cardIndex", out int cardIndex))
-                return;
+            {
+                error = "Missing cardIndex";
+                return false;
+            }
             if (!r.TryGetInt("diceSlot", out int diceSlot))
-                return;
+            {
+                error = "Missing diceSlot";
+                return false;
+            }
 
             var unit = FindAlly(unitId);
             if (unit == null)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] playCard: ally unit {unitId} not found");
-                return;
+                error = $"Ally unit {unitId} not found";
+                Debug.LogWarning($"[PlayLoRWithMe] playCard: {error}");
+                return false;
             }
 
-            var hand = unit.allyCardDetail?.GetHand();
+            bool isEgo = r.TryGetInt("isEgo", out int isEgoInt) && isEgoInt != 0;
+            var hand = isEgo
+                ? unit.personalEgoDetail?.GetHand()
+                : unit.allyCardDetail?.GetHand();
             if (hand == null || cardIndex < 0 || cardIndex >= hand.Count)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] playCard: no card at hand index {cardIndex}");
-                return;
+                error = $"No card at {(isEgo ? "ego" : "hand")} index {cardIndex}";
+                Debug.LogWarning($"[PlayLoRWithMe] playCard: {error}");
+                return false;
             }
 
             var card = hand[cardIndex];
@@ -118,32 +161,42 @@ namespace PlayLoRWithMe
             // Resolve target.  For CardRange.Instance cards the target is ignored by AddCard,
             // so passing the unit itself is safe.  For all other ranges a real target is needed.
             BattleUnitModel target;
-            int targetSlot;
-            if (
-                r.TryGetInt("targetUnitId", out int targetId)
-                && r.TryGetInt("targetDiceSlot", out targetSlot)
-            )
+            int targetSlot = 0;
+            if (r.TryGetInt("targetUnitId", out int targetId))
             {
                 target = FindAnyUnit(targetId);
                 if (target == null)
                 {
-                    Debug.LogWarning($"[PlayLoRWithMe] playCard: target unit {targetId} not found");
-                    return;
+                    error = $"Target unit {targetId} not found";
+                    Debug.LogWarning($"[PlayLoRWithMe] playCard: {error}");
+                    return false;
                 }
+                r.TryGetInt("targetDiceSlot", out targetSlot); // optional for Instance cards
             }
             else
             {
                 // No target supplied — only valid for CardRange.Instance; fall back to self.
                 target = unit;
-                targetSlot = 0;
             }
 
+            // Set cardOrder first so CheckCardAvailable evaluates the right slot.
+            int prevCardOrder = unit.cardOrder;
             unit.cardOrder = diceSlot;
+            if (!unit.CheckCardAvailable(card))
+            {
+                unit.cardOrder = prevCardOrder;
+                error = $"Card '{card.GetName()}' is not available (insufficient light or blocked)";
+                Debug.LogWarning($"[PlayLoRWithMe] playCard: {error}");
+                return false;
+            }
+
+            // cardOrder is already set; AddCard uses it to pick the slot.
             unit.cardSlotDetail.AddCard(card, target, targetSlot);
             SingletonBehavior<BattleManagerUI>.Instance?.ui_TargetArrow?.UpdateTargetList();
             Debug.Log(
                 $"[PlayLoRWithMe] playCard: unit={unitId} card='{card.GetName()}' slot={diceSlot} target={target.id} targetSlot={targetSlot}"
             );
+            return true;
         }
 
         // -------------------------------------------------------------------------
@@ -153,35 +206,49 @@ namespace PlayLoRWithMe
         // It exits before the CanChangeAttackTarget null-dereference, so target=null is safe.
         // -------------------------------------------------------------------------
 
-        private static void DoRemoveCard(JsonReader r)
+        private static bool DoRemoveCard(JsonReader r, out string error)
         {
+            error = null;
+
             if (!r.TryGetInt("unitId", out int unitId))
-                return;
+            {
+                error = "Missing unitId";
+                return false;
+            }
             if (!r.TryGetInt("diceSlot", out int diceSlot))
-                return;
+            {
+                error = "Missing diceSlot";
+                return false;
+            }
 
             var unit = FindAlly(unitId);
             if (unit == null)
-                return;
+            {
+                error = $"Ally unit {unitId} not found";
+                return false;
+            }
 
             unit.cardOrder = diceSlot;
             unit.cardSlotDetail.AddCard(null, null, 0);
             SingletonBehavior<BattleManagerUI>.Instance?.ui_TargetArrow?.UpdateTargetList();
             Debug.Log($"[PlayLoRWithMe] removeCard: unit={unitId} slot={diceSlot}");
+            return true;
         }
 
         // -------------------------------------------------------------------------
         // confirm — end this player's card-selection phase
         // -------------------------------------------------------------------------
 
-        private static void DoConfirm()
+        private static bool DoConfirm(out string error)
         {
+            error = null;
             var sc = Singleton<StageController>.Instance;
             if (sc == null)
-                return;
+                return true; // not an error; phase may have already advanced
 
             sc.CompleteApplyingLibrarianCardPhase(auto: false);
             Debug.Log("[PlayLoRWithMe] confirm");
+            return true;
         }
 
         // -------------------------------------------------------------------------

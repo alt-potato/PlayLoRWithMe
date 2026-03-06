@@ -93,3 +93,50 @@ export const MASS_RANGES = new Set([
 ])
 
 export function isMassRange(range: string) { return MASS_RANGES.has(range) }
+
+// ── Card display helpers ───────────────────────────────────────────────────
+
+const DETAIL_SEGMENT: Record<string, string> = {
+  Slash:     'Slash',
+  Penetrate: 'Pierce',
+  Hit:       'Blunt',
+  Guard:     'Guard',
+  Evasion:   'Evade',
+}
+
+/** Returns the dice icon path for a die type+detail pair, or null if unknown. */
+export function diceIcon(type: string, detail: string): string | null {
+  const seg = DETAIL_SEGMENT[detail]
+  return seg ? `/assets/dice/${type}${seg}.png` : null
+}
+
+export const RARITY_COLORS: Record<string, string> = {
+  Common:   '#2e7d32',
+  Uncommon: '#1565c0',
+  Rare:     '#6a1b9a',
+  Unique:   '#c9a227',
+  Special:  '#c62828',
+}
+
+/** CSS colour for a card rarity. */
+export function rarityColor(rarity: string): string {
+  return RARITY_COLORS[rarity] ?? '#3c3830'
+}
+
+/** Border colour for a card — EGO overrides to crimson regardless of rarity. */
+export function cardBorderColor(card: any): string {
+  if (card.options?.some((o: string) => o.startsWith('Ego') || o === 'EGO'))
+    return '#c62828'
+  return rarityColor(card.rarity)
+}
+
+export const DIE_TYPE_COLORS: Record<string, string> = {
+  Atk:     '#c62828',
+  Def:     '#4fc3f7',
+  Standby: '#786e5e',
+}
+
+/** CSS colour for a die type label. */
+export function dieTypeColor(type: string): string {
+  return DIE_TYPE_COLORS[type] ?? '#786e5e'
+}

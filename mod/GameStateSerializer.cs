@@ -128,7 +128,9 @@ namespace PlayLoRWithMe
                     .Add("maxStaggerGauge", unit.breakDetail.GetDefaultBreakGauge())
                     .Add("staggerThreshold", unit.breakDetail.breakLife)
                     .Add("targetable", unit.IsTargetable(null))
-                    .Add("playPoint", unit.PlayPoint).Add("maxPlayPoint", unit.MaxPlayPoint);
+                    .Add("playPoint", unit.PlayPoint)
+                    .Add("maxPlayPoint", unit.MaxPlayPoint)
+                    .Add("reservedPlayPoint", unit.cardSlotDetail?.ReservedPlayPoint ?? 0);
 
                 if (unit.Book != null)
                     WriteKeyPage(w, unit);
@@ -256,6 +258,7 @@ namespace PlayLoRWithMe
                             o.Add("name", slot.card.GetName())
                                 .Add("cost", slot.card.GetSpec().Cost)
                                 .Add("range", slot.card.GetSpec().Ranged.ToString());
+                            WriteCardFields(o, slot.card);
                             if (slot.target != null)
                             {
                                 // Mirror of the in-game clash check in UpdateTargetListData:
@@ -400,7 +403,7 @@ namespace PlayLoRWithMe
         private static void WriteAllyCards(JsonWriter w, BattleUnitModel unit)
         {
             // Personal hand and deck
-            WriteCardList(w, "hand", unit.allyCardDetail?.GetHand());
+            WriteCardList(w, "hand", unit.allyCardDetail?.GetHand(), unit);
             WriteCardList(w, "deck", unit.allyCardDetail?.GetDeck());
 
             // Personal EGO pages (available = in GetHand, unavailable = in use/cooldown)
@@ -422,18 +425,25 @@ namespace PlayLoRWithMe
                                 AddLorId(o, "id", card.GetID());
                                 o.Add("name", card.GetName())
                                     .Add("cost", card.GetSpec().Cost)
-                                    .Add("available", available);
+                                    .Add("range", card.GetSpec().Ranged.ToString())
+                                    .Add("allyTarget", card.IsOnlyAllyUnit())
+                                    .Add("available", available)
+                                    .Add("canUse", available && unit.CheckCardAvailableForPlayer(card));
+                                WriteCardFields(o, card);
                             });
                         }
                     }
                 );
             }
 
-            // Team abnormality hand and in-use (shared across the floor)
-            WriteCardList(w, "teamHand", unit.allyCardDetail?.GetUse());
+
         }
 
-        private static void WriteCardList(JsonWriter w, string key, List<BattleDiceCardModel> cards)
+        private static void WriteCardList(
+            JsonWriter w,
+            string key,
+            List<BattleDiceCardModel> cards,
+            BattleUnitModel unit = null)
         {
             w.AddArray(
                 key,
@@ -450,11 +460,65 @@ namespace PlayLoRWithMe
                             AddLorId(o, "id", card.GetID());
                             o.Add("name", card.GetName())
                                 .Add("cost", card.GetSpec().Cost)
-                                .Add("range", card.GetSpec().Ranged.ToString());
+                                .Add("range", card.GetSpec().Ranged.ToString())
+                                .Add("allyTarget", card.IsOnlyAllyUnit());
+                            if (unit != null)
+                                o.Add("canUse", unit.CheckCardAvailableForPlayer(card));
+                            WriteCardFields(o, card);
                         });
                     }
                 }
             );
+        }
+
+        // -------------------------------------------------------------------------
+        // Card fields shared between hand/deck/ego lists and slotted cards
+        // -------------------------------------------------------------------------
+
+        private static void WriteCardFields(JsonWriter o, BattleDiceCardModel card)
+        {
+            var xml = card.XmlData;
+            var descList = Singleton<BattleCardDescXmlList>.Instance;
+            var textId = card.GetTextId();
+
+            o.Add("rarity", card.GetRarity().ToString())
+             .Add("emotionLimit", card.GetSpec().emotionLimit);
+
+            // Options (EGO, ExhaustOnUse, Personal, etc.)
+            if (xml.optionList != null && xml.optionList.Count > 0)
+                o.AddArray("options", arr =>
+                {
+                    foreach (var opt in xml.optionList)
+                        arr.AddString(opt.ToString());
+                });
+
+            // Scripted ability description (blank for most normal cards)
+            var abilityDesc = descList?.GetAbilityDesc(textId) ?? "";
+            if (!string.IsNullOrEmpty(abilityDesc))
+                o.Add("abilityDesc", abilityDesc);
+
+            // Dice behaviours
+            if (xml.DiceBehaviourList != null && xml.DiceBehaviourList.Count > 0)
+                o.AddArray("dice", arr =>
+                {
+                    for (int i = 0; i < xml.DiceBehaviourList.Count; i++)
+                    {
+                        var d = xml.DiceBehaviourList[i];
+                        arr.AddObject(die =>
+                        {
+                            die.Add("type", d.Type.ToString())
+                               .Add("detail", d.Detail.ToString())
+                               .Add("min", d.Min)
+                               .Add("max", d.Dice);
+                            // Prefer localized description; fall back to XML Desc attribute
+                            var desc = descList?.GetBehaviourDesc(textId, i) ?? "";
+                            if (string.IsNullOrEmpty(desc))
+                                desc = d.Desc ?? "";
+                            if (!string.IsNullOrEmpty(desc))
+                                die.Add("desc", desc);
+                        });
+                    }
+                });
         }
 
         // -------------------------------------------------------------------------

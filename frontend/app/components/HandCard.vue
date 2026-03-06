@@ -2,8 +2,8 @@
   HandCard.vue
 
   Renders a single battle card as a small interactive tile.
-  Owns all card face rendering; interaction state (selected/dimmed) is driven
-  by the parent via props.
+  First tap selects the card (emits 'click'). Tapping again while already
+  selected emits 'detail' to open the CardDetail sheet.
 
   Props:
     card     – card object from game state (name, cost, range, rarity, dice[], …)
@@ -12,7 +12,8 @@
     color    – ally color hex used for glow when selected
 
   Emits:
-    click – user tapped the card
+    click   – user tapped an unselected card
+    detail  – user tapped an already-selected card (double-tap-to-detail)
 -->
 <script setup lang="ts">
 const props = defineProps<{
@@ -20,9 +21,31 @@ const props = defineProps<{
   selected?: boolean
   dimmed?: boolean
   color?: string
+  unusable?: boolean
 }>()
 
-defineEmits<{ click: [] }>()
+const emit = defineEmits<{ click: []; detail: [] }>()
+
+let pressTimer: ReturnType<typeof setTimeout> | null = null
+let longPressed = false
+
+function onPressStart() {
+  longPressed = false
+  pressTimer = setTimeout(() => {
+    longPressed = true
+    emit('detail')
+  }, 500)
+}
+
+function onPressEnd() {
+  if (pressTimer) { clearTimeout(pressTimer); pressTimer = null }
+}
+
+function handleClick() {
+  if (props.unusable) return
+  if (longPressed) { longPressed = false; return }
+  emit('click')
+}
 </script>
 
 <template>
@@ -31,13 +54,43 @@ defineEmits<{ click: [] }>()
     :class="{
       'hcard--selected': selected,
       'hcard--dim': dimmed,
+      'hcard--unusable': unusable,
     }"
-    :style="selected && color ? { borderColor: color, '--glow': color + '44' } : {}"
-    @click="$emit('click')"
+    :style="{
+      borderColor: selected && color ? color : cardBorderColor(card),
+      '--glow': selected && color ? color + '44' : undefined,
+    }"
+    @click="handleClick"
+    @mousedown="onPressStart"
+    @mouseup="onPressEnd"
+    @mouseleave="onPressEnd"
+    @touchstart.passive="onPressStart"
+    @touchend="onPressEnd"
+    @touchmove="onPressEnd"
   >
-    <span class="hcard-cost">{{ card.cost }}</span>
+    <div class="hcard-header">
+      <span class="hcard-range">{{ card.range }}</span>
+      <span class="hcard-cost">{{ card.cost }}</span>
+    </div>
     <span class="hcard-name">{{ card.name }}</span>
-    <span class="hcard-range">{{ card.range }}</span>
+    <div v-if="card.dice?.length" class="hcard-dice">
+      <div
+        v-for="(d, i) in card.dice"
+        :key="i"
+        class="hcard-die"
+      >
+        <img
+          v-if="diceIcon(d.type, d.detail)"
+          :src="diceIcon(d.type, d.detail)!"
+          class="hcard-die-img"
+          :alt="`${d.type} ${d.detail}`"
+        />
+        <span v-else class="hcard-die-placeholder">·</span>
+        <span class="hcard-die-range" :style="{ color: dieTypeColor(d.type) }">
+          {{ d.min }}–{{ d.max }}
+        </span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -45,12 +98,12 @@ defineEmits<{ click: [] }>()
 .hcard {
   flex-shrink: 0;
   width: 3.8rem;
-  min-height: 5.2rem;
+  min-height: 5.6rem;
   background: linear-gradient(160deg, var(--bg-card-2) 0%, var(--bg-card-3) 100%);
   border: 1px solid var(--border-mid);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   padding: 0.2rem 0.15rem 0.15rem;
   gap: 0.15rem;
   cursor: pointer;
@@ -62,7 +115,6 @@ defineEmits<{ click: [] }>()
 }
 .hcard:hover {
   transform: translateY(-3px);
-  border-color: var(--border-hi);
 }
 .hcard--selected {
   transform: translateY(-5px);
@@ -72,21 +124,48 @@ defineEmits<{ click: [] }>()
   opacity: 0.28;
   pointer-events: none;
 }
+.hcard--unusable {
+  opacity: 0.38;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+.hcard--unusable:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.hcard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.hcard-range {
+  font-size: 0.44rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .hcard-cost {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.1rem;
+  height: 1.1rem;
   background: var(--gold-dim);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--gold-bright);
   font-family: var(--font-mono);
   font-weight: bold;
   flex-shrink: 0;
-  align-self: flex-start;
 }
+
 .hcard-name {
   flex: 1;
   font-size: 0.58rem;
@@ -95,18 +174,43 @@ defineEmits<{ click: [] }>()
   text-align: center;
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 4;
-  line-clamp: 4;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   line-height: 1.3;
   width: 100%;
 }
-.hcard-range {
-  font-size: 0.5rem;
-  color: var(--text-2);
+
+.hcard-dice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-top: auto;
+}
+
+.hcard-die {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.hcard-die-img {
+  width: 0.85rem;
+  height: 0.85rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.hcard-die-placeholder {
+  width: 0.85rem;
+  text-align: center;
+  font-size: 0.6rem;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+.hcard-die-range {
   font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  align-self: flex-end;
+  font-size: 0.5rem;
 }
 </style>

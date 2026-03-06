@@ -104,9 +104,20 @@ namespace PlayLoRWithMe
                     SendJson(ctx, GameStateSerializer.Serialize());
                 else if (method == "POST" && path == "/action")
                 {
+                    string body;
                     using (var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8))
-                        ActionInjector.Enqueue(reader.ReadToEnd());
-                    SendJson(ctx, "{\"ok\":true}");
+                        body = reader.ReadToEnd();
+                    var (ok, error) = ActionInjector.EnqueueAndWait(body);
+                    if (ok)
+                        SendJson(ctx, "{\"ok\":true}");
+                    else
+                    {
+                        ctx.Response.StatusCode = 400;
+                        string safe = (error ?? "invalid action")
+                            .Replace("\\", "\\\\")
+                            .Replace("\"", "\\\"");
+                        SendJson(ctx, "{\"ok\":false,\"error\":\"" + safe + "\"}");
+                    }
                 }
                 else if (method == "GET")
                     ServeStaticFile(ctx, path);

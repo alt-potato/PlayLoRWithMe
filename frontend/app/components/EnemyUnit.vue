@@ -15,7 +15,12 @@ import type { BattleCtx } from "~/composables/useBattleContext";
 
 const props = defineProps<{ unit: any }>();
 
-const { attackMap } = inject(BATTLE_CTX) as BattleCtx;
+const { attackMap, selectingTargetFor, onTargetDieClick } = inject(BATTLE_CTX) as BattleCtx;
+
+const detailCard = ref<any>(null);
+
+const isTargeting = computed(() => selectingTargetFor.value !== null);
+const canBeTargeted = computed(() => isTargeting.value && props.unit.targetable);
 
 const sortedSlots = computed(() =>
   [...(props.unit.speedDice ?? [])]
@@ -52,7 +57,7 @@ const detailsLabel = computed(() => {
 </script>
 
 <template>
-  <div class="unit-card">
+  <div class="unit-card" :class="{ 'unit-card--dim': isTargeting && !canBeTargeted }">
     <!-- ── Header ── -->
     <div class="unit-header">
       <!-- row 1: name, turn badge -->
@@ -99,13 +104,22 @@ const detailsLabel = computed(() => {
         <div
           v-if="unit.maxPlayPoint"
           class="ap-pips"
-          :title="`Light: ${unit.playPoint}/${unit.maxPlayPoint}`"
+          :title="`Light: ${unit.playPoint}/${unit.maxPlayPoint} (${unit.reservedPlayPoint ?? 0} reserved)`"
         >
           <span
-            v-for="n in unit.maxPlayPoint"
-            :key="n"
+            v-for="n in Math.max(0, unit.playPoint - (unit.reservedPlayPoint ?? 0))"
+            :key="'f' + n"
+            class="ap-pip ap-pip--lit"
+          />
+          <span
+            v-for="n in (unit.reservedPlayPoint ?? 0)"
+            :key="'r' + n"
+            class="ap-pip ap-pip--reserved"
+          />
+          <span
+            v-for="n in Math.max(0, unit.maxPlayPoint - unit.playPoint)"
+            :key="'u' + n"
             class="ap-pip"
-            :class="{ 'ap-pip--lit': n <= unit.playPoint }"
           />
         </div>
       </div>
@@ -120,20 +134,21 @@ const detailsLabel = computed(() => {
         v-for="{ die: d, card: sc } in sortedSlots"
         :key="d.slot"
         class="slot-row"
-        :class="{ 'slot-filled': sc !== null }"
+        :class="{
+          'slot-filled': sc !== null,
+          'slot-target': canBeTargeted && !d.staggered,
+        }"
+        @click.stop="canBeTargeted && !d.staggered ? onTargetDieClick(unit.id, d.slot) : undefined"
       >
         <!-- Content: card info + incoming chips (left) -->
         <div class="slot-content">
           <div v-if="sc !== null" class="slot-card-row">
-            <span class="sc-name">{{ sc.name }}</span>
-            <span
-              v-if="sc.targetUnitId != null"
-              class="sc-target"
-              :class="{ 'sc-clash': sc.clash }"
-              >{{ sc.clash ? "⚔" : "↗" }} #{{ sc.targetUnitId }}·{{
-                sc.targetSlot
-              }}</span
-            >
+            <SlottedCard
+              :sc="sc"
+              :target-label="sc.targetUnitId != null ? `${sc.clash ? '⚔' : '↗'} #${sc.targetUnitId}·${sc.targetSlot}` : undefined"
+              :clash="sc.clash"
+            />
+            <button class="info-btn" @click.stop="detailCard = sc" title="Card detail">i</button>
           </div>
           <div v-if="attackMap[unit.id]?.[d.slot]?.length" class="incoming-row">
             <span
@@ -155,10 +170,10 @@ const detailsLabel = computed(() => {
         <!-- Die (protrudes beyond right card edge) -->
         <span
           class="hex-wrap"
-          :class="{ staggered: d.staggered }"
+          :class="{ staggered: d.staggered, 'hex-target': canBeTargeted && !d.staggered }"
           :data-die="`${unit.id}-${d.slot}`"
           :title="`Slot ${d.slot}`"
-          :style="sc !== null && !d.staggered ? { background: dieColor(sc) } : {}"
+          :style="sc !== null && !d.staggered && !canBeTargeted ? { background: dieColor(sc) } : {}"
         >
           <span class="hex-inner">{{ d.staggered ? "✕" : d.value }}</span>
         </span>
@@ -171,6 +186,9 @@ const detailsLabel = computed(() => {
         >{{ b.type }}×{{ b.stacks }}</span
       >
     </div>
+
+    <!-- ── Card detail overlay ── -->
+    <CardDetail v-if="detailCard" :card="detailCard" @close="detailCard = null" />
 
     <!-- ── Collapsed details ── -->
     <details v-if="hasDetails" class="collapse">
@@ -213,7 +231,9 @@ const detailsLabel = computed(() => {
 .unit-card {
   width: 100%;
   border-left: 2px solid var(--crimson);
+  transition: opacity 0.15s;
 }
+.unit-card--dim { opacity: 0.35; pointer-events: none; }
 
 /* ── Header — enemy: badge left, name center, meta right ─────────────────── */
 .unit-header {
@@ -250,9 +270,24 @@ const detailsLabel = computed(() => {
 .slot-card-row {
   display: flex;
   gap: 0.3rem;
-  align-items: baseline;
+  align-items: center;
   min-width: 0;
 }
+
+.info-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 0 0.15rem;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-style: italic;
+  font-weight: bold;
+  line-height: 1;
+}
+.info-btn:hover { color: var(--text-1); }
 
 /* ── Incoming attack chips ───────────────────────────────────────────────── */
 .incoming-row {

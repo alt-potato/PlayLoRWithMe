@@ -20,16 +20,25 @@ const isSelectPhase = computed(
   () => props.state?.phase === "ApplyLibrarianCardPhase",
 );
 
-const selectingSlotFor = ref<{ unitId: number; cardIndex: number } | null>(
+const selectingSlotFor = ref<{ unitId: number; cardIndex: number; isEgo: boolean } | null>(
   null,
 );
 
 const selectingTargetFor = ref<{
   unitId: number;
   cardIndex: number;
+  isEgo: boolean;
   diceSlot: number;
   cardName: string;
   cardRange: string;
+} | null>(null);
+
+const selectingAllyTargetFor = ref<{
+  unitId: number;
+  cardIndex: number;
+  isEgo: boolean;
+  diceSlot: number;
+  cardName: string;
 } | null>(null);
 
 const actionError = ref<string | null>(null);
@@ -39,6 +48,7 @@ watch(
   () => {
     selectingSlotFor.value = null;
     selectingTargetFor.value = null;
+    selectingAllyTargetFor.value = null;
     actionError.value = null;
   },
 );
@@ -114,7 +124,9 @@ async function sendAction(action: object): Promise<boolean> {
       body: JSON.stringify(action),
     });
     if (!res.ok) {
-      actionError.value = `Server error ${res.status}`;
+      const data = await res.json().catch(() => ({}))
+      actionError.value = (data as any).error ?? `Server error ${res.status}`;
+      setTimeout(() => { actionError.value = null }, 3000);
       return false;
     }
     return true;
@@ -128,32 +140,48 @@ async function sendAction(action: object): Promise<boolean> {
 // Interaction handlers
 // ---------------------------------------------------------------------------
 
-function onCardClick(unitId: number, cardIndex: number) {
+function onCardClick(unitId: number, cardIndex: number, isEgo = false) {
   if (
     selectingSlotFor.value?.unitId === unitId &&
-    selectingSlotFor.value?.cardIndex === cardIndex
+    selectingSlotFor.value?.cardIndex === cardIndex &&
+    selectingSlotFor.value?.isEgo === isEgo
   ) {
     selectingSlotFor.value = null;
   } else {
-    selectingSlotFor.value = { unitId, cardIndex };
+    selectingSlotFor.value = { unitId, cardIndex, isEgo };
     selectingTargetFor.value = null;
   }
 }
 
 async function onSlotClick(unit: any, cardIndex: number, diceSlot: number) {
+  const isEgo = selectingSlotFor.value?.isEgo ?? false;
   selectingSlotFor.value = null;
-  const card = unit.hand?.[cardIndex];
+  const cardList = isEgo ? (unit.ego ?? []) : (unit.hand ?? []);
+  const card = cardList[cardIndex];
   if (card?.range === "Instance") {
-    await sendAction({
-      type: "playCard",
-      unitId: unit.id,
-      cardIndex,
-      diceSlot,
-    });
+    if (card?.allyTarget) {
+      // Ally-targeting instant: need the player to pick an ally before sending
+      selectingAllyTargetFor.value = {
+        unitId: unit.id,
+        cardIndex,
+        isEgo,
+        diceSlot,
+        cardName: card?.name ?? "?",
+      };
+    } else {
+      await sendAction({
+        type: "playCard",
+        unitId: unit.id,
+        cardIndex,
+        diceSlot,
+        ...(isEgo ? { isEgo: 1 } : {}),
+      });
+    }
   } else {
     selectingTargetFor.value = {
       unitId: unit.id,
       cardIndex,
+      isEgo,
       diceSlot,
       cardName: card?.name ?? "?",
       cardRange: card?.range ?? "",
@@ -161,9 +189,23 @@ async function onSlotClick(unit: any, cardIndex: number, diceSlot: number) {
   }
 }
 
+async function onAllyTargetClick(targetUnitId: number) {
+  if (!selectingAllyTargetFor.value) return;
+  const { unitId, cardIndex, isEgo, diceSlot } = selectingAllyTargetFor.value;
+  const ok = await sendAction({
+    type: "playCard",
+    unitId,
+    cardIndex,
+    diceSlot,
+    targetUnitId,
+    ...(isEgo ? { isEgo: 1 } : {}),
+  });
+  if (ok) selectingAllyTargetFor.value = null;
+}
+
 async function onTargetDieClick(targetUnitId: number, targetDiceSlot: number) {
   if (!selectingTargetFor.value) return;
-  const { unitId, cardIndex, diceSlot } = selectingTargetFor.value;
+  const { unitId, cardIndex, isEgo, diceSlot } = selectingTargetFor.value;
   const ok = await sendAction({
     type: "playCard",
     unitId,
@@ -171,22 +213,23 @@ async function onTargetDieClick(targetUnitId: number, targetDiceSlot: number) {
     diceSlot,
     targetUnitId,
     targetDiceSlot,
+    ...(isEgo ? { isEgo: 1 } : {}),
   });
   if (ok) selectingTargetFor.value = null;
 }
 
 function cancelTargeting() {
   selectingTargetFor.value = null;
+  selectingAllyTargetFor.value = null;
   selectingSlotFor.value = null;
 }
 
 async function onRemoveCard(unitId: number, diceSlot: number) {
   await sendAction({ type: "removeCard", unitId, diceSlot });
-  if (
-    selectingTargetFor.value?.unitId === unitId &&
-    selectingTargetFor.value?.diceSlot === diceSlot
-  )
+  if (selectingTargetFor.value?.unitId === unitId && selectingTargetFor.value?.diceSlot === diceSlot)
     selectingTargetFor.value = null;
+  if (selectingAllyTargetFor.value?.unitId === unitId && selectingAllyTargetFor.value?.diceSlot === diceSlot)
+    selectingAllyTargetFor.value = null;
   if (selectingSlotFor.value?.unitId === unitId) selectingSlotFor.value = null;
 }
 
@@ -212,9 +255,11 @@ provide(BATTLE_CTX, {
   isSelectPhase,
   selectingSlotFor,
   selectingTargetFor,
+  selectingAllyTargetFor,
   onCardClick,
   onSlotClick,
   onTargetDieClick,
+  onAllyTargetClick,
   onRemoveCard,
   allyColors,
   attackMap,
@@ -322,14 +367,29 @@ provide(BATTLE_CTX, {
     :show-outgoing="showOutgoing"
   />
 
-  <!-- Target picker bottom sheet -->
-  <TargetPicker
-    v-if="selectingTargetFor"
-    :selecting="selectingTargetFor"
-    :enemies="state.enemies ?? []"
-    @pick="onTargetDieClick"
-    @cancel="cancelTargeting"
-  />
+  <!-- Ally targeting banner -->
+  <Transition name="banner">
+    <div v-if="selectingAllyTargetFor" class="targeting-banner targeting-banner--ally">
+      <span class="targeting-card">{{ selectingAllyTargetFor.cardName }}</span>
+      <span class="targeting-sep">·</span>
+      <span class="targeting-slot">slot {{ selectingAllyTargetFor.diceSlot }}</span>
+      <span class="targeting-sep">·</span>
+      <span class="targeting-hint">select a Librarian</span>
+      <button class="targeting-cancel" @click="cancelTargeting">cancel</button>
+    </div>
+  </Transition>
+
+  <!-- Targeting banner -->
+  <Transition name="banner">
+    <div v-if="selectingTargetFor" class="targeting-banner">
+      <span class="targeting-card">{{ selectingTargetFor.cardName }}</span>
+      <span class="targeting-sep">·</span>
+      <span class="targeting-slot">slot {{ selectingTargetFor.diceSlot }}</span>
+      <span class="targeting-sep">·</span>
+      <span class="targeting-hint">select a target</span>
+      <button class="targeting-cancel" @click="cancelTargeting">cancel</button>
+    </div>
+  </Transition>
 </template>
 
 <style scoped>
@@ -420,6 +480,61 @@ provide(BATTLE_CTX, {
   opacity: 0.5;
 }
 
+/* ── Targeting banner ──────────────────────────────────────────────────────── */
+.targeting-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.5rem 0.75rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #1a1400;
+  border-top: 2px solid var(--gold-dim);
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  z-index: 99;
+}
+.targeting-card {
+  color: var(--gold-bright);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.targeting-slot {
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.targeting-hint {
+  color: var(--text-3);
+  font-style: italic;
+  flex: 1;
+  white-space: nowrap;
+}
+.targeting-sep { color: var(--border-hi); }
+.targeting-cancel {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--border-mid);
+  color: var(--text-2);
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  padding: 0.1rem 0.4rem;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.targeting-cancel:hover { border-color: var(--crimson); color: var(--crimson-hi); }
+.banner-enter-active, .banner-leave-active { transition: opacity 0.15s, transform 0.15s; }
+.banner-enter-from, .banner-leave-to { opacity: 0; transform: translateY(-4px); }
+.targeting-banner--ally {
+  background: #0a1a0a;
+  border-top-color: var(--green-hi);
+}
+
 /* ── Error banner ──────────────────────────────────────────────────────────── */
 .banner-error {
   padding: 0.3rem 0.75rem;
@@ -436,8 +551,8 @@ provide(BATTLE_CTX, {
 /* ── Stage layout ────────────────────────────────────────────────────── */
 
 .stage {
-  margin-left: 0.5em;
-  margin-right: 0.5em;
+  margin-left: 0.6em;
+  margin-right: 0.6em;
 
   /* Mobile: single column, enemies → allies */
   display: flex;

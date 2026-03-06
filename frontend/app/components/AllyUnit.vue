@@ -19,12 +19,19 @@ const props = defineProps<{ unit: any }>();
 const {
   isSelectPhase,
   selectingSlotFor,
+  selectingTargetFor,
+  selectingAllyTargetFor,
   onCardClick,
   onSlotClick,
   onRemoveCard,
+  onAllyTargetClick,
   allyColors,
   allUnits,
 } = inject(BATTLE_CTX) as BattleCtx;
+
+const isAllyTargeting = computed(
+  () => selectingAllyTargetFor.value !== null && selectingAllyTargetFor.value.unitId !== props.unit.id
+);
 
 const myColor = computed(() => allyColors.value[props.unit.id] ?? "#888");
 
@@ -42,12 +49,6 @@ const slots = computed(() =>
     })),
 );
 
-const sortedDice = computed(() =>
-  [...(props.unit.speedDice ?? [])].sort((a: any, b: any) => {
-    if (a.staggered !== b.staggered) return a.staggered ? -1 : 1;
-    return b.value - a.value;
-  }),
-);
 
 function dieColor(sc: any): string {
   if (sc.clash) return ARROW_COLORS.clash;
@@ -62,12 +63,21 @@ function targetLabel(sc: any): string {
   return `${prefix} ${u?.name ?? `#${sc.targetUnitId}`} ·${sc.targetSlot}`;
 }
 
+const detailCard = ref<any>(null)
+const egoMode = ref(false)
+
+const availableEgo = computed(() =>
+  (props.unit.ego ?? []).filter((c: any) => c.available)
+)
+const hasEgo = computed(() => (props.unit.ego?.length ?? 0) > 0)
+
+watch(hasEgo, (val) => { if (!val) egoMode.value = false })
+
 const hasDetails = computed(() => {
   const u = props.unit;
   return (
     (!isSelectPhase.value && u.hand?.length) ||
     u.ego?.length ||
-    u.teamHand?.length ||
     u.passives?.length ||
     u.abnormalities?.length ||
     u.keyPage
@@ -80,7 +90,6 @@ const detailsLabel = computed(() => {
   if (!isSelectPhase.value && u.hand?.length)
     parts.push(`Hand (${u.hand.length})`);
   if (u.ego?.length) parts.push(`EGO (${u.ego.length})`);
-  if (u.teamHand?.length) parts.push(`Team (${u.teamHand.length})`);
   if (u.passives?.length) parts.push(`Passives (${u.passives.length})`);
   if (u.abnormalities?.length) parts.push(`Abn. (${u.abnormalities.length})`);
   if (u.keyPage) parts.push("Res.");
@@ -89,7 +98,11 @@ const detailsLabel = computed(() => {
 </script>
 
 <template>
-  <div class="unit-card">
+  <div
+    class="unit-card"
+    :class="{ 'unit-card--ally-select': isAllyTargeting }"
+    @click.capture="isAllyTargeting ? onAllyTargetClick(unit.id) : undefined"
+  >
     <!-- ── Header ── -->
     <div class="unit-header">
       <!-- row 1: turn badge, name -->
@@ -109,13 +122,22 @@ const detailsLabel = computed(() => {
         <div
           v-if="unit.maxPlayPoint"
           class="ap-pips"
-          :title="`Light: ${unit.playPoint}/${unit.maxPlayPoint}`"
+          :title="`Light: ${unit.playPoint}/${unit.maxPlayPoint} (${unit.reservedPlayPoint ?? 0} reserved)`"
         >
           <span
-            v-for="n in unit.maxPlayPoint"
-            :key="n"
+            v-for="n in Math.max(0, unit.playPoint - (unit.reservedPlayPoint ?? 0))"
+            :key="'f' + n"
+            class="ap-pip ap-pip--lit"
+          />
+          <span
+            v-for="n in (unit.reservedPlayPoint ?? 0)"
+            :key="'r' + n"
+            class="ap-pip ap-pip--reserved"
+          />
+          <span
+            v-for="n in Math.max(0, unit.maxPlayPoint - unit.playPoint)"
+            :key="'u' + n"
             class="ap-pip"
-            :class="{ 'ap-pip--lit': n <= unit.playPoint }"
           />
         </div>
         <div class="unit-meta">
@@ -157,39 +179,50 @@ const detailsLabel = computed(() => {
         v-for="{ die: d, card: sc } in slots"
         :key="d.slot"
         class="slot-row"
-        :class="{ 'slot-filled': sc !== null }"
+        :class="{
+          'slot-filled': sc !== null,
+          'slot-open': isSelectPhase && selectingSlotFor?.unitId === unit.id && sc === null && !d.staggered,
+          'slot-pending': isSelectPhase && selectingTargetFor?.unitId === unit.id && selectingTargetFor?.diceSlot === d.slot,
+        }"
+        @click.stop="isSelectPhase && selectingSlotFor?.unitId === unit.id && sc === null && !d.staggered
+          ? onSlotClick(unit, selectingSlotFor!.cardIndex, d.slot)
+          : undefined"
       >
         <!-- Hexagonal die (data-die used by ArrowOverlay for coordinate lookup) -->
         <span
           class="hex-wrap"
-          :class="{ staggered: d.staggered }"
+          :class="{
+            staggered: d.staggered,
+            'hex-open': isSelectPhase && selectingSlotFor?.unitId === unit.id && sc === null && !d.staggered,
+            'hex-pending': isSelectPhase && selectingTargetFor?.unitId === unit.id && selectingTargetFor?.diceSlot === d.slot,
+          }"
           :data-die="`${unit.id}-${d.slot}`"
           :style="sc !== null && !d.staggered ? { background: dieColor(sc) } : {}"
         >
           <span class="hex-inner">{{ d.staggered ? "✕" : d.value }}</span>
         </span>
 
-        <template v-if="sc !== null">
-          <span class="sc-name">{{ sc.name }}</span>
-          <span
-            v-if="targetLabel(sc)"
-            class="sc-target"
-            :class="{ 'sc-clash': sc.clash }"
-            :style="{ color: sc.clash ? '#e53935' : myColor }"
-            >{{ targetLabel(sc) }}</span
-          >
-          <button
-            v-if="isSelectPhase"
-            class="remove-btn"
-            title="Return to hand"
-            @click="onRemoveCard(unit.id, sc.slot)"
-          >
-            ×
-          </button>
-        </template>
-        <template v-else>
-          <span class="slot-empty">—</span>
-        </template>
+        <div class="slot-content">
+          <template v-if="sc !== null">
+            <SlottedCard
+              :sc="sc"
+              :target-label="targetLabel(sc) || undefined"
+              :clash="sc.clash"
+              :my-color="myColor"
+            />
+            <button
+              v-if="isSelectPhase"
+              class="remove-btn"
+              title="Return to hand"
+              @click="onRemoveCard(unit.id, sc.slot)"
+            >
+              ✕
+            </button>
+          </template>
+          <template v-else>
+            <span class="slot-empty">—</span>
+          </template>
+        </div>
       </div>
     </div>
 
@@ -201,55 +234,53 @@ const detailsLabel = computed(() => {
     </div>
 
     <!-- ── Interactive hand (select phase only) ── -->
-    <template v-if="isSelectPhase && unit.hand?.length">
+    <template v-if="isSelectPhase && (unit.hand?.length || hasEgo)">
       <div class="hand-section">
-        <span class="section-label">Hand</span>
-
-        <div class="hand-row">
-          <HandCard
-            v-for="(c, i) in unit.hand"
-            :key="c.id.id + c.id.packageId"
-            :card="c"
-            :selected="selectingSlotFor?.unitId === unit.id && selectingSlotFor?.cardIndex === i"
-            :dimmed="selectingSlotFor !== null && !(selectingSlotFor.unitId === unit.id && selectingSlotFor.cardIndex === i)"
-            :color="myColor"
-            @click="onCardClick(unit.id, i)"
-          />
+        <div class="hand-header">
+          <span class="section-label">{{ egoMode ? 'EGO' : 'Hand' }}</span>
+          <button
+            v-if="hasEgo"
+            class="ego-toggle"
+            :class="{ 'ego-toggle--active': egoMode }"
+            @click.stop="egoMode = !egoMode"
+          >EGO</button>
         </div>
 
-        <transition name="picker">
-          <div v-if="selectingSlotFor?.unitId === unit.id" class="slot-picker">
-            <span class="picker-label">Slot</span>
-            <span
-              v-for="d in sortedDice"
-              :key="d.slot"
-              class="shex-outer"
-              :class="{
-                'shex-open': !isSlotFilled(unit, d.slot) && !d.staggered,
-                'shex-occupied': isSlotFilled(unit, d.slot),
-                'shex-staggered': d.staggered,
-              }"
-              :title="
-                d.staggered
-                  ? 'Broken'
-                  : isSlotFilled(unit, d.slot)
-                    ? 'Occupied'
-                    : `Play to slot ${d.slot}`
-              "
-              @click.stop="
-                !(isSlotFilled(unit, d.slot) || d.staggered) &&
-                onSlotClick(unit, selectingSlotFor!.cardIndex, d.slot)
-              "
-            >
-              <span class="shex-inner">{{ d.staggered ? "✕" : d.value }}</span>
-            </span>
-            <button class="picker-cancel" @click.stop="selectingSlotFor = null">
-              ✕
-            </button>
-          </div>
-        </transition>
+        <div class="hand-row">
+          <template v-if="egoMode">
+            <HandCard
+              v-for="(c, i) in unit.ego"
+              :key="c.id.id + c.id.packageId"
+              :card="c"
+              :selected="selectingSlotFor?.unitId === unit.id && selectingSlotFor?.cardIndex === i && selectingSlotFor?.isEgo === true"
+              :dimmed="selectingSlotFor !== null && !(selectingSlotFor.unitId === unit.id && selectingSlotFor.cardIndex === i && selectingSlotFor.isEgo === true)"
+              :color="myColor"
+              :unusable="c.canUse === false"
+              @click="onCardClick(unit.id, i, true)"
+              @detail="detailCard = c"
+            />
+          </template>
+          <template v-else>
+            <HandCard
+              v-for="(c, i) in unit.hand"
+              :key="c.id.id + c.id.packageId"
+              :card="c"
+              :selected="selectingSlotFor?.unitId === unit.id && selectingSlotFor?.cardIndex === i && !selectingSlotFor?.isEgo"
+              :dimmed="selectingSlotFor !== null && !(selectingSlotFor.unitId === unit.id && selectingSlotFor.cardIndex === i && !selectingSlotFor.isEgo)"
+              :color="myColor"
+              :unusable="c.canUse === false"
+              @click="onCardClick(unit.id, i)"
+              @detail="detailCard = c"
+            />
+          </template>
+        </div>
+
+
       </div>
     </template>
+
+    <!-- ── Card detail overlay ── -->
+    <CardDetail v-if="detailCard" :card="detailCard" @close="detailCard = null" />
 
     <!-- ── Collapsed details ── -->
     <details v-if="hasDetails" class="collapse">
@@ -284,21 +315,6 @@ const detailsLabel = computed(() => {
             <span class="centry-cost">{{ c.cost }}</span>
             <span>{{ c.name }}</span>
             <span class="centry-range">{{ c.available ? "✓" : "…" }}</span>
-          </div>
-        </div>
-      </template>
-
-      <!-- Team pages -->
-      <template v-if="unit.teamHand?.length">
-        <div class="det-label">Team Pages</div>
-        <div class="clist">
-          <div
-            v-for="c in unit.teamHand"
-            :key="c.id.id + c.id.packageId"
-            class="centry"
-          >
-            <span class="centry-cost">{{ c.cost }}</span>
-            <span>{{ c.name }}</span>
           </div>
         </div>
       </template>
@@ -343,6 +359,15 @@ const detailsLabel = computed(() => {
 .unit-card {
   width: 100%;
   border-right: 2px solid var(--gold-dim);
+  transition: border-color 0.15s, background 0.15s;
+}
+.unit-card--ally-select {
+  border-right-color: var(--green-hi);
+  background: #0a1a0a;
+  cursor: pointer;
+}
+.unit-card--ally-select:hover {
+  background: #0c1e0c;
 }
 
 /* ── Header — ally: meta left, name center, badge right (via row-reverse) ── */
@@ -373,6 +398,13 @@ const detailsLabel = computed(() => {
   gap: 0.35rem;
   padding: 0.06rem 0.15rem 0.06rem 0;
 }
+.slot-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
 .remove-btn {
   margin-left: auto;
   flex-shrink: 0;
@@ -395,12 +427,37 @@ const detailsLabel = computed(() => {
   flex-direction: column;
   gap: 0.4rem;
 }
+.hand-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
 .section-label {
   font-family: var(--font-display);
   font-size: 0.58rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--text-2);
+}
+.ego-toggle {
+  font-family: var(--font-display);
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.1rem 0.4rem;
+  background: transparent;
+  border: 1px solid var(--crimson);
+  color: var(--crimson-hi);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.ego-toggle--active {
+  background: var(--crimson);
+  color: #fff;
+}
+.ego-toggle:hover:not(.ego-toggle--active) {
+  background: var(--crimson-dim);
 }
 
 /* ── Hand card row ───────────────────────────────────────────────────────── */
@@ -410,113 +467,6 @@ const detailsLabel = computed(() => {
   flex-wrap: wrap;
 }
 
-/* ── Slot picker ─────────────────────────────────────────────────────────── */
-.slot-picker {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-  padding: 0.4rem 0.5rem;
-  background: #091509;
-  border: 1px solid var(--green-hi);
-}
-.picker-label {
-  font-family: var(--font-display);
-  font-size: 0.58rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #4caf50;
-}
-.shex-outer {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.8rem;
-  height: 2.45rem;
-  clip-path: var(--hex);
-  background: var(--border-mid);
-  cursor: pointer;
-  transition: background 0.1s;
-}
-.shex-inner {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.35rem;
-  height: 2.05rem;
-  clip-path: var(--hex);
-  background: var(--bg-card-3);
-  font-family: var(--font-mono);
-  font-size: 0.88rem;
-  color: var(--text-2);
-  pointer-events: none;
-  transition:
-    background 0.1s,
-    color 0.1s;
-}
-.shex-outer.shex-open {
-  background: var(--green-hi);
-  cursor: pointer;
-}
-.shex-outer.shex-open .shex-inner {
-  background: #0c1e0c;
-  color: var(--text-1);
-}
-.shex-outer.shex-open:hover {
-  background: #4caf50;
-}
-.shex-outer.shex-open:hover .shex-inner {
-  background: #102010;
-  color: #fff;
-}
-.shex-outer.shex-occupied {
-  background: var(--border);
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-.shex-outer.shex-occupied .shex-inner {
-  background: var(--bg-card);
-  color: var(--text-3);
-}
-.shex-outer.shex-staggered {
-  background: var(--crimson-dim);
-  cursor: not-allowed;
-}
-.shex-outer.shex-staggered .shex-inner {
-  background: #1a0606;
-  color: var(--crimson-hi);
-}
-.picker-cancel {
-  background: transparent;
-  border: 1px solid var(--crimson);
-  color: #e57373;
-  font-size: 0.72rem;
-  padding: 0.2rem 0.5rem;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  margin-left: auto;
-}
-.picker-cancel:hover {
-  background: var(--crimson);
-  color: #fff;
-}
-
-/* Slot picker slide-in */
-.picker-enter-active {
-  transition:
-    opacity 0.15s,
-    transform 0.15s;
-}
-.picker-leave-active {
-  transition:
-    opacity 0.1s,
-    transform 0.1s;
-}
-.picker-enter-from,
-.picker-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
 
 /* ── Detail sub-section labels ───────────────────────────────────────────── */
 .det-label {

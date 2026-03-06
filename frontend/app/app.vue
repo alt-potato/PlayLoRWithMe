@@ -180,6 +180,24 @@ body {
 }
 .hex-wrap.staggered { background: var(--crimson-dim); }
 .hex-wrap.staggered .hex-inner { background: #230808; color: var(--crimson-hi); }
+.hex-wrap.hex-open { background: var(--green-hi); cursor: pointer; transition: background 0.1s; }
+.hex-wrap.hex-open .hex-inner { background: #0c1e0c; color: var(--text-1); transition: background 0.1s, color 0.1s; }
+.hex-wrap.hex-open:hover { background: #4caf50; }
+.hex-wrap.hex-open:hover .hex-inner { background: #102010; color: #fff; }
+.hex-wrap.hex-target { background: var(--gold-dim); transition: background 0.1s; }
+.hex-wrap.hex-pending { background: var(--gold); animation: hex-pulse 1.2s ease-in-out infinite; }
+.hex-wrap.hex-pending .hex-inner { background: #1a1400; color: var(--gold-bright); }
+@keyframes hex-pulse {
+  0%, 100% { background: var(--gold); }
+  50%       { background: var(--gold-dim); }
+}
+.slot-pending .slot-content { background: #1a1400; }
+.hex-wrap.hex-target .hex-inner { background: #1a1400; color: var(--gold-bright); transition: background 0.1s, color 0.1s; }
+.slot-target { cursor: pointer; }
+.slot-target .slot-content { background: #1a1400; transition: background 0.1s; }
+.slot-target:hover .slot-content { background: #261c00; }
+.slot-target .hex-wrap.hex-target { background: var(--gold); }
+.slot-target:hover .hex-wrap.hex-target .hex-inner { background: #261c00; color: #fff; }
 
 /* ── Buffs ─────────────────────────────────────────────────────────────────── */
 .buffs { display: flex; flex-wrap: wrap; gap: 0.2rem; }
@@ -193,7 +211,11 @@ body {
 }
 
 /* ── Slot card content ─────────────────────────────────────────────────────── */
-.slot-filled { background: var(--bg-card-2); }
+.slot-content { min-height: 2.2rem; }
+.slot-filled .slot-content { background: var(--bg-card-2); }
+.slot-open { cursor: pointer; }
+.slot-open .slot-content { background: #0c1e0c; }
+.slot-open:hover .slot-content { background: #102010; }
 .sc-name { color: var(--text-1); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.72rem; }
 .sc-target { white-space: nowrap; font-size: 0.62rem; flex-shrink: 0; color: var(--text-2); font-family: var(--font-mono); }
 .sc-clash { font-weight: bold; color: var(--crimson-hi); }
@@ -242,6 +264,7 @@ details[open] > summary::before { content: '▾ '; }
 .ap-pips { display: flex; gap: 0.08rem; align-items: center; flex-wrap: wrap; }
 .ap-pip { width: 0.62rem; height: 0.54rem; clip-path: var(--hex); background: var(--border-hi); flex-shrink: 0; transition: background 0.15s; }
 .ap-pip--lit { background: var(--gold); }
+.ap-pip--reserved { background: var(--gold-dim); }
 
 /* ── Emotion display ─────────────────────────────────────────────────────────── */
 .emotion-meta { display: flex; align-items: center; gap: 0.2rem; }
