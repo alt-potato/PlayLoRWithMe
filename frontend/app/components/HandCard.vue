@@ -82,10 +82,10 @@ function handleClick() {
     @touchmove="onPressEnd"
   >
     <div class="hcard-header">
-      <span class="hcard-range">{{ card.range }}</span>
       <span class="hcard-cost" :style="costStyle(card) ?? {}">{{
         card.cost
       }}</span>
+      <span class="hcard-range">{{ card.range }}</span>
     </div>
     <span class="hcard-name">{{ card.name }}<span v-if="card.abilityDesc" class="hcard-desc-plus" :title="card.abilityDesc">+</span></span>
     <div v-if="card.dice?.length" class="hcard-dice">
