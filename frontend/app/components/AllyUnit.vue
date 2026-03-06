@@ -171,7 +171,7 @@ function passiveClass(p: any) {
       </div>
     </div>
 
-    <!-- ── HP / SG bars ── -->
+    <!-- ── HP / SP bars ── -->
     <UnitStatus :unit="unit" />
 
     <!-- ── Speed dice + slotted cards ── -->

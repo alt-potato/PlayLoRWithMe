@@ -1,7 +1,7 @@
 <!--
   ResistanceTable.vue
 
-  Pure display component that renders a 2×3 resistance grid (HP/SG × Slash/Pierce/Blunt).
+  Pure display component that renders a 2×3 resistance grid (HP/SP × Slash/Pierce/Blunt).
   Accepts the `resistances` sub-object from a unit's keyPage data.
 
   Props:
@@ -36,7 +36,7 @@ defineProps<{ resistances: any }>();
         </td>
       </tr>
       <tr>
-        <th>SG</th>
+        <th>SP</th>
         <td :style="{ color: resistColor(resistances?.slashBp) }">
           {{ resistances?.slashBp }}
         </td>
