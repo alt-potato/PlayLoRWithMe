@@ -134,6 +134,19 @@ export function rarityColor(rarity: string): string {
   return RARITY_COLORS[rarity] ?? "#3c3830";
 }
 
+/**
+ * Returns inline style overrides for a cost badge based on cost delta.
+ * Returns null when cost equals base (no override needed).
+ */
+export function costStyle(card: any): Record<string, string> | null {
+  if (card.baseCost == null) return null;
+  if (card.cost > card.baseCost)
+    return { background: "#2d0a0a", color: "#ef9a9a" }; // increased → red
+  if (card.cost < card.baseCost)
+    return { background: "#0a1e0a", color: "#81c784" }; // decreased → green
+  return null;
+}
+
 /** Border colour for a card — EGO overrides to crimson regardless of rarity. */
 export function cardBorderColor(card: any): string {
   if (card.options?.some((o: string) => o.startsWith("Ego") || o === "EGO"))

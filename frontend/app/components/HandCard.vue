@@ -83,7 +83,7 @@ function handleClick() {
   >
     <div class="hcard-header">
       <span class="hcard-range">{{ card.range }}</span>
-      <span class="hcard-cost">{{ card.cost }}</span>
+      <span class="hcard-cost" :style="costStyle(card) ?? {}">{{ card.cost }}</span>
     </div>
     <span class="hcard-name">{{ card.name }}</span>
     <div v-if="card.dice?.length" class="hcard-dice">
@@ -99,6 +99,11 @@ function handleClick() {
           {{ d.min }}–{{ d.max }}
         </span>
       </div>
+    </div>
+    <div v-if="card.bufs?.length" class="hcard-tokens">
+      <span v-for="(b, i) in card.bufs" :key="i" class="hcard-token">
+        {{ b.label }}{{ b.stack > 0 ? ` ×${b.stack}` : "" }}
+      </span>
     </div>
   </div>
 </template>
@@ -228,5 +233,25 @@ function handleClick() {
 .hcard-die-range {
   font-family: var(--font-body);
   font-size: 0.5rem;
+}
+
+.hcard-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem;
+  margin-top: 0.1rem;
+}
+
+.hcard-token {
+  font-size: 0.38rem;
+  padding: 0.06rem 0.18rem;
+  background: #0d1a2e;
+  border: 1px solid #3d5a80;
+  color: #90a4ae;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-body);
 }
 </style>

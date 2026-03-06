@@ -29,7 +29,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
     <div class="sheet-header" :style="{ borderTopColor: borderColor }">
       <div class="header-top">
         <span class="card-range">{{ card.range }}</span>
-        <span class="cost-badge">{{ card.cost }}</span>
+        <span class="cost-badge" :style="costStyle(card) ?? {}">{{ card.cost }}</span>
         <button class="close-btn" @click="$emit('close')">✕</button>
       </div>
       <div class="card-title">{{ card.name }}</div>
@@ -49,6 +49,13 @@ const borderColor = computed(() => cardBorderColor(props.card));
 
     <!-- Body -->
     <div class="sheet-body">
+      <div v-if="card.bufs?.length" class="token-list">
+        <div v-for="(b, i) in card.bufs" :key="i" class="token-entry">
+          <span class="token-label">{{ b.label }}</span>
+          <span v-if="b.stack > 0" class="token-stack">×{{ b.stack }}</span>
+        </div>
+      </div>
+
       <p v-if="card.abilityDesc" class="ability-desc">{{ card.abilityDesc }}</p>
 
       <div v-if="card.dice?.length" class="dice-list">
@@ -197,6 +204,30 @@ const borderColor = computed(() => cardBorderColor(props.card));
   color: #ff9800;
   border-color: #a05000;
   background: transparent;
+}
+
+/* ── Card tokens ─────────────────────────────────────────────────────────── */
+.token-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.token-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.45rem;
+  background: #0d1a2e;
+  border: 1px solid #3d5a80;
+  color: #90a4ae;
+  font-size: 0.68rem;
+  font-family: var(--font-body);
+}
+
+.token-stack {
+  color: #b0bec5;
+  font-weight: 600;
 }
 
 /* ── Sheet body ──────────────────────────────────────────────────────────── */

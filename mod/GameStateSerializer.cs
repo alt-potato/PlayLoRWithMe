@@ -486,7 +486,39 @@ namespace PlayLoRWithMe
             var abilityDescList = Singleton<BattleCardAbilityDescXmlList>.Instance;
 
             o.Add("rarity", card.GetRarity().ToString())
-                .Add("emotionLimit", card.GetSpec().emotionLimit);
+                .Add("emotionLimit", card.GetSpec().emotionLimit)
+                .Add("baseCost", card.GetSpec().Cost);
+
+            // Card tokens (placed by passives, abnormalities, or special card abilities)
+            var bufs = card.GetBufList();
+            if (bufs != null && bufs.Count > 0)
+            {
+                o.AddArray(
+                    "bufs",
+                    arr =>
+                    {
+                        foreach (var buf in bufs)
+                        {
+                            if (buf == null)
+                                continue;
+                            var label = buf.bufActivatedText;
+                            if (string.IsNullOrEmpty(label))
+                                label =
+                                    buf.bufType != DiceCardBufType.None
+                                        ? buf.bufType.ToString()
+                                        : buf.GetType()
+                                            .Name.Replace("BattleDiceCardBuf_", "")
+                                            .Replace("CardBuf", "");
+                            arr.AddObject(o2 =>
+                            {
+                                o2.Add("label", label);
+                                if (buf.Stack > 0)
+                                    o2.Add("stack", buf.Stack);
+                            });
+                        }
+                    }
+                );
+            }
 
             // Options (EGO, ExhaustOnUse, Personal, etc.)
             if (xml.optionList != null && xml.optionList.Count > 0)
