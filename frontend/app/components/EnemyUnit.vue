@@ -21,6 +21,27 @@ const { attackMap, selectingTargetFor, onTargetDieClick } = inject(
 
 const detailCard = ref<any>(null);
 const expandedBuff = ref<string | null>(null);
+
+let slotLongPressed = false;
+let slotPressTimer: ReturnType<typeof setTimeout> | null = null;
+
+function onSlotPressStart(sc: any) {
+  if (!sc) return;
+  slotLongPressed = false;
+  slotPressTimer = setTimeout(() => {
+    slotLongPressed = true;
+    detailCard.value = sc;
+  }, 500);
+}
+
+function onSlotPressEnd() {
+  if (slotPressTimer) { clearTimeout(slotPressTimer); slotPressTimer = null; }
+}
+
+function handleSlotClick(d: any) {
+  if (slotLongPressed) { slotLongPressed = false; return; }
+  if (canBeTargeted.value && !d.staggered) onTargetDieClick(props.unit.id, d.slot);
+}
 function toggleBuff(type: string) {
   expandedBuff.value = expandedBuff.value === type ? null : type;
 }
@@ -149,11 +170,13 @@ function passiveClass(p: any) {
           'slot-filled': sc !== null,
           'slot-target': canBeTargeted && !d.staggered,
         }"
-        @click.stop="
-          canBeTargeted && !d.staggered
-            ? onTargetDieClick(unit.id, d.slot)
-            : undefined
-        "
+        @click.stop="handleSlotClick(d)"
+        @mousedown="onSlotPressStart(sc)"
+        @mouseup="onSlotPressEnd"
+        @mouseleave="onSlotPressEnd"
+        @touchstart.passive="onSlotPressStart(sc)"
+        @touchend="onSlotPressEnd"
+        @touchmove="onSlotPressEnd"
       >
         <!-- Content: card info + incoming chips (left) -->
         <div class="slot-content">
@@ -167,13 +190,6 @@ function passiveClass(p: any) {
               "
               :clash="sc.clash"
             />
-            <button
-              class="info-btn"
-              @click.stop="detailCard = sc"
-              title="Card detail"
-            >
-              i
-            </button>
           </div>
           <div v-if="attackMap[unit.id]?.[d.slot]?.length" class="incoming-row">
             <span
@@ -346,23 +362,6 @@ function passiveClass(p: any) {
   gap: 0.3rem;
   align-items: center;
   min-width: 0;
-}
-
-.info-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-3);
-  font-size: 0.7rem;
-  cursor: pointer;
-  padding: 0 0.15rem;
-  flex-shrink: 0;
-  font-family: var(--font-body);
-  font-style: italic;
-  font-weight: bold;
-  line-height: 1;
-}
-.info-btn:hover {
-  color: var(--text-1);
 }
 
 /* ── Incoming attack chips ───────────────────────────────────────────────── */

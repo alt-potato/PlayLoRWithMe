@@ -56,6 +56,31 @@ function targetLabel(sc: any): string {
 const detailCard = ref<any>(null);
 const egoMode = ref(false);
 const expandedBuff = ref<string | null>(null);
+
+let slotLongPressed = false;
+let slotPressTimer: ReturnType<typeof setTimeout> | null = null;
+
+function onSlotPressStart(sc: any) {
+  if (!sc) return;
+  slotLongPressed = false;
+  slotPressTimer = setTimeout(() => {
+    slotLongPressed = true;
+    detailCard.value = sc;
+  }, 500);
+}
+
+function onSlotPressEnd() {
+  if (slotPressTimer) { clearTimeout(slotPressTimer); slotPressTimer = null; }
+}
+
+function handleSlotClick(d: any, sc: any) {
+  if (slotLongPressed) { slotLongPressed = false; return; }
+  if (selectingTargetFor.value?.unitId === props.unit.id && selectingTargetFor.value?.diceSlot === d.slot) {
+    cancelTargeting();
+  } else if (isSelectPhase.value && selectingSlotFor.value?.unitId === props.unit.id && sc === null && !d.staggered) {
+    onSlotClick(props.unit, selectingSlotFor.value!.cardIndex, d.slot);
+  }
+}
 function toggleBuff(type: string) {
   expandedBuff.value = expandedBuff.value === type ? null : type;
 }
@@ -196,17 +221,13 @@ function passiveClass(p: any) {
             selectingTargetFor?.unitId === unit.id &&
             selectingTargetFor?.diceSlot === d.slot,
         }"
-        @click.stop="
-          selectingTargetFor?.unitId === unit.id &&
-          selectingTargetFor?.diceSlot === d.slot
-            ? cancelTargeting()
-            : isSelectPhase &&
-                selectingSlotFor?.unitId === unit.id &&
-                sc === null &&
-                !d.staggered
-              ? onSlotClick(unit, selectingSlotFor!.cardIndex, d.slot)
-              : undefined
-        "
+        @click.stop="handleSlotClick(d, sc)"
+        @mousedown="onSlotPressStart(sc)"
+        @mouseup="onSlotPressEnd"
+        @mouseleave="onSlotPressEnd"
+        @touchstart.passive="onSlotPressStart(sc)"
+        @touchend="onSlotPressEnd"
+        @touchmove="onSlotPressEnd"
       >
         <!-- Hexagonal die (data-die used by ArrowOverlay for coordinate lookup) -->
         <span
