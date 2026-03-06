@@ -61,6 +61,9 @@ export interface BattleCtx {
   /** Return a slotted card to the unit's hand. */
   onRemoveCard: (unitId: number, diceSlot: number) => Promise<void>
 
+  /** Cancel all in-progress targeting / slot selection. */
+  cancelTargeting: () => void
+
   /** Per-ally color keyed by unit id. */
   allyColors: ComputedRef<Record<number, string>>
 

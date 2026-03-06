@@ -261,6 +261,7 @@ provide(BATTLE_CTX, {
   onTargetDieClick,
   onAllyTargetClick,
   onRemoveCard,
+  cancelTargeting,
   allyColors,
   attackMap,
   allUnits,
@@ -365,6 +366,7 @@ provide(BATTLE_CTX, {
     :show-incoming="showIncoming"
     :show-clash="showClash"
     :show-outgoing="showOutgoing"
+    :focus-unit-id="selectingTargetFor?.unitId ?? selectingAllyTargetFor?.unitId ?? null"
   />
 
   <!-- Ally targeting banner -->

@@ -173,7 +173,7 @@ const detailsLabel = computed(() => {
           :class="{ staggered: d.staggered, 'hex-target': canBeTargeted && !d.staggered }"
           :data-die="`${unit.id}-${d.slot}`"
           :title="`Slot ${d.slot}`"
-          :style="sc !== null && !d.staggered && !canBeTargeted ? { background: dieColor(sc) } : {}"
+          :style="sc !== null && !d.staggered ? { background: dieColor(sc) } : {}"
         >
           <span class="hex-inner">{{ d.staggered ? "✕" : d.value }}</span>
         </span>
@@ -227,6 +227,12 @@ const detailsLabel = computed(() => {
 </template>
 
 <style scoped>
+/* ── Targetable die highlight ────────────────────────────────────────────── */
+.hex-wrap.hex-target { background: var(--green-hi); transition: background 0.1s; }
+.slot-target:hover .hex-wrap.hex-target { background: #4caf50; }
+.slot-target:hover .hex-wrap.hex-target .hex-inner { background: #102010; color: #fff; }
+.slot-target:hover .slot-content { background: #0c1e0c; transition: background 0.1s; }
+
 /* ── Card shell — enemy accent on left ───────────────────────────────────── */
 .unit-card {
   width: 100%;

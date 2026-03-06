@@ -5,9 +5,9 @@
   getBoundingClientRect() coords map 1:1 to the SVG coordinate space
   because the SVG fills the viewport with position:fixed.
 
-  Arrows use orthogonal (pipe) routing: horizontal → vertical → horizontal,
-  with the elbow at the midpoint between source and target X positions,
-  which naturally falls in the center gap column.
+  Arrows use S-curve Bezier routing: M x1 y1 C midX y1, midX y2, x2 y2.
+  Because each arrow has a unique (y1, y2), curves naturally fan out in the
+  center gap and never stack on top of each other.
 
   Props:
     allies        – ally unit array (to derive faction from unit id)
@@ -15,6 +15,7 @@
     showIncoming  – red  one-sided enemy→ally arrows
     showClash     – gold mutual-targeting (clash) arrows
     showOutgoing  – blue one-sided ally→enemy arrows
+    focusUnitId   – when set, dim arrows not involving this unit id
 
   Die elements are found by [data-die="unitId-slot"] attributes.
 -->
@@ -25,6 +26,7 @@ const props = defineProps<{
   showIncoming: boolean
   showClash: boolean
   showOutgoing: boolean
+  focusUnitId?: number | null
 }>()
 
 interface Arrow {
@@ -32,6 +34,8 @@ interface Arrow {
   x2: number; y2: number
   type: 'incoming' | 'clash' | 'outgoing'
   dashed: boolean
+  srcUnitId: number
+  tgtUnitId: number
 }
 
 const arrows = ref<Arrow[]>([])
@@ -75,9 +79,12 @@ async function recompute() {
 
       const src = diePoint(unit.id, sc.slot, allyIds)
       const tgt = diePoint(sc.targetUnitId, sc.targetSlot, allyIds)
-      // Fix: explicitly map x→x1, y→y1 (not spread which gives wrong field names)
       if (src && tgt) {
-        result.push({ x1: src.x, y1: src.y, x2: tgt.x, y2: tgt.y, type, dashed: false })
+        result.push({
+          x1: src.x, y1: src.y, x2: tgt.x, y2: tgt.y,
+          type, dashed: false,
+          srcUnitId: unit.id, tgtUnitId: sc.targetUnitId,
+        })
       }
 
       // Sub-targets (mass attacks) — same source die, dashed stroke
@@ -89,6 +96,7 @@ async function recompute() {
             x2: stTgt.x, y2: stTgt.y,
             type: isAlly ? 'outgoing' : 'incoming',
             dashed: true,
+            srcUnitId: unit.id, tgtUnitId: st.targetUnitId,
           })
         }
       }
@@ -98,10 +106,16 @@ async function recompute() {
   arrows.value = result
 }
 
-/** Orthogonal path: source → horizontal to midX → vertical → horizontal to target. */
-function pipePath(a: Arrow): string {
-  const mid = (a.x1 + a.x2) / 2
-  return `M ${a.x1} ${a.y1} H ${mid} V ${a.y2} H ${a.x2}`
+/** S-curve: horizontal tangents at both endpoints; arrows fan naturally by y. */
+function bezierPath(a: Arrow): string {
+  const midX = (a.x1 + a.x2) / 2
+  return `M ${a.x1} ${a.y1} C ${midX} ${a.y1}, ${midX} ${a.y2}, ${a.x2} ${a.y2}`
+}
+
+/** True when a focus unit is set and this arrow doesn't involve it. */
+function isDimmed(a: Arrow): boolean {
+  if (props.focusUnitId == null) return false
+  return a.srcUnitId !== props.focusUnitId && a.tgtUnitId !== props.focusUnitId
 }
 
 watch(() => [props.allies, props.enemies], recompute, { deep: true })
@@ -150,12 +164,14 @@ function visible(a: Arrow): boolean {
     <path
       v-for="(a, i) in arrows" :key="i"
       v-show="visible(a)"
-      :d="pipePath(a)"
+      :d="bezierPath(a)"
       :stroke="ARROW_COLORS[a.type]"
       :stroke-width="a.dashed ? 1.5 : 2"
       :stroke-dasharray="a.dashed ? '5 4' : undefined"
+      :opacity="isDimmed(a) ? 0.1 : 1"
       stroke-linecap="round"
       fill="none"
+      style="transition: opacity 0.2s"
       :marker-start="a.type === 'clash' ? 'url(#ah-clash-start)' : undefined"
       :marker-end="`url(#ah-${a.type})`"
     />

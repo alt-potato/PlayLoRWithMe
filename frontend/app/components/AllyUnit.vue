@@ -25,6 +25,7 @@ const {
   onSlotClick,
   onRemoveCard,
   onAllyTargetClick,
+  cancelTargeting,
   allyColors,
   allUnits,
 } = inject(BATTLE_CTX) as BattleCtx;
@@ -184,9 +185,11 @@ const detailsLabel = computed(() => {
           'slot-open': isSelectPhase && selectingSlotFor?.unitId === unit.id && sc === null && !d.staggered,
           'slot-pending': isSelectPhase && selectingTargetFor?.unitId === unit.id && selectingTargetFor?.diceSlot === d.slot,
         }"
-        @click.stop="isSelectPhase && selectingSlotFor?.unitId === unit.id && sc === null && !d.staggered
-          ? onSlotClick(unit, selectingSlotFor!.cardIndex, d.slot)
-          : undefined"
+        @click.stop="selectingTargetFor?.unitId === unit.id && selectingTargetFor?.diceSlot === d.slot
+          ? cancelTargeting()
+          : isSelectPhase && selectingSlotFor?.unitId === unit.id && sc === null && !d.staggered
+            ? onSlotClick(unit, selectingSlotFor!.cardIndex, d.slot)
+            : undefined"
       >
         <!-- Hexagonal die (data-die used by ArrowOverlay for coordinate lookup) -->
         <span

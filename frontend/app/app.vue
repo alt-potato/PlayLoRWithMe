@@ -184,7 +184,6 @@ body {
 .hex-wrap.hex-open .hex-inner { background: #0c1e0c; color: var(--text-1); transition: background 0.1s, color 0.1s; }
 .hex-wrap.hex-open:hover { background: #4caf50; }
 .hex-wrap.hex-open:hover .hex-inner { background: #102010; color: #fff; }
-.hex-wrap.hex-target { background: var(--gold-dim); transition: background 0.1s; }
 .hex-wrap.hex-pending { background: var(--gold); animation: hex-pulse 1.2s ease-in-out infinite; }
 .hex-wrap.hex-pending .hex-inner { background: #1a1400; color: var(--gold-bright); }
 @keyframes hex-pulse {
@@ -192,12 +191,7 @@ body {
   50%       { background: var(--gold-dim); }
 }
 .slot-pending .slot-content { background: #1a1400; }
-.hex-wrap.hex-target .hex-inner { background: #1a1400; color: var(--gold-bright); transition: background 0.1s, color 0.1s; }
 .slot-target { cursor: pointer; }
-.slot-target .slot-content { background: #1a1400; transition: background 0.1s; }
-.slot-target:hover .slot-content { background: #261c00; }
-.slot-target .hex-wrap.hex-target { background: var(--gold); }
-.slot-target:hover .hex-wrap.hex-target .hex-inner { background: #261c00; color: #fff; }
 
 /* ── Buffs ─────────────────────────────────────────────────────────────────── */
 .buffs { display: flex; flex-wrap: wrap; gap: 0.2rem; }
