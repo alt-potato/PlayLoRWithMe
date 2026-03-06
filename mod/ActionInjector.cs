@@ -26,10 +26,15 @@ namespace PlayLoRWithMe
             public bool Ok;
             public string Error;
             public readonly ManualResetEventSlim Done = new ManualResetEventSlim(false);
-            public PendingAction(string json) { Json = json; }
+
+            public PendingAction(string json)
+            {
+                Json = json;
+            }
         }
 
-        private static readonly ConcurrentQueue<PendingAction> _queue = new ConcurrentQueue<PendingAction>();
+        private static readonly ConcurrentQueue<PendingAction> _queue =
+            new ConcurrentQueue<PendingAction>();
 
         /// <summary>
         /// Called from the HTTP server background thread. Blocks until the Unity main
@@ -94,9 +99,15 @@ namespace PlayLoRWithMe
             bool ok;
             switch (type)
             {
-                case "playCard":   ok = DoPlayCard(r, out error);   break;
-                case "removeCard": ok = DoRemoveCard(r, out error); break;
-                case "confirm":    ok = DoConfirm(out error);       break;
+                case "playCard":
+                    ok = DoPlayCard(r, out error);
+                    break;
+                case "removeCard":
+                    ok = DoRemoveCard(r, out error);
+                    break;
+                case "confirm":
+                    ok = DoConfirm(out error);
+                    break;
                 default:
                     error = $"Unknown action: '{type}'";
                     Debug.LogWarning($"[PlayLoRWithMe] {error}");
@@ -146,9 +157,7 @@ namespace PlayLoRWithMe
             }
 
             bool isEgo = r.TryGetInt("isEgo", out int isEgoInt) && isEgoInt != 0;
-            var hand = isEgo
-                ? unit.personalEgoDetail?.GetHand()
-                : unit.allyCardDetail?.GetHand();
+            var hand = isEgo ? unit.personalEgoDetail?.GetHand() : unit.allyCardDetail?.GetHand();
             if (hand == null || cardIndex < 0 || cardIndex >= hand.Count)
             {
                 error = $"No card at {(isEgo ? "ego" : "hand")} index {cardIndex}";

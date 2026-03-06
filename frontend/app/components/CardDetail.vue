@@ -12,16 +12,14 @@
     close – user dismissed the sheet
 -->
 <script setup lang="ts">
-const props = defineProps<{ card: any }>()
-defineEmits<{ close: [] }>()
+const props = defineProps<{ card: any }>();
+defineEmits<{ close: [] }>();
 
 const isEgo = computed(() =>
-  props.card.options?.some((o: string) => o.startsWith('Ego') || o === 'EGO')
-)
-const isExhaust = computed(() =>
-  props.card.options?.includes('ExhaustOnUse')
-)
-const borderColor = computed(() => cardBorderColor(props.card))
+  props.card.options?.some((o: string) => o.startsWith("Ego") || o === "EGO"),
+);
+const isExhaust = computed(() => props.card.options?.includes("ExhaustOnUse"));
+const borderColor = computed(() => cardBorderColor(props.card));
 </script>
 
 <template>
@@ -39,9 +37,12 @@ const borderColor = computed(() => cardBorderColor(props.card))
         <span
           class="tag rarity-tag"
           :style="{ color: borderColor, borderColor: borderColor }"
-        >{{ card.rarity }}</span>
+          >{{ card.rarity }}</span
+        >
         <span v-if="isEgo" class="tag ego-tag">EGO</span>
-        <span v-if="card.emotionLimit > 0" class="tag emotion-tag">Em{{ card.emotionLimit }}+</span>
+        <span v-if="card.emotionLimit > 0" class="tag emotion-tag"
+          >Em{{ card.emotionLimit }}+</span
+        >
         <span v-if="isExhaust" class="tag exhaust-tag">Exhaust</span>
       </div>
     </div>
@@ -152,7 +153,9 @@ const borderColor = computed(() => cardBorderColor(props.card))
   line-height: 1;
   flex-shrink: 0;
 }
-.close-btn:hover { color: var(--crimson-hi); }
+.close-btn:hover {
+  color: var(--crimson-hi);
+}
 
 .card-title {
   font-family: var(--font-display);
@@ -177,10 +180,24 @@ const borderColor = computed(() => cardBorderColor(props.card))
   text-transform: uppercase;
 }
 
-.rarity-tag { background: transparent; }
-.ego-tag    { color: #c62828; border-color: #c62828; background: #1a0505; }
-.emotion-tag { color: var(--gold); border-color: var(--gold-dim); background: transparent; }
-.exhaust-tag { color: #ff9800; border-color: #a05000; background: transparent; }
+.rarity-tag {
+  background: transparent;
+}
+.ego-tag {
+  color: #c62828;
+  border-color: #c62828;
+  background: #1a0505;
+}
+.emotion-tag {
+  color: var(--gold);
+  border-color: var(--gold-dim);
+  background: transparent;
+}
+.exhaust-tag {
+  color: #ff9800;
+  border-color: #a05000;
+  background: transparent;
+}
 
 /* ── Sheet body ──────────────────────────────────────────────────────────── */
 .sheet-body {

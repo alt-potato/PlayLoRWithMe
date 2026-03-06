@@ -11,11 +11,11 @@
 -->
 <script setup lang="ts">
 defineProps<{
-  sc: any
-  targetLabel?: string
-  clash?: boolean
-  myColor?: string
-}>()
+  sc: any;
+  targetLabel?: string;
+  clash?: boolean;
+  myColor?: string;
+}>();
 </script>
 
 <template>
@@ -27,14 +27,11 @@ defineProps<{
         class="sc-target"
         :class="{ 'sc-clash': clash }"
         :style="{ color: clash ? '#e53935' : (myColor ?? '#aaa') }"
-      >{{ targetLabel }}</span>
+        >{{ targetLabel }}</span
+      >
     </div>
     <div v-if="sc.dice?.length" class="sc-dice">
-      <div
-        v-for="(d, i) in sc.dice"
-        :key="i"
-        class="sc-die"
-      >
+      <div v-for="(d, i) in sc.dice" :key="i" class="sc-die">
         <img
           v-if="diceIcon(d.type, d.detail)"
           :src="diceIcon(d.type, d.detail)!"

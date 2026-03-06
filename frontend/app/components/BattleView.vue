@@ -20,9 +20,11 @@ const isSelectPhase = computed(
   () => props.state?.phase === "ApplyLibrarianCardPhase",
 );
 
-const selectingSlotFor = ref<{ unitId: number; cardIndex: number; isEgo: boolean } | null>(
-  null,
-);
+const selectingSlotFor = ref<{
+  unitId: number;
+  cardIndex: number;
+  isEgo: boolean;
+} | null>(null);
 
 const selectingTargetFor = ref<{
   unitId: number;
@@ -42,6 +44,7 @@ const selectingAllyTargetFor = ref<{
 } | null>(null);
 
 const actionError = ref<string | null>(null);
+let errorTimer: ReturnType<typeof setTimeout> | null = null;
 
 watch(
   () => props.state?.phase,
@@ -62,7 +65,7 @@ const ALLY_COLORS = ["#4fc3f7", "#81c784", "#ffb74d", "#ce93d8", "#f48fb1"];
 const allyColors = computed<Record<number, string>>(() => {
   const m: Record<number, string> = {};
   (props.state?.allies ?? []).forEach((a: any, i: number) => {
-    m[a.id] = ALLY_COLORS[i % ALLY_COLORS.length];
+    m[a.id] = ALLY_COLORS[i % ALLY_COLORS.length]!;
   });
   return m;
 });
@@ -77,12 +80,12 @@ const attackMap = computed(() => {
     ...(props.state?.enemies ?? []),
   ];
   allSides.forEach((unit: any, i: number) => {
-    const color = ALLY_COLORS[i % ALLY_COLORS.length];
+    const color = ALLY_COLORS[i % ALLY_COLORS.length]!;
     const name = unit.name ?? unit.keyPage?.name ?? `#${unit.id}`;
     (unit.slottedCards ?? []).forEach((sc: any) => {
       if (sc.targetUnitId == null) return;
-      (m[sc.targetUnitId] ??= {})[sc.targetSlot] ??= [];
-      m[sc.targetUnitId][sc.targetSlot].push({
+      const bySlot = (m[sc.targetUnitId] ??= {});
+      (bySlot[sc.targetSlot] ??= []).push({
         name,
         color,
         range: sc.range ?? "",
@@ -116,6 +119,10 @@ onMounted(() => {
 // ---------------------------------------------------------------------------
 
 async function sendAction(action: object): Promise<boolean> {
+  if (errorTimer) {
+    clearTimeout(errorTimer);
+    errorTimer = null;
+  }
   actionError.value = null;
   try {
     const res = await fetch("/action", {
@@ -124,9 +131,12 @@ async function sendAction(action: object): Promise<boolean> {
       body: JSON.stringify(action),
     });
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
+      const data = await res.json().catch(() => ({}));
       actionError.value = (data as any).error ?? `Server error ${res.status}`;
-      setTimeout(() => { actionError.value = null }, 3000);
+      errorTimer = setTimeout(() => {
+        actionError.value = null;
+        errorTimer = null;
+      }, 3000);
       return false;
     }
     return true;
@@ -200,7 +210,7 @@ async function onAllyTargetClick(targetUnitId: number) {
     targetUnitId,
     ...(isEgo ? { isEgo: 1 } : {}),
   });
-  if (ok) selectingAllyTargetFor.value = null;
+  selectingAllyTargetFor.value = null;
 }
 
 async function onTargetDieClick(targetUnitId: number, targetDiceSlot: number) {
@@ -215,7 +225,7 @@ async function onTargetDieClick(targetUnitId: number, targetDiceSlot: number) {
     targetDiceSlot,
     ...(isEgo ? { isEgo: 1 } : {}),
   });
-  if (ok) selectingTargetFor.value = null;
+  selectingTargetFor.value = null;
 }
 
 function cancelTargeting() {
@@ -226,9 +236,15 @@ function cancelTargeting() {
 
 async function onRemoveCard(unitId: number, diceSlot: number) {
   await sendAction({ type: "removeCard", unitId, diceSlot });
-  if (selectingTargetFor.value?.unitId === unitId && selectingTargetFor.value?.diceSlot === diceSlot)
+  if (
+    selectingTargetFor.value?.unitId === unitId &&
+    selectingTargetFor.value?.diceSlot === diceSlot
+  )
     selectingTargetFor.value = null;
-  if (selectingAllyTargetFor.value?.unitId === unitId && selectingAllyTargetFor.value?.diceSlot === diceSlot)
+  if (
+    selectingAllyTargetFor.value?.unitId === unitId &&
+    selectingAllyTargetFor.value?.diceSlot === diceSlot
+  )
     selectingAllyTargetFor.value = null;
   if (selectingSlotFor.value?.unitId === unitId) selectingSlotFor.value = null;
 }
@@ -366,15 +382,22 @@ provide(BATTLE_CTX, {
     :show-incoming="showIncoming"
     :show-clash="showClash"
     :show-outgoing="showOutgoing"
-    :focus-unit-id="selectingTargetFor?.unitId ?? selectingAllyTargetFor?.unitId ?? null"
+    :focus-unit-id="
+      selectingTargetFor?.unitId ?? selectingAllyTargetFor?.unitId ?? null
+    "
   />
 
   <!-- Ally targeting banner -->
   <Transition name="banner">
-    <div v-if="selectingAllyTargetFor" class="targeting-banner targeting-banner--ally">
+    <div
+      v-if="selectingAllyTargetFor"
+      class="targeting-banner targeting-banner--ally"
+    >
       <span class="targeting-card">{{ selectingAllyTargetFor.cardName }}</span>
       <span class="targeting-sep">·</span>
-      <span class="targeting-slot">slot {{ selectingAllyTargetFor.diceSlot }}</span>
+      <span class="targeting-slot"
+        >slot {{ selectingAllyTargetFor.diceSlot }}</span
+      >
       <span class="targeting-sep">·</span>
       <span class="targeting-hint">select a Librarian</span>
       <button class="targeting-cancel" @click="cancelTargeting">cancel</button>
@@ -516,7 +539,9 @@ provide(BATTLE_CTX, {
   flex: 1;
   white-space: nowrap;
 }
-.targeting-sep { color: var(--border-hi); }
+.targeting-sep {
+  color: var(--border-hi);
+}
 .targeting-cancel {
   margin-left: auto;
   background: transparent;
@@ -529,9 +554,21 @@ provide(BATTLE_CTX, {
   white-space: nowrap;
   flex-shrink: 0;
 }
-.targeting-cancel:hover { border-color: var(--crimson); color: var(--crimson-hi); }
-.banner-enter-active, .banner-leave-active { transition: opacity 0.15s, transform 0.15s; }
-.banner-enter-from, .banner-leave-to { opacity: 0; transform: translateY(-4px); }
+.targeting-cancel:hover {
+  border-color: var(--crimson);
+  color: var(--crimson-hi);
+}
+.banner-enter-active,
+.banner-leave-active {
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+.banner-enter-from,
+.banner-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
 .targeting-banner--ally {
   background: #0a1a0a;
   border-top-color: var(--green-hi);

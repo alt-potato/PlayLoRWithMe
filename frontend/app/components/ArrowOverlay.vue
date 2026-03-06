@@ -21,120 +21,138 @@
 -->
 <script setup lang="ts">
 const props = defineProps<{
-  allies: any[]
-  enemies: any[]
-  showIncoming: boolean
-  showClash: boolean
-  showOutgoing: boolean
-  focusUnitId?: number | null
-}>()
+  allies: any[];
+  enemies: any[];
+  showIncoming: boolean;
+  showClash: boolean;
+  showOutgoing: boolean;
+  focusUnitId?: number | null;
+}>();
 
 interface Arrow {
-  x1: number; y1: number
-  x2: number; y2: number
-  type: 'incoming' | 'clash' | 'outgoing'
-  dashed: boolean
-  srcUnitId: number
-  tgtUnitId: number
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  type: "incoming" | "clash" | "outgoing";
+  dashed: boolean;
+  srcUnitId: number;
+  tgtUnitId: number;
 }
 
-const arrows = ref<Arrow[]>([])
+const arrows = ref<Arrow[]>([]);
 
 // ARROW_COLORS is auto-imported from useBattleDisplay.ts
 
 /** Center of the inner edge of a die: right edge for enemies, left edge for allies. */
-function diePoint(unitId: number, slot: number, allyIds: Set<number>): { x: number; y: number } | null {
-  const el = document.querySelector(`[data-die="${unitId}-${slot}"]`)
-  if (!el) return null
-  const r = el.getBoundingClientRect()
+function diePoint(
+  unitId: number,
+  slot: number,
+  allyIds: Set<number>,
+): { x: number; y: number } | null {
+  const el = document.querySelector(`[data-die="${unitId}-${slot}"]`);
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
   return {
     x: allyIds.has(unitId) ? r.left : r.right,
     y: (r.top + r.bottom) / 2,
-  }
+  };
 }
 
 async function recompute() {
-  await nextTick()
+  await nextTick();
 
-  const allyIds = new Set<number>(props.allies.map((a: any) => a.id))
-  const allUnits = [...props.allies, ...props.enemies]
-  const result: Arrow[] = []
-  const clashSeen = new Set<string>()
+  const allyIds = new Set<number>(props.allies.map((a: any) => a.id));
+  const allUnits = [...props.allies, ...props.enemies];
+  const result: Arrow[] = [];
+  const clashSeen = new Set<string>();
 
   for (const unit of allUnits) {
-    const isAlly = allyIds.has(unit.id)
-    for (const sc of (unit.slottedCards ?? [])) {
-      if (sc.targetUnitId == null) continue
+    const isAlly = allyIds.has(unit.id);
+    for (const sc of unit.slottedCards ?? []) {
+      if (sc.targetUnitId == null) continue;
 
-      const type: Arrow['type'] = sc.clash ? 'clash'
-        : isAlly ? 'outgoing' : 'incoming'
+      const type: Arrow["type"] = sc.clash
+        ? "clash"
+        : isAlly
+          ? "outgoing"
+          : "incoming";
 
       // Clash: deduplicate — only draw ally→enemy direction
-      if (type === 'clash') {
-        if (!isAlly) continue
-        const key = `${unit.id}-${sc.slot}-${sc.targetUnitId}-${sc.targetSlot}`
-        if (clashSeen.has(key)) continue
-        clashSeen.add(key)
+      if (type === "clash") {
+        if (!isAlly) continue;
+        const key = `${unit.id}-${sc.slot}-${sc.targetUnitId}-${sc.targetSlot}`;
+        if (clashSeen.has(key)) continue;
+        clashSeen.add(key);
       }
 
-      const src = diePoint(unit.id, sc.slot, allyIds)
-      const tgt = diePoint(sc.targetUnitId, sc.targetSlot, allyIds)
+      const src = diePoint(unit.id, sc.slot, allyIds);
+      const tgt = diePoint(sc.targetUnitId, sc.targetSlot, allyIds);
       if (src && tgt) {
         result.push({
-          x1: src.x, y1: src.y, x2: tgt.x, y2: tgt.y,
-          type, dashed: false,
-          srcUnitId: unit.id, tgtUnitId: sc.targetUnitId,
-        })
+          x1: src.x,
+          y1: src.y,
+          x2: tgt.x,
+          y2: tgt.y,
+          type,
+          dashed: false,
+          srcUnitId: unit.id,
+          tgtUnitId: sc.targetUnitId,
+        });
       }
 
       // Sub-targets (mass attacks) — same source die, dashed stroke
       if (src) {
-        for (const st of (sc.subTargets ?? [])) {
-          const stTgt = diePoint(st.targetUnitId, st.targetSlot, allyIds)
-          if (stTgt) result.push({
-            x1: src.x, y1: src.y,
-            x2: stTgt.x, y2: stTgt.y,
-            type: isAlly ? 'outgoing' : 'incoming',
-            dashed: true,
-            srcUnitId: unit.id, tgtUnitId: st.targetUnitId,
-          })
+        for (const st of sc.subTargets ?? []) {
+          const stTgt = diePoint(st.targetUnitId, st.targetSlot, allyIds);
+          if (stTgt)
+            result.push({
+              x1: src.x,
+              y1: src.y,
+              x2: stTgt.x,
+              y2: stTgt.y,
+              type: isAlly ? "outgoing" : "incoming",
+              dashed: true,
+              srcUnitId: unit.id,
+              tgtUnitId: st.targetUnitId,
+            });
         }
       }
     }
   }
 
-  arrows.value = result
+  arrows.value = result;
 }
 
 /** S-curve: horizontal tangents at both endpoints; arrows fan naturally by y. */
 function bezierPath(a: Arrow): string {
-  const midX = (a.x1 + a.x2) / 2
-  return `M ${a.x1} ${a.y1} C ${midX} ${a.y1}, ${midX} ${a.y2}, ${a.x2} ${a.y2}`
+  const midX = (a.x1 + a.x2) / 2;
+  return `M ${a.x1} ${a.y1} C ${midX} ${a.y1}, ${midX} ${a.y2}, ${a.x2} ${a.y2}`;
 }
 
 /** True when a focus unit is set and this arrow doesn't involve it. */
 function isDimmed(a: Arrow): boolean {
-  if (props.focusUnitId == null) return false
-  return a.srcUnitId !== props.focusUnitId && a.tgtUnitId !== props.focusUnitId
+  if (props.focusUnitId == null) return false;
+  return a.srcUnitId !== props.focusUnitId && a.tgtUnitId !== props.focusUnitId;
 }
 
-watch(() => [props.allies, props.enemies], recompute, { deep: true })
+watch(() => [props.allies, props.enemies], recompute, { deep: true });
 
 onMounted(() => {
-  recompute()
-  const ro = new ResizeObserver(recompute)
-  ro.observe(document.documentElement)
-  window.addEventListener('scroll', recompute, { passive: true })
+  recompute();
+  const ro = new ResizeObserver(recompute);
+  ro.observe(document.documentElement);
+  window.addEventListener("scroll", recompute, { passive: true });
   onUnmounted(() => {
-    ro.disconnect()
-    window.removeEventListener('scroll', recompute)
-  })
-})
+    ro.disconnect();
+    window.removeEventListener("scroll", recompute);
+  });
+});
 
 function visible(a: Arrow): boolean {
-  if (a.type === 'incoming') return props.showIncoming
-  if (a.type === 'clash')    return props.showClash
-  return props.showOutgoing
+  if (a.type === "incoming") return props.showIncoming;
+  if (a.type === "clash") return props.showClash;
+  return props.showOutgoing;
 }
 </script>
 
@@ -142,10 +160,13 @@ function visible(a: Arrow): boolean {
   <svg class="arrow-svg" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <marker
-        v-for="t in (['incoming', 'clash', 'outgoing'] as const)" :key="t"
+        v-for="t in ['incoming', 'clash', 'outgoing'] as const"
+        :key="t"
         :id="`ah-${t}`"
-        markerWidth="8" markerHeight="6"
-        refX="7" refY="3"
+        markerWidth="8"
+        markerHeight="6"
+        refX="7"
+        refY="3"
         orient="auto"
       >
         <polygon points="0 0, 8 3, 0 6" :fill="ARROW_COLORS[t]" />
@@ -153,8 +174,10 @@ function visible(a: Arrow): boolean {
       <!-- Reverse marker for clash: arrowhead at the source end -->
       <marker
         id="ah-clash-start"
-        markerWidth="8" markerHeight="6"
-        refX="7" refY="3"
+        markerWidth="8"
+        markerHeight="6"
+        refX="7"
+        refY="3"
         orient="auto-start-reverse"
       >
         <polygon points="0 0, 8 3, 0 6" :fill="ARROW_COLORS['clash']" />
@@ -162,7 +185,8 @@ function visible(a: Arrow): boolean {
     </defs>
 
     <path
-      v-for="(a, i) in arrows" :key="i"
+      v-for="(a, i) in arrows"
+      :key="i"
       v-show="visible(a)"
       :d="bezierPath(a)"
       :stroke="ARROW_COLORS[a.type]"

@@ -17,26 +17,29 @@
 
 const props = defineProps<{
   selecting: {
-    unitId: number; cardIndex: number; diceSlot: number;
-    cardName: string; cardRange: string;
-  }
-  enemies: any[]
-}>()
+    unitId: number;
+    cardIndex: number;
+    diceSlot: number;
+    cardName: string;
+    cardRange: string;
+  };
+  enemies: any[];
+}>();
 
 const emit = defineEmits<{
-  pick: [unitId: number, diceSlot: number]
-  cancel: []
-}>()
+  pick: [unitId: number, diceSlot: number];
+  cancel: [];
+}>();
 
 function pick(unitId: number, diceSlot: number) {
-  emit('pick', unitId, diceSlot)
+  emit("pick", unitId, diceSlot);
 }
 
 /** Returns the current state of an enemy die slot based on its slotted card. */
-function dieState(enemy: any, dieSlot: number): 'clash' | 'incoming' | 'empty' {
-  const sc = (enemy.slottedCards ?? []).find((sc: any) => sc.slot === dieSlot)
-  if (!sc) return 'empty'
-  return sc.clash ? 'clash' : 'incoming'
+function dieState(enemy: any, dieSlot: number): "clash" | "incoming" | "empty" {
+  const sc = (enemy.slottedCards ?? []).find((sc: any) => sc.slot === dieSlot);
+  if (!sc) return "empty";
+  return sc.clash ? "clash" : "incoming";
 }
 </script>
 
@@ -49,8 +52,12 @@ function dieState(enemy: any, dieSlot: number): 'clash' | 'incoming' | 'empty' {
     <!-- Header -->
     <div class="sheet-header">
       <span class="card-label">{{ selecting.cardName }}</span>
-      <span v-if="isMassRange(selecting.cardRange)" class="mass-badge">MASS</span>
-      <span class="slot-label">Slot {{ selecting.diceSlot }} &rarr; target</span>
+      <span v-if="isMassRange(selecting.cardRange)" class="mass-badge"
+        >MASS</span
+      >
+      <span class="slot-label"
+        >Slot {{ selecting.diceSlot }} &rarr; target</span
+      >
       <button class="close-btn" @click="emit('cancel')">✕</button>
     </div>
 
@@ -64,7 +71,9 @@ function dieState(enemy: any, dieSlot: number): 'clash' | 'incoming' | 'empty' {
       >
         <div class="enemy-name">
           <span>{{ unit.name ?? unit.keyPage?.name ?? `#${unit.id}` }}</span>
-          <span v-if="!unit.targetable" class="untargetable-label">⚠ untargetable</span>
+          <span v-if="!unit.targetable" class="untargetable-label"
+            >⚠ untargetable</span
+          >
         </div>
         <div class="die-row">
           <button
@@ -73,14 +82,19 @@ function dieState(enemy: any, dieSlot: number): 'clash' | 'incoming' | 'empty' {
             class="die-hex-outer"
             :class="{
               staggered: d.staggered,
-              'die-clash':    !d.staggered && dieState(unit, d.slot) === 'clash',
-              'die-incoming': !d.staggered && dieState(unit, d.slot) === 'incoming',
+              'die-clash': !d.staggered && dieState(unit, d.slot) === 'clash',
+              'die-incoming':
+                !d.staggered && dieState(unit, d.slot) === 'incoming',
             }"
             :disabled="!unit.targetable"
-            :title="d.staggered ? `Target slot ${d.slot} (broken)` : `Target slot ${d.slot}`"
+            :title="
+              d.staggered
+                ? `Target slot ${d.slot} (broken)`
+                : `Target slot ${d.slot}`
+            "
             @click="pick(unit.id, d.slot)"
           >
-            <span class="die-hex-inner">{{ d.staggered ? '✕' : d.value }}</span>
+            <span class="die-hex-inner">{{ d.staggered ? "✕" : d.value }}</span>
           </button>
         </div>
       </div>
@@ -162,17 +176,25 @@ function dieState(enemy: any, dieSlot: number): 'clash' | 'incoming' | 'empty' {
   line-height: 1;
   flex-shrink: 0;
 }
-.close-btn:hover { color: var(--crimson-hi); }
+.close-btn:hover {
+  color: var(--crimson-hi);
+}
 
 /* ── Enemy list ──────────────────────────────────────────────────────────── */
-.enemy-list { display: flex; flex-direction: column; }
+.enemy-list {
+  display: flex;
+  flex-direction: column;
+}
 
 .enemy-section {
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--border);
   transition: opacity 0.15s;
 }
-.enemy-section.untargetable { opacity: 0.4; pointer-events: none; }
+.enemy-section.untargetable {
+  opacity: 0.4;
+  pointer-events: none;
+}
 
 .enemy-name {
   display: flex;
@@ -192,7 +214,11 @@ function dieState(enemy: any, dieSlot: number): 'clash' | 'incoming' | 'empty' {
   font-family: var(--font-body);
 }
 
-.die-row { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.die-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
 
 /* ── Hexagonal die buttons ───────────────────────────────────────────────── */
 
@@ -202,7 +228,7 @@ function dieState(enemy: any, dieSlot: number): 'clash' | 'incoming' | 'empty' {
   align-items: center;
   justify-content: center;
   width: 4.6rem;
-  height: 4.0rem;
+  height: 4rem;
   clip-path: var(--hex);
   background: var(--border-mid);
   border: none;
@@ -210,13 +236,28 @@ function dieState(enemy: any, dieSlot: number): 'clash' | 'incoming' | 'empty' {
   transition: background 0.12s;
   padding: 0;
 }
-.die-hex-outer.die-incoming { background: #2a0a0a; }
-.die-hex-outer.die-incoming:hover:not(:disabled) { background: #7a1010; }
-.die-hex-outer.die-clash { background: #3d2e00; }
-.die-hex-outer.die-clash:hover:not(:disabled) { background: #7a6118; }
-.die-hex-outer.staggered { background: var(--crimson-dim); }
-.die-hex-outer.staggered:hover:not(:disabled) { background: var(--crimson); }
-.die-hex-outer:disabled { opacity: 0.3; cursor: not-allowed; }
+.die-hex-outer.die-incoming {
+  background: #2a0a0a;
+}
+.die-hex-outer.die-incoming:hover:not(:disabled) {
+  background: #7a1010;
+}
+.die-hex-outer.die-clash {
+  background: #3d2e00;
+}
+.die-hex-outer.die-clash:hover:not(:disabled) {
+  background: #7a6118;
+}
+.die-hex-outer.staggered {
+  background: var(--crimson-dim);
+}
+.die-hex-outer.staggered:hover:not(:disabled) {
+  background: var(--crimson);
+}
+.die-hex-outer:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
 
 /* Inner hex = fill */
 .die-hex-inner {
@@ -231,12 +272,26 @@ function dieState(enemy: any, dieSlot: number): 'clash' | 'incoming' | 'empty' {
   font-size: 1.35rem;
   color: var(--text-1);
   pointer-events: none;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 }
-.die-hex-outer.die-incoming:hover:not(:disabled) .die-hex-inner { background: #1a0505; color: #fff; }
-.die-hex-outer.die-clash:hover:not(:disabled) .die-hex-inner { background: #261c00; color: #fff; }
-.die-hex-outer.staggered .die-hex-inner { background: #220808; color: var(--crimson-hi); }
-.die-hex-outer.staggered:hover:not(:disabled) .die-hex-inner { background: #3d0a0a; color: #fff; }
+.die-hex-outer.die-incoming:hover:not(:disabled) .die-hex-inner {
+  background: #1a0505;
+  color: #fff;
+}
+.die-hex-outer.die-clash:hover:not(:disabled) .die-hex-inner {
+  background: #261c00;
+  color: #fff;
+}
+.die-hex-outer.staggered .die-hex-inner {
+  background: #220808;
+  color: var(--crimson-hi);
+}
+.die-hex-outer.staggered:hover:not(:disabled) .die-hex-inner {
+  background: #3d0a0a;
+  color: #fff;
+}
 
 .no-enemies {
   padding: 2rem 1rem;

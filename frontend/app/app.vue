@@ -1,41 +1,45 @@
 <script setup lang="ts">
-type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
+type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
-const status = ref<ConnectionStatus>('connecting')
-const gameState = ref<any>(null)
-const rawJson = ref<string>('—')
+const status = ref<ConnectionStatus>("connecting");
+const gameState = ref<any>(null);
+const rawJson = ref<string>("—");
 
 const statusLabel: Record<ConnectionStatus, string> = {
-  connecting: 'Connecting…',
-  connected: 'Connected',
-  disconnected: 'Disconnected — reconnecting…',
-}
+  connecting: "Connecting…",
+  connected: "Connected",
+  disconnected: "Disconnected — reconnecting…",
+};
 
 useHead({
   link: [
-    { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-    { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+    { rel: "preconnect", href: "https://fonts.googleapis.com" },
+    { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" },
     {
-      rel: 'stylesheet',
-      href: 'https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Noto+Sans:wght@300;400;500&display=swap',
+      rel: "stylesheet",
+      href: "https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Noto+Sans:wght@300;400;500&display=swap",
     },
   ],
-})
+});
 
 onMounted(() => {
-  const es = new EventSource('/events')
-  es.onopen = () => { status.value = 'connected' }
+  const es = new EventSource("/events");
+  es.onopen = () => {
+    status.value = "connected";
+  };
   es.onmessage = (ev: MessageEvent) => {
     try {
-      const parsed = JSON.parse(ev.data as string)
-      gameState.value = parsed
-      rawJson.value = JSON.stringify(parsed, null, 2)
+      const parsed = JSON.parse(ev.data as string);
+      gameState.value = parsed;
+      rawJson.value = JSON.stringify(parsed, null, 2);
     } catch {
-      rawJson.value = ev.data as string
+      rawJson.value = ev.data as string;
     }
-  }
-  es.onerror = () => { status.value = 'disconnected' }
-})
+  };
+  es.onerror = () => {
+    status.value = "disconnected";
+  };
+});
 </script>
 
 <template>
@@ -50,7 +54,9 @@ onMounted(() => {
 
       <div v-else-if="gameState" class="scene-idle">
         <div class="scene-name">{{ gameState.scene }}</div>
-        <div v-if="gameState.uiPhase" class="scene-sub">{{ gameState.uiPhase }}</div>
+        <div v-if="gameState.uiPhase" class="scene-sub">
+          {{ gameState.uiPhase }}
+        </div>
       </div>
 
       <div v-else class="scene-idle">
@@ -68,40 +74,46 @@ onMounted(() => {
 <style>
 /* ── Global design tokens ─────────────────────────────────────────────────── */
 :root {
-  --bg:          #050812;
-  --bg-surface:  #0b0d1e;
-  --bg-card:     #0e1026;
-  --bg-card-2:   #131628;
-  --bg-card-3:   #191c30;
+  --bg: #050812;
+  --bg-surface: #0b0d1e;
+  --bg-card: #0e1026;
+  --bg-card-2: #131628;
+  --bg-card-3: #191c30;
 
-  --border:      #1c1f3c;
-  --border-mid:  #252849;
-  --border-hi:   #31355c;
+  --border: #1c1f3c;
+  --border-mid: #252849;
+  --border-hi: #31355c;
 
-  --gold:        #c9a227;
-  --gold-dim:    #7a6118;
+  --gold: #c9a227;
+  --gold-dim: #7a6118;
   --gold-bright: #e0bb38;
 
-  --crimson:     #8b1a1a;
-  --crimson-hi:  #c62828;
+  --crimson: #8b1a1a;
+  --crimson-hi: #c62828;
   --crimson-dim: #3d0a0a;
 
-  --text-1:      #cdc6b5;
-  --text-2:      #786e5e;
-  --text-3:      #3c3830;
+  --text-1: #cdc6b5;
+  --text-2: #786e5e;
+  --text-3: #3c3830;
 
-  --green-hi:    #2e7d32;
-  --blue-hi:     #1976d2;
+  --green-hi: #2e7d32;
+  --blue-hi: #1976d2;
 
-  --font-display: 'Cinzel', 'Palatino Linotype', serif;
-  --font-body:    'Noto Sans', system-ui, sans-serif;
-  --font-mono:    'Courier New', Courier, monospace;
+  --font-display: "Cinzel", "Palatino Linotype", serif;
+  --font-body: "Noto Sans", system-ui, sans-serif;
+  --font-mono: "Courier New", Courier, monospace;
 
   /* Flat-top hexagon: wider than tall, pointy sides */
   --hex: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 body {
   font-family: var(--font-body);
@@ -112,10 +124,20 @@ body {
   font-size: 16px;
 }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border-hi); }
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-mid);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hi);
+}
 
 /* ── Shared unit card ──────────────────────────────────────────────────────── */
 .unit-card {
@@ -178,23 +200,62 @@ body {
   color: var(--text-1);
   pointer-events: none;
 }
-.hex-wrap.staggered { background: var(--crimson-dim); }
-.hex-wrap.staggered .hex-inner { background: #230808; color: var(--crimson-hi); }
-.hex-wrap.hex-open { background: var(--green-hi); cursor: pointer; transition: background 0.1s; }
-.hex-wrap.hex-open .hex-inner { background: #0c1e0c; color: var(--text-1); transition: background 0.1s, color 0.1s; }
-.hex-wrap.hex-open:hover { background: #4caf50; }
-.hex-wrap.hex-open:hover .hex-inner { background: #102010; color: #fff; }
-.hex-wrap.hex-pending { background: var(--gold); animation: hex-pulse 1.2s ease-in-out infinite; }
-.hex-wrap.hex-pending .hex-inner { background: #1a1400; color: var(--gold-bright); }
-@keyframes hex-pulse {
-  0%, 100% { background: var(--gold); }
-  50%       { background: var(--gold-dim); }
+.hex-wrap.staggered {
+  background: var(--crimson-dim);
 }
-.slot-pending .slot-content { background: #1a1400; }
-.slot-target { cursor: pointer; }
+.hex-wrap.staggered .hex-inner {
+  background: #230808;
+  color: var(--crimson-hi);
+}
+.hex-wrap.hex-open {
+  background: var(--green-hi);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.hex-wrap.hex-open .hex-inner {
+  background: #0c1e0c;
+  color: var(--text-1);
+  transition:
+    background 0.1s,
+    color 0.1s;
+}
+.hex-wrap.hex-open:hover {
+  background: #4caf50;
+}
+.hex-wrap.hex-open:hover .hex-inner {
+  background: #102010;
+  color: #fff;
+}
+.hex-wrap.hex-pending {
+  background: var(--gold);
+  animation: hex-pulse 1.2s ease-in-out infinite;
+}
+.hex-wrap.hex-pending .hex-inner {
+  background: #1a1400;
+  color: var(--gold-bright);
+}
+@keyframes hex-pulse {
+  0%,
+  100% {
+    background: var(--gold);
+  }
+  50% {
+    background: var(--gold-dim);
+  }
+}
+.slot-pending .slot-content {
+  background: #1a1400;
+}
+.slot-target {
+  cursor: pointer;
+}
 
 /* ── Buffs ─────────────────────────────────────────────────────────────────── */
-.buffs { display: flex; flex-wrap: wrap; gap: 0.2rem; }
+.buffs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
 .buff-tag {
   font-size: 0.6rem;
   padding: 0.08rem 0.28rem;
@@ -205,18 +266,51 @@ body {
 }
 
 /* ── Slot card content ─────────────────────────────────────────────────────── */
-.slot-content { min-height: 2.2rem; }
-.slot-filled .slot-content { background: var(--bg-card-2); }
-.slot-open { cursor: pointer; }
-.slot-open .slot-content { background: #0c1e0c; }
-.slot-open:hover .slot-content { background: #102010; }
-.sc-name { color: var(--text-1); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.72rem; }
-.sc-target { white-space: nowrap; font-size: 0.62rem; flex-shrink: 0; color: var(--text-2); font-family: var(--font-mono); }
-.sc-clash { font-weight: bold; color: var(--crimson-hi); }
-.slot-empty { color: var(--text-3); font-style: italic; font-size: 0.68rem; }
+.slot-content {
+  min-height: 2.2rem;
+}
+.slot-filled .slot-content {
+  background: var(--bg-card-2);
+}
+.slot-open {
+  cursor: pointer;
+}
+.slot-open .slot-content {
+  background: #0c1e0c;
+}
+.slot-open:hover .slot-content {
+  background: #102010;
+}
+.sc-name {
+  color: var(--text-1);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+.sc-target {
+  white-space: nowrap;
+  font-size: 0.62rem;
+  flex-shrink: 0;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+}
+.sc-clash {
+  font-weight: bold;
+  color: var(--crimson-hi);
+}
+.slot-empty {
+  color: var(--text-3);
+  font-style: italic;
+  font-size: 0.68rem;
+}
 
 /* ── Collapsibles ──────────────────────────────────────────────────────────── */
-.collapse { margin-top: 0.05rem; }
+.collapse {
+  margin-top: 0.05rem;
+}
 .collapse summary {
   cursor: pointer;
   font-size: 0.66rem;
@@ -227,15 +321,39 @@ body {
   letter-spacing: 0.03em;
   list-style: none;
 }
-.collapse summary:hover { color: var(--text-1); }
-.collapse summary::marker, .collapse summary::-webkit-details-marker { display: none; }
-.collapse summary::before { content: '▸ '; font-size: 0.55rem; color: var(--text-3); }
-details[open] > summary::before { content: '▾ '; }
+.collapse summary:hover {
+  color: var(--text-1);
+}
+.collapse summary::marker,
+.collapse summary::-webkit-details-marker {
+  display: none;
+}
+.collapse summary::before {
+  content: "▸ ";
+  font-size: 0.55rem;
+  color: var(--text-3);
+}
+details[open] > summary::before {
+  content: "▾ ";
+}
 
 /* ── Generic card list (hand, EGO, passives, etc.) ────────────────────────── */
-.clist { display: flex; flex-direction: column; gap: 0.08rem; margin-top: 0.2rem; }
-.centry { display: flex; gap: 0.3rem; align-items: baseline; font-size: 0.7rem; color: var(--text-2); }
-.centry.unavailable { color: var(--text-3); }
+.clist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  margin-top: 0.2rem;
+}
+.centry {
+  display: flex;
+  gap: 0.3rem;
+  align-items: baseline;
+  font-size: 0.7rem;
+  color: var(--text-2);
+}
+.centry.unavailable {
+  color: var(--text-3);
+}
 .centry-cost {
   display: inline-flex;
   align-items: center;
@@ -249,25 +367,77 @@ details[open] > summary::before { content: '▾ '; }
   flex-shrink: 0;
   font-family: var(--font-mono);
 }
-.centry-range { color: var(--text-3); margin-left: auto; font-size: 0.6rem; font-family: var(--font-mono); }
+.centry-range {
+  color: var(--text-3);
+  margin-left: auto;
+  font-size: 0.6rem;
+  font-family: var(--font-mono);
+}
 
 /* ── Unit header meta (light pips + emotion, inline in header) ─────────────── */
-.unit-meta { display: flex; gap: 0.25rem; align-items: center; flex-shrink: 0; }
+.unit-meta {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  flex-shrink: 0;
+}
 
 /* ── Light pips ─────────────────────────────────────────────────────────────── */
-.ap-pips { display: flex; gap: 0.08rem; align-items: center; flex-wrap: wrap; }
-.ap-pip { width: 0.62rem; height: 0.54rem; clip-path: var(--hex); background: var(--border-hi); flex-shrink: 0; transition: background 0.15s; }
-.ap-pip--lit { background: var(--gold); }
-.ap-pip--reserved { background: var(--gold-dim); }
+.ap-pips {
+  display: flex;
+  gap: 0.08rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ap-pip {
+  width: 0.62rem;
+  height: 0.54rem;
+  clip-path: var(--hex);
+  background: var(--border-hi);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.ap-pip--lit {
+  background: var(--gold);
+}
+.ap-pip--reserved {
+  background: var(--gold-dim);
+}
 
 /* ── Emotion display ─────────────────────────────────────────────────────────── */
-.emotion-meta { display: flex; align-items: center; gap: 0.2rem; }
-.em-level { font-family: var(--font-mono); font-size: 0.55rem; color: var(--text-2); white-space: nowrap; flex-shrink: 0; }
-.epips { display: flex; gap: 0.09rem; align-items: center; flex-wrap: wrap; }
-.epip { width: 0.45rem; height: 0.45rem; border-radius: 50%; flex-shrink: 0; }
-.epip--pos { background: #4caf50; }
-.epip--neg { background: #e53935; }
-.epip--empty { background: var(--border-mid); }
+.emotion-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.em-level {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.epips {
+  display: flex;
+  gap: 0.09rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.epip {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.epip--pos {
+  background: #4caf50;
+}
+.epip--neg {
+  background: #e53935;
+}
+.epip--empty {
+  background: var(--border-mid);
+}
 </style>
 
 <style scoped>
@@ -297,12 +467,23 @@ header {
   letter-spacing: 0.16em;
 }
 
-.conn { font-size: 0.68rem; font-family: var(--font-mono); }
-.conn.connecting   { color: var(--text-2); }
-.conn.connected    { color: #4caf50; }
-.conn.disconnected { color: var(--crimson-hi); }
+.conn {
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+}
+.conn.connecting {
+  color: var(--text-2);
+}
+.conn.connected {
+  color: #4caf50;
+}
+.conn.disconnected {
+  color: var(--crimson-hi);
+}
 
-main { flex: 1; }
+main {
+  flex: 1;
+}
 
 .scene-idle {
   display: flex;

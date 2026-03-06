@@ -15,26 +15,18 @@ import type { BattleCtx } from "~/composables/useBattleContext";
 
 const props = defineProps<{ unit: any }>();
 
-const { attackMap, selectingTargetFor, onTargetDieClick } = inject(BATTLE_CTX) as BattleCtx;
+const { attackMap, selectingTargetFor, onTargetDieClick } = inject(
+  BATTLE_CTX,
+) as BattleCtx;
 
 const detailCard = ref<any>(null);
 
 const isTargeting = computed(() => selectingTargetFor.value !== null);
-const canBeTargeted = computed(() => isTargeting.value && props.unit.targetable);
-
-const sortedSlots = computed(() =>
-  [...(props.unit.speedDice ?? [])]
-    .sort((a: any, b: any) => {
-      if (a.staggered !== b.staggered) return a.staggered ? -1 : 1;
-      return b.value - a.value;
-    })
-    .map((d: any) => ({
-      die: d,
-      card:
-        (props.unit.slottedCards ?? []).find((sc: any) => sc.slot === d.slot) ??
-        null,
-    })),
+const canBeTargeted = computed(
+  () => isTargeting.value && props.unit.targetable,
 );
+
+const slotList = computed(() => sortedSlots(props.unit));
 
 function dieColor(sc: any): string {
   if (sc.clash) return ARROW_COLORS.clash;
@@ -57,7 +49,10 @@ const detailsLabel = computed(() => {
 </script>
 
 <template>
-  <div class="unit-card" :class="{ 'unit-card--dim': isTargeting && !canBeTargeted }">
+  <div
+    class="unit-card"
+    :class="{ 'unit-card--dim': isTargeting && !canBeTargeted }"
+  >
     <!-- ── Header ── -->
     <div class="unit-header">
       <!-- row 1: name, turn badge -->
@@ -107,12 +102,15 @@ const detailsLabel = computed(() => {
           :title="`Light: ${unit.playPoint}/${unit.maxPlayPoint} (${unit.reservedPlayPoint ?? 0} reserved)`"
         >
           <span
-            v-for="n in Math.max(0, unit.playPoint - (unit.reservedPlayPoint ?? 0))"
+            v-for="n in Math.max(
+              0,
+              unit.playPoint - (unit.reservedPlayPoint ?? 0),
+            )"
             :key="'f' + n"
             class="ap-pip ap-pip--lit"
           />
           <span
-            v-for="n in (unit.reservedPlayPoint ?? 0)"
+            v-for="n in unit.reservedPlayPoint ?? 0"
             :key="'r' + n"
             class="ap-pip ap-pip--reserved"
           />
@@ -129,30 +127,44 @@ const detailsLabel = computed(() => {
     <UnitStatus :unit="unit" />
 
     <!-- ── Speed dice + slotted cards ── -->
-    <div v-if="sortedSlots.length" class="slot-list">
+    <div v-if="slotList.length" class="slot-list">
       <div
-        v-for="{ die: d, card: sc } in sortedSlots"
+        v-for="{ die: d, card: sc } in slotList"
         :key="d.slot"
         class="slot-row"
         :class="{
           'slot-filled': sc !== null,
           'slot-target': canBeTargeted && !d.staggered,
         }"
-        @click.stop="canBeTargeted && !d.staggered ? onTargetDieClick(unit.id, d.slot) : undefined"
+        @click.stop="
+          canBeTargeted && !d.staggered
+            ? onTargetDieClick(unit.id, d.slot)
+            : undefined
+        "
       >
         <!-- Content: card info + incoming chips (left) -->
         <div class="slot-content">
           <div v-if="sc !== null" class="slot-card-row">
             <SlottedCard
               :sc="sc"
-              :target-label="sc.targetUnitId != null ? `${sc.clash ? '⚔' : '↗'} #${sc.targetUnitId}·${sc.targetSlot}` : undefined"
+              :target-label="
+                sc.targetUnitId != null
+                  ? `${sc.clash ? '⚔' : '↗'} #${sc.targetUnitId}·${sc.targetSlot}`
+                  : undefined
+              "
               :clash="sc.clash"
             />
-            <button class="info-btn" @click.stop="detailCard = sc" title="Card detail">i</button>
+            <button
+              class="info-btn"
+              @click.stop="detailCard = sc"
+              title="Card detail"
+            >
+              i
+            </button>
           </div>
           <div v-if="attackMap[unit.id]?.[d.slot]?.length" class="incoming-row">
             <span
-              v-for="atk in attackMap[unit.id][d.slot]"
+              v-for="atk in attackMap[unit.id]?.[d.slot]"
               :key="atk.name"
               class="incoming-chip"
               :class="{ 'chip-mass': isMassRange(atk.range) }"
@@ -170,10 +182,15 @@ const detailsLabel = computed(() => {
         <!-- Die (protrudes beyond right card edge) -->
         <span
           class="hex-wrap"
-          :class="{ staggered: d.staggered, 'hex-target': canBeTargeted && !d.staggered }"
+          :class="{
+            staggered: d.staggered,
+            'hex-target': canBeTargeted && !d.staggered,
+          }"
           :data-die="`${unit.id}-${d.slot}`"
           :title="`Slot ${d.slot}`"
-          :style="sc !== null && !d.staggered ? { background: dieColor(sc) } : {}"
+          :style="
+            sc !== null && !d.staggered ? { background: dieColor(sc) } : {}
+          "
         >
           <span class="hex-inner">{{ d.staggered ? "✕" : d.value }}</span>
         </span>
@@ -188,7 +205,11 @@ const detailsLabel = computed(() => {
     </div>
 
     <!-- ── Card detail overlay ── -->
-    <CardDetail v-if="detailCard" :card="detailCard" @close="detailCard = null" />
+    <CardDetail
+      v-if="detailCard"
+      :card="detailCard"
+      @close="detailCard = null"
+    />
 
     <!-- ── Collapsed details ── -->
     <details v-if="hasDetails" class="collapse">
@@ -228,10 +249,21 @@ const detailsLabel = computed(() => {
 
 <style scoped>
 /* ── Targetable die highlight ────────────────────────────────────────────── */
-.hex-wrap.hex-target { background: var(--green-hi); transition: background 0.1s; }
-.slot-target:hover .hex-wrap.hex-target { background: #4caf50; }
-.slot-target:hover .hex-wrap.hex-target .hex-inner { background: #102010; color: #fff; }
-.slot-target:hover .slot-content { background: #0c1e0c; transition: background 0.1s; }
+.hex-wrap.hex-target {
+  background: var(--green-hi);
+  transition: background 0.1s;
+}
+.slot-target:hover .hex-wrap.hex-target {
+  background: #4caf50;
+}
+.slot-target:hover .hex-wrap.hex-target .hex-inner {
+  background: #102010;
+  color: #fff;
+}
+.slot-target:hover .slot-content {
+  background: #0c1e0c;
+  transition: background 0.1s;
+}
 
 /* ── Card shell — enemy accent on left ───────────────────────────────────── */
 .unit-card {
@@ -239,7 +271,10 @@ const detailsLabel = computed(() => {
   border-left: 2px solid var(--crimson);
   transition: opacity 0.15s;
 }
-.unit-card--dim { opacity: 0.35; pointer-events: none; }
+.unit-card--dim {
+  opacity: 0.35;
+  pointer-events: none;
+}
 
 /* ── Header — enemy: badge left, name center, meta right ─────────────────── */
 .unit-header {
@@ -293,7 +328,9 @@ const detailsLabel = computed(() => {
   font-weight: bold;
   line-height: 1;
 }
-.info-btn:hover { color: var(--text-1); }
+.info-btn:hover {
+  color: var(--text-1);
+}
 
 /* ── Incoming attack chips ───────────────────────────────────────────────── */
 .incoming-row {

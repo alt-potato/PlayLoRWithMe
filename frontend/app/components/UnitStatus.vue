@@ -28,7 +28,9 @@ defineProps<{ unit: any }>();
         :style="{ width: sgPct(unit) + '%', background: sgColor(unit) }"
       />
     </div>
-    <span class="bar-num">{{ unit.staggerGauge }}/{{ unit.maxStaggerGauge }}</span>
+    <span class="bar-num"
+      >{{ unit.staggerGauge }}/{{ unit.maxStaggerGauge }}</span
+    >
   </div>
 </template>
 

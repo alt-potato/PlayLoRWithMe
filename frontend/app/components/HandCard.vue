@@ -17,34 +17,47 @@
 -->
 <script setup lang="ts">
 const props = defineProps<{
-  card: any
-  selected?: boolean
-  dimmed?: boolean
-  color?: string
-  unusable?: boolean
-}>()
+  card: any;
+  selected?: boolean;
+  dimmed?: boolean;
+  color?: string;
+  unusable?: boolean;
+}>();
 
-const emit = defineEmits<{ click: []; detail: [] }>()
+const emit = defineEmits<{ click: []; detail: [] }>();
 
-let pressTimer: ReturnType<typeof setTimeout> | null = null
-let longPressed = false
+let pressTimer: ReturnType<typeof setTimeout> | null = null;
+let longPressed = false;
 
 function onPressStart() {
-  longPressed = false
+  longPressed = false;
   pressTimer = setTimeout(() => {
-    longPressed = true
-    emit('detail')
-  }, 500)
+    longPressed = true;
+    emit("detail");
+  }, 500);
 }
 
 function onPressEnd() {
-  if (pressTimer) { clearTimeout(pressTimer); pressTimer = null }
+  if (pressTimer) {
+    clearTimeout(pressTimer);
+    pressTimer = null;
+  }
 }
 
+onUnmounted(() => {
+  if (pressTimer) {
+    clearTimeout(pressTimer);
+    pressTimer = null;
+  }
+});
+
 function handleClick() {
-  if (props.unusable) return
-  if (longPressed) { longPressed = false; return }
-  emit('click')
+  if (props.unusable) return;
+  if (longPressed) {
+    longPressed = false;
+    return;
+  }
+  emit("click");
 }
 </script>
 
@@ -74,11 +87,7 @@ function handleClick() {
     </div>
     <span class="hcard-name">{{ card.name }}</span>
     <div v-if="card.dice?.length" class="hcard-dice">
-      <div
-        v-for="(d, i) in card.dice"
-        :key="i"
-        class="hcard-die"
-      >
+      <div v-for="(d, i) in card.dice" :key="i" class="hcard-die">
         <img
           v-if="diceIcon(d.type, d.detail)"
           :src="diceIcon(d.type, d.detail)!"
@@ -99,7 +108,11 @@ function handleClick() {
   flex-shrink: 0;
   width: 3.8rem;
   min-height: 5.6rem;
-  background: linear-gradient(160deg, var(--bg-card-2) 0%, var(--bg-card-3) 100%);
+  background: linear-gradient(
+    160deg,
+    var(--bg-card-2) 0%,
+    var(--bg-card-3) 100%
+  );
   border: 1px solid var(--border-mid);
   display: flex;
   flex-direction: column;
@@ -109,7 +122,10 @@ function handleClick() {
   cursor: pointer;
   position: relative;
   touch-action: manipulation;
-  transition: transform 0.1s, border-color 0.12s, box-shadow 0.12s;
+  transition:
+    transform 0.1s,
+    border-color 0.12s,
+    box-shadow 0.12s;
   user-select: none;
   -webkit-user-select: none;
 }

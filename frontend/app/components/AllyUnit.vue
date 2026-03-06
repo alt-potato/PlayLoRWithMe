@@ -31,25 +31,14 @@ const {
 } = inject(BATTLE_CTX) as BattleCtx;
 
 const isAllyTargeting = computed(
-  () => selectingAllyTargetFor.value !== null && selectingAllyTargetFor.value.unitId !== props.unit.id
+  () =>
+    selectingAllyTargetFor.value !== null &&
+    selectingAllyTargetFor.value.unitId !== props.unit.id,
 );
 
 const myColor = computed(() => allyColors.value[props.unit.id] ?? "#888");
 
-const slots = computed(() =>
-  [...(props.unit.speedDice ?? [])]
-    .sort((a: any, b: any) => {
-      if (a.staggered !== b.staggered) return a.staggered ? -1 : 1;
-      return b.value - a.value;
-    })
-    .map((d: any) => ({
-      die: d,
-      card:
-        (props.unit.slottedCards ?? []).find((sc: any) => sc.slot === d.slot) ??
-        null,
-    })),
-);
-
+const slots = computed(() => sortedSlots(props.unit));
 
 function dieColor(sc: any): string {
   if (sc.clash) return ARROW_COLORS.clash;
@@ -64,15 +53,14 @@ function targetLabel(sc: any): string {
   return `${prefix} ${u?.name ?? `#${sc.targetUnitId}`} ·${sc.targetSlot}`;
 }
 
-const detailCard = ref<any>(null)
-const egoMode = ref(false)
+const detailCard = ref<any>(null);
+const egoMode = ref(false);
 
-const availableEgo = computed(() =>
-  (props.unit.ego ?? []).filter((c: any) => c.available)
-)
-const hasEgo = computed(() => (props.unit.ego?.length ?? 0) > 0)
+const hasEgo = computed(() => (props.unit.ego?.length ?? 0) > 0);
 
-watch(hasEgo, (val) => { if (!val) egoMode.value = false })
+watch(hasEgo, (val) => {
+  if (!val) egoMode.value = false;
+});
 
 const hasDetails = computed(() => {
   const u = props.unit;
@@ -126,12 +114,15 @@ const detailsLabel = computed(() => {
           :title="`Light: ${unit.playPoint}/${unit.maxPlayPoint} (${unit.reservedPlayPoint ?? 0} reserved)`"
         >
           <span
-            v-for="n in Math.max(0, unit.playPoint - (unit.reservedPlayPoint ?? 0))"
+            v-for="n in Math.max(
+              0,
+              unit.playPoint - (unit.reservedPlayPoint ?? 0),
+            )"
             :key="'f' + n"
             class="ap-pip ap-pip--lit"
           />
           <span
-            v-for="n in (unit.reservedPlayPoint ?? 0)"
+            v-for="n in unit.reservedPlayPoint ?? 0"
             :key="'r' + n"
             class="ap-pip ap-pip--reserved"
           />
@@ -182,25 +173,47 @@ const detailsLabel = computed(() => {
         class="slot-row"
         :class="{
           'slot-filled': sc !== null,
-          'slot-open': isSelectPhase && selectingSlotFor?.unitId === unit.id && sc === null && !d.staggered,
-          'slot-pending': isSelectPhase && selectingTargetFor?.unitId === unit.id && selectingTargetFor?.diceSlot === d.slot,
+          'slot-open':
+            isSelectPhase &&
+            selectingSlotFor?.unitId === unit.id &&
+            sc === null &&
+            !d.staggered,
+          'slot-pending':
+            isSelectPhase &&
+            selectingTargetFor?.unitId === unit.id &&
+            selectingTargetFor?.diceSlot === d.slot,
         }"
-        @click.stop="selectingTargetFor?.unitId === unit.id && selectingTargetFor?.diceSlot === d.slot
-          ? cancelTargeting()
-          : isSelectPhase && selectingSlotFor?.unitId === unit.id && sc === null && !d.staggered
-            ? onSlotClick(unit, selectingSlotFor!.cardIndex, d.slot)
-            : undefined"
+        @click.stop="
+          selectingTargetFor?.unitId === unit.id &&
+          selectingTargetFor?.diceSlot === d.slot
+            ? cancelTargeting()
+            : isSelectPhase &&
+                selectingSlotFor?.unitId === unit.id &&
+                sc === null &&
+                !d.staggered
+              ? onSlotClick(unit, selectingSlotFor!.cardIndex, d.slot)
+              : undefined
+        "
       >
         <!-- Hexagonal die (data-die used by ArrowOverlay for coordinate lookup) -->
         <span
           class="hex-wrap"
           :class="{
             staggered: d.staggered,
-            'hex-open': isSelectPhase && selectingSlotFor?.unitId === unit.id && sc === null && !d.staggered,
-            'hex-pending': isSelectPhase && selectingTargetFor?.unitId === unit.id && selectingTargetFor?.diceSlot === d.slot,
+            'hex-open':
+              isSelectPhase &&
+              selectingSlotFor?.unitId === unit.id &&
+              sc === null &&
+              !d.staggered,
+            'hex-pending':
+              isSelectPhase &&
+              selectingTargetFor?.unitId === unit.id &&
+              selectingTargetFor?.diceSlot === d.slot,
           }"
           :data-die="`${unit.id}-${d.slot}`"
-          :style="sc !== null && !d.staggered ? { background: dieColor(sc) } : {}"
+          :style="
+            sc !== null && !d.staggered ? { background: dieColor(sc) } : {}
+          "
         >
           <span class="hex-inner">{{ d.staggered ? "✕" : d.value }}</span>
         </span>
@@ -240,13 +253,15 @@ const detailsLabel = computed(() => {
     <template v-if="isSelectPhase && (unit.hand?.length || hasEgo)">
       <div class="hand-section">
         <div class="hand-header">
-          <span class="section-label">{{ egoMode ? 'EGO' : 'Hand' }}</span>
+          <span class="section-label">{{ egoMode ? "EGO" : "Hand" }}</span>
           <button
             v-if="hasEgo"
             class="ego-toggle"
             :class="{ 'ego-toggle--active': egoMode }"
             @click.stop="egoMode = !egoMode"
-          >EGO</button>
+          >
+            EGO
+          </button>
         </div>
 
         <div class="hand-row">
@@ -255,11 +270,22 @@ const detailsLabel = computed(() => {
               v-for="(c, i) in unit.ego"
               :key="c.id.id + c.id.packageId"
               :card="c"
-              :selected="selectingSlotFor?.unitId === unit.id && selectingSlotFor?.cardIndex === i && selectingSlotFor?.isEgo === true"
-              :dimmed="selectingSlotFor !== null && !(selectingSlotFor.unitId === unit.id && selectingSlotFor.cardIndex === i && selectingSlotFor.isEgo === true)"
+              :selected="
+                selectingSlotFor?.unitId === unit.id &&
+                selectingSlotFor?.cardIndex === i &&
+                selectingSlotFor?.isEgo === true
+              "
+              :dimmed="
+                selectingSlotFor !== null &&
+                !(
+                  selectingSlotFor.unitId === unit.id &&
+                  selectingSlotFor.cardIndex === i &&
+                  selectingSlotFor.isEgo === true
+                )
+              "
               :color="myColor"
               :unusable="c.canUse === false"
-              @click="onCardClick(unit.id, i, true)"
+              @click="onCardClick(unit.id, Number(i), true)"
               @detail="detailCard = c"
             />
           </template>
@@ -268,22 +294,35 @@ const detailsLabel = computed(() => {
               v-for="(c, i) in unit.hand"
               :key="c.id.id + c.id.packageId"
               :card="c"
-              :selected="selectingSlotFor?.unitId === unit.id && selectingSlotFor?.cardIndex === i && !selectingSlotFor?.isEgo"
-              :dimmed="selectingSlotFor !== null && !(selectingSlotFor.unitId === unit.id && selectingSlotFor.cardIndex === i && !selectingSlotFor.isEgo)"
+              :selected="
+                selectingSlotFor?.unitId === unit.id &&
+                selectingSlotFor?.cardIndex === i &&
+                !selectingSlotFor?.isEgo
+              "
+              :dimmed="
+                selectingSlotFor !== null &&
+                !(
+                  selectingSlotFor.unitId === unit.id &&
+                  selectingSlotFor.cardIndex === i &&
+                  !selectingSlotFor.isEgo
+                )
+              "
               :color="myColor"
               :unusable="c.canUse === false"
-              @click="onCardClick(unit.id, i)"
+              @click="onCardClick(unit.id, Number(i))"
               @detail="detailCard = c"
             />
           </template>
         </div>
-
-
       </div>
     </template>
 
     <!-- ── Card detail overlay ── -->
-    <CardDetail v-if="detailCard" :card="detailCard" @close="detailCard = null" />
+    <CardDetail
+      v-if="detailCard"
+      :card="detailCard"
+      @close="detailCard = null"
+    />
 
     <!-- ── Collapsed details ── -->
     <details v-if="hasDetails" class="collapse">
@@ -362,7 +401,9 @@ const detailsLabel = computed(() => {
 .unit-card {
   width: 100%;
   border-right: 2px solid var(--gold-dim);
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 .unit-card--ally-select {
   border-right-color: var(--green-hi);
@@ -453,7 +494,9 @@ const detailsLabel = computed(() => {
   border: 1px solid var(--crimson);
   color: var(--crimson-hi);
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 }
 .ego-toggle--active {
   background: var(--crimson);
@@ -469,7 +512,6 @@ const detailsLabel = computed(() => {
   gap: 0.35rem;
   flex-wrap: wrap;
 }
-
 
 /* ── Detail sub-section labels ───────────────────────────────────────────── */
 .det-label {

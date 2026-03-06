@@ -428,22 +428,24 @@ namespace PlayLoRWithMe
                                     .Add("range", card.GetSpec().Ranged.ToString())
                                     .Add("allyTarget", card.IsOnlyAllyUnit())
                                     .Add("available", available)
-                                    .Add("canUse", available && unit.CheckCardAvailableForPlayer(card));
+                                    .Add(
+                                        "canUse",
+                                        available && unit.CheckCardAvailableForPlayer(card)
+                                    );
                                 WriteCardFields(o, card);
                             });
                         }
                     }
                 );
             }
-
-
         }
 
         private static void WriteCardList(
             JsonWriter w,
             string key,
             List<BattleDiceCardModel> cards,
-            BattleUnitModel unit = null)
+            BattleUnitModel unit = null
+        )
         {
             w.AddArray(
                 key,
@@ -482,15 +484,18 @@ namespace PlayLoRWithMe
             var textId = card.GetTextId();
 
             o.Add("rarity", card.GetRarity().ToString())
-             .Add("emotionLimit", card.GetSpec().emotionLimit);
+                .Add("emotionLimit", card.GetSpec().emotionLimit);
 
             // Options (EGO, ExhaustOnUse, Personal, etc.)
             if (xml.optionList != null && xml.optionList.Count > 0)
-                o.AddArray("options", arr =>
-                {
-                    foreach (var opt in xml.optionList)
-                        arr.AddString(opt.ToString());
-                });
+                o.AddArray(
+                    "options",
+                    arr =>
+                    {
+                        foreach (var opt in xml.optionList)
+                            arr.AddString(opt.ToString());
+                    }
+                );
 
             // Scripted ability description (blank for most normal cards)
             var abilityDesc = descList?.GetAbilityDesc(textId) ?? "";
@@ -499,26 +504,29 @@ namespace PlayLoRWithMe
 
             // Dice behaviours
             if (xml.DiceBehaviourList != null && xml.DiceBehaviourList.Count > 0)
-                o.AddArray("dice", arr =>
-                {
-                    for (int i = 0; i < xml.DiceBehaviourList.Count; i++)
+                o.AddArray(
+                    "dice",
+                    arr =>
                     {
-                        var d = xml.DiceBehaviourList[i];
-                        arr.AddObject(die =>
+                        for (int i = 0; i < xml.DiceBehaviourList.Count; i++)
                         {
-                            die.Add("type", d.Type.ToString())
-                               .Add("detail", d.Detail.ToString())
-                               .Add("min", d.Min)
-                               .Add("max", d.Dice);
-                            // Prefer localized description; fall back to XML Desc attribute
-                            var desc = descList?.GetBehaviourDesc(textId, i) ?? "";
-                            if (string.IsNullOrEmpty(desc))
-                                desc = d.Desc ?? "";
-                            if (!string.IsNullOrEmpty(desc))
-                                die.Add("desc", desc);
-                        });
+                            var d = xml.DiceBehaviourList[i];
+                            arr.AddObject(die =>
+                            {
+                                die.Add("type", d.Type.ToString())
+                                    .Add("detail", d.Detail.ToString())
+                                    .Add("min", d.Min)
+                                    .Add("max", d.Dice);
+                                // Prefer localized description; fall back to XML Desc attribute
+                                var desc = descList?.GetBehaviourDesc(textId, i) ?? "";
+                                if (string.IsNullOrEmpty(desc))
+                                    desc = d.Desc ?? "";
+                                if (!string.IsNullOrEmpty(desc))
+                                    die.Add("desc", desc);
+                            });
+                        }
                     }
-                });
+                );
         }
 
         // -------------------------------------------------------------------------
