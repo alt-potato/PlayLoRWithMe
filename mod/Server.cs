@@ -17,7 +17,7 @@ namespace PlayLoRWithMe
             Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
         );
 
-        private static readonly string WwwRootPath = Path.Combine(ModRootPath, "wwwroot");
+        internal static readonly string WwwRootPath = Path.Combine(ModRootPath, "wwwroot");
 
         private HttpListener _listener;
         private Thread _listenerThread;

@@ -343,14 +343,26 @@ namespace PlayLoRWithMe
                         return;
                     foreach (var buf in list)
                     {
-                        if (buf == null)
+                        if (buf == null || buf.Hide)
                             continue;
                         var kwType = buf.bufType;
                         string typeName =
                             kwType != KeywordBuf.None
                                 ? kwType.ToString()
                                 : buf.GetType().Name.Replace("BattleUnitBuf_", "");
-                        arr.AddObject(o => o.Add("type", typeName).Add("stacks", buf.stack));
+
+                        var iconId = IconCache.EnsureIcon(buf.GetBufIcon());
+                        var desc = buf.bufActivatedText;
+
+                        arr.AddObject(o =>
+                        {
+                            o.Add("type", typeName).Add("stacks", buf.stack);
+                            if (iconId != null)
+                                o.Add("icon", iconId);
+                            if (!string.IsNullOrEmpty(desc))
+                                o.Add("desc", desc);
+                            o.Add("positive", buf.positiveType.ToString());
+                        });
                     }
                 }
             );
@@ -499,7 +511,7 @@ namespace PlayLoRWithMe
                     {
                         foreach (var buf in bufs)
                         {
-                            if (buf == null)
+                            if (buf == null || buf.GetBufIcon() == null)
                                 continue;
                             var label = buf.bufActivatedText;
                             if (string.IsNullOrEmpty(label))
@@ -509,11 +521,14 @@ namespace PlayLoRWithMe
                                         : buf.GetType()
                                             .Name.Replace("BattleDiceCardBuf_", "")
                                             .Replace("CardBuf", "");
+                            var iconId = IconCache.EnsureCardIcon(buf.GetBufIcon());
                             arr.AddObject(o2 =>
                             {
                                 o2.Add("label", label);
                                 if (buf.Stack > 0)
                                     o2.Add("stack", buf.Stack);
+                                if (iconId != null)
+                                    o2.Add("icon", iconId);
                             });
                         }
                     }

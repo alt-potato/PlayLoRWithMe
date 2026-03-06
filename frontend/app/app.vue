@@ -257,12 +257,65 @@ body {
   gap: 0.2rem;
 }
 .buff-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
   font-size: 0.6rem;
-  padding: 0.08rem 0.28rem;
+  padding: 0.08rem 0.25rem 0.08rem 0.15rem;
   background: #1c1000;
   border: 1px solid #4a2800;
   color: #ff9800;
   font-family: var(--font-body);
+  cursor: pointer;
+  user-select: none;
+}
+.buff-tag--positive {
+  background: #0a1a0a;
+  border-color: #2e5c2e;
+  color: #81c784;
+}
+.buff-tag--negative {
+  background: #1a0808;
+  border-color: #5c1a1a;
+  color: #ef9a9a;
+}
+.buff-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.buff-expanded {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+  padding: 0.3rem 0.45rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  font-size: 0.65rem;
+  color: var(--text-2);
+  line-height: 1.4;
+  width: max-content;
+  max-width: 16rem;
+  position: absolute;
+  z-index: 10;
+}
+.buff-expanded-icon {
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.buff-expanded-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.buff-expanded-name {
+  color: var(--text-1);
+  font-weight: 600;
+  margin-bottom: 0.1rem;
 }
 
 /* ── Slot card content ─────────────────────────────────────────────────────── */

@@ -55,6 +55,10 @@ function targetLabel(sc: any): string {
 
 const detailCard = ref<any>(null);
 const egoMode = ref(false);
+const expandedBuff = ref<string | null>(null);
+function toggleBuff(type: string) {
+  expandedBuff.value = expandedBuff.value === type ? null : type;
+}
 
 const hasEgo = computed(() => (props.unit.ego?.length ?? 0) > 0);
 
@@ -253,9 +257,24 @@ function passiveClass(p: any) {
 
     <!-- ── Buffs ── -->
     <div v-if="unit.buffs?.length" class="buffs">
-      <span v-for="b in unit.buffs" :key="b.type" class="buff-tag"
-        >{{ b.type }}×{{ b.stacks }}</span
+      <span
+        v-for="b in unit.buffs"
+        :key="b.type"
+        class="buff-tag"
+        :class="buffClass(b)"
+        style="position: relative;"
+        @click.stop="toggleBuff(b.type)"
       >
+        <img :src="buffIconUrl(b)" :alt="b.type" class="buff-icon" />
+        <span v-if="b.stacks > 1">×{{ b.stacks }}</span>
+        <div v-if="expandedBuff === b.type" class="buff-expanded">
+          <img :src="buffIconUrl(b)" :alt="b.type" class="buff-expanded-icon" />
+          <div class="buff-expanded-text">
+            <div class="buff-expanded-name">{{ b.type }}</div>
+            <div v-if="b.desc">{{ b.desc }}</div>
+          </div>
+        </div>
+      </span>
     </div>
 
     <!-- ── Interactive hand (select phase only) ── -->

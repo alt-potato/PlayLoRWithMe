@@ -51,6 +51,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
     <div class="sheet-body">
       <div v-if="card.bufs?.length" class="token-list">
         <div v-for="(b, i) in card.bufs" :key="i" class="token-entry">
+          <img :src="cardTokenIconUrl(b)" :alt="b.label" class="token-icon" />
           <span class="token-label">{{ b.label }}</span>
           <span v-if="b.stack > 0" class="token-stack">×{{ b.stack }}</span>
         </div>
@@ -217,12 +218,18 @@ const borderColor = computed(() => cardBorderColor(props.card));
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.15rem 0.45rem;
+  padding: 0.15rem 0.35rem 0.15rem 0.2rem;
   background: #0d1a2e;
   border: 1px solid #3d5a80;
   color: #90a4ae;
   font-size: 0.68rem;
   font-family: var(--font-body);
+}
+.token-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .token-stack {

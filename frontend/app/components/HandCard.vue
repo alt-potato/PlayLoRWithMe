@@ -102,7 +102,8 @@ function handleClick() {
     </div>
     <div v-if="card.bufs?.length" class="hcard-tokens">
       <span v-for="(b, i) in card.bufs" :key="i" class="hcard-token">
-        {{ b.label }}{{ b.stack > 0 ? ` ×${b.stack}` : "" }}
+        <img :src="cardTokenIconUrl(b)" :alt="b.label" class="hcard-token-icon" />
+        <span v-if="b.stack > 0" class="hcard-token-stack">×{{ b.stack }}</span>
       </span>
     </div>
   </div>
@@ -243,15 +244,24 @@ function handleClick() {
 }
 
 .hcard-token {
-  font-size: 0.38rem;
-  padding: 0.06rem 0.18rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.08rem;
+  padding: 0.06rem 0.12rem 0.06rem 0.06rem;
   background: #0d1a2e;
   border: 1px solid #3d5a80;
   color: #90a4ae;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-family: var(--font-body);
+}
+
+.hcard-token-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.hcard-token-stack {
+  font-size: 0.4rem;
 }
 </style>

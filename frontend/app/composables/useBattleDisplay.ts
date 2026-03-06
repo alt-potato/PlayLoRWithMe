@@ -154,6 +154,25 @@ export function cardBorderColor(card: any): string {
   return rarityColor(card.rarity);
 }
 
+export function buffIconUrl(b: any): string {
+  return b.icon
+    ? `/assets/buficons/${b.icon}.png`
+    : "/assets/buficons/_default.png";
+}
+
+export function buffClass(b: any): Record<string, boolean> {
+  return {
+    "buff-tag--positive": b.positive === "Positive",
+    "buff-tag--negative": b.positive === "Negative",
+  };
+}
+
+export function cardTokenIconUrl(b: any): string {
+  return b.icon
+    ? `/assets/cardicons/${b.icon}.png`
+    : "/assets/buficons/_default.png";
+}
+
 export const DIE_TYPE_COLORS: Record<string, string> = {
   Atk: "#c62828",
   Def: "#4fc3f7",
