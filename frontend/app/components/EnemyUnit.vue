@@ -217,7 +217,7 @@ function passiveClass(p: any) {
         :key="b.type"
         class="buff-tag"
         :class="buffClass(b)"
-        style="position: relative;"
+        style="position: relative"
         @click.stop="toggleBuff(b.type)"
       >
         <img :src="buffIconUrl(b)" :alt="b.type" class="buff-icon" />
@@ -246,11 +246,12 @@ function passiveClass(p: any) {
       <template v-if="unit.passives?.length">
         <div class="det-label">Passives</div>
         <div class="passive-list">
-          <template
-            v-for="p in unit.passives"
-            :key="p.id.id + p.id.packageId"
-          >
-            <details v-if="p.desc" class="passive-entry" :class="passiveClass(p)">
+          <template v-for="p in unit.passives" :key="p.id.id + p.id.packageId">
+            <details
+              v-if="p.desc"
+              class="passive-entry"
+              :class="passiveClass(p)"
+            >
               <summary class="passive-name">{{ p.name }}</summary>
               <p class="passive-desc">{{ p.desc }}</p>
             </details>

@@ -318,10 +318,10 @@ namespace PlayLoRWithMe
                         {
                             AddLorId(o, "id", p.id);
                             o.Add("name", p.name)
-                             .Add("desc", p.desc)
-                             .Add("rare", p.rare.ToString())
-                             .Add("disabled", p.disabled)
-                             .Add("isNegative", p.isNegative);
+                                .Add("desc", p.desc)
+                                .Add("rare", p.rare.ToString())
+                                .Add("disabled", p.disabled)
+                                .Add("isNegative", p.isNegative);
                         });
                     }
                 }

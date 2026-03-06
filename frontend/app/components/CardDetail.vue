@@ -29,7 +29,9 @@ const borderColor = computed(() => cardBorderColor(props.card));
     <div class="sheet-header" :style="{ borderTopColor: borderColor }">
       <div class="header-top">
         <span class="card-range">{{ card.range }}</span>
-        <span class="cost-badge" :style="costStyle(card) ?? {}">{{ card.cost }}</span>
+        <span class="cost-badge" :style="costStyle(card) ?? {}">{{
+          card.cost
+        }}</span>
         <button class="close-btn" @click="$emit('close')">✕</button>
       </div>
       <div class="card-title">{{ card.name }}</div>

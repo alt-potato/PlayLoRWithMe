@@ -83,7 +83,9 @@ function handleClick() {
   >
     <div class="hcard-header">
       <span class="hcard-range">{{ card.range }}</span>
-      <span class="hcard-cost" :style="costStyle(card) ?? {}">{{ card.cost }}</span>
+      <span class="hcard-cost" :style="costStyle(card) ?? {}">{{
+        card.cost
+      }}</span>
     </div>
     <span class="hcard-name">{{ card.name }}</span>
     <div v-if="card.dice?.length" class="hcard-dice">
@@ -102,7 +104,11 @@ function handleClick() {
     </div>
     <div v-if="card.bufs?.length" class="hcard-tokens">
       <span v-for="(b, i) in card.bufs" :key="i" class="hcard-token">
-        <img :src="cardTokenIconUrl(b)" :alt="b.label" class="hcard-token-icon" />
+        <img
+          :src="cardTokenIconUrl(b)"
+          :alt="b.label"
+          class="hcard-token-icon"
+        />
         <span v-if="b.stack > 0" class="hcard-token-stack">×{{ b.stack }}</span>
       </span>
     </div>

@@ -472,11 +472,21 @@ details[open] > summary::before {
 .passive-entry + .passive-entry {
   border-top: 1px solid var(--border);
 }
-.passive-entry.rarity-uncommon { border-left-color: #56a348; }
-.passive-entry.rarity-rare     { border-left-color: #4169c4; }
-.passive-entry.rarity-unique   { border-left-color: var(--gold); }
-.passive-entry.rarity-special  { border-left-color: var(--crimson-hi); }
-.passive-entry.unavailable { opacity: 0.42; }
+.passive-entry.rarity-uncommon {
+  border-left-color: #56a348;
+}
+.passive-entry.rarity-rare {
+  border-left-color: #4169c4;
+}
+.passive-entry.rarity-unique {
+  border-left-color: var(--gold);
+}
+.passive-entry.rarity-special {
+  border-left-color: var(--crimson-hi);
+}
+.passive-entry.unavailable {
+  opacity: 0.42;
+}
 
 .passive-name {
   font-size: 0.7rem;
