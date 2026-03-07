@@ -99,6 +99,9 @@ export interface BattleCtx {
 
   /** All units (allies + enemies) for name lookups. */
   allUnits: ComputedRef<any[]>;
+
+  /** Called when a remote player picks an abnormality page from the LevelUpUI. */
+  onSelectAbnormality: (cardId: number, targetUnitId?: number) => Promise<void>;
 }
 
 /** InjectionKey used to share BattleCtx from BattleView down to unit components. */

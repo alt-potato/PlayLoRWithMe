@@ -106,6 +106,74 @@ namespace PlayLoRWithMe
                 );
             }
 
+            if (AbnormalitySelectionState.IsActive && AbnormalitySelectionState.Choices != null)
+            {
+                var descList = Singleton<AbnormalityCardDescXmlList>.Instance;
+                w.AddObject(
+                    "abnormalitySelection",
+                    sel =>
+                    {
+                        sel.AddArray(
+                            "choices",
+                            arr =>
+                            {
+                                foreach (var card in AbnormalitySelectionState.Choices)
+                                {
+                                    if (card == null)
+                                        continue;
+                                    // Key is the script-name string (e.g. "bigbird1"), not the int id.
+                                    // Matches EmotionPassiveCardUI.SetTexts which calls GetAbnormalityCard(card.Name).
+                                    var desc = descList?.GetAbnormalityCard(card.Name);
+                                    arr.AddObject(o =>
+                                    {
+                                        o.Add("id", card.id)
+                                            .Add("name", desc?.cardName ?? card.Name)
+                                            .Add("emotionLevel", card.EmotionLevel)
+                                            .Add("targetType", card.TargetType.ToString())
+                                            .Add("state", card.State.ToString());
+                                        if (
+                                            !string.IsNullOrEmpty(desc?.abilityDesc)
+                                            && desc.abilityDesc != "Not found"
+                                        )
+                                            o.Add("desc", desc.abilityDesc);
+                                        if (
+                                            !string.IsNullOrEmpty(desc?.flavorText)
+                                            && desc.flavorText != "Not found"
+                                        )
+                                            o.Add("flavorText", desc.flavorText);
+                                    });
+                                }
+                            }
+                        );
+
+                        // Team emotion state for the selection header
+                        var floor = AbnormalitySelectionState.Floor;
+                        if (floor != null)
+                        {
+                            var team = floor.team;
+                            sel.Add("teamEmotionLevel", team.emotionLevel)
+                                .Add("teamCoin", team.emotionCoinNumber)
+                                .Add("teamCoinMax", team.currentLevelNeedEmotionMaxCoin);
+
+                            // Sum positive/negative coins from alive allies
+                            int pos = 0,
+                                neg = 0;
+                            var bomInner = BattleObjectManager.instance;
+                            if (bomInner != null)
+                                foreach (var u in bomInner.GetAliveList(Faction.Player))
+                                {
+                                    var ed = u?.emotionDetail;
+                                    if (ed == null)
+                                        continue;
+                                    pos += ed.PositiveCoins.Count;
+                                    neg += ed.NegativeCoins.Count;
+                                }
+                            sel.Add("teamPositiveCoins", pos).Add("teamNegativeCoins", neg);
+                        }
+                    }
+                );
+            }
+
             return w.Build();
         }
 

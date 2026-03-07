@@ -360,6 +360,12 @@ async function onRemoveCard(unitId: number, diceSlot: number) {
   if (selectingSlot.value?.unitId === unitId) selectingSlot.value = null;
 }
 
+async function onSelectAbnormality(cardId: number, targetUnitId?: number) {
+  const body: any = { type: "selectAbnormality", cardId };
+  if (targetUnitId !== undefined) body.targetUnitId = targetUnitId;
+  await sendAction(body);
+}
+
 async function onConfirm() {
   await sendAction({ type: "confirm" });
   selectingSlot.value = null;
@@ -392,6 +398,7 @@ provide(BATTLE_CTX, {
   allyColors,
   attackMap,
   allUnits,
+  onSelectAbnormality,
 } satisfies BattleCtx);
 </script>
 
@@ -545,6 +552,20 @@ provide(BATTLE_CTX, {
       selectingAllyTargetFor?.unitId ??
       null
     "
+  />
+
+  <!-- Abnormality page selection overlay -->
+  <AbnormalityPicker
+    v-if="state?.abnormalitySelection"
+    :choices="state.abnormalitySelection.choices"
+    :allies="state?.allies ?? []"
+    :ally-colors="allyColors"
+    :team-emotion-level="state.abnormalitySelection.teamEmotionLevel"
+    :team-coin="state.abnormalitySelection.teamCoin"
+    :team-coin-max="state.abnormalitySelection.teamCoinMax"
+    :team-positive-coins="state.abnormalitySelection.teamPositiveCoins"
+    :team-negative-coins="state.abnormalitySelection.teamNegativeCoins"
+    @select="({ cardId, targetUnitId }) => onSelectAbnormality(cardId, targetUnitId)"
   />
 
   <!-- Ally targeting banner -->

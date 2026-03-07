@@ -174,7 +174,7 @@ export function isDead(unit: any): boolean {
 }
 
 const ROMAN = [
-  "—",
+  "0",
   "I",
   "II",
   "III",

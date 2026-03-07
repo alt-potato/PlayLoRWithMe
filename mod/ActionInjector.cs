@@ -108,6 +108,9 @@ namespace PlayLoRWithMe
                 case "confirm":
                     ok = DoConfirm(out error);
                     break;
+                case "selectAbnormality":
+                    ok = DoSelectAbnormality(r, out error);
+                    break;
                 default:
                     error = $"Unknown action: '{type}'";
                     Debug.LogWarning($"[PlayLoRWithMe] {error}");
@@ -257,6 +260,69 @@ namespace PlayLoRWithMe
 
             sc.CompleteApplyingLibrarianCardPhase(auto: false);
             Debug.Log("[PlayLoRWithMe] confirm");
+            return true;
+        }
+
+        // -------------------------------------------------------------------------
+        // selectAbnormality
+        // -------------------------------------------------------------------------
+
+        private static bool DoSelectAbnormality(JsonReader r, out string error)
+        {
+            error = null;
+            if (!AbnormalitySelectionState.IsActive)
+            {
+                error = "No abnormality selection active";
+                return false;
+            }
+            if (!r.TryGetInt("cardId", out int cardId))
+            {
+                error = "Missing cardId";
+                return false;
+            }
+
+            EmotionCardXmlInfo card = null;
+            var choices = AbnormalitySelectionState.Choices;
+            if (choices != null)
+                foreach (var c in choices)
+                    if (c?.id == cardId)
+                    {
+                        card = c;
+                        break;
+                    }
+
+            if (card == null)
+            {
+                error = $"Card {cardId} not in current choices";
+                return false;
+            }
+
+            BattleUnitModel target = null;
+            if (r.TryGetInt("targetUnitId", out int targetId))
+            {
+                target = FindAlly(targetId);
+                if (target == null)
+                {
+                    error = $"Ally unit {targetId} not found";
+                    return false;
+                }
+            }
+
+            var floor = AbnormalitySelectionState.Floor;
+            if (floor == null)
+            {
+                error = "Floor model unavailable";
+                return false;
+            }
+
+            floor.OnPickPassiveCard(card, target);
+            // Dismiss the in-game LevelUpUI so RoundEndPhase_ChoiceEmotionCard can detect
+            // the selection and queue the next level's choices if the emotion level rose
+            // by more than one in this act (multi-selection case).
+            SingletonBehavior<BattleManagerUI>.Instance?.ui_levelup?.SetRootCanvas(false);
+            Debug.Log(
+                $"[PlayLoRWithMe] selectAbnormality: card={card.Name} target={target?.id.ToString() ?? "all"}"
+            );
             return true;
         }
 

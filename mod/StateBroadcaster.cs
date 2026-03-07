@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
 
@@ -105,5 +106,43 @@ namespace PlayLoRWithMe
         {
             static void Postfix() => Broadcast();
         }
+
+        // ------------------------------------------------------------------
+        // Abnormality page selection
+        // ------------------------------------------------------------------
+
+        // Fires when the level-up UI opens with abnormality card choices.
+        [HarmonyPatch(typeof(LevelUpUI), "Init")]
+        static class Patch_LevelUpInit
+        {
+            static void Prefix(List<EmotionCardXmlInfo> cardList)
+            {
+                AbnormalitySelectionState.IsActive = true;
+                AbnormalitySelectionState.Choices = cardList;
+                AbnormalitySelectionState.Floor =
+                    Singleton<StageController>.Instance?.GetCurrentStageFloorModel();
+                Broadcast();
+            }
+        }
+
+        // Fires when any selection is made (in-game UI or our action injector).
+        [HarmonyPatch(typeof(StageLibraryFloorModel), "OnPickPassiveCard")]
+        static class Patch_OnPickPassiveCard
+        {
+            static void Postfix()
+            {
+                AbnormalitySelectionState.IsActive = false;
+                AbnormalitySelectionState.Choices = null;
+                AbnormalitySelectionState.Floor = null;
+                Broadcast();
+            }
+        }
+    }
+
+    internal static class AbnormalitySelectionState
+    {
+        public static bool IsActive;
+        public static List<EmotionCardXmlInfo> Choices;
+        public static StageLibraryFloorModel Floor;
     }
 }
