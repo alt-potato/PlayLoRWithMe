@@ -351,12 +351,19 @@ namespace PlayLoRWithMe
                                 ? kwType.ToString()
                                 : buf.GetType().Name.Replace("BattleUnitBuf_", "");
 
+                        var name = buf.bufActivatedName;
                         var iconId = IconCache.EnsureIcon(buf.GetBufIcon());
                         var desc = buf.bufActivatedText;
+
+                        // Skip internal buffs with no displayable identity
+                        if (string.IsNullOrEmpty(name) && iconId == null)
+                            continue;
 
                         arr.AddObject(o =>
                         {
                             o.Add("type", typeName).Add("stacks", buf.stack);
+                            if (!string.IsNullOrEmpty(name))
+                                o.Add("name", name);
                             if (iconId != null)
                                 o.Add("icon", iconId);
                             if (!string.IsNullOrEmpty(desc))
