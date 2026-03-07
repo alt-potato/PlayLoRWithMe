@@ -207,6 +207,41 @@ body {
   background: #230808;
   color: var(--crimson-hi);
 }
+.hex-wrap.hex-available {
+  background: var(--border-mid);
+  cursor: pointer;
+  animation: hex-beckon 2.2s ease-in-out infinite;
+}
+.hex-wrap.hex-available .hex-inner {
+  color: var(--gold-dim);
+}
+.hex-wrap.hex-available:hover {
+  animation: none;
+  background: var(--gold-dim);
+}
+.hex-wrap.hex-available:hover .hex-inner {
+  background: #141000;
+  color: var(--gold);
+}
+@keyframes hex-beckon {
+  0%,
+  100% {
+    background: var(--border-mid);
+  }
+  50% {
+    background: #3a2c00;
+  }
+}
+.slot-available {
+  cursor: pointer;
+}
+.slot-available .slot-empty {
+  color: #4a3800;
+  transition: color 0.15s;
+}
+.slot-available:hover .slot-empty {
+  color: var(--gold-dim);
+}
 .hex-wrap.hex-open {
   background: var(--green-hi);
   cursor: pointer;

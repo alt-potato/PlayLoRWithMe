@@ -35,12 +35,19 @@ function onSlotPressStart(sc: any) {
 }
 
 function onSlotPressEnd() {
-  if (slotPressTimer) { clearTimeout(slotPressTimer); slotPressTimer = null; }
+  if (slotPressTimer) {
+    clearTimeout(slotPressTimer);
+    slotPressTimer = null;
+  }
 }
 
 function handleSlotClick(d: any) {
-  if (slotLongPressed) { slotLongPressed = false; return; }
-  if (canBeTargeted.value && !d.staggered) onTargetDieClick(props.unit.id, d.slot);
+  if (slotLongPressed) {
+    slotLongPressed = false;
+    return;
+  }
+  if (canBeTargeted.value && !d.staggered)
+    onTargetDieClick(props.unit.id, d.slot);
 }
 function toggleBuff(type: string) {
   expandedBuff.value = expandedBuff.value === type ? null : type;
@@ -49,6 +56,10 @@ function toggleBuff(type: string) {
 const isTargeting = computed(() => selectingTargetFor.value !== null);
 const canBeTargeted = computed(
   () => isTargeting.value && props.unit.targetable,
+);
+
+const isUnitBroken = computed(
+  () => props.unit.turnState === "BREAK" || isDead(props.unit),
 );
 
 const slotList = computed(() => sortedSlots(props.unit));
@@ -96,8 +107,10 @@ function passiveClass(p: any) {
         }}</span>
         <span
           class="state-badge"
-          :style="{ background: turnColor(unit.turnState) }"
-          >{{ turnLabel(unit.turnState) }}</span
+          :style="{
+            background: isDead(unit) ? '#e53935' : turnColor(unit.turnState),
+          }"
+          >{{ isDead(unit) ? "DEAD" : turnLabel(unit.turnState) }}</span
         >
       </div>
 
@@ -105,7 +118,9 @@ function passiveClass(p: any) {
       <div class="unit-header-2">
         <div class="unit-meta">
           <div v-if="unit.emotionCoins?.max" class="emotion-meta">
-            <span class="em-level">Em{{ unit.emotionLevel }}</span>
+            <span class="em-level"
+              >Em{{ emotionRoman(unit.emotionLevel) }}</span
+            >
             <div class="epips">
               <span
                 v-for="n in unit.emotionCoins.positive"
@@ -167,7 +182,7 @@ function passiveClass(p: any) {
         :key="d.slot"
         class="slot-row"
         :class="{
-          'slot-filled': sc !== null,
+          'slot-filled': sc !== null && !isDead(unit),
           'slot-target': canBeTargeted && !d.staggered,
         }"
         @click.stop="handleSlotClick(d)"
@@ -180,7 +195,7 @@ function passiveClass(p: any) {
       >
         <!-- Content: card info + incoming chips (left) -->
         <div class="slot-content">
-          <div v-if="sc !== null" class="slot-card-row">
+          <div v-if="sc !== null && !isDead(unit)" class="slot-card-row">
             <SlottedCard
               :sc="sc"
               :target-label="
@@ -191,7 +206,10 @@ function passiveClass(p: any) {
               :clash="sc.clash"
             />
           </div>
-          <div v-if="attackMap[unit.id]?.[d.slot]?.length" class="incoming-row">
+          <div
+            v-if="!isDead(unit) && attackMap[unit.id]?.[d.slot]?.length"
+            class="incoming-row"
+          >
             <span
               v-for="atk in attackMap[unit.id]?.[d.slot]"
               :key="atk.name"
@@ -212,16 +230,20 @@ function passiveClass(p: any) {
         <span
           class="hex-wrap"
           :class="{
-            staggered: d.staggered,
+            staggered: d.staggered || isUnitBroken,
             'hex-target': canBeTargeted && !d.staggered,
           }"
           :data-die="`${unit.id}-${d.slot}`"
           :title="`Slot ${d.slot}`"
           :style="
-            sc !== null && !d.staggered ? { background: dieColor(sc) } : {}
+            sc !== null && !d.staggered && !isUnitBroken
+              ? { background: dieColor(sc) }
+              : {}
           "
         >
-          <span class="hex-inner">{{ d.staggered ? "✕" : d.value }}</span>
+          <span class="hex-inner">{{
+            d.staggered || isUnitBroken ? "✕" : d.value || "—"
+          }}</span>
         </span>
       </div>
     </div>
@@ -241,7 +263,7 @@ function passiveClass(p: any) {
         <div v-if="expandedBuff === b.type" class="buff-expanded">
           <img :src="buffIconUrl(b)" :alt="b.type" class="buff-expanded-icon" />
           <div class="buff-expanded-text">
-            <div class="buff-expanded-name">{{ b.type }}</div>
+            <div class="buff-expanded-name">{{ b.name ?? b.type }}</div>
             <div v-if="b.desc">{{ b.desc }}</div>
           </div>
         </div>

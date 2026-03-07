@@ -87,7 +87,15 @@ function handleClick() {
       }}</span>
       <span class="hcard-range">{{ card.range }}</span>
     </div>
-    <span class="hcard-name">{{ card.name }}<span v-if="card.abilityDesc" class="hcard-desc-plus" :title="card.abilityDesc">+</span></span>
+    <span class="hcard-name"
+      >{{ card.name
+      }}<span
+        v-if="card.abilityDesc"
+        class="hcard-desc-plus"
+        :title="card.abilityDesc"
+        >+</span
+      ></span
+    >
     <div v-if="card.dice?.length" class="hcard-dice">
       <div v-for="(d, i) in card.dice" :key="i" class="hcard-die">
         <img
@@ -151,7 +159,6 @@ function handleClick() {
 }
 .hcard--dim {
   opacity: 0.28;
-  pointer-events: none;
 }
 .hcard--unusable {
   opacity: 0.38;

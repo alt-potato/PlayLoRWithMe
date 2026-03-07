@@ -24,13 +24,14 @@ export const ARROW_COLORS = {
 
 /** Maps TurnState enum string → human-readable label. */
 export const TURNSTATE_LABELS: Record<string, string> = {
-  WAIT_CARD: "READY",
   WAIT_TURN: "WAITING",
+  WAIT_CARD: "READY",
+  DOING_ACTION: "ACTING",
   DONE_ACTION: "DONE",
+  DOING_INTERLACE: "CLASHING",
+  DOING_PARRYING: "PARRYING",
+  SKIP_TURN: "SKIP",
   BREAK: "STAGGERED",
-  DEAD: "DEAD",
-  MOVE: "MOVING",
-  STAND_BY: "STANDBY",
 };
 
 /** Human-readable turn state label. */
@@ -40,13 +41,14 @@ export function turnLabel(val: string) {
 
 /** Maps TurnState enum string → badge background colour. */
 export const TURNSTATE_COLORS: Record<string, string> = {
+  WAIT_TURN: "#888",
   WAIT_CARD: "#c9a227",
-  ACTION_WAITING: "#c9a227",
+  DOING_ACTION: "#4fc3f7",
+  DONE_ACTION: "#444",
+  DOING_INTERLACE: "#c9a227",
+  DOING_PARRYING: "#4fc3f7",
+  SKIP_TURN: "#444",
   BREAK: "#e53935",
-  ACTION_BREAK: "#e53935",
-  DEAD: "#444",
-  MOVE: "#888",
-  STAND_BY: "#888",
 };
 
 /** CSS colour for a resistance tier label. */
@@ -165,6 +167,27 @@ export function buffClass(b: any): Record<string, boolean> {
     "buff-tag--positive": b.positive === "Positive",
     "buff-tag--negative": b.positive === "Negative",
   };
+}
+
+export function isDead(unit: any): boolean {
+  return unit.hp <= 0;
+}
+
+const ROMAN = [
+  "—",
+  "I",
+  "II",
+  "III",
+  "IV",
+  "V",
+  "VI",
+  "VII",
+  "VIII",
+  "IX",
+  "X",
+];
+export function emotionRoman(level: number): string {
+  return ROMAN[level] ?? String(level);
 }
 
 export function cardTokenIconUrl(b: any): string {

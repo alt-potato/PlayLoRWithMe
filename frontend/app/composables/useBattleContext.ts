@@ -18,13 +18,12 @@ export interface BattleCtx {
   isSelectPhase: ComputedRef<boolean>;
 
   /**
-   * Set when a hand card is tapped first (card-first flow).
-   * Cleared when the player picks a slot or cancels.
+   * Set when the player taps an empty speed die slot (step 1 of slot-first flow).
+   * Cleared when the player picks a card, cancels, or phase changes.
    */
-  selectingSlotFor: Ref<{
+  selectingSlot: Ref<{
     unitId: number;
-    cardIndex: number;
-    isEgo: boolean;
+    diceSlot: number;
   } | null>;
 
   /**
@@ -53,19 +52,14 @@ export interface BattleCtx {
     cardName: string;
   } | null>;
 
-  /** Toggle card selection; second tap on same card cancels. */
+  /** Called when a hand card is tapped (slot-first step 2). */
   onCardClick: (unitId: number, cardIndex: number, isEgo?: boolean) => void;
 
   /**
-   * Called when the player picks a dice slot to play a card into.
-   * For Instance-range cards the action is sent immediately (no target needed).
-   * For all other ranges it transitions to targeting mode.
+   * Called when the player taps an empty speed die slot (slot-first step 1).
+   * Toggles selection on same slot; replaces selection on a different slot.
    */
-  onSlotClick: (
-    unit: any,
-    cardIndex: number,
-    diceSlot: number,
-  ) => Promise<void>;
+  onSlotSelectClick: (unit: any, diceSlot: number) => void;
 
   /** Called when the player picks any unit/die as the target. */
   onTargetDieClick: (

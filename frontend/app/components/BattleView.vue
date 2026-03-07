@@ -20,10 +20,9 @@ const isSelectPhase = computed(
   () => props.state?.phase === "ApplyLibrarianCardPhase",
 );
 
-const selectingSlotFor = ref<{
+const selectingSlot = ref<{
   unitId: number;
-  cardIndex: number;
-  isEgo: boolean;
+  diceSlot: number;
 } | null>(null);
 
 const selectingTargetFor = ref<{
@@ -49,7 +48,7 @@ let errorTimer: ReturnType<typeof setTimeout> | null = null;
 watch(
   () => props.state?.phase,
   () => {
-    selectingSlotFor.value = null;
+    selectingSlot.value = null;
     selectingTargetFor.value = null;
     selectingAllyTargetFor.value = null;
     actionError.value = null;
@@ -80,6 +79,7 @@ const attackMap = computed(() => {
     ...(props.state?.enemies ?? []),
   ];
   allSides.forEach((unit: any, i: number) => {
+    if (isDead(unit)) return;
     const color = ALLY_COLORS[i % ALLY_COLORS.length]!;
     const name = unit.name ?? unit.keyPage?.name ?? `#${unit.id}`;
     (unit.slottedCards ?? []).forEach((sc: any) => {
@@ -99,6 +99,94 @@ const allUnits = computed(() => [
   ...(props.state?.allies ?? []),
   ...(props.state?.enemies ?? []),
 ]);
+
+// ---------------------------------------------------------------------------
+// Unit display order (manual reordering + dead-to-bottom)
+// ---------------------------------------------------------------------------
+
+const allyOrder = ref<number[]>([]);
+const enemyOrder = ref<number[]>([]);
+
+function syncOrder(order: Ref<number[]>, units: any[] | undefined) {
+  if (!units) return;
+  const ids = units.map((u: any) => u.id);
+  order.value = [
+    ...order.value.filter((id) => ids.includes(id)),
+    ...ids.filter((id) => !order.value.includes(id)),
+  ];
+}
+
+watch(
+  () => props.state?.allies,
+  (u) => syncOrder(allyOrder, u),
+  { immediate: true },
+);
+watch(
+  () => props.state?.enemies,
+  (u) => syncOrder(enemyOrder, u),
+  { immediate: true },
+);
+
+function makeSorted(units: Ref<any[]>, order: Ref<number[]>) {
+  return computed(() =>
+    [...units.value].sort((a: any, b: any) => {
+      const ad = isDead(a) ? 1 : 0,
+        bd = isDead(b) ? 1 : 0;
+      if (ad !== bd) return ad - bd;
+      return order.value.indexOf(a.id) - order.value.indexOf(b.id);
+    }),
+  );
+}
+
+const sortedAllies = makeSorted(
+  computed(() => props.state?.allies ?? []),
+  allyOrder,
+);
+const sortedEnemies = makeSorted(
+  computed(() => props.state?.enemies ?? []),
+  enemyOrder,
+);
+
+function moveUnit(
+  order: Ref<number[]>,
+  sorted: any[],
+  unitId: number,
+  dir: -1 | 1,
+) {
+  const living = sorted.filter((u: any) => !isDead(u));
+  const di = living.findIndex((u: any) => u.id === unitId);
+  const ni = di + dir;
+  if (ni < 0 || ni >= living.length) return;
+  const arr = [...order.value];
+  const ia = arr.indexOf(unitId),
+    ib = arr.indexOf(living[ni].id);
+  if (ia < 0 || ib < 0) return;
+  [arr[ia], arr[ib]] = [arr[ib]!, arr[ia]!];
+  order.value = arr;
+}
+
+function canMoveUp(sorted: any[], unit: any) {
+  if (isDead(unit)) return false;
+  return (
+    sorted
+      .filter((u: any) => !isDead(u))
+      .findIndex((u: any) => u.id === unit.id) > 0
+  );
+}
+
+function canMoveDown(sorted: any[], unit: any) {
+  if (isDead(unit)) return false;
+  const living = sorted.filter((u: any) => !isDead(u));
+  const i = living.findIndex((u: any) => u.id === unit.id);
+  return i >= 0 && i < living.length - 1;
+}
+
+function moveAlly(unitId: number, dir: -1 | 1) {
+  moveUnit(allyOrder, sortedAllies.value, unitId, dir);
+}
+function moveEnemy(unitId: number, dir: -1 | 1) {
+  moveUnit(enemyOrder, sortedEnemies.value, unitId, dir);
+}
 
 // ---------------------------------------------------------------------------
 // Screen width — only show arrow overlay on wide screens
@@ -151,37 +239,43 @@ async function sendAction(action: object): Promise<boolean> {
 // ---------------------------------------------------------------------------
 
 function onCardClick(unitId: number, cardIndex: number, isEgo = false) {
-  if (
-    selectingSlotFor.value?.unitId === unitId &&
-    selectingSlotFor.value?.cardIndex === cardIndex &&
-    selectingSlotFor.value?.isEgo === isEgo
-  ) {
-    selectingSlotFor.value = null;
-  } else {
-    selectingSlotFor.value = { unitId, cardIndex, isEgo };
+  // Step 2 re-route: already in targeting for this unit → switch card
+  if (selectingTargetFor.value?.unitId === unitId) {
+    const diceSlot = selectingTargetFor.value.diceSlot;
     selectingTargetFor.value = null;
+    routeCard(unitId, cardIndex, isEgo, diceSlot);
+    return;
   }
+  // Step 1 → 2: a slot for this unit must be selected first
+  if (!selectingSlot.value || selectingSlot.value.unitId !== unitId) return;
+  const diceSlot = selectingSlot.value.diceSlot;
+  selectingSlot.value = null;
+  routeCard(unitId, cardIndex, isEgo, diceSlot);
 }
 
-async function onSlotClick(unit: any, cardIndex: number, diceSlot: number) {
-  const isEgo = selectingSlotFor.value?.isEgo ?? false;
-  selectingSlotFor.value = null;
+function routeCard(
+  unitId: number,
+  cardIndex: number,
+  isEgo: boolean,
+  diceSlot: number,
+) {
+  const unit = props.state?.allies?.find((u: any) => u.id === unitId);
+  if (!unit) return;
   const cardList = isEgo ? (unit.ego ?? []) : (unit.hand ?? []);
   const card = cardList[cardIndex];
   if (card?.range === "Instance") {
     if (card?.allyTarget) {
-      // Ally-targeting instant: need the player to pick an ally before sending
       selectingAllyTargetFor.value = {
-        unitId: unit.id,
+        unitId,
         cardIndex,
         isEgo,
         diceSlot,
         cardName: card?.name ?? "?",
       };
     } else {
-      await sendAction({
+      sendAction({
         type: "playCard",
-        unitId: unit.id,
+        unitId,
         cardIndex,
         diceSlot,
         ...(isEgo ? { isEgo: 1 } : {}),
@@ -189,13 +283,30 @@ async function onSlotClick(unit: any, cardIndex: number, diceSlot: number) {
     }
   } else {
     selectingTargetFor.value = {
-      unitId: unit.id,
+      unitId,
       cardIndex,
       isEgo,
       diceSlot,
       cardName: card?.name ?? "?",
       cardRange: card?.range ?? "",
     };
+  }
+}
+
+function onSlotSelectClick(unit: any, diceSlot: number) {
+  // In step 2, any slot click cancels
+  if (selectingTargetFor.value || selectingAllyTargetFor.value) {
+    cancelTargeting();
+    return;
+  }
+  // Toggle: same slot deselects
+  if (
+    selectingSlot.value?.unitId === unit.id &&
+    selectingSlot.value?.diceSlot === diceSlot
+  ) {
+    selectingSlot.value = null;
+  } else {
+    selectingSlot.value = { unitId: unit.id, diceSlot };
   }
 }
 
@@ -229,9 +340,9 @@ async function onTargetDieClick(targetUnitId: number, targetDiceSlot: number) {
 }
 
 function cancelTargeting() {
+  selectingSlot.value = null;
   selectingTargetFor.value = null;
   selectingAllyTargetFor.value = null;
-  selectingSlotFor.value = null;
 }
 
 async function onRemoveCard(unitId: number, diceSlot: number) {
@@ -246,12 +357,12 @@ async function onRemoveCard(unitId: number, diceSlot: number) {
     selectingAllyTargetFor.value?.diceSlot === diceSlot
   )
     selectingAllyTargetFor.value = null;
-  if (selectingSlotFor.value?.unitId === unitId) selectingSlotFor.value = null;
+  if (selectingSlot.value?.unitId === unitId) selectingSlot.value = null;
 }
 
 async function onConfirm() {
   await sendAction({ type: "confirm" });
-  selectingSlotFor.value = null;
+  selectingSlot.value = null;
   selectingTargetFor.value = null;
 }
 
@@ -269,11 +380,11 @@ const showOutgoing = ref(true);
 
 provide(BATTLE_CTX, {
   isSelectPhase,
-  selectingSlotFor,
+  selectingSlot,
   selectingTargetFor,
   selectingAllyTargetFor,
   onCardClick,
-  onSlotClick,
+  onSlotSelectClick,
   onTargetDieClick,
   onAllyTargetClick,
   onRemoveCard,
@@ -360,17 +471,63 @@ provide(BATTLE_CTX, {
     but it gets confusing since this is not actually a stage. please understand.
     (i don't think i actually use the terms "left" and "right" here, but preempting, yknow?)
   -->
-  <div class="stage">
+  <div class="stage" @click="cancelTargeting">
     <section class="wing wing--enemy">
       <h2 class="wing-heading">Guests</h2>
-      <EnemyUnit v-for="unit in state.enemies" :key="unit.id" :unit="unit" />
+      <div
+        v-for="unit in sortedEnemies"
+        :key="unit.id"
+        class="unit-slot"
+        :class="{ 'unit-slot--dead': isDead(unit) }"
+      >
+        <div class="unit-reorder">
+          <button
+            class="reorder-btn"
+            :disabled="!canMoveUp(sortedEnemies, unit)"
+            @click.stop="moveEnemy(unit.id, -1)"
+          >
+            ▲
+          </button>
+          <button
+            class="reorder-btn"
+            :disabled="!canMoveDown(sortedEnemies, unit)"
+            @click.stop="moveEnemy(unit.id, 1)"
+          >
+            ▼
+          </button>
+        </div>
+        <EnemyUnit :unit="unit" style="flex: 1; min-width: 0" />
+      </div>
     </section>
 
     <section class="stage-center"></section>
 
     <section class="wing wing--ally">
       <h2 class="wing-heading wing-heading--ally">Librarians</h2>
-      <AllyUnit v-for="unit in state.allies" :key="unit.id" :unit="unit" />
+      <div
+        v-for="unit in sortedAllies"
+        :key="unit.id"
+        class="unit-slot"
+        :class="{ 'unit-slot--dead': isDead(unit) }"
+      >
+        <AllyUnit :unit="unit" style="flex: 1; min-width: 0" />
+        <div class="unit-reorder">
+          <button
+            class="reorder-btn"
+            :disabled="!canMoveUp(sortedAllies, unit)"
+            @click.stop="moveAlly(unit.id, -1)"
+          >
+            ▲
+          </button>
+          <button
+            class="reorder-btn"
+            :disabled="!canMoveDown(sortedAllies, unit)"
+            @click.stop="moveAlly(unit.id, 1)"
+          >
+            ▼
+          </button>
+        </div>
+      </div>
     </section>
   </div>
 
@@ -383,7 +540,10 @@ provide(BATTLE_CTX, {
     :show-clash="showClash"
     :show-outgoing="showOutgoing"
     :focus-unit-id="
-      selectingTargetFor?.unitId ?? selectingAllyTargetFor?.unitId ?? null
+      selectingSlot?.unitId ??
+      selectingTargetFor?.unitId ??
+      selectingAllyTargetFor?.unitId ??
+      null
     "
   />
 
@@ -618,6 +778,45 @@ provide(BATTLE_CTX, {
   gap: 0.5rem;
   min-width: 0;
   max-width: 28rem;
+}
+
+.unit-slot {
+  display: flex;
+  width: 100%;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0.2rem;
+}
+
+.unit-slot--dead {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.unit-reorder {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.1rem;
+  flex-shrink: 0;
+}
+
+.reorder-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  font-size: 0.55rem;
+  line-height: 1;
+  padding: 0.15rem 0.1rem;
+  cursor: pointer;
+  display: block;
+}
+.reorder-btn:hover:not(:disabled) {
+  color: var(--text-1);
+}
+.reorder-btn:disabled {
+  opacity: 0.2;
+  cursor: default;
 }
 
 .wing-heading {

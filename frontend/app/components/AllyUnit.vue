@@ -18,11 +18,11 @@ const props = defineProps<{ unit: any }>();
 
 const {
   isSelectPhase,
-  selectingSlotFor,
+  selectingSlot,
   selectingTargetFor,
   selectingAllyTargetFor,
   onCardClick,
-  onSlotClick,
+  onSlotSelectClick,
   onRemoveCard,
   onAllyTargetClick,
   cancelTargeting,
@@ -34,6 +34,10 @@ const isAllyTargeting = computed(
   () =>
     selectingAllyTargetFor.value !== null &&
     selectingAllyTargetFor.value.unitId !== props.unit.id,
+);
+
+const isUnitBroken = computed(
+  () => props.unit.turnState === "BREAK" || isDead(props.unit),
 );
 
 const myColor = computed(() => allyColors.value[props.unit.id] ?? "#888");
@@ -56,6 +60,22 @@ function targetLabel(sc: any): string {
 const detailCard = ref<any>(null);
 const egoMode = ref(false);
 const expandedBuff = ref<string | null>(null);
+const handExpanded = ref(false);
+
+const shouldAutoExpand = computed(
+  () =>
+    selectingSlot.value?.unitId === props.unit.id ||
+    selectingTargetFor.value?.unitId === props.unit.id ||
+    selectingAllyTargetFor.value?.unitId === props.unit.id,
+);
+
+const showHandCards = computed(
+  () => handExpanded.value || shouldAutoExpand.value,
+);
+
+watch(isSelectPhase, () => {
+  handExpanded.value = false;
+});
 
 let slotLongPressed = false;
 let slotPressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -70,16 +90,20 @@ function onSlotPressStart(sc: any) {
 }
 
 function onSlotPressEnd() {
-  if (slotPressTimer) { clearTimeout(slotPressTimer); slotPressTimer = null; }
+  if (slotPressTimer) {
+    clearTimeout(slotPressTimer);
+    slotPressTimer = null;
+  }
 }
 
 function handleSlotClick(d: any, sc: any) {
-  if (slotLongPressed) { slotLongPressed = false; return; }
-  if (selectingTargetFor.value?.unitId === props.unit.id && selectingTargetFor.value?.diceSlot === d.slot) {
-    cancelTargeting();
-  } else if (isSelectPhase.value && selectingSlotFor.value?.unitId === props.unit.id && sc === null && !d.staggered) {
-    onSlotClick(props.unit, selectingSlotFor.value!.cardIndex, d.slot);
+  if (slotLongPressed) {
+    slotLongPressed = false;
+    return;
   }
+  if (!isSelectPhase.value) return;
+  if (sc !== null || d.staggered || isUnitBroken.value) return;
+  onSlotSelectClick(props.unit, d.slot);
 }
 function toggleBuff(type: string) {
   expandedBuff.value = expandedBuff.value === type ? null : type;
@@ -136,8 +160,10 @@ function passiveClass(p: any) {
       <div class="unit-header-1">
         <span
           class="state-badge"
-          :style="{ background: turnColor(unit.turnState) }"
-          >{{ turnLabel(unit.turnState) }}</span
+          :style="{
+            background: isDead(unit) ? '#e53935' : turnColor(unit.turnState),
+          }"
+          >{{ isDead(unit) ? "DEAD" : turnLabel(unit.turnState) }}</span
         >
         <span class="unit-name">{{
           unit.name ?? unit.keyPage?.name ?? `Unit #${unit.id}`
@@ -194,7 +220,9 @@ function passiveClass(p: any) {
                 class="epip epip--empty"
               />
             </div>
-            <span class="em-level">Em{{ unit.emotionLevel }}</span>
+            <span class="em-level"
+              >Em{{ emotionRoman(unit.emotionLevel) }}</span
+            >
           </div>
         </div>
       </div>
@@ -204,18 +232,26 @@ function passiveClass(p: any) {
     <UnitStatus :unit="unit" />
 
     <!-- ── Speed dice + slotted cards ── -->
-    <div v-if="slots.length" class="slot-list">
+    <div v-if="slots.length && !isDead(unit)" class="slot-list">
       <div
         v-for="{ die: d, card: sc } in slots"
         :key="d.slot"
         class="slot-row"
         :class="{
           'slot-filled': sc !== null,
+          'slot-available':
+            isSelectPhase &&
+            selectingSlot === null &&
+            sc === null &&
+            !d.staggered &&
+            !isUnitBroken,
           'slot-open':
             isSelectPhase &&
-            selectingSlotFor?.unitId === unit.id &&
+            selectingSlot?.unitId === unit.id &&
+            selectingSlot?.diceSlot === d.slot &&
             sc === null &&
-            !d.staggered,
+            !d.staggered &&
+            !isUnitBroken,
           'slot-pending':
             isSelectPhase &&
             selectingTargetFor?.unitId === unit.id &&
@@ -233,12 +269,20 @@ function passiveClass(p: any) {
         <span
           class="hex-wrap"
           :class="{
-            staggered: d.staggered,
+            staggered: d.staggered || isUnitBroken,
+            'hex-available':
+              isSelectPhase &&
+              selectingSlot === null &&
+              sc === null &&
+              !d.staggered &&
+              !isUnitBroken,
             'hex-open':
               isSelectPhase &&
-              selectingSlotFor?.unitId === unit.id &&
+              selectingSlot?.unitId === unit.id &&
+              selectingSlot?.diceSlot === d.slot &&
               sc === null &&
-              !d.staggered,
+              !d.staggered &&
+              !isUnitBroken,
             'hex-pending':
               isSelectPhase &&
               selectingTargetFor?.unitId === unit.id &&
@@ -246,10 +290,14 @@ function passiveClass(p: any) {
           }"
           :data-die="`${unit.id}-${d.slot}`"
           :style="
-            sc !== null && !d.staggered ? { background: dieColor(sc) } : {}
+            sc !== null && !d.staggered && !isUnitBroken
+              ? { background: dieColor(sc) }
+              : {}
           "
         >
-          <span class="hex-inner">{{ d.staggered ? "✕" : d.value }}</span>
+          <span class="hex-inner">{{
+            d.staggered || isUnitBroken ? "✕" : d.value || "—"
+          }}</span>
         </span>
 
         <div class="slot-content">
@@ -291,7 +339,7 @@ function passiveClass(p: any) {
         <div v-if="expandedBuff === b.type" class="buff-expanded">
           <img :src="buffIconUrl(b)" :alt="b.type" class="buff-expanded-icon" />
           <div class="buff-expanded-text">
-            <div class="buff-expanded-name">{{ b.type }}</div>
+            <div class="buff-expanded-name">{{ b.name ?? b.type }}</div>
             <div v-if="b.desc">{{ b.desc }}</div>
           </div>
         </div>
@@ -301,8 +349,16 @@ function passiveClass(p: any) {
     <!-- ── Interactive hand (select phase only) ── -->
     <template v-if="isSelectPhase && (unit.hand?.length || hasEgo)">
       <div class="hand-section">
-        <div class="hand-header">
-          <span class="section-label">{{ egoMode ? "EGO" : "Hand" }}</span>
+        <div class="hand-header" @click.stop="handExpanded = !handExpanded">
+          <span class="section-label">
+            <span class="hand-chevron">{{ showHandCards ? "▾" : "▸" }}</span>
+            {{ egoMode ? "EGO" : "Hand" }}
+            <span class="hand-count"
+              >({{
+                egoMode ? (unit.ego?.length ?? 0) : (unit.hand?.length ?? 0)
+              }})</span
+            >
+          </span>
           <button
             v-if="hasEgo"
             class="ego-toggle"
@@ -313,56 +369,62 @@ function passiveClass(p: any) {
           </button>
         </div>
 
-        <div class="hand-row">
-          <template v-if="egoMode">
-            <HandCard
-              v-for="(c, i) in unit.ego"
-              :key="c.id.id + c.id.packageId"
-              :card="c"
-              :selected="
-                selectingSlotFor?.unitId === unit.id &&
-                selectingSlotFor?.cardIndex === i &&
-                selectingSlotFor?.isEgo === true
-              "
-              :dimmed="
-                selectingSlotFor !== null &&
-                !(
-                  selectingSlotFor.unitId === unit.id &&
-                  selectingSlotFor.cardIndex === i &&
-                  selectingSlotFor.isEgo === true
-                )
-              "
-              :color="myColor"
-              :unusable="c.canUse === false"
-              @click="onCardClick(unit.id, Number(i), true)"
-              @detail="detailCard = c"
-            />
-          </template>
-          <template v-else>
-            <HandCard
-              v-for="(c, i) in unit.hand"
-              :key="c.id.id + c.id.packageId"
-              :card="c"
-              :selected="
-                selectingSlotFor?.unitId === unit.id &&
-                selectingSlotFor?.cardIndex === i &&
-                !selectingSlotFor?.isEgo
-              "
-              :dimmed="
-                selectingSlotFor !== null &&
-                !(
-                  selectingSlotFor.unitId === unit.id &&
-                  selectingSlotFor.cardIndex === i &&
-                  !selectingSlotFor.isEgo
-                )
-              "
-              :color="myColor"
-              :unusable="c.canUse === false"
-              @click="onCardClick(unit.id, Number(i))"
-              @detail="detailCard = c"
-            />
-          </template>
-        </div>
+        <Transition name="hand-expand">
+          <div v-if="showHandCards" class="hand-row" @click.stop>
+            <template v-if="egoMode">
+              <HandCard
+                v-for="(c, i) in unit.ego"
+                :key="c.id.id + c.id.packageId"
+                :card="c"
+                :selected="
+                  selectingTargetFor?.unitId === unit.id &&
+                  selectingTargetFor?.cardIndex === i &&
+                  selectingTargetFor?.isEgo === true
+                "
+                :dimmed="
+                  (selectingSlot !== null &&
+                    selectingSlot.unitId !== unit.id) ||
+                  (selectingTargetFor !== null &&
+                    selectingTargetFor.unitId === unit.id &&
+                    !(
+                      selectingTargetFor.cardIndex === i &&
+                      selectingTargetFor.isEgo === true
+                    ))
+                "
+                :color="myColor"
+                :unusable="c.canUse === false"
+                @click="onCardClick(unit.id, Number(i), true)"
+                @detail="detailCard = c"
+              />
+            </template>
+            <template v-else>
+              <HandCard
+                v-for="(c, i) in unit.hand"
+                :key="c.id.id + c.id.packageId"
+                :card="c"
+                :selected="
+                  selectingTargetFor?.unitId === unit.id &&
+                  selectingTargetFor?.cardIndex === i &&
+                  !selectingTargetFor?.isEgo
+                "
+                :dimmed="
+                  (selectingSlot !== null &&
+                    selectingSlot.unitId !== unit.id) ||
+                  (selectingTargetFor !== null &&
+                    selectingTargetFor.unitId === unit.id &&
+                    !(
+                      selectingTargetFor.cardIndex === i &&
+                      !selectingTargetFor.isEgo
+                    ))
+                "
+                :color="myColor"
+                :unusable="c.canUse === false"
+                @click="onCardClick(unit.id, Number(i))"
+                @detail="detailCard = c"
+              />
+            </template>
+          </div>
+        </Transition>
       </div>
     </template>
 
@@ -513,13 +575,49 @@ function passiveClass(p: any) {
   align-items: center;
   justify-content: space-between;
   gap: 0.4rem;
+  cursor: pointer;
+  user-select: none;
+}
+.hand-header:hover .section-label {
+  color: var(--text-1);
 }
 .section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
   font-family: var(--font-display);
   font-size: 0.58rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--text-2);
+  transition: color 0.15s;
+}
+.hand-chevron {
+  font-size: 0.55rem;
+  color: var(--gold-dim);
+}
+.hand-count {
+  color: var(--text-3);
+  font-size: 0.55rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ── Hand expand transition ──────────────────────────────────────────────── */
+.hand-expand-enter-active {
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+.hand-expand-leave-active {
+  transition:
+    opacity 0.14s ease,
+    transform 0.14s ease;
+}
+.hand-expand-enter-from,
+.hand-expand-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 .ego-toggle {
   font-family: var(--font-display);

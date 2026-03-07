@@ -68,6 +68,7 @@ async function recompute() {
   const clashSeen = new Set<string>();
 
   for (const unit of allUnits) {
+    if (unit.hp <= 0) continue;
     const isAlly = allyIds.has(unit.id);
     for (const sc of unit.slottedCards ?? []) {
       if (sc.targetUnitId == null) continue;
