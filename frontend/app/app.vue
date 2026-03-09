@@ -470,28 +470,6 @@ details[open] > summary::before {
   flex-shrink: 0;
 }
 
-/* ── Light pips ─────────────────────────────────────────────────────────────── */
-.ap-pips {
-  display: flex;
-  gap: 0.08rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.ap-pip {
-  width: 0.62rem;
-  height: 0.54rem;
-  clip-path: var(--hex);
-  background: var(--border-hi);
-  flex-shrink: 0;
-  transition: background 0.15s;
-}
-.ap-pip--lit {
-  background: var(--gold);
-}
-.ap-pip--reserved {
-  background: var(--gold-dim);
-}
-
 /* ── Passive list ────────────────────────────────────────────────────────────── */
 .passive-list {
   display: flex;
@@ -558,41 +536,6 @@ details[open].passive-entry > .passive-name::before {
   color: var(--text-2);
   line-height: 1.45;
   margin: 0.2rem 0 0.05rem;
-}
-
-/* ── Emotion display ─────────────────────────────────────────────────────────── */
-.emotion-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.2rem;
-}
-.em-level {
-  font-family: var(--font-body);
-  font-size: 0.55rem;
-  color: var(--text-2);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.epips {
-  display: flex;
-  gap: 0.09rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.epip {
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.epip--pos {
-  background: #4caf50;
-}
-.epip--neg {
-  background: #e53935;
-}
-.epip--empty {
-  background: var(--border-mid);
 }
 </style>
 

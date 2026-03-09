@@ -186,8 +186,13 @@ const ROMAN = [
   "IX",
   "X",
 ];
-export function emotionRoman(level: number): string {
-  return ROMAN[level] ?? String(level);
+/**
+ * Converts a number to a roman numeral.
+ * 
+ * Supports 0-10, and returns the number as a string if out of range.
+ */
+export function toRoman(n: number): string {
+  return ROMAN[n] ?? String(n);
 }
 
 export function cardTokenIconUrl(b: any): string {

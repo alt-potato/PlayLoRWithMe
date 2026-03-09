@@ -1,20 +1,15 @@
-<!--
-  AllyUnit.vue
-
-  Displays a single ally unit card. Header shows turn state, name, light pips,
-  and emotion level. During SelectCard phase the hand becomes interactive.
-  Everything else (hand read-only, EGO, team pages, passives, abnormalities,
-  resistances) is collapsed into a single details section.
+<!-- 
+  Displays a single unit card. Header shows turn state, name, light pips,
+  and emotion level. Passives, abnormalities, and resistances are collapsed
+  into a single details section.
 
   Props:
-    unit – ally unit object from the game state snapshot
-
-  Injects: BATTLE_CTX (provided by BattleView)
+    unit – unit object from the game state snapshot
 -->
 <script setup lang="ts">
 import type { BattleCtx } from "~/composables/useBattleContext";
 
-const props = defineProps<{ unit: any }>();
+const props = defineProps<{ unit: any; isAlly: boolean }>();
 
 const {
   isSelectPhase,
@@ -149,11 +144,7 @@ function passiveClass(p: any) {
 </script>
 
 <template>
-  <div
-    class="unit-card"
-    :class="{ 'unit-card--ally-select': isAllyTargeting }"
-    @click.capture="isAllyTargeting ? onAllyTargetClick(unit.id) : undefined"
-  >
+  <div class="unit-card">
     <!-- ── Header ── -->
     <div class="unit-header">
       <!-- row 1: turn badge, name -->
@@ -172,64 +163,22 @@ function passiveClass(p: any) {
 
       <!-- row 2: light pips, emotion level -->
       <div class="unit-header-2">
-        <div
-          v-if="unit.maxPlayPoint"
-          class="ap-pips"
-          :title="`Light: ${unit.playPoint}/${unit.maxPlayPoint} (${unit.reservedPlayPoint ?? 0} reserved)`"
-        >
-          <span
-            v-for="n in Math.max(
-              0,
-              unit.playPoint - (unit.reservedPlayPoint ?? 0),
-            )"
-            :key="'f' + n"
-            class="ap-pip ap-pip--lit"
-          />
-          <span
-            v-for="n in unit.reservedPlayPoint ?? 0"
-            :key="'r' + n"
-            class="ap-pip ap-pip--reserved"
-          />
-          <span
-            v-for="n in Math.max(0, unit.maxPlayPoint - unit.playPoint)"
-            :key="'u' + n"
-            class="ap-pip"
-          />
-        </div>
-        <div class="unit-meta">
-          <div v-if="unit.emotionCoins?.max" class="emotion-meta">
-            <div class="epips">
-              <span
-                v-for="n in unit.emotionCoins.positive"
-                :key="'p' + n"
-                class="epip epip--pos"
-              />
-              <span
-                v-for="n in unit.emotionCoins.negative"
-                :key="'n' + n"
-                class="epip epip--neg"
-              />
-              <span
-                v-for="n in Math.max(
-                  0,
-                  unit.emotionCoins.max -
-                    unit.emotionCoins.positive -
-                    unit.emotionCoins.negative,
-                )"
-                :key="'e' + n"
-                class="epip epip--empty"
-              />
-            </div>
-            <span class="em-level"
-              >Em{{ toRoman(unit.emotionLevel) }}</span
-            >
-          </div>
-        </div>
+        <UnitLightDisplay
+          :current="unit.playPoint"
+          :max="unit.maxPlayPoint"
+          :reserved="unit.reservedPlayPoint"
+        />
+        <UnitEmotionDisplay
+          :positive="unit.emotionCoins.positive"
+          :negative="unit.emotionCoins.negative"
+          :max="unit.emotionCoins.max"
+          :level="unit.emotionLevel"
+        />
       </div>
     </div>
 
     <!-- ── HP / SP bars ── -->
-    <UnitStatus :unit="unit" />
+    <UnitStatusDisplay :unit="unit" />
 
     <!-- ── Speed dice + slotted cards ── -->
     <div v-if="slots.length && !isDead(unit)" class="slot-list">
@@ -324,30 +273,8 @@ function passiveClass(p: any) {
       </div>
     </div>
 
-    <!-- ── Buffs ── -->
-    <div v-if="unit.buffs?.length" class="buffs">
-      <span
-        v-for="b in unit.buffs"
-        :key="b.type"
-        class="buff-tag"
-        :class="buffClass(b)"
-        style="position: relative"
-        @click.stop="toggleBuff(b.type)"
-      >
-        <img :src="buffIconUrl(b)" :alt="b.type" class="buff-icon" />
-        <span v-if="b.stacks > 1">×{{ b.stacks }}</span>
-        <div v-if="expandedBuff === b.type" class="buff-expanded">
-          <img :src="buffIconUrl(b)" :alt="b.type" class="buff-expanded-icon" />
-          <div class="buff-expanded-text">
-            <div class="buff-expanded-name">{{ b.name ?? b.type }}</div>
-            <div v-if="b.desc">{{ b.desc }}</div>
-          </div>
-        </div>
-      </span>
-    </div>
-
-    <!-- ── Interactive hand (select phase only) ── -->
-    <template v-if="isSelectPhase && (unit.hand?.length || hasEgo)">
+    <!-- ── Interactive hand (for allies in select phase only) ── -->
+    <template v-if="isAlly && isSelectPhase && (unit.hand?.length || hasEgo)">
       <div class="hand-section">
         <div class="hand-header" @click.stop="handExpanded = !handExpanded">
           <span class="section-label">
@@ -439,22 +366,6 @@ function passiveClass(p: any) {
     <details v-if="hasDetails" class="collapse">
       <summary>{{ detailsLabel }}</summary>
 
-      <!-- Hand (read-only, outside select phase) -->
-      <template v-if="!isSelectPhase && unit.hand?.length">
-        <div class="det-label">Hand</div>
-        <div class="clist">
-          <div
-            v-for="c in unit.hand"
-            :key="c.id.id + c.id.packageId"
-            class="centry"
-          >
-            <span class="centry-cost">{{ c.cost }}</span>
-            <span>{{ c.name }}</span>
-            <span class="centry-range">{{ c.range }}</span>
-          </div>
-        </div>
-      </template>
-
       <!-- Passives -->
       <template v-if="unit.passives?.length">
         <div class="det-label">Passives</div>
@@ -475,7 +386,7 @@ function passiveClass(p: any) {
         </div>
       </template>
 
-      <!-- Abnormalities -->
+      <!-- Abnormality pages -->
       <template v-if="unit.abnormalities?.length">
         <div class="det-label">Abnormalities</div>
         <div class="clist">
@@ -489,7 +400,7 @@ function passiveClass(p: any) {
       <!-- Resistances -->
       <template v-if="unit.keyPage">
         <div class="det-label">Resistances</div>
-        <ResistanceTable :resistances="unit.keyPage?.resistances" />
+        <UnitResistanceTable :resistances="unit.keyPage?.resistances" />
       </template>
     </details>
   </div>

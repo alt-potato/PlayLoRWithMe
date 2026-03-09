@@ -517,7 +517,7 @@ provide(BATTLE_CTX, {
         class="unit-slot"
         :class="{ 'unit-slot--dead': isDead(unit) }"
       >
-        <AllyUnit :unit="unit" style="flex: 1; min-width: 0" />
+        <UnitDisplayCard :unit="unit" :isAlly="true" style="flex: 1; min-width: 0" />
         <div class="unit-reorder">
           <button
             class="reorder-btn"

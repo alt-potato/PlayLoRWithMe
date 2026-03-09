@@ -119,7 +119,7 @@ function passiveClass(p: any) {
         <div class="unit-meta">
           <div v-if="unit.emotionCoins?.max" class="emotion-meta">
             <span class="em-level"
-              >Em{{ emotionRoman(unit.emotionLevel) }}</span
+              >Em{{ toRoman(unit.emotionLevel) }}</span
             >
             <div class="epips">
               <span
@@ -173,7 +173,7 @@ function passiveClass(p: any) {
     </div>
 
     <!-- ── HP / SG bars ── -->
-    <UnitStatus :unit="unit" />
+    <UnitStatusDisplay :unit="unit" />
 
     <!-- ── Speed dice + slotted cards ── -->
     <div v-if="slotList.length" class="slot-list">
@@ -312,7 +312,7 @@ function passiveClass(p: any) {
 
       <template v-if="unit.keyPage">
         <div class="det-label">Resistances</div>
-        <ResistanceTable :resistances="unit.keyPage?.resistances" />
+        <UnitResistanceTable :resistances="unit.keyPage?.resistances" />
       </template>
     </details>
   </div>
@@ -414,5 +414,64 @@ function passiveClass(p: any) {
   margin-top: 0.35rem;
   padding-bottom: 0.1rem;
   border-bottom: 1px solid var(--border);
+}
+
+/* ── Emotion display ─────────────────────────────────────────────────────────── */
+/* TODO: delete section */
+.emotion-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.em-level {
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  color: var(--text-2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.epips {
+  display: flex;
+  gap: 0.09rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.epip {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.epip--pos {
+  background: #4caf50;
+}
+.epip--neg {
+  background: #e53935;
+}
+.epip--empty {
+  background: var(--border-mid);
+}
+
+/* ── Light pips ─────────────────────────────────────────────────────────────── */
+/* TODO: delete section */
+.ap-pips {
+  display: flex;
+  gap: 0.08rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ap-pip {
+  width: 0.62rem;
+  height: 0.54rem;
+  clip-path: var(--hex);
+  background: var(--border-hi);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.ap-pip--lit {
+  background: var(--gold);
+}
+.ap-pip--reserved {
+  background: var(--gold-dim);
 }
 </style>
