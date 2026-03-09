@@ -118,9 +118,7 @@ function passiveClass(p: any) {
       <div class="unit-header-2">
         <div class="unit-meta">
           <div v-if="unit.emotionCoins?.max" class="emotion-meta">
-            <span class="em-level"
-              >Em{{ toRoman(unit.emotionLevel) }}</span
-            >
+            <span class="em-level">Em{{ toRoman(unit.emotionLevel) }}</span>
             <div class="epips">
               <span
                 v-for="n in unit.emotionCoins.positive"
@@ -173,7 +171,12 @@ function passiveClass(p: any) {
     </div>
 
     <!-- ── HP / SG bars ── -->
-    <UnitStatusDisplay :unit="unit" />
+    <UnitStatusDisplay
+      :hp="unit.hp"
+      :maxHp="unit.maxHp"
+      :sg="unit.staggerGauge"
+      :maxSg="unit.maxStaggerGauge"
+    />
 
     <!-- ── Speed dice + slotted cards ── -->
     <div v-if="slotList.length" class="slot-list">

@@ -178,7 +178,12 @@ function passiveClass(p: any) {
     </div>
 
     <!-- ── HP / SP bars ── -->
-    <UnitStatusDisplay :unit="unit" />
+    <UnitStatusDisplay
+      :hp="unit.hp"
+      :maxHp="unit.maxHp"
+      :sg="unit.staggerGauge"
+      :maxSg="unit.maxStaggerGauge"
+    />
 
     <!-- ── Speed dice + slotted cards ── -->
     <div v-if="slots.length && !isDead(unit)" class="slot-list">
@@ -279,7 +284,7 @@ function passiveClass(p: any) {
         <div class="hand-header" @click.stop="handExpanded = !handExpanded">
           <span class="section-label">
             <span class="hand-chevron">{{ showHandCards ? "▾" : "▸" }}</span>
-            {{ egoMode ? "EGO" : "Hand" }}
+            {{ egoMode ? "EGO hand" : "Hand" }}
             <span class="hand-count"
               >({{
                 egoMode ? (unit.ego?.length ?? 0) : (unit.hand?.length ?? 0)

@@ -61,24 +61,9 @@ export function turnColor(val: string) {
   return TURNSTATE_COLORS[val] ?? "#888";
 }
 
-/** HP bar fill percentage (0-100), clamped. */
-export function hpPct(unit: any) {
-  return unit.maxHp > 0 ? Math.min(100, (unit.hp / unit.maxHp) * 100) : 0;
-}
-
-/** Stagger gauge fill percentage (0-100), clamped. */
-export function sgPct(unit: any) {
-  return unit.maxStaggerGauge > 0
-    ? Math.min(100, (unit.staggerGauge / unit.maxStaggerGauge) * 100)
-    : 0;
-}
-
-/** CSS colour for the stagger gauge bar (red when broken, orange when low, blue otherwise). */
-export function sgColor(unit: any) {
-  const pct = sgPct(unit);
-  if (pct <= 0) return "#e53935";
-  if (pct < 30) return "#ff9800";
-  return "#1976d2";
+/** Calculates the fill percentage of a bar (0-100), clamped. */
+export function fillPercentage(val: number, max: number) {
+  return max > 0 ? Math.min(100, (val / max) * 100) : 0;
 }
 
 /**

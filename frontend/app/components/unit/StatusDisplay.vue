@@ -8,29 +8,40 @@
     unit – unit object from the game state snapshot
 -->
 <script setup lang="ts">
-defineProps<{ unit: any }>();
+import { fillPercentage } from "~/composables/useBattleDisplay";
+
+const props = defineProps<{
+  hp: number;
+  maxHp: number;
+  sg: number;
+  maxSg: number;
+}>();
+
+const hpPercent = computed(() => fillPercentage(props.hp, props.maxHp));
+const sgPercent = computed(() => fillPercentage(props.sg, props.maxSg));
+const sgColor = computed(() => {
+  // red when broken, orange when low, blue otherwise
+  if (sgPercent.value <= 0) return "#e53935";
+  if (sgPercent.value < 30) return "#ff9800";
+  return "#1976d2";
+});
 </script>
 
 <template>
-  <div class="bar-row" :title="`HP: ${unit.hp} / ${unit.maxHp}`">
+  <div class="bar-row" :title="`HP: ${hp} / ${maxHp}`">
     <div class="bar-track">
-      <div class="bar-fill bar-hp" :style="{ width: hpPct(unit) + '%' }" />
+      <div class="bar-fill bar-hp" :style="{ width: hpPercent + '%' }" />
     </div>
-    <span class="bar-num">{{ unit.hp }}/{{ unit.maxHp }}</span>
+    <span class="bar-num">{{ hp }}/{{ maxHp }}</span>
   </div>
-  <div
-    class="bar-row"
-    :title="`Stagger: ${unit.staggerGauge} / ${unit.maxStaggerGauge}`"
-  >
+  <div class="bar-row" :title="`Stagger: ${sg} / ${maxSg}`">
     <div class="bar-track">
       <div
         class="bar-fill"
-        :style="{ width: sgPct(unit) + '%', background: sgColor(unit) }"
+        :style="{ width: sgPercent + '%', background: sgColor }"
       />
     </div>
-    <span class="bar-num"
-      >{{ unit.staggerGauge }}/{{ unit.maxStaggerGauge }}</span
-    >
+    <span class="bar-num">{{ sg }}/{{ maxSg }}</span>
   </div>
 </template>
 
