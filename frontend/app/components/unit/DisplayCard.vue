@@ -124,9 +124,6 @@ const hasDetails = computed(() => {
 const detailsLabel = computed(() => {
   const u = props.unit;
   const parts: string[] = [];
-  if (!isSelectPhase.value && u.hand?.length)
-    parts.push(`Hand (${u.hand.length})`);
-  if (u.ego?.length) parts.push(`EGO (${u.ego.length})`);
   if (u.passives?.length) parts.push(`Passives (${u.passives.length})`);
   if (u.abnormalities?.length) parts.push(`Abno. (${u.abnormalities.length})`);
   if (u.keyPage) parts.push("Resist.");
@@ -276,6 +273,28 @@ function passiveClass(p: any) {
           </template>
         </div>
       </div>
+    </div>
+
+    <!-- ── Status effects ── -->
+    <div v-if="unit.buffs?.length" class="buffs">
+      <span
+        v-for="b in unit.buffs"
+        :key="b.type"
+        class="buff-tag"
+        :class="buffClass(b)"
+        style="position: relative"
+        @click.stop="toggleBuff(b.type)"
+      >
+        <img :src="buffIconUrl(b)" :alt="b.type" class="buff-icon" />
+        <span v-if="b.stacks > 1">×{{ b.stacks }}</span>
+        <div v-if="expandedBuff === b.type" class="buff-expanded">
+          <img :src="buffIconUrl(b)" :alt="b.type" class="buff-expanded-icon" />
+          <div class="buff-expanded-text">
+            <div class="buff-expanded-name">{{ b.name ?? b.type }}</div>
+            <div v-if="b.desc">{{ b.desc }}</div>
+          </div>
+        </div>
+      </span>
     </div>
 
     <!-- ── Interactive hand (for allies in select phase only) ── -->
