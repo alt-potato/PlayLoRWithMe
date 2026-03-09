@@ -11,7 +11,7 @@
 -->
 <script setup lang="ts">
 defineProps<{
-  sc: any;
+  card: any;
   targetLabel?: string;
   clash?: boolean;
   myColor?: string;
@@ -21,7 +21,7 @@ defineProps<{
 <template>
   <div class="sc-card">
     <div class="sc-top">
-      <span class="sc-name">{{ sc.name }}</span>
+      <span class="sc-name">{{ card.name }}</span>
       <span
         v-if="targetLabel"
         class="sc-target"
@@ -30,8 +30,8 @@ defineProps<{
         >{{ targetLabel }}</span
       >
     </div>
-    <div v-if="sc.dice?.length" class="sc-dice">
-      <div v-for="(d, i) in sc.dice" :key="i" class="sc-die">
+    <div v-if="card.dice?.length" class="sc-dice">
+      <div v-for="(d, i) in card.dice" :key="i" class="sc-die">
         <img
           v-if="diceIcon(d.type, d.detail)"
           :src="diceIcon(d.type, d.detail)!"

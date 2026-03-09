@@ -16,6 +16,8 @@ const props = defineProps<{ state: any }>();
 // Interactive state (only meaningful during SelectCard phase)
 // ---------------------------------------------------------------------------
 
+const phase = computed(() => props.state?.phase ?? "");
+
 const isSelectPhase = computed(
   () => props.state?.phase === "ApplyLibrarianCardPhase",
 );
@@ -385,6 +387,7 @@ const showOutgoing = ref(true);
 // ---------------------------------------------------------------------------
 
 provide(BATTLE_CTX, {
+  phase,
   isSelectPhase,
   selectingSlot,
   selectingTargetFor,

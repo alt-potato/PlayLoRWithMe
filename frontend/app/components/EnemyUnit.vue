@@ -200,7 +200,7 @@ function passiveClass(p: any) {
         <div class="slot-content">
           <div v-if="sc !== null && !isDead(unit)" class="slot-card-row">
             <SlottedCard
-              :sc="sc"
+              :card="sc"
               :target-label="
                 sc.targetUnitId != null
                   ? `${sc.clash ? '⚔' : '↗'} #${sc.targetUnitId}·${sc.targetSlot}`

@@ -14,6 +14,8 @@
 import type { InjectionKey, Ref, ComputedRef } from "vue";
 
 export interface BattleCtx {
+  phase: ComputedRef<string>;
+
   /** True when the stage phase is 'ApplyLibrarianCardPhase'. */
   isSelectPhase: ComputedRef<boolean>;
 

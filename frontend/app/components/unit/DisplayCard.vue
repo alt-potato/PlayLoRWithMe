@@ -25,25 +25,14 @@ const {
   allUnits,
 } = inject(BATTLE_CTX) as BattleCtx;
 
+const myColor = computed(() => allyColors.value[props.unit.id] ?? "#888");
+const slots = computed(() => sortedSlots(props.unit));
+
 const isAllyTargeting = computed(
   () =>
     selectingAllyTargetFor.value !== null &&
     selectingAllyTargetFor.value.unitId !== props.unit.id,
 );
-
-const isUnitBroken = computed(
-  () => props.unit.turnState === "BREAK" || isDead(props.unit),
-);
-
-const myColor = computed(() => allyColors.value[props.unit.id] ?? "#888");
-
-const slots = computed(() => sortedSlots(props.unit));
-
-function dieColor(sc: any): string {
-  if (sc.clash) return ARROW_COLORS.clash;
-  if (sc.targetUnitId != null) return ARROW_COLORS.outgoing;
-  return myColor.value; // Instance / untargeted
-}
 
 function targetLabel(sc: any): string {
   if (sc?.targetUnitId == null) return "";
@@ -72,34 +61,6 @@ watch(isSelectPhase, () => {
   handExpanded.value = false;
 });
 
-let slotLongPressed = false;
-let slotPressTimer: ReturnType<typeof setTimeout> | null = null;
-
-function onSlotPressStart(sc: any) {
-  if (!sc) return;
-  slotLongPressed = false;
-  slotPressTimer = setTimeout(() => {
-    slotLongPressed = true;
-    detailCard.value = sc;
-  }, 500);
-}
-
-function onSlotPressEnd() {
-  if (slotPressTimer) {
-    clearTimeout(slotPressTimer);
-    slotPressTimer = null;
-  }
-}
-
-function handleSlotClick(d: any, sc: any) {
-  if (slotLongPressed) {
-    slotLongPressed = false;
-    return;
-  }
-  if (!isSelectPhase.value) return;
-  if (sc !== null || d.staggered || isUnitBroken.value) return;
-  onSlotSelectClick(props.unit, d.slot);
-}
 function toggleBuff(type: string) {
   expandedBuff.value = expandedBuff.value === type ? null : type;
 }
@@ -125,8 +86,8 @@ const detailsLabel = computed(() => {
   const u = props.unit;
   const parts: string[] = [];
   if (u.passives?.length) parts.push(`Passives (${u.passives.length})`);
-  if (u.abnormalities?.length) parts.push(`Abno. (${u.abnormalities.length})`);
-  if (u.keyPage) parts.push("Resist.");
+  if (u.abnormalities?.length) parts.push(`Abnormalities (${u.abnormalities.length})`);
+  if (u.keyPage) parts.push("Resistances");
   return parts.length ? parts.join(" · ") : "Details";
 });
 
@@ -141,7 +102,11 @@ function passiveClass(p: any) {
 </script>
 
 <template>
-  <div class="unit-card">
+  <div
+    class="unit-card"
+    :class="{ 'unit-card--ally-select': isAllyTargeting }"
+    @click.capture="isAllyTargeting ? onAllyTargetClick(unit.id) : undefined"
+  >
     <!-- ── Header ── -->
     <div class="unit-header">
       <!-- row 1: turn badge, name -->
@@ -183,96 +148,35 @@ function passiveClass(p: any) {
     />
 
     <!-- ── Speed dice + slotted cards ── -->
-    <div v-if="slots.length && !isDead(unit)" class="slot-list">
-      <div
-        v-for="{ die: d, card: sc } in slots"
-        :key="d.slot"
-        class="slot-row"
-        :class="{
-          'slot-filled': sc !== null,
-          'slot-available':
-            isSelectPhase &&
-            selectingSlot === null &&
-            sc === null &&
-            !d.staggered &&
-            !isUnitBroken,
-          'slot-open':
-            isSelectPhase &&
-            selectingSlot?.unitId === unit.id &&
-            selectingSlot?.diceSlot === d.slot &&
-            sc === null &&
-            !d.staggered &&
-            !isUnitBroken,
-          'slot-pending':
-            isSelectPhase &&
-            selectingTargetFor?.unitId === unit.id &&
-            selectingTargetFor?.diceSlot === d.slot,
-        }"
-        @click.stop="handleSlotClick(d, sc)"
-        @mousedown="onSlotPressStart(sc)"
-        @mouseup="onSlotPressEnd"
-        @mouseleave="onSlotPressEnd"
-        @touchstart.passive="onSlotPressStart(sc)"
-        @touchend="onSlotPressEnd"
-        @touchmove="onSlotPressEnd"
+    <div v-for="{ die, card } in slots" :key="die.slot" class="slot-list">
+      <UnitDieRow
+        :unit="unit"
+        :die="die"
+        :card="card"
+        :color="myColor"
+        :onLongPress="() => (detailCard = card)"
+        :isAlly="true"
       >
-        <!-- Hexagonal die (data-die used by ArrowOverlay for coordinate lookup) -->
-        <span
-          class="hex-wrap"
-          :class="{
-            staggered: d.staggered || isUnitBroken,
-            'hex-available':
-              isSelectPhase &&
-              selectingSlot === null &&
-              sc === null &&
-              !d.staggered &&
-              !isUnitBroken,
-            'hex-open':
-              isSelectPhase &&
-              selectingSlot?.unitId === unit.id &&
-              selectingSlot?.diceSlot === d.slot &&
-              sc === null &&
-              !d.staggered &&
-              !isUnitBroken,
-            'hex-pending':
-              isSelectPhase &&
-              selectingTargetFor?.unitId === unit.id &&
-              selectingTargetFor?.diceSlot === d.slot,
-          }"
-          :data-die="`${unit.id}-${d.slot}`"
-          :style="
-            sc !== null && !d.staggered && !isUnitBroken
-              ? { background: dieColor(sc) }
-              : {}
-          "
-        >
-          <span class="hex-inner">{{
-            d.staggered || isUnitBroken ? "✕" : d.value || "—"
-          }}</span>
-        </span>
-
-        <div class="slot-content">
-          <template v-if="sc !== null">
-            <SlottedCard
-              :sc="sc"
-              :target-label="targetLabel(sc) || undefined"
-              :clash="sc.clash"
-              :my-color="myColor"
-            />
-            <button
-              v-if="isSelectPhase"
-              class="remove-btn"
-              title="Return to hand"
-              @click="onRemoveCard(unit.id, sc.slot)"
-            >
-              ✕
-            </button>
-          </template>
-          <template v-else>
-            <span class="slot-empty">—</span>
-          </template>
-        </div>
-      </div>
+        <template v-if="card !== null">
+          <SlottedCard
+            :card="card"
+            :target-label="targetLabel(card) || undefined"
+            :clash="card.clash"
+            :my-color="myColor"
+          />
+          <button
+            v-if="isSelectPhase"
+            class="remove-btn"
+            title="Return to hand"
+            @click="onRemoveCard(unit.id, card.slot)"
+          >
+            ✕
+          </button>
+        </template>
+        <template v-else>
+          <span class="slot-empty">—</span>
+        </template>
+      </UnitDieRow>
     </div>
 
     <!-- ── Status effects ── -->
@@ -431,7 +335,7 @@ function passiveClass(p: any) {
 </template>
 
 <style scoped>
-/* ── Card shell — ally accent on right ───────────────────────────────────── */
+/* ── Card shell (ally accent on right) ── */
 .unit-card {
   width: 100%;
   border-right: 2px solid var(--gold-dim);
@@ -469,19 +373,6 @@ function passiveClass(p: any) {
   flex-direction: column;
   gap: 0.07rem;
   margin-left: -1.8rem;
-}
-.slot-row {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.06rem 0.15rem 0.06rem 0;
-}
-.slot-content {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
 }
 .remove-btn {
   margin-left: auto;

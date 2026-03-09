@@ -220,9 +220,7 @@ function passiveClass(p: any) {
                 class="epip epip--empty"
               />
             </div>
-            <span class="em-level"
-              >Em{{ toRoman(unit.emotionLevel) }}</span
-            >
+            <span class="em-level">Em{{ toRoman(unit.emotionLevel) }}</span>
           </div>
         </div>
       </div>
@@ -303,7 +301,7 @@ function passiveClass(p: any) {
         <div class="slot-content">
           <template v-if="sc !== null">
             <SlottedCard
-              :sc="sc"
+              :card="sc"
               :target-label="targetLabel(sc) || undefined"
               :clash="sc.clash"
               :my-color="myColor"
