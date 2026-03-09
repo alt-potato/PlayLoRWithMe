@@ -128,8 +128,8 @@ const detailsLabel = computed(() => {
     parts.push(`Hand (${u.hand.length})`);
   if (u.ego?.length) parts.push(`EGO (${u.ego.length})`);
   if (u.passives?.length) parts.push(`Passives (${u.passives.length})`);
-  if (u.abnormalities?.length) parts.push(`Abn. (${u.abnormalities.length})`);
-  if (u.keyPage) parts.push("Res.");
+  if (u.abnormalities?.length) parts.push(`Abno. (${u.abnormalities.length})`);
+  if (u.keyPage) parts.push("Resist.");
   return parts.length ? parts.join(" · ") : "Details";
 });
 
@@ -369,7 +369,7 @@ function passiveClass(p: any) {
 
     <!-- ── Collapsed details ── -->
     <details v-if="hasDetails" class="collapse">
-      <summary>{{ detailsLabel }}</summary>
+      <summary class="section-label">{{ detailsLabel }}</summary>
 
       <!-- Passives -->
       <template v-if="unit.passives?.length">
