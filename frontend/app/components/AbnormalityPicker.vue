@@ -80,7 +80,7 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
       <header class="ab-header">
         <span class="ab-title">Emotion Card Selection</span>
         <div v-if="showTeamInfo" class="ab-team-info">
-          <span class="ab-team-lv">Lv {{ emotionRoman(teamEmotionLevel!) }}</span>
+          <span class="ab-team-lv">Lv {{ toRoman(teamEmotionLevel!) }}</span>
           <div
             v-if="(teamCoinMax ?? 0) > 0"
             class="ab-coin-bar-wrap"
@@ -119,7 +119,7 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
           >
             <div class="ab-card-header">
               <span class="ab-card-badge" :style="{ background: stateColor(card.state) + '33', color: stateColor(card.state) }">
-                {{ emotionRoman(card.emotionLevel) }}
+                {{ toRoman(card.emotionLevel) }}
               </span>
               <span v-if="card.targetType === 'SelectOne'" class="ab-card-target-hint">1 ally</span>
             </div>
@@ -146,7 +146,7 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
                   class="ab-card-badge"
                   :style="{ background: stateColor(pendingCard.state) + '33', color: stateColor(pendingCard.state) }"
                 >
-                  {{ emotionRoman(pendingCard.emotionLevel) }}
+                  {{ toRoman(pendingCard.emotionLevel) }}
                 </span>
               </div>
               <span class="ab-card-name">{{ pendingCard.name }}</span>
@@ -165,7 +165,7 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
               >
                 <span class="ab-ally-dot" />
                 <span class="ab-ally-name">{{ ally.name ?? ally.keyPage?.name ?? `#${ally.id}` }}</span>
-                <span class="ab-ally-lvl">Lv {{ emotionRoman(ally.emotionLevel ?? 0) }}</span>
+                <span class="ab-ally-lvl">Lv {{ toRoman(ally.emotionLevel ?? 0) }}</span>
               </button>
             </div>
           </div>
