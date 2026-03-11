@@ -8,7 +8,8 @@
     resistances – keyPage.resistances (may be null/undefined; cells will be blank)
 -->
 <script setup lang="ts">
-defineProps<{ resistances: any }>();
+import type { Resistances } from "~/types/game";
+defineProps<{ resistances: Resistances | undefined }>();
 // resistColor is auto-imported from useBattleDisplay.ts
 </script>
 

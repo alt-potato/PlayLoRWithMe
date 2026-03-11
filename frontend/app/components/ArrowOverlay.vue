@@ -20,9 +20,11 @@
   Die elements are found by [data-die="unitId-slot"] attributes.
 -->
 <script setup lang="ts">
+import type { AllyUnit, Unit } from "~/types/game";
+
 const props = defineProps<{
-  allies: any[];
-  enemies: any[];
+  allies: AllyUnit[];
+  enemies: Unit[];
   showIncoming: boolean;
   showClash: boolean;
   showOutgoing: boolean;
@@ -62,7 +64,7 @@ function diePoint(
 async function recompute() {
   await nextTick();
 
-  const allyIds = new Set<number>(props.allies.map((a: any) => a.id));
+  const allyIds = new Set<number>(props.allies.map((a) => a.id));
   const allUnits = [...props.allies, ...props.enemies];
   const result: Arrow[] = [];
   const clashSeen = new Set<string>();
@@ -88,7 +90,7 @@ async function recompute() {
       }
 
       const src = diePoint(unit.id, sc.slot, allyIds);
-      const tgt = diePoint(sc.targetUnitId, sc.targetSlot, allyIds);
+      const tgt = diePoint(sc.targetUnitId, sc.targetSlot!, allyIds);
       if (src && tgt) {
         result.push({
           x1: src.x,

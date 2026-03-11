@@ -7,8 +7,10 @@
     clash       – true when this card is clashing
 -->
 <script setup lang="ts">
+import type { SlottedCardEntry } from "~/types/game";
+
 defineProps<{
-  card: any;
+  card: SlottedCardEntry;
   targetLabel?: string;
 }>();
 </script>

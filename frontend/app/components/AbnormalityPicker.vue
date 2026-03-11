@@ -15,6 +15,8 @@
     select({ cardId, targetUnitId? })
 -->
 <script setup lang="ts">
+import type { AllyUnit } from "~/types/game";
+
 const props = defineProps<{
   choices: Array<{
     id: number;
@@ -25,7 +27,7 @@ const props = defineProps<{
     desc?: string;
     flavorText?: string;
   }>;
-  allies: any[];
+  allies: AllyUnit[];
   allyColors: Record<number, string>;
   teamEmotionLevel?: number;
   teamCoin?: number;
@@ -52,7 +54,7 @@ function onCardClick(card: (typeof props.choices)[number]) {
   }
 }
 
-function onAllyClick(ally: any) {
+function onAllyClick(ally: AllyUnit) {
   if (!pendingCard.value) return;
   emit("select", { cardId: pendingCard.value.id, targetUnitId: ally.id });
 }

@@ -12,7 +12,9 @@
     close – user dismissed the sheet
 -->
 <script setup lang="ts">
-const props = defineProps<{ card: any }>();
+import type { Card } from "~/types/game";
+
+const props = defineProps<{ card: Card }>();
 defineEmits<{ close: [] }>();
 
 const isEgo = computed(() =>
@@ -42,7 +44,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
           >{{ card.rarity }}</span
         >
         <span v-if="isEgo" class="tag ego-tag">EGO</span>
-        <span v-if="card.emotionLimit > 0" class="tag emotion-tag"
+        <span v-if="(card.emotionLimit ?? 0) > 0" class="tag emotion-tag"
           >Em{{ card.emotionLimit }}+</span
         >
         <span v-if="isExhaust" class="tag exhaust-tag">Exhaust</span>

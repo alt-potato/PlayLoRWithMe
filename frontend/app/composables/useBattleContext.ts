@@ -12,6 +12,7 @@
  */
 
 import type { InjectionKey, Ref, ComputedRef } from "vue";
+import type { AllyUnit, Unit } from "~/types/game";
 
 export interface BattleCtx {
   phase: ComputedRef<string>;
@@ -61,7 +62,7 @@ export interface BattleCtx {
    * Called when the player taps an empty speed die slot (slot-first step 1).
    * Toggles selection on same slot; replaces selection on a different slot.
    */
-  onSlotSelectClick: (unit: any, diceSlot: number) => void;
+  onSlotSelectClick: (unit: Unit, diceSlot: number) => void;
 
   /** Called when the player picks any unit/die as the target. */
   onTargetDieClick: (
@@ -100,7 +101,7 @@ export interface BattleCtx {
   >;
 
   /** All units (allies + enemies) for name lookups. */
-  allUnits: ComputedRef<any[]>;
+  allUnits: ComputedRef<(Unit | AllyUnit)[]>;
 
   /** Called when a remote player picks an abnormality page from the LevelUpUI. */
   onSelectAbnormality: (cardId: number, targetUnitId?: number) => Promise<void>;

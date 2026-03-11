@@ -16,8 +16,10 @@
     detail  – user tapped an already-selected card (double-tap-to-detail)
 -->
 <script setup lang="ts">
+import type { Card } from "~/types/game";
+
 const props = defineProps<{
-  card: any;
+  card: Card;
   selected?: boolean;
   dimmed?: boolean;
   color?: string;

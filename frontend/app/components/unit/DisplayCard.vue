@@ -10,9 +10,10 @@
 -->
 <script setup lang="ts">
 import type { BattleCtx } from "~/composables/useBattleContext";
+import type { AllyUnit, Card, Passive, SlottedCardEntry, Unit } from "~/types/game";
 
 const props = defineProps<{
-  unit: any;
+  unit: Unit | AllyUnit;
   isAlly?: boolean;
   side?: "right" | "left";
 }>();
@@ -30,6 +31,9 @@ const {
 } = inject(BATTLE_CTX) as BattleCtx;
 
 const slots = computed(() => sortedSlots(props.unit));
+
+// Cast to AllyUnit for ally-only field access; always safe since isAlly guards all usage sites.
+const ally = computed(() => props.unit as AllyUnit);
 
 const isAllyTargeting = computed(
   () =>
@@ -49,14 +53,16 @@ const borderStyle = computed(() => {
   };
 });
 
-function dieColor(sc: any): string {
+function dieColor(sc: SlottedCardEntry | undefined): string {
   if (sc?.clash) return ARROW_COLORS.clash;
   if (props.isAlly) return ARROW_COLORS.incoming;
   if (sc?.targetUnitId != null) return ARROW_COLORS.outgoing;
   return "#F0F"; // Instance / untargeted
 }
 
-const detailCard = ref<any>(null);
+// detailCard can hold a full Card (from hand) or a SlottedCardEntry (from long-press on die);
+// typed as Card since CardDetail only needs the overlapping fields (name, cost, range, dice, etc.)
+const detailCard = ref<Card | null>(null);
 const egoMode = ref(false);
 const expandedBuff = ref<string | null>(null);
 const handExpanded = ref(false);
@@ -80,7 +86,7 @@ function toggleBuff(type: string) {
   expandedBuff.value = expandedBuff.value === type ? null : type;
 }
 
-const hasEgo = computed(() => (props.unit.ego?.length ?? 0) > 0);
+const hasEgo = computed(() => (ally.value.ego?.length ?? 0) > 0);
 
 watch(hasEgo, (val) => {
   if (!val) egoMode.value = false;
@@ -88,9 +94,10 @@ watch(hasEgo, (val) => {
 
 const hasDetails = computed(() => {
   const u = props.unit;
+  const a = ally.value;
   return (
-    (!isSelectPhase.value && u.hand?.length) ||
-    u.ego?.length ||
+    (!isSelectPhase.value && a.hand?.length) ||
+    a.ego?.length ||
     u.passives?.length ||
     u.abnormalities?.length ||
     u.keyPage
@@ -107,7 +114,7 @@ const detailsLabel = computed(() => {
   return parts.length ? parts.join(" · ") : "Details";
 });
 
-function passiveClass(p: any) {
+function passiveClass(p: Passive) {
   const cls: Record<string, boolean> = {
     unavailable: !!p.disabled,
     "passive-negative": !!p.isNegative,
@@ -146,9 +153,9 @@ function passiveClass(p: any) {
       <!-- row 2: light pips, emotion level -->
       <div class="unit-header-row reversible-container">
         <UnitLightDisplay
-          :current="unit.playPoint"
-          :max="unit.maxPlayPoint"
-          :reserved="unit.reservedPlayPoint"
+          :current="ally.playPoint"
+          :max="ally.maxPlayPoint"
+          :reserved="ally.reservedPlayPoint"
         />
         <UnitEmotionDisplay
           :positive="unit.emotionCoins.positive"
@@ -177,7 +184,7 @@ function passiveClass(p: any) {
         :color="dieColor(card)"
         :isReversed="side !== 'right'"
         :isAlly="isAlly"
-        :onLongPress="() => (detailCard = card)"
+        :onLongPress="() => (detailCard = card as unknown as Card)"
       >
         <div
           v-if="!isDead(unit) && attackMap[unit.id]?.[die.slot]?.length"
@@ -199,16 +206,16 @@ function passiveClass(p: any) {
     <div v-if="unit.buffs?.length" class="buffs">
       <span
         v-for="b in unit.buffs"
-        :key="b.type"
+        :key="b.keywordId"
         class="buff-tag"
         :class="buffClass(b)"
         style="position: relative"
-        @click.stop="toggleBuff(b.type)"
+        @click.stop="toggleBuff(b.keywordId)"
       >
-        <img :src="buffIconUrl(b)" :alt="b.type" class="buff-icon" />
-        <span v-if="b.stacks > 1">×{{ b.stacks }}</span>
-        <div v-if="expandedBuff === b.type" class="buff-expanded">
-          <img :src="buffIconUrl(b)" :alt="b.type" class="buff-expanded-icon" />
+        <img :src="buffIconUrl(b)" :alt="b.name" class="buff-icon" />
+        <span v-if="(b.stacks ?? 0) > 1">×{{ b.stacks }}</span>
+        <div v-if="expandedBuff === b.keywordId" class="buff-expanded">
+          <img :src="buffIconUrl(b)" :alt="b.name" class="buff-expanded-icon" />
           <div class="buff-expanded-text">
             <div class="buff-expanded-name">{{ b.name ?? b.type }}</div>
             <div v-if="b.desc">{{ b.desc }}</div>
@@ -218,7 +225,7 @@ function passiveClass(p: any) {
     </div>
 
     <!-- ── Interactive hand (for allies in select phase only) ── -->
-    <template v-if="isAlly && isSelectPhase && (unit.hand?.length || hasEgo)">
+    <template v-if="isAlly && isSelectPhase && (ally.hand?.length || hasEgo)">
       <div class="hand-section">
         <div class="hand-header" @click.stop="handExpanded = !handExpanded">
           <span class="section-label">
@@ -226,7 +233,7 @@ function passiveClass(p: any) {
             {{ egoMode ? "EGO hand" : "Hand" }}
             <span class="hand-count"
               >({{
-                egoMode ? (unit.ego?.length ?? 0) : (unit.hand?.length ?? 0)
+                egoMode ? (ally.ego?.length ?? 0) : (ally.hand?.length ?? 0)
               }})</span
             >
           </span>
@@ -244,7 +251,7 @@ function passiveClass(p: any) {
           <div v-if="showHandCards" class="hand-row" @click.stop>
             <template v-if="egoMode">
               <HandCard
-                v-for="(c, i) in unit.ego"
+                v-for="(c, i) in ally.ego"
                 :key="c.id.id + c.id.packageId"
                 :card="c"
                 :selected="
@@ -269,7 +276,7 @@ function passiveClass(p: any) {
             </template>
             <template v-else>
               <HandCard
-                v-for="(c, i) in unit.hand"
+                v-for="(c, i) in ally.hand"
                 :key="c.id.id + c.id.packageId"
                 :card="c"
                 :selected="

@@ -5,6 +5,16 @@
  * All exports are auto-imported by Nuxt; no import statements needed in .vue files.
  */
 
+import type {
+  AllyUnit,
+  Buff,
+  Card,
+  CardToken,
+  SlottedCardEntry,
+  SpeedDie,
+  Unit,
+} from "~/types/game";
+
 /** Maps resistance tier name → display colour. */
 export const RESIST_COLORS: Record<string, string> = {
   Weak: "#e53935",
@@ -52,8 +62,8 @@ export const TURNSTATE_COLORS: Record<string, string> = {
 };
 
 /** CSS colour for a resistance tier label. */
-export function resistColor(val: string) {
-  return RESIST_COLORS[val] ?? "#555";
+export function resistColor(val: string | undefined) {
+  return (val && RESIST_COLORS[val]) ?? "#555";
 }
 
 /** CSS colour for a turn-state badge. */
@@ -70,7 +80,7 @@ export function fillPercentage(val: number, max: number) {
  * Renders emotion coin state as unicode dots:
  *   ● positive coins, ○ negative coins, · empty slots.
  */
-export function coinDots(unit: any): string {
+export function coinDots(unit: Unit | AllyUnit): string {
   const coins = unit.emotionCoins;
   if (!coins) return "";
   return (
@@ -81,8 +91,8 @@ export function coinDots(unit: any): string {
 }
 
 /** Returns true if any slotted card already occupies the given dice slot. */
-export function isSlotFilled(unit: any, slot: number): boolean {
-  return unit.slottedCards?.some((sc: any) => sc.slot === slot) ?? false;
+export function isSlotFilled(unit: Unit, slot: number): boolean {
+  return unit.slottedCards?.some((sc) => sc.slot === slot) ?? false;
 }
 
 /** CardRange values that hit all enemies (or all allies) in addition to a primary target. */
@@ -125,7 +135,7 @@ export function rarityColor(rarity: string): string {
  * Returns inline style overrides for a cost badge based on cost delta.
  * Returns null when cost equals base (no override needed).
  */
-export function costStyle(card: any): Record<string, string> | null {
+export function costStyle(card: Card): Record<string, string> | null {
   if (card.baseCost == null) return null;
   if (card.cost > card.baseCost)
     return { background: "#2d0a0a", color: "#ef9a9a" }; // increased → red
@@ -135,26 +145,26 @@ export function costStyle(card: any): Record<string, string> | null {
 }
 
 /** Border colour for a card — EGO overrides to crimson regardless of rarity. */
-export function cardBorderColor(card: any): string {
+export function cardBorderColor(card: Card): string {
   if (card.options?.some((o: string) => o.startsWith("Ego") || o === "EGO"))
     return "#c62828";
-  return rarityColor(card.rarity);
+  return rarityColor(card.rarity ?? "");
 }
 
-export function buffIconUrl(b: any): string {
+export function buffIconUrl(b: Buff): string {
   return b.icon
     ? `/assets/buficons/${b.icon}.png`
     : "/assets/buficons/_default.png";
 }
 
-export function buffClass(b: any): Record<string, boolean> {
+export function buffClass(b: Buff): Record<string, boolean> {
   return {
     "buff-tag--positive": b.positive === "Positive",
     "buff-tag--negative": b.positive === "Negative",
   };
 }
 
-export function isDead(unit: any): boolean {
+export function isDead(unit: Unit): boolean {
   return unit.hp <= 0;
 }
 
@@ -173,14 +183,14 @@ const ROMAN = [
 ];
 /**
  * Converts a number to a roman numeral.
- * 
+ *
  * Supports 0-10, and returns the number as a string if out of range.
  */
 export function toRoman(n: number): string {
   return ROMAN[n] ?? String(n);
 }
 
-export function cardTokenIconUrl(b: any): string {
+export function cardTokenIconUrl(b: CardToken): string {
   return b.icon
     ? `/assets/cardicons/${b.icon}.png`
     : "/assets/buficons/_default.png";
@@ -198,15 +208,16 @@ export function dieTypeColor(type: string): string {
 }
 
 /** Sort speed dice (staggered first, then descending value) and pair with slotted cards. */
-export function sortedSlots(unit: any): Array<{ die: any; card: any }> {
+export function sortedSlots(
+  unit: Unit,
+): Array<{ die: SpeedDie; card: SlottedCardEntry | undefined }> {
   return [...(unit.speedDice ?? [])]
-    .sort((a: any, b: any) => {
+    .sort((a, b) => {
       if (a.staggered !== b.staggered) return a.staggered ? -1 : 1;
       return b.value - a.value;
     })
-    .map((d: any) => ({
+    .map((d) => ({
       die: d,
-      card:
-        (unit.slottedCards ?? []).find((sc: any) => sc.slot === d.slot) ?? null,
+      card: (unit.slottedCards ?? []).find((sc) => sc.slot === d.slot),
     }));
 }

@@ -14,6 +14,7 @@
 -->
 <script setup lang="ts">
 // isMassRange is auto-imported from useBattleDisplay.ts
+import type { Unit } from "~/types/game";
 
 const props = defineProps<{
   selecting: {
@@ -23,7 +24,7 @@ const props = defineProps<{
     cardName: string;
     cardRange: string;
   };
-  enemies: any[];
+  enemies: Unit[];
 }>();
 
 const emit = defineEmits<{
@@ -36,8 +37,8 @@ function pick(unitId: number, diceSlot: number) {
 }
 
 /** Returns the current state of an enemy die slot based on its slotted card. */
-function dieState(enemy: any, dieSlot: number): "clash" | "incoming" | "empty" {
-  const sc = (enemy.slottedCards ?? []).find((sc: any) => sc.slot === dieSlot);
+function dieState(enemy: Unit, dieSlot: number): "clash" | "incoming" | "empty" {
+  const sc = (enemy.slottedCards ?? []).find((sc) => sc.slot === dieSlot);
   if (!sc) return "empty";
   return sc.clash ? "clash" : "incoming";
 }

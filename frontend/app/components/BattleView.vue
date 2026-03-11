@@ -9,9 +9,10 @@
 -->
 <script setup lang="ts">
 import type { BattleCtx } from "~/composables/useBattleContext";
+import type { AllyUnit, GameState, Unit } from "~/types/game";
 import DisplayCard from "./unit/DisplayCard.vue";
 
-const props = defineProps<{ state: any }>();
+const props = defineProps<{ state: GameState }>();
 
 // ---------------------------------------------------------------------------
 // Interactive state (only meaningful during SelectCard phase)
@@ -66,7 +67,7 @@ const ALLY_COLORS = ["#4fc3f7", "#81c784", "#ffb74d", "#ce93d8", "#f48fb1"];
 
 const allyColors = computed<Record<number, string>>(() => {
   const m: Record<number, string> = {};
-  (props.state?.allies ?? []).forEach((a: any, i: number) => {
+  (props.state?.allies ?? []).forEach((a, i) => {
     m[a.id] = ALLY_COLORS[i % ALLY_COLORS.length]!;
   });
   return m;
@@ -81,14 +82,14 @@ const attackMap = computed(() => {
     ...(props.state?.allies ?? []),
     ...(props.state?.enemies ?? []),
   ];
-  allSides.forEach((unit: any, i: number) => {
+  allSides.forEach((unit, i) => {
     if (isDead(unit)) return;
     const color = ALLY_COLORS[i % ALLY_COLORS.length]!;
     const name = unit.name ?? unit.keyPage?.name ?? `#${unit.id}`;
-    (unit.slottedCards ?? []).forEach((sc: any) => {
+    (unit.slottedCards ?? []).forEach((sc) => {
       if (sc.targetUnitId == null) return;
       const bySlot = (m[sc.targetUnitId] ??= {});
-      (bySlot[sc.targetSlot] ??= []).push({
+      (bySlot[sc.targetSlot ?? -1] ??= []).push({
         name,
         color,
         range: sc.range ?? "",
@@ -110,9 +111,9 @@ const allUnits = computed(() => [
 const allyOrder = ref<number[]>([]);
 const enemyOrder = ref<number[]>([]);
 
-function syncOrder(order: Ref<number[]>, units: any[] | undefined) {
+function syncOrder(order: Ref<number[]>, units: (Unit | AllyUnit)[] | undefined) {
   if (!units) return;
-  const ids = units.map((u: any) => u.id);
+  const ids = units.map((u) => u.id);
   order.value = [
     ...order.value.filter((id) => ids.includes(id)),
     ...ids.filter((id) => !order.value.includes(id)),
@@ -130,9 +131,9 @@ watch(
   { immediate: true },
 );
 
-function makeSorted(units: Ref<any[]>, order: Ref<number[]>) {
+function makeSorted(units: Ref<(Unit | AllyUnit)[]>, order: Ref<number[]>) {
   return computed(() =>
-    [...units.value].sort((a: any, b: any) => {
+    [...units.value].sort((a, b) => {
       const ad = isDead(a) ? 1 : 0,
         bd = isDead(b) ? 1 : 0;
       if (ad !== bd) return ad - bd;
@@ -152,35 +153,35 @@ const sortedEnemies = makeSorted(
 
 function moveUnit(
   order: Ref<number[]>,
-  sorted: any[],
+  sorted: (Unit | AllyUnit)[],
   unitId: number,
   dir: -1 | 1,
 ) {
-  const living = sorted.filter((u: any) => !isDead(u));
-  const di = living.findIndex((u: any) => u.id === unitId);
+  const living = sorted.filter((u) => !isDead(u));
+  const di = living.findIndex((u) => u.id === unitId);
   const ni = di + dir;
   if (ni < 0 || ni >= living.length) return;
   const arr = [...order.value];
   const ia = arr.indexOf(unitId),
-    ib = arr.indexOf(living[ni].id);
+    ib = arr.indexOf(living[ni]!.id);
   if (ia < 0 || ib < 0) return;
   [arr[ia], arr[ib]] = [arr[ib]!, arr[ia]!];
   order.value = arr;
 }
 
-function canMoveUp(sorted: any[], unit: any) {
+function canMoveUp(sorted: (Unit | AllyUnit)[], unit: Unit | AllyUnit) {
   if (isDead(unit)) return false;
   return (
     sorted
-      .filter((u: any) => !isDead(u))
-      .findIndex((u: any) => u.id === unit.id) > 0
+      .filter((u) => !isDead(u))
+      .findIndex((u) => u.id === unit.id) > 0
   );
 }
 
-function canMoveDown(sorted: any[], unit: any) {
+function canMoveDown(sorted: (Unit | AllyUnit)[], unit: Unit | AllyUnit) {
   if (isDead(unit)) return false;
-  const living = sorted.filter((u: any) => !isDead(u));
-  const i = living.findIndex((u: any) => u.id === unit.id);
+  const living = sorted.filter((u) => !isDead(u));
+  const i = living.findIndex((u) => u.id === unit.id);
   return i >= 0 && i < living.length - 1;
 }
 
@@ -262,7 +263,7 @@ function routeCard(
   isEgo: boolean,
   diceSlot: number,
 ) {
-  const unit = props.state?.allies?.find((u: any) => u.id === unitId);
+  const unit = props.state?.allies?.find((u) => u.id === unitId);
   if (!unit) return;
   const cardList = isEgo ? (unit.ego ?? []) : (unit.hand ?? []);
   const card = cardList[cardIndex];
@@ -296,7 +297,7 @@ function routeCard(
   }
 }
 
-function onSlotSelectClick(unit: any, diceSlot: number) {
+function onSlotSelectClick(unit: Unit, diceSlot: number) {
   // In step 2, any slot click cancels
   if (selectingTargetFor.value || selectingAllyTargetFor.value) {
     cancelTargeting();

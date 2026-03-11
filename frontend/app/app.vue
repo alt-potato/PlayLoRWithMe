@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import type { GameState } from "~/types/game";
+
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
 const status = ref<ConnectionStatus>("connecting");
-const gameState = ref<any>(null);
+const gameState = ref<GameState | null>(null);
 const rawJson = ref<string>("—");
 
 const statusLabel: Record<ConnectionStatus, string> = {

@@ -9,11 +9,13 @@
     isAlly     – whether this is an ally unit 
 -->
 <script setup lang="ts">
+import type { SlottedCardEntry, SpeedDie, Unit } from "~/types/game";
+
 const props = withDefaults(
   defineProps<{
-    unit: any;
-    die: any;
-    card: any;
+    unit: Unit;
+    die: SpeedDie;
+    card: SlottedCardEntry | undefined;
     isReversed: boolean;
     isAlly: boolean;
     onLongPress: () => void;
@@ -52,7 +54,7 @@ const isUnitBroken = computed(
 
 let slotLongPressed = false;
 let slotPressTimer: ReturnType<typeof setTimeout> | null = null;
-function onSlotPressStart(sc: any) {
+function onSlotPressStart(sc: SlottedCardEntry | undefined) {
   if (!sc) return;
   slotLongPressed = false;
   slotPressTimer = setTimeout(() => {
@@ -109,13 +111,13 @@ const dieDisplayValue: ComputedRef<string> = computed(() => {
     case "invalid":
       return "—";
     default:
-      return props.die.value || "—";
+      return String(props.die.value) || "—";
   }
 });
 
 const slotState = computed(() => {
   // card is already slotted on this die
-  if (props.card !== null) return "slot-filled";
+  if (props.card != null) return "slot-filled";
 
   switch (dieState.value) {
     case "open":
@@ -141,7 +143,10 @@ function onSlotPressEnd() {
   }
 }
 
-function handleSlotClick(d: any, sc: any) {
+function handleSlotClick(
+  d: SpeedDie,
+  sc: SlottedCardEntry | undefined,
+) {
   if (slotLongPressed) {
     slotLongPressed = false;
     return;
@@ -150,7 +155,7 @@ function handleSlotClick(d: any, sc: any) {
 
   if (props.isAlly) {
     // ally: handle slot selection for playing cards only
-    if (sc !== null || d.staggered || isUnitBroken.value) return;
+    if (sc != null || d.staggered || isUnitBroken.value) return;
     onSlotSelectClick(props.unit, d.slot);
   } else {
     // enemy: handle targeting only
@@ -160,9 +165,9 @@ function handleSlotClick(d: any, sc: any) {
   }
 }
 
-function targetLabel(sc: any): string {
+function targetLabel(sc: SlottedCardEntry | undefined): string {
   if (sc?.targetUnitId == null) return "";
-  const u = allUnits.value.find((u: any) => u.id === sc.targetUnitId);
+  const u = allUnits.value.find((u) => u.id === sc.targetUnitId);
   const prefix = sc.clash ? "⚔" : "↗";
   return `${prefix} ${u?.name ?? `#${sc.targetUnitId}`} ·${sc.targetSlot}`;
 }
@@ -212,13 +217,13 @@ function targetLabel(sc: any): string {
     <div class="slot-wrapper">
       <div class="slot-content">
         <SlottedCard
-          v-if="card !== null"
+          v-if="card != null"
           :card="card"
           :targetLabel="targetLabel(card) || undefined"
         />
         <div v-else class="slot-empty">—</div>
         <button
-          v-if="isAlly && isSelectPhase"
+          v-if="isAlly && isSelectPhase && card != null"
           class="remove-btn"
           title="Return to hand"
           @click="onRemoveCard(unit.id, card.slot)"
