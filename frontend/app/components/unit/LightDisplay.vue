@@ -16,7 +16,7 @@ const props = defineProps<{ current: number; max: number; reserved: number }>();
 <template>
   <div
     v-if="max > 0"
-    class="ap-pips"
+    class="ap-pips reversible-container"
     :title="`Light: ${current}/${max} (${reserved ?? 0} reserved)`"
   >
     <!-- lit -->
@@ -43,7 +43,7 @@ const props = defineProps<{ current: number; max: number; reserved: number }>();
 <style scoped>
 .ap-pips {
   display: flex;
-  gap: 0.08rem;
+  gap: 0.1rem;
   align-items: center;
   flex-wrap: wrap;
 }

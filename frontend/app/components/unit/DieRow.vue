@@ -1,16 +1,28 @@
 <!-- 
   Speed die row plus slotted cards.
+
+  Props:
+    unit       – ally or enemy unit object from game state
+    die        – die object from game state
+    card       – slotted card object from game state (name, dice[], targetUnitId, ...)
+    isReversed – whether this die is on the right of the unit (usually === !isAlly)
+    isAlly     – whether this is an ally unit 
 -->
 <script setup lang="ts">
-const props = defineProps<{
-  unit: any;
-  die: any;
-  card: any;
-  color: string;
-  isReversed: boolean;
-  canControl: boolean;
-  onLongPress: () => void;
-}>();
+const props = withDefaults(
+  defineProps<{
+    unit: any;
+    die: any;
+    card: any;
+    isReversed: boolean;
+    isAlly: boolean;
+    onLongPress: () => void;
+  }>(),
+  {
+    isReversed: false,
+    isAlly: true,
+  },
+);
 
 const {
   phase,
@@ -18,37 +30,25 @@ const {
   selectingSlot,
   selectingTargetFor,
   onSlotSelectClick,
+  onTargetDieClick,
+  onRemoveCard,
+  allUnits,
 } = inject(BATTLE_CTX) as BattleCtx;
+
+type DieState =
+  | "empty" // no card in slot
+  | "available" // no card in slot, ready to select
+  | "open" // slot selected, awaiting card
+  | "pending" // card selected, awaiting target
+  | "unopposed-outgoing" // target set, no clash
+  | "unopposed-incoming"
+  | "clash" // target set, clash
+  | "broken"
+  | "invalid";
 
 const isUnitBroken = computed(
   () => props.unit.turnState === "BREAK" || isDead(props.unit),
 );
-
-const slotState = computed(() => {
-  // card is slotted on this die
-  if (props.card !== null) return "slot-filled";
-
-  // die is selected and awaiting card
-  if (
-    isSelectPhase.value &&
-    selectingSlot?.value?.unitId === props.unit.id &&
-    selectingSlot?.value?.diceSlot === props.die.slot &&
-    !props.die.staggered &&
-    !isUnitBroken.value
-  )
-    return "slot-open";
-
-  // card is selected, awaiting target
-  if (
-    isSelectPhase.value &&
-    selectingTargetFor?.value?.unitId === props.unit.id &&
-    selectingTargetFor?.value?.diceSlot === props.die.slot
-  )
-    return "slot-pending";
-
-  // slot is empty
-  return "slot-available";
-});
 
 let slotLongPressed = false;
 let slotPressTimer: ReturnType<typeof setTimeout> | null = null;
@@ -60,6 +60,79 @@ function onSlotPressStart(sc: any) {
     props.onLongPress();
   }, 500);
 }
+
+const dieState: ComputedRef<DieState> = computed(() => {
+  // die is broken
+  if (props.die.staggered || isUnitBroken.value) return "broken";
+
+  // dice has no value
+  // TODO: check where dice value comes from and invalidate there
+  if (
+    phase.value === "RoundEndPhase" ||
+    phase.value === "RoundStartPhase_UI" ||
+    phase.value === "RoundStartPhase_System"
+  )
+    return "invalid";
+
+  if (props.card == null) {
+    // no card slotted
+    // is card selection in progress?
+    if (
+      isSelectPhase.value &&
+      selectingSlot?.value?.unitId === props.unit.id &&
+      selectingSlot?.value?.diceSlot === props.die.slot
+    )
+      return "open";
+
+    if (
+      isSelectPhase.value &&
+      selectingTargetFor?.value?.unitId === props.unit.id &&
+      selectingTargetFor?.value?.diceSlot === props.die.slot
+    )
+      return "pending";
+
+    return isSelectPhase.value ? "available" : "empty";
+  } else {
+    // card is slotted, target is set
+    if (props.card.clash) return "clash";
+    if (props.card.targetUnitId != null)
+      return props.isAlly ? "unopposed-outgoing" : "unopposed-incoming";
+
+    return "invalid";
+  }
+});
+
+const dieDisplayValue: ComputedRef<string> = computed(() => {
+  switch (dieState.value) {
+    case "broken":
+      return "✕";
+    case "invalid":
+      return "—";
+    default:
+      return props.die.value || "—";
+  }
+});
+
+const slotState = computed(() => {
+  // card is already slotted on this die
+  if (props.card !== null) return "slot-filled";
+
+  switch (dieState.value) {
+    case "open":
+      return "slot-open";
+    case "pending":
+      return "slot-pending";
+    case "broken":
+      return "slot-broken";
+    default:
+      return "slot-available";
+  }
+});
+
+const isTargeting = computed(() => selectingTargetFor.value !== null);
+const canBeTargeted = computed(
+  () => isTargeting.value && props.unit.targetable,
+);
 
 function onSlotPressEnd() {
   if (slotPressTimer) {
@@ -74,39 +147,38 @@ function handleSlotClick(d: any, sc: any) {
     return;
   }
   if (!isSelectPhase.value) return;
-  if (sc !== null || d.staggered || isUnitBroken.value) return;
-  onSlotSelectClick(props.unit, d.slot);
+
+  if (props.isAlly) {
+    // ally: handle slot selection for playing cards only
+    if (sc !== null || d.staggered || isUnitBroken.value) return;
+    onSlotSelectClick(props.unit, d.slot);
+  } else {
+    // enemy: handle targeting only
+    if (canBeTargeted.value && !d.staggered) {
+      onTargetDieClick(props.unit.id, d.slot);
+    }
+  }
 }
 
-function dieColor(sc: any): string {
-  if (sc.clash) return ARROW_COLORS.clash;
-  if (sc.targetUnitId != null) return ARROW_COLORS.outgoing;
-  return props.color; // Instance / untargeted
-}
-
-function getDieDisplayValue(die: any) {
-  // die is broken
-  if (die.staggered || isUnitBroken.value) {
-    return "✕";
-  }
-  // dice has no value
-  // TODO: check where die is set and invalidate there
-  if (
-    phase.value === "RoundEndPhase" ||
-    phase.value === "RoundStartPhase_UI" ||
-    phase.value === "RoundStartPhase_System"
-  ) {
-    return "—";
-  }
-  // dice should have valid value
-  return die.value || "—";
+function targetLabel(sc: any): string {
+  if (sc?.targetUnitId == null) return "";
+  const u = allUnits.value.find((u: any) => u.id === sc.targetUnitId);
+  const prefix = sc.clash ? "⚔" : "↗";
+  return `${prefix} ${u?.name ?? `#${sc.targetUnitId}`} ·${sc.targetSlot}`;
 }
 </script>
 
 <template>
   <div
     class="slot-row"
-    :class="slotState"
+    :class="[
+      slotState,
+      {
+        'slot-reversed': isReversed,
+        // TODO: fix logic so that all valid targets are highlighted
+        'slot-target': canBeTargeted && !isAlly && !die.staggered,
+      },
+    ]"
     @click.stop="handleSlotClick(die, card)"
     @mousedown="onSlotPressStart(card)"
     @mouseup="onSlotPressEnd"
@@ -118,45 +190,42 @@ function getDieDisplayValue(die: any) {
     <!-- Hexagonal die (data-die used by ArrowOverlay for coordinate lookup) -->
     <span
       class="hex-wrap"
-      :class="{
-        staggered: die.staggered || isUnitBroken,
-        'hex-available':
-          isSelectPhase &&
-          selectingSlot === null &&
-          card === null &&
-          !die.staggered &&
-          !isUnitBroken,
-        'hex-open':
-          isSelectPhase &&
-          selectingSlot?.unitId === unit.id &&
-          selectingSlot?.diceSlot === die.slot &&
-          card === null &&
-          !die.staggered &&
-          !isUnitBroken,
-        'hex-pending':
-          isSelectPhase &&
-          selectingTargetFor?.unitId === unit.id &&
-          selectingTargetFor?.diceSlot === die.slot,
-      }"
+      :class="[
+        dieState,
+        {
+          // TODO: fix logic so that all valid targets are highlighted
+          'hex-target': canBeTargeted && !isAlly && !die.staggered,
+        },
+      ]"
       :data-die="`${unit.id}-${die.slot}`"
-      :style="
-        card !== null && !die.staggered && !isUnitBroken
-          ? { background: dieColor(card) }
-          : {}
-      "
     >
       <span
         class="hex-inner"
         :class="{
-          'hex-inner--dim-value':
-            getDieDisplayValue(die) === '—' && !(die.staggered || isUnitBroken),
+          'hex-inner--dim-value': dieDisplayValue === '—',
         }"
-        >{{ getDieDisplayValue(die) }}</span
+        >{{ dieDisplayValue }}</span
       >
     </span>
 
     <!-- slotted card -->
-    <div class="slot-content">
+    <div class="slot-wrapper">
+      <div class="slot-content">
+        <SlottedCard
+          v-if="card !== null"
+          :card="card"
+          :targetLabel="targetLabel(card) || undefined"
+        />
+        <div v-else class="slot-empty">—</div>
+        <button
+          v-if="isAlly && isSelectPhase"
+          class="remove-btn"
+          title="Return to hand"
+          @click="onRemoveCard(unit.id, card.slot)"
+        >
+          ✕
+        </button>
+      </div>
       <slot />
     </div>
   </div>
@@ -164,22 +233,19 @@ function getDieDisplayValue(die: any) {
 
 <style scoped>
 /* ── Slotted card content ── */
-.slot-filled .slot-content {
-  background: var(--bg-card-2);
+.slot-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
-.slot-open {
-  cursor: pointer;
-}
-.slot-open .slot-content {
-  background: #0c1e0c;
-}
-.slot-open:hover .slot-content {
-  background: #102010;
-}
-.slot-empty {
-  color: var(--text-3);
-  font-style: italic;
-  font-size: 0.68rem;
+.slot-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.2rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
 }
 .slot-row {
   display: flex;
@@ -187,24 +253,42 @@ function getDieDisplayValue(die: any) {
   gap: 0.35rem;
   padding: 0.06rem 0.15rem 0.06rem 0;
 }
-.slot-content {
-  flex: 1;
-  min-width: 0;
-  min-height: 2.2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
+.slot-filled .slot-wrapper {
+  background: var(--bg-card-2);
 }
-.slot-pending .slot-content {
+.slot-open {
+  cursor: pointer;
+}
+.slot-open .slot-wrapper {
+  background: #0c1e0c;
+}
+.slot-open:hover .slot-wrapper {
+  background: #102010;
+}
+.slot-empty {
+  color: var(--text-3);
+}
+.slot-pending .slot-wrapper {
   background: #1a1400;
 }
 .slot-target {
   cursor: pointer;
 }
+.slot-available {
+  cursor: pointer;
+}
+.slot-available .slot-empty {
+  color: #4a3800;
+  transition: color 0.15s;
+}
+.slot-available:hover .slot-empty {
+  color: var(--gold-dim);
+}
 
 /* ── Hexagonal die ── */
 /* Two-layer clip-path creates a "border" effect without actual CSS border.
    data-die is on the outer element so ArrowOverlay can locate it correctly. */
+/* default (empty) */
 .hex-wrap {
   display: inline-flex;
   align-items: center;
@@ -228,26 +312,20 @@ function getDieDisplayValue(die: any) {
   color: var(--text-1);
   pointer-events: none;
 }
-.hex-wrap.staggered {
-  background: var(--crimson-dim);
-}
-.hex-wrap.staggered .hex-inner {
-  background: #230808;
-  color: var(--crimson-hi);
-}
-.hex-wrap.hex-available {
+/* empty (ready for select) */
+.hex-wrap.available {
   background: var(--border-mid);
   cursor: pointer;
   animation: hex-beckon 2.2s ease-in-out infinite;
 }
-.hex-wrap.hex-available .hex-inner {
+.hex-wrap.available .hex-inner {
   color: var(--gold-dim);
 }
-.hex-wrap.hex-available:hover {
+.hex-wrap.available:hover {
   animation: none;
   background: var(--gold-dim);
 }
-.hex-wrap.hex-available:hover .hex-inner {
+.hex-wrap.available:hover .hex-inner {
   background: #141000;
   color: var(--gold);
 }
@@ -260,40 +338,32 @@ function getDieDisplayValue(die: any) {
     background: #3a2c00;
   }
 }
-.slot-available {
-  cursor: pointer;
-}
-.slot-available .slot-empty {
-  color: #4a3800;
-  transition: color 0.15s;
-}
-.slot-available:hover .slot-empty {
-  color: var(--gold-dim);
-}
-.hex-wrap.hex-open {
+/* open */
+.hex-wrap.open {
   background: var(--green-hi);
   cursor: pointer;
   transition: background 0.1s;
 }
-.hex-wrap.hex-open .hex-inner {
+.hex-wrap.open .hex-inner {
   background: #0c1e0c;
   color: var(--text-1);
   transition:
     background 0.1s,
     color 0.1s;
 }
-.hex-wrap.hex-open:hover {
+.hex-wrap.open:hover {
   background: #4caf50;
 }
-.hex-wrap.hex-open:hover .hex-inner {
+.hex-wrap.open:hover .hex-inner {
   background: #102010;
   color: #fff;
 }
-.hex-wrap.hex-pending {
+/* pending */
+.hex-wrap.pending {
   background: var(--gold);
   animation: hex-pulse 1.2s ease-in-out infinite;
 }
-.hex-wrap.hex-pending .hex-inner {
+.hex-wrap.pending .hex-inner {
   background: #1a1400;
   color: var(--gold-bright);
 }
@@ -306,6 +376,27 @@ function getDieDisplayValue(die: any) {
     background: var(--gold-dim);
   }
 }
+/* unopposed: incoming */
+.hex-wrap.unopposed-incoming {
+  background: var(--incoming);
+}
+/* unopposed: outgoing */
+.hex-wrap.unopposed-outgoing {
+  background: var(--outgoing);
+}
+/* clash */
+.hex-wrap.clash {
+  background: var(--clash);
+}
+/* broken */
+.hex-wrap.broken {
+  background: var(--crimson-dim);
+}
+.hex-wrap.broken .hex-inner {
+  background: #230808;
+  color: var(--crimson-hi);
+}
+/* invalid */
 .hex-inner--dim-value {
   color: var(--text-2);
 }
@@ -325,5 +416,22 @@ function getDieDisplayValue(die: any) {
 .slot-target:hover .slot-content {
   background: #0c1e0c;
   transition: background 0.1s;
+}
+
+/* ── Remove button ── */
+.remove-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 0 0.15rem;
+  line-height: 1;
+  font-family: var(--font-body);
+}
+.remove-btn:hover {
+  color: var(--crimson-hi);
 }
 </style>

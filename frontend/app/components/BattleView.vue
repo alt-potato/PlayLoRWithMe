@@ -1,14 +1,15 @@
 <!--
-  BattleView.vue
-
   Top-level battle scene coordinator. Owns all interactive state and provides it
   to EnemyUnit and AllyUnit via BATTLE_CTX (provide/inject), avoiding prop drilling.
+
+  Naming convention is based on stage nomeclature, to match the theme of the game.
 
   Props:
     state – full battle state snapshot from the SSE stream
 -->
 <script setup lang="ts">
 import type { BattleCtx } from "~/composables/useBattleContext";
+import DisplayCard from "./unit/DisplayCard.vue";
 
 const props = defineProps<{ state: any }>();
 
@@ -506,7 +507,11 @@ provide(BATTLE_CTX, {
             ▼
           </button>
         </div>
-        <EnemyUnit :unit="unit" style="flex: 1; min-width: 0" />
+        <UnitDisplayCard
+          :unit="unit"
+          :isAlly="false"
+          side="left"
+        />
       </div>
     </section>
 
@@ -520,7 +525,11 @@ provide(BATTLE_CTX, {
         class="unit-slot"
         :class="{ 'unit-slot--dead': isDead(unit) }"
       >
-        <UnitDisplayCard :unit="unit" :isAlly="true" style="flex: 1; min-width: 0" />
+        <UnitDisplayCard
+          :unit="unit"
+          :isAlly="true"
+          side="right"
+        />
         <div class="unit-reorder">
           <button
             class="reorder-btn"
@@ -568,7 +577,9 @@ provide(BATTLE_CTX, {
     :team-coin-max="state.abnormalitySelection.teamCoinMax"
     :team-positive-coins="state.abnormalitySelection.teamPositiveCoins"
     :team-negative-coins="state.abnormalitySelection.teamNegativeCoins"
-    @select="({ cardId, targetUnitId }) => onSelectAbnormality(cardId, targetUnitId)"
+    @select="
+      ({ cardId, targetUnitId }) => onSelectAbnormality(cardId, targetUnitId)
+    "
   />
 
   <!-- Ally targeting banner -->

@@ -28,8 +28,8 @@ const props = defineProps<{
 </script>
 
 <template>
-  <div v-if="max > 0" class="emotion-meta">
-    <div class="epips">
+  <div v-if="max > 0" class="emotion-meta reversible-container">
+    <div class="epips reversible-container">
       <span v-for="n in positive" :key="'p' + n" class="epip epip--pos" />
       <span v-for="n in negative" :key="'n' + n" class="epip epip--neg" />
       <span

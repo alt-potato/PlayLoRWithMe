@@ -1,20 +1,15 @@
 <!--
-  SlottedCard.vue
-
   Compact card + dice row shown inside speed die slots for both allies and enemies.
 
   Props:
     sc          – slotted card object from game state (name, dice[], targetUnitId, …)
     targetLabel – formatted target string (e.g. "⚔ Roland ·2"), optional
     clash       – true when this card is clashing
-    myColor     – ally color for target label (enemies omit this)
 -->
 <script setup lang="ts">
 defineProps<{
   card: any;
   targetLabel?: string;
-  clash?: boolean;
-  myColor?: string;
 }>();
 </script>
 
@@ -25,8 +20,6 @@ defineProps<{
       <span
         v-if="targetLabel"
         class="sc-target"
-        :class="{ 'sc-clash': clash }"
-        :style="{ color: clash ? '#e53935' : (myColor ?? '#aaa') }"
         >{{ targetLabel }}</span
       >
     </div>

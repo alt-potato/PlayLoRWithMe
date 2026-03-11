@@ -17,9 +17,9 @@ export const RESIST_COLORS: Record<string, string> = {
 
 /** Arrow / die highlight colours shared between ArrowOverlay and unit components. */
 export const ARROW_COLORS = {
-  incoming: "#c62828",
-  clash: "#c9a227",
-  outgoing: "#4fc3f7",
+  incoming: "var(--incoming)",
+  clash: "var(--clash)",
+  outgoing: "var(--outgoing)",
 } as const;
 
 /** Maps TurnState enum string → human-readable label. */

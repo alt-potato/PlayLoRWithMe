@@ -5,11 +5,17 @@
 
   Props:
     unit – unit object from the game state snapshot
+    canControl - whether the unit can be commanded (functionally, whether the unit is an ally)
+    side - "left" or "right"
 -->
 <script setup lang="ts">
 import type { BattleCtx } from "~/composables/useBattleContext";
 
-const props = defineProps<{ unit: any; isAlly: boolean }>();
+const props = defineProps<{
+  unit: any;
+  isAlly?: boolean;
+  side?: "right" | "left";
+}>();
 
 const {
   isSelectPhase,
@@ -17,28 +23,37 @@ const {
   selectingTargetFor,
   selectingAllyTargetFor,
   onCardClick,
-  onSlotSelectClick,
-  onRemoveCard,
   onAllyTargetClick,
-  cancelTargeting,
+  onTargetDieClick,
   allyColors,
-  allUnits,
+  attackMap,
 } = inject(BATTLE_CTX) as BattleCtx;
 
-const myColor = computed(() => allyColors.value[props.unit.id] ?? "#888");
 const slots = computed(() => sortedSlots(props.unit));
 
 const isAllyTargeting = computed(
   () =>
+    props.isAlly &&
     selectingAllyTargetFor.value !== null &&
     selectingAllyTargetFor.value.unitId !== props.unit.id,
 );
+const borderStyle = computed(() => {
+  const color = props.isAlly
+    ? isAllyTargeting.value
+      ? "var(--green-hi)" // turn green if ally is selecting target
+      : (allyColors.value[props.unit.id] ?? "var(--gold-dim)")
+    : "var(--crimson)";
 
-function targetLabel(sc: any): string {
-  if (sc?.targetUnitId == null) return "";
-  const u = allUnits.value.find((u: any) => u.id === sc.targetUnitId);
-  const prefix = sc.clash ? "⚔" : "↗";
-  return `${prefix} ${u?.name ?? `#${sc.targetUnitId}`} ·${sc.targetSlot}`;
+  return {
+    [`border-${props.side}`]: "2px solid " + color,
+  };
+});
+
+function dieColor(sc: any): string {
+  if (sc?.clash) return ARROW_COLORS.clash;
+  if (props.isAlly) return ARROW_COLORS.incoming;
+  if (sc?.targetUnitId != null) return ARROW_COLORS.outgoing;
+  return "#F0F"; // Instance / untargeted
 }
 
 const detailCard = ref<any>(null);
@@ -86,7 +101,8 @@ const detailsLabel = computed(() => {
   const u = props.unit;
   const parts: string[] = [];
   if (u.passives?.length) parts.push(`Passives (${u.passives.length})`);
-  if (u.abnormalities?.length) parts.push(`Abnormalities (${u.abnormalities.length})`);
+  if (u.abnormalities?.length)
+    parts.push(`Abnormalities (${u.abnormalities.length})`);
   if (u.keyPage) parts.push("Resistances");
   return parts.length ? parts.join(" · ") : "Details";
 });
@@ -104,13 +120,17 @@ function passiveClass(p: any) {
 <template>
   <div
     class="unit-card"
-    :class="{ 'unit-card--ally-select': isAllyTargeting }"
+    :class="{
+      'unit-card--ally-select': isAllyTargeting,
+      'reversed-order': side !== 'right',
+    }"
+    :style="borderStyle"
     @click.capture="isAllyTargeting ? onAllyTargetClick(unit.id) : undefined"
   >
     <!-- ── Header ── -->
     <div class="unit-header">
       <!-- row 1: turn badge, name -->
-      <div class="unit-header-1">
+      <div class="unit-header-row reversible-container">
         <span
           class="state-badge"
           :style="{
@@ -118,13 +138,13 @@ function passiveClass(p: any) {
           }"
           >{{ isDead(unit) ? "DEAD" : turnLabel(unit.turnState) }}</span
         >
-        <span class="unit-name">{{
+        <span class="unit-name reversible-text">{{
           unit.name ?? unit.keyPage?.name ?? `Unit #${unit.id}`
         }}</span>
       </div>
 
       <!-- row 2: light pips, emotion level -->
-      <div class="unit-header-2">
+      <div class="unit-header-row reversible-container">
         <UnitLightDisplay
           :current="unit.playPoint"
           :max="unit.maxPlayPoint"
@@ -150,32 +170,28 @@ function passiveClass(p: any) {
     <!-- ── Speed dice + slotted cards ── -->
     <div v-for="{ die, card } in slots" :key="die.slot" class="slot-list">
       <UnitDieRow
+        class="reversible-container"
         :unit="unit"
         :die="die"
         :card="card"
-        :color="myColor"
+        :color="dieColor(card)"
+        :isReversed="side !== 'right'"
+        :isAlly="isAlly"
         :onLongPress="() => (detailCard = card)"
-        :isAlly="true"
       >
-        <template v-if="card !== null">
-          <SlottedCard
-            :card="card"
-            :target-label="targetLabel(card) || undefined"
-            :clash="card.clash"
-            :my-color="myColor"
-          />
-          <button
-            v-if="isSelectPhase"
-            class="remove-btn"
-            title="Return to hand"
-            @click="onRemoveCard(unit.id, card.slot)"
+        <div
+          v-if="!isDead(unit) && attackMap[unit.id]?.[die.slot]?.length"
+          class="incoming-row"
+        >
+          <span
+            v-for="atk in attackMap[unit.id]?.[die.slot]"
+            :key="atk.name"
+            class="incoming-chip"
+            :class="{ 'chip-mass': isMassRange(atk.range) }"
+            :style="{ borderColor: atk.color, color: atk.color }"
+            >↑ {{ atk.name }}{{ isMassRange(atk.range) ? " ✦" : "" }}</span
           >
-            ✕
-          </button>
-        </template>
-        <template v-else>
-          <span class="slot-empty">—</span>
-        </template>
+        </div>
       </UnitDieRow>
     </div>
 
@@ -246,7 +262,6 @@ function passiveClass(p: any) {
                       selectingTargetFor.isEgo === true
                     ))
                 "
-                :color="myColor"
                 :unusable="c.canUse === false"
                 @click="onCardClick(unit.id, Number(i), true)"
                 @detail="detailCard = c"
@@ -272,7 +287,6 @@ function passiveClass(p: any) {
                       !selectingTargetFor.isEgo
                     ))
                 "
-                :color="myColor"
                 :unusable="c.canUse === false"
                 @click="onCardClick(unit.id, Number(i))"
                 @detail="detailCard = c"
@@ -335,16 +349,26 @@ function passiveClass(p: any) {
 </template>
 
 <style scoped>
-/* ── Card shell (ally accent on right) ── */
+/* ── Card shell (accents controlled by borderColor) ── */
 .unit-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 0.32rem;
+  font-size: 0.78rem;
+  font-family: var(--font-body);
+  overflow: visible;
   width: 100%;
-  border-right: 2px solid var(--gold-dim);
+  max-width: 24rem;
+  min-width: 0;
   transition:
     border-color 0.15s,
     background 0.15s;
 }
 .unit-card--ally-select {
-  border-right-color: var(--green-hi);
   background: #0a1a0a;
   cursor: pointer;
 }
@@ -358,39 +382,178 @@ function passiveClass(p: any) {
   flex-direction: column;
   gap: 0.4rem;
 }
-.unit-header div {
+.unit-header-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 0.4rem;
 }
+.state-badge {
+  font-family: var(--font-body);
+  font-size: 0.52rem;
+  padding: 0.1rem 0.3rem;
+  color: #000;
+  white-space: nowrap;
+  font-weight: bold;
+  flex-shrink: 0;
+}
 .unit-name {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text-1);
+  flex: 1;
+  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-align: right;
 }
 
-/* ── Slot list (die on left, protrudes beyond card edge) ─────────────────── */
+/* ── Slot list (die on left, protrudes beyond card edge) ── */
 .slot-list {
   display: flex;
   flex-direction: column;
   gap: 0.07rem;
   margin-left: -1.8rem;
+  margin-right: 0;
 }
-.remove-btn {
-  margin-left: auto;
-  flex-shrink: 0;
-  background: transparent;
-  border: none;
-  color: var(--text-3);
-  cursor: pointer;
-  font-size: 0.8rem;
-  padding: 0 0.15rem;
-  line-height: 1;
-  font-family: var(--font-body);
+.reversed-order .slot-list {
+  margin-left: 0;
+  margin-right: -1.8rem;
 }
-.remove-btn:hover {
-  color: var(--crimson-hi);
+.slot-card-entry {
+  display: flex;
+  flex-direction: row;
+  gap: 0.1rem;
 }
 
-/* ── Hand section ────────────────────────────────────────────────────────── */
+/* ── Incoming attack chips ── */
+.incoming-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+.incoming-chip {
+  font-size: 0.6rem;
+  padding: 0.08rem 0.28rem;
+  background: transparent;
+  border: 1px solid;
+  white-space: nowrap;
+  font-family: var(--font-body);
+}
+.chip-mass {
+  font-weight: bold;
+}
+
+/* ── Buffs ── */
+.buffs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+.buff-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  font-size: 0.6rem;
+  padding: 0.08rem 0.25rem 0.08rem 0.15rem;
+  background: #1c1000;
+  border: 1px solid #4a2800;
+  color: #ff9800;
+  font-family: var(--font-body);
+  cursor: pointer;
+  user-select: none;
+}
+.buff-tag--positive {
+  background: #0a1a0a;
+  border-color: #2e5c2e;
+  color: #81c784;
+}
+.buff-tag--negative {
+  background: #1a0808;
+  border-color: #5c1a1a;
+  color: #ef9a9a;
+}
+.buff-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.buff-expanded {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+  padding: 0.3rem 0.45rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  font-size: 0.65rem;
+  color: var(--text-2);
+  line-height: 1.4;
+  width: max-content;
+  max-width: 16rem;
+  position: absolute;
+  z-index: 10;
+}
+.buff-expanded-icon {
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.buff-expanded-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.buff-expanded-name {
+  color: var(--text-1);
+  font-weight: 600;
+  margin-bottom: 0.1rem;
+}
+
+/* ── Generic card list (hand, EGO, passives, etc.) ────────────────────────── */
+.clist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  margin-top: 0.2rem;
+}
+.centry {
+  display: flex;
+  gap: 0.3rem;
+  align-items: baseline;
+  font-size: 0.7rem;
+  color: var(--text-2);
+}
+.centry.unavailable {
+  color: var(--text-3);
+}
+.centry-cost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  background: var(--bg-card-3);
+  border: 1px solid var(--border-mid);
+  font-size: 0.58rem;
+  color: var(--gold);
+  flex-shrink: 0;
+  font-family: var(--font-body);
+}
+.centry-range {
+  color: var(--text-3);
+  margin-left: auto;
+  font-size: 0.6rem;
+  font-family: var(--font-body);
+}
+
+/* ── Hand section ── */
 .hand-section {
   display: flex;
   flex-direction: column;
@@ -429,7 +592,7 @@ function passiveClass(p: any) {
   text-transform: none;
 }
 
-/* ── Hand expand transition ──────────────────────────────────────────────── */
+/* ── Hand expand transition ── */
 .hand-expand-enter-active {
   transition:
     opacity 0.18s ease,
@@ -467,14 +630,82 @@ function passiveClass(p: any) {
   background: var(--crimson-dim);
 }
 
-/* ── Hand card row ───────────────────────────────────────────────────────── */
+/* ── Hand card row ── */
 .hand-row {
   display: flex;
   gap: 0.35rem;
   flex-wrap: wrap;
 }
 
-/* ── Detail sub-section labels ───────────────────────────────────────────── */
+/* ── Passive list ────────────────────────────────────────────────────────────── */
+.passive-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.2rem;
+}
+.passive-entry {
+  border-left: 2px solid var(--border-mid);
+  padding-left: 0.4rem;
+  padding-top: 0.15rem;
+  padding-bottom: 0.15rem;
+}
+.passive-entry + .passive-entry {
+  border-top: 1px solid var(--border);
+}
+.passive-entry.rarity-uncommon {
+  border-left-color: #56a348;
+}
+.passive-entry.rarity-rare {
+  border-left-color: #4169c4;
+}
+.passive-entry.rarity-unique {
+  border-left-color: var(--gold);
+}
+.passive-entry.rarity-special {
+  border-left-color: var(--crimson-hi);
+}
+.passive-entry.unavailable {
+  opacity: 0.42;
+}
+
+.passive-name {
+  font-size: 0.7rem;
+  color: var(--text-1);
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  cursor: default;
+  user-select: none;
+  line-height: 1.4;
+}
+.passive-name::marker,
+.passive-name::-webkit-details-marker {
+  display: none;
+}
+details.passive-entry > .passive-name {
+  cursor: pointer;
+}
+details.passive-entry > .passive-name::before {
+  content: "▸ ";
+  font-size: 0.5rem;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+details[open].passive-entry > .passive-name::before {
+  content: "▾ ";
+}
+.passive-negative > .passive-name {
+  color: var(--crimson-hi);
+}
+.passive-desc {
+  font-size: 0.68rem;
+  color: var(--text-2);
+  line-height: 1.45;
+  margin: 0.2rem 0 0.05rem;
+}
+
+/* ── Detail sub-section labels ── */
 .det-label {
   font-family: var(--font-display);
   font-size: 0.53rem;
