@@ -10,7 +10,13 @@
 -->
 <script setup lang="ts">
 import type { BattleCtx } from "~/composables/useBattleContext";
-import type { AllyUnit, Card, Passive, SlottedCardEntry, Unit } from "~/types/game";
+import type {
+  AllyUnit,
+  Card,
+  Passive,
+  SlottedCardEntry,
+  Unit,
+} from "~/types/game";
 
 const props = defineProps<{
   unit: Unit | AllyUnit;

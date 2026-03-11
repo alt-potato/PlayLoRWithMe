@@ -142,10 +142,7 @@ function onSlotPressEnd() {
   }
 }
 
-function handleSlotClick(
-  d: SpeedDie,
-  sc: SlottedCardEntry | undefined,
-) {
+function handleSlotClick(d: SpeedDie, sc: SlottedCardEntry | undefined) {
   if (slotLongPressed) {
     slotLongPressed = false;
     return;

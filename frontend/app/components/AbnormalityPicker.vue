@@ -71,7 +71,9 @@ const totalCoins = computed(
   () => (props.teamPositiveCoins ?? 0) + (props.teamNegativeCoins ?? 0),
 );
 const posRatio = computed(() =>
-  totalCoins.value > 0 ? (props.teamPositiveCoins ?? 0) / totalCoins.value : 0.5,
+  totalCoins.value > 0
+    ? (props.teamPositiveCoins ?? 0) / totalCoins.value
+    : 0.5,
 );
 const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
 </script>
@@ -91,7 +93,9 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
             <div class="ab-coin-bar">
               <div
                 class="ab-coin-fill"
-                :style="{ width: `${Math.min(100, ((teamCoin ?? 0) / (teamCoinMax ?? 1)) * 100)}%` }"
+                :style="{
+                  width: `${Math.min(100, ((teamCoin ?? 0) / (teamCoinMax ?? 1)) * 100)}%`,
+                }"
               />
             </div>
           </div>
@@ -101,10 +105,17 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
             :title="`+${teamPositiveCoins} / -${teamNegativeCoins}`"
           >
             <div class="ab-posneg-bar">
-              <div class="ab-posneg-pos" :style="{ width: `${posRatio * 100}%` }" />
+              <div
+                class="ab-posneg-pos"
+                :style="{ width: `${posRatio * 100}%` }"
+              />
             </div>
-            <span class="ab-posneg-label ab-posneg-label--pos">+{{ teamPositiveCoins }}</span>
-            <span class="ab-posneg-label ab-posneg-label--neg">-{{ teamNegativeCoins }}</span>
+            <span class="ab-posneg-label ab-posneg-label--pos"
+              >+{{ teamPositiveCoins }}</span
+            >
+            <span class="ab-posneg-label ab-posneg-label--neg"
+              >-{{ teamNegativeCoins }}</span
+            >
           </div>
         </div>
       </header>
@@ -120,14 +131,26 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
             @click="onCardClick(card)"
           >
             <div class="ab-card-header">
-              <span class="ab-card-badge" :style="{ background: stateColor(card.state) + '33', color: stateColor(card.state) }">
+              <span
+                class="ab-card-badge"
+                :style="{
+                  background: stateColor(card.state) + '33',
+                  color: stateColor(card.state),
+                }"
+              >
                 {{ toRoman(card.emotionLevel) }}
               </span>
-              <span v-if="card.targetType === 'SelectOne'" class="ab-card-target-hint">1 ally</span>
+              <span
+                v-if="card.targetType === 'SelectOne'"
+                class="ab-card-target-hint"
+                >1 ally</span
+              >
             </div>
             <span class="ab-card-name">{{ card.name }}</span>
             <p v-if="card.desc" class="ab-card-desc">{{ card.desc }}</p>
-            <p v-if="card.flavorText" class="ab-card-flavor">{{ card.flavorText }}</p>
+            <p v-if="card.flavorText" class="ab-card-flavor">
+              {{ card.flavorText }}
+            </p>
           </button>
         </div>
 
@@ -146,14 +169,21 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
               <div class="ab-card-header">
                 <span
                   class="ab-card-badge"
-                  :style="{ background: stateColor(pendingCard.state) + '33', color: stateColor(pendingCard.state) }"
+                  :style="{
+                    background: stateColor(pendingCard.state) + '33',
+                    color: stateColor(pendingCard.state),
+                  }"
                 >
                   {{ toRoman(pendingCard.emotionLevel) }}
                 </span>
               </div>
               <span class="ab-card-name">{{ pendingCard.name }}</span>
-              <p v-if="pendingCard.desc" class="ab-card-desc">{{ pendingCard.desc }}</p>
-              <p v-if="pendingCard.flavorText" class="ab-card-flavor">{{ pendingCard.flavorText }}</p>
+              <p v-if="pendingCard.desc" class="ab-card-desc">
+                {{ pendingCard.desc }}
+              </p>
+              <p v-if="pendingCard.flavorText" class="ab-card-flavor">
+                {{ pendingCard.flavorText }}
+              </p>
             </div>
 
             <!-- Right: ally list -->
@@ -166,8 +196,12 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
                 @click="onAllyClick(ally)"
               >
                 <span class="ab-ally-dot" />
-                <span class="ab-ally-name">{{ ally.name ?? ally.keyPage?.name ?? `#${ally.id}` }}</span>
-                <span class="ab-ally-lvl">Lv {{ toRoman(ally.emotionLevel ?? 0) }}</span>
+                <span class="ab-ally-name">{{
+                  ally.name ?? ally.keyPage?.name ?? `#${ally.id}`
+                }}</span>
+                <span class="ab-ally-lvl"
+                  >Lv {{ toRoman(ally.emotionLevel ?? 0) }}</span
+                >
               </button>
             </div>
           </div>
@@ -267,8 +301,8 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
   width: 48px;
   height: 4px;
   background: var(--crimson-hi);
-    border-radius: 2px;
-    overflow: hidden;
+  border-radius: 2px;
+  overflow: hidden;
 }
 .ab-posneg-pos {
   height: 100%;
@@ -281,8 +315,12 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
   font-size: 0.58rem;
 }
 
-.ab-posneg-label--pos { color: var(--green); }
-.ab-posneg-label--neg { color: var(--crimson-hi); }
+.ab-posneg-label--pos {
+  color: var(--green);
+}
+.ab-posneg-label--neg {
+  color: var(--crimson-hi);
+}
 
 /* ── Choice cards ────────────────────────────────────────────────────────── */
 .ab-choices {
@@ -308,11 +346,17 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
   flex-direction: column;
   gap: 0.35rem;
   padding: 0.55rem 0.6rem 0.6rem;
-  background: linear-gradient(160deg, var(--bg-card-2) 0%, var(--bg-card-3) 100%);
+  background: linear-gradient(
+    160deg,
+    var(--bg-card-2) 0%,
+    var(--bg-card-3) 100%
+  );
   border: 1px solid; /* color set inline via stateColor */
   cursor: pointer;
   text-align: left;
-  transition: box-shadow 0.15s, transform 0.1s;
+  transition:
+    box-shadow 0.15s,
+    transform 0.1s;
 }
 
 .ab-card:hover {
@@ -498,7 +542,9 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
 /* ── Slide transition ────────────────────────────────────────────────────── */
 .ab-slide-enter-active,
 .ab-slide-leave-active {
-  transition: opacity 0.18s, transform 0.18s;
+  transition:
+    opacity 0.18s,
+    transform 0.18s;
 }
 
 .ab-slide-enter-from {

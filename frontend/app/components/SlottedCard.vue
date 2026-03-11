@@ -19,11 +19,7 @@ defineProps<{
   <div class="sc-card">
     <div class="sc-top">
       <span class="sc-name">{{ card.name }}</span>
-      <span
-        v-if="targetLabel"
-        class="sc-target"
-        >{{ targetLabel }}</span
-      >
+      <span v-if="targetLabel" class="sc-target">{{ targetLabel }}</span>
     </div>
     <div v-if="card.dice?.length" class="sc-dice">
       <div v-for="(d, i) in card.dice" :key="i" class="sc-die">

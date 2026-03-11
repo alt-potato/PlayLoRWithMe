@@ -309,7 +309,9 @@ namespace PlayLoRWithMe
                     for (int i = 0; i < rule.speedDiceList.Count; i++)
                     {
                         var d = rule.speedDiceList[i];
-                        arr.AddObject(o => o.Add("slot", i).Add("value", 0).Add("staggered", d.breaked));
+                        arr.AddObject(o =>
+                            o.Add("slot", i).Add("value", 0).Add("staggered", d.breaked)
+                        );
                     }
                 }
             );

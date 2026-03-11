@@ -111,7 +111,10 @@ const allUnits = computed(() => [
 const allyOrder = ref<number[]>([]);
 const enemyOrder = ref<number[]>([]);
 
-function syncOrder(order: Ref<number[]>, units: (Unit | AllyUnit)[] | undefined) {
+function syncOrder(
+  order: Ref<number[]>,
+  units: (Unit | AllyUnit)[] | undefined,
+) {
   if (!units) return;
   const ids = units.map((u) => u.id);
   order.value = [
@@ -172,9 +175,7 @@ function moveUnit(
 function canMoveUp(sorted: (Unit | AllyUnit)[], unit: Unit | AllyUnit) {
   if (isDead(unit)) return false;
   return (
-    sorted
-      .filter((u) => !isDead(u))
-      .findIndex((u) => u.id === unit.id) > 0
+    sorted.filter((u) => !isDead(u)).findIndex((u) => u.id === unit.id) > 0
   );
 }
 

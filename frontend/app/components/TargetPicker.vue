@@ -37,7 +37,10 @@ function pick(unitId: number, diceSlot: number) {
 }
 
 /** Returns the current state of an enemy die slot based on its slotted card. */
-function dieState(enemy: Unit, dieSlot: number): "clash" | "incoming" | "empty" {
+function dieState(
+  enemy: Unit,
+  dieSlot: number,
+): "clash" | "incoming" | "empty" {
   const sc = (enemy.slottedCards ?? []).find((sc) => sc.slot === dieSlot);
   if (!sc) return "empty";
   return sc.clash ? "clash" : "incoming";

@@ -17,7 +17,7 @@
     level: current emotion level
 -->
 <script setup lang="ts">
-import { toRoman } from '~/composables/useBattleDisplay';
+import { toRoman } from "~/composables/useBattleDisplay";
 
 const props = defineProps<{
   positive: number;
