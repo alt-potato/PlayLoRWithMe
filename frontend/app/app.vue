@@ -96,7 +96,34 @@ onMounted(() => {
   --text-2: #786e5e;
   --text-3: #3c3830;
 
+  --green: #4caf50;
   --green-hi: #2e7d32;
+  --text-green: #81c784;
+  --bg-green: #0a1a0a;
+  --bg-green-2: #0c1e0c;
+  --bg-green-3: #102010;
+
+  /* Brighter red for dead units / error states (more saturated than --crimson-hi) */
+  --red-hi: #e53935;
+  --text-red: #ef9a9a;
+
+  /* Warning / exhausted / orange */
+  --orange: #ff9800;
+  --orange-dim: #a05000;
+
+  /* Pending / targeting banner background */
+  --bg-gold: #1a1400;
+
+  /* Info blocks (card tokens, status chips) */
+  --bg-info: #0d1a2e;
+  --border-info: #3d5a80;
+  --text-info: #90a4ae;
+  --text-info-hi: #b0bec5;
+
+  /* Passive rarity accent colors */
+  --rarity-uncommon: #56a348;
+  --rarity-rare: #4169c4;
+
   --blue-hi: #1976d2;
   --cyan: #4fc3f7;
 
@@ -227,7 +254,7 @@ header {
   color: var(--text-2);
 }
 .conn.connected {
-  color: #4caf50;
+  color: var(--green);
 }
 .conn.disconnected {
   color: var(--crimson-hi);

@@ -273,9 +273,9 @@ function handleClick() {
   align-items: center;
   gap: 0.08rem;
   padding: 0.06rem 0.12rem 0.06rem 0.06rem;
-  background: #0d1a2e;
-  border: 1px solid #3d5a80;
-  color: #90a4ae;
+  background: var(--bg-info);
+  border: 1px solid var(--border-info);
+  color: var(--text-info);
   font-family: var(--font-body);
 }
 

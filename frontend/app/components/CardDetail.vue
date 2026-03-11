@@ -194,8 +194,8 @@ const borderColor = computed(() => cardBorderColor(props.card));
   background: transparent;
 }
 .ego-tag {
-  color: #c62828;
-  border-color: #c62828;
+  color: var(--crimson-hi);
+  border-color: var(--crimson-hi);
   background: #1a0505;
 }
 .emotion-tag {
@@ -204,8 +204,8 @@ const borderColor = computed(() => cardBorderColor(props.card));
   background: transparent;
 }
 .exhaust-tag {
-  color: #ff9800;
-  border-color: #a05000;
+  color: var(--orange);
+  border-color: var(--orange-dim);
   background: transparent;
 }
 
@@ -221,9 +221,9 @@ const borderColor = computed(() => cardBorderColor(props.card));
   align-items: center;
   gap: 0.25rem;
   padding: 0.15rem 0.35rem 0.15rem 0.2rem;
-  background: #0d1a2e;
-  border: 1px solid #3d5a80;
-  color: #90a4ae;
+  background: var(--bg-info);
+  border: 1px solid var(--border-info);
+  color: var(--text-info);
   font-size: 0.68rem;
   font-family: var(--font-body);
 }
@@ -235,7 +235,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
 }
 
 .token-stack {
-  color: #b0bec5;
+  color: var(--text-info-hi);
   font-weight: 600;
 }
 

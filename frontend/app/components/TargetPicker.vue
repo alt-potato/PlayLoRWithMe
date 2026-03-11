@@ -209,7 +209,7 @@ function dieState(enemy: any, dieSlot: number): "clash" | "incoming" | "empty" {
 }
 .untargetable-label {
   font-size: 0.62rem;
-  color: #ff9800;
+  color: var(--orange);
   font-weight: normal;
   font-family: var(--font-body);
 }
@@ -246,7 +246,7 @@ function dieState(enemy: any, dieSlot: number): "clash" | "incoming" | "empty" {
   background: #3d2e00;
 }
 .die-hex-outer.die-clash:hover:not(:disabled) {
-  background: #7a6118;
+  background: var(--gold-dim);
 }
 .die-hex-outer.staggered {
   background: var(--crimson-dim);
@@ -289,7 +289,7 @@ function dieState(enemy: any, dieSlot: number): "clash" | "incoming" | "empty" {
   color: var(--crimson-hi);
 }
 .die-hex-outer.staggered:hover:not(:disabled) .die-hex-inner {
-  background: #3d0a0a;
+  background: var(--crimson-dim);
   color: #fff;
 }
 

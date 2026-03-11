@@ -264,25 +264,23 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
 .ab-posneg-bar {
   width: 48px;
   height: 4px;
-  background: #c62828;
-  border-radius: 2px;
-  overflow: hidden;
+  background: var(--crimson-hi);
+    border-radius: 2px;
+    overflow: hidden;
 }
-
 .ab-posneg-pos {
   height: 100%;
-  background: #4caf50;
+  background: var(--green);
   border-radius: 2px;
   transition: width 0.3s;
 }
-
 .ab-posneg-label {
   font-family: var(--font-body);
   font-size: 0.58rem;
 }
 
-.ab-posneg-label--pos { color: #4caf50; }
-.ab-posneg-label--neg { color: #c62828; }
+.ab-posneg-label--pos { color: var(--green); }
+.ab-posneg-label--neg { color: var(--crimson-hi); }
 
 /* ── Choice cards ────────────────────────────────────────────────────────── */
 .ab-choices {

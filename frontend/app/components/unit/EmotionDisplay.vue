@@ -68,10 +68,10 @@ const props = defineProps<{
   flex-shrink: 0;
 }
 .epip--pos {
-  background: #4caf50;
+  background: var(--green);
 }
 .epip--neg {
-  background: #e53935;
+  background: var(--red-hi);
 }
 .epip--empty {
   background: var(--border-mid);

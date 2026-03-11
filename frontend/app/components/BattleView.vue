@@ -507,11 +507,7 @@ provide(BATTLE_CTX, {
             ▼
           </button>
         </div>
-        <UnitDisplayCard
-          :unit="unit"
-          :isAlly="false"
-          side="left"
-        />
+        <UnitDisplayCard :unit="unit" :isAlly="false" side="left" />
       </div>
     </section>
 
@@ -525,11 +521,7 @@ provide(BATTLE_CTX, {
         class="unit-slot"
         :class="{ 'unit-slot--dead': isDead(unit) }"
       >
-        <UnitDisplayCard
-          :unit="unit"
-          :isAlly="true"
-          side="right"
-        />
+        <UnitDisplayCard :unit="unit" :isAlly="true" side="right" />
         <div class="unit-reorder">
           <button
             class="reorder-btn"
@@ -676,9 +668,9 @@ provide(BATTLE_CTX, {
 }
 .confirm-btn {
   padding: 0.25rem 1rem;
-  background: #0a1a0a;
+  background: var(--bg-green);
   border: 1px solid var(--green-hi);
-  color: #4caf50;
+  color: var(--green);
   font-size: 0.7rem;
   font-family: var(--font-display);
   letter-spacing: 0.08em;
@@ -710,7 +702,7 @@ provide(BATTLE_CTX, {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  background: #1a1400;
+  background: var(--bg-gold);
   border-top: 2px solid var(--gold-dim);
   font-size: 0.72rem;
   font-family: var(--font-body);
@@ -765,7 +757,7 @@ provide(BATTLE_CTX, {
   transform: translateY(-4px);
 }
 .targeting-banner--ally {
-  background: #0a1a0a;
+  background: var(--bg-green);
   border-top-color: var(--green-hi);
 }
 
@@ -776,7 +768,7 @@ provide(BATTLE_CTX, {
   font-family: var(--font-body);
   background: #180808;
   border: 1px solid var(--crimson);
-  color: #ef9a9a;
+  color: var(--text-red);
   margin-left: 0.5em;
   margin-right: 0.5em;
   margin-bottom: 0.5rem;

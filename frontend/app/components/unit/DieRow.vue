@@ -260,16 +260,16 @@ function targetLabel(sc: any): string {
   cursor: pointer;
 }
 .slot-open .slot-wrapper {
-  background: #0c1e0c;
+  background: var(--bg-green-2);
 }
 .slot-open:hover .slot-wrapper {
-  background: #102010;
+  background: var(--bg-green-3);
 }
 .slot-empty {
   color: var(--text-3);
 }
 .slot-pending .slot-wrapper {
-  background: #1a1400;
+  background: var(--bg-gold);
 }
 .slot-target {
   cursor: pointer;
@@ -345,17 +345,17 @@ function targetLabel(sc: any): string {
   transition: background 0.1s;
 }
 .hex-wrap.open .hex-inner {
-  background: #0c1e0c;
+  background: var(--bg-green-2);
   color: var(--text-1);
   transition:
     background 0.1s,
     color 0.1s;
 }
 .hex-wrap.open:hover {
-  background: #4caf50;
+  background: var(--green);
 }
 .hex-wrap.open:hover .hex-inner {
-  background: #102010;
+  background: var(--bg-green-3);
   color: #fff;
 }
 /* pending */
@@ -364,7 +364,7 @@ function targetLabel(sc: any): string {
   animation: hex-pulse 1.2s ease-in-out infinite;
 }
 .hex-wrap.pending .hex-inner {
-  background: #1a1400;
+  background: var(--bg-gold);
   color: var(--gold-bright);
 }
 @keyframes hex-pulse {
@@ -407,14 +407,14 @@ function targetLabel(sc: any): string {
   transition: background 0.1s;
 }
 .slot-target:hover .hex-wrap.hex-target {
-  background: #4caf50;
+  background: var(--green);
 }
 .slot-target:hover .hex-wrap.hex-target .hex-inner {
-  background: #102010;
+  background: var(--bg-green-3);
   color: #fff;
 }
 .slot-target:hover .slot-content {
-  background: #0c1e0c;
+  background: var(--bg-green-2);
   transition: background 0.1s;
 }
 

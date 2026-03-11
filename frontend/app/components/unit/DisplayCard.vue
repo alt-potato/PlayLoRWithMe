@@ -369,11 +369,11 @@ function passiveClass(p: any) {
     background 0.15s;
 }
 .unit-card--ally-select {
-  background: #0a1a0a;
+  background: var(--bg-green);
   cursor: pointer;
 }
 .unit-card--ally-select:hover {
-  background: #0c1e0c;
+  background: var(--bg-green-2);
 }
 
 /* ── Header — ally: meta left, name center, badge right (via row-reverse) ── */
@@ -460,22 +460,22 @@ function passiveClass(p: any) {
   gap: 0.18rem;
   font-size: 0.6rem;
   padding: 0.08rem 0.25rem 0.08rem 0.15rem;
-  background: #1c1000;
+  background: var(--bg-gold);
   border: 1px solid #4a2800;
-  color: #ff9800;
+  color: var(--orange);
   font-family: var(--font-body);
   cursor: pointer;
   user-select: none;
 }
 .buff-tag--positive {
-  background: #0a1a0a;
+  background: var(--bg-green);
   border-color: #2e5c2e;
-  color: #81c784;
+  color: var(--text-green);
 }
 .buff-tag--negative {
   background: #1a0808;
   border-color: #5c1a1a;
-  color: #ef9a9a;
+  color: var(--text-red);
 }
 .buff-icon {
   width: 0.9rem;
@@ -653,10 +653,10 @@ function passiveClass(p: any) {
   border-top: 1px solid var(--border);
 }
 .passive-entry.rarity-uncommon {
-  border-left-color: #56a348;
+  border-left-color: var(--rarity-uncommon);
 }
 .passive-entry.rarity-rare {
-  border-left-color: #4169c4;
+  border-left-color: var(--rarity-rare);
 }
 .passive-entry.rarity-unique {
   border-left-color: var(--gold);
