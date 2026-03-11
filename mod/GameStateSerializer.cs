@@ -27,6 +27,9 @@ namespace PlayLoRWithMe
         // Scene dispatch
         // -------------------------------------------------------------------------
 
+        /// <summary>
+        /// Builds a JSON object representing the current game state.
+        /// </summary>
         private static string BuildJson()
         {
             var gsm = GameSceneManager.Instance;
@@ -48,6 +51,9 @@ namespace PlayLoRWithMe
             return new JsonWriter().Add("scene", "transition").Build();
         }
 
+        /// <summary>
+        /// Builds a JSON representing the current main menu page.
+        /// </summary>
         private static string BuildMainJson()
         {
             var w = new JsonWriter().Add("scene", "main");
@@ -61,6 +67,9 @@ namespace PlayLoRWithMe
         // Battle state
         // -------------------------------------------------------------------------
 
+        /// <summary>
+        /// Builds a JSON representing the current battle state.
+        /// </summary>
         private static string BuildBattleJson()
         {
             var w = new JsonWriter().Add("scene", "battle");
@@ -177,15 +186,14 @@ namespace PlayLoRWithMe
             return w.Build();
         }
 
-        // -------------------------------------------------------------------------
-        // Unit
-        // -------------------------------------------------------------------------
-
-        private static void WriteUnit(JsonArrayWriter arr, BattleUnitModel unit, bool isAlly)
+        /// <summary>
+        /// Writes a JSON object representing a unit in battle.
+        /// </summary>
+        private static void WriteUnit(JsonArrayWriter aw, BattleUnitModel unit, bool isAlly)
         {
             if (unit == null)
                 return;
-            arr.AddObject(w =>
+            aw.AddObject(w =>
             {
                 w.Add("id", unit.id)
                     .Add("index", unit.index)
@@ -215,10 +223,9 @@ namespace PlayLoRWithMe
             });
         }
 
-        // -------------------------------------------------------------------------
-        // Key page
-        // -------------------------------------------------------------------------
-
+        /// <summary>
+        /// Writes a JSON object representing an equipped key page.
+        /// </summary>
         private static void WriteKeyPage(JsonWriter w, BattleUnitModel unit)
         {
             var book = unit.Book;
@@ -276,10 +283,9 @@ namespace PlayLoRWithMe
             );
         }
 
-        // -------------------------------------------------------------------------
-        // Speed dice
-        // -------------------------------------------------------------------------
-
+        /// <summary>
+        /// Writes a JSON object representing speed dice on a unit in battle.
+        /// </summary>
         private static void WriteSpeedDice(JsonWriter w, BattleUnitModel unit)
         {
             w.AddArray(
@@ -317,10 +323,13 @@ namespace PlayLoRWithMe
             );
         }
 
-        // -------------------------------------------------------------------------
-        // Slotted cards (cards assigned to speed dice before execution)
-        // -------------------------------------------------------------------------
-
+        /// <summary>
+        /// Writes a JSON object representing a unit's slotted cards.<para/>
+        ///
+        /// ie. cards assigned to speed dice before the combat phase starts.
+        /// </summary>
+        /// <param name="w"></param>
+        /// <param name="unit"></param>
         private static void WriteSlottedCards(JsonWriter w, BattleUnitModel unit)
         {
             w.AddArray(
@@ -383,10 +392,11 @@ namespace PlayLoRWithMe
             );
         }
 
-        // -------------------------------------------------------------------------
-        // Passives
-        // -------------------------------------------------------------------------
-
+        /// <summary>
+        /// Writes a JSON object representing a unit in battle's passives.
+        /// </summary>
+        /// <param name="w"></param>
+        /// <param name="unit"></param>
         private static void WritePassives(JsonWriter w, BattleUnitModel unit)
         {
             w.AddArray(
@@ -412,10 +422,9 @@ namespace PlayLoRWithMe
             );
         }
 
-        // -------------------------------------------------------------------------
-        // Buffs / keyword effects
-        // -------------------------------------------------------------------------
-
+        /// <summary>
+        /// Writes a JSON object representing a unit in battle's buffs/status effects.
+        /// </summary>
         private static void WriteBuffs(JsonWriter w, BattleUnitModel unit)
         {
             w.AddArray(
@@ -459,10 +468,9 @@ namespace PlayLoRWithMe
             );
         }
 
-        // -------------------------------------------------------------------------
-        // Emotion / abnormality
-        // -------------------------------------------------------------------------
-
+        /// <summary>
+        /// Writes a JSON object representing a unit's emotion level and abnormality pages.
+        /// </summary>
         private static void WriteEmotion(JsonWriter w, BattleUnitModel unit)
         {
             var ed = unit.emotionDetail;
@@ -502,10 +510,11 @@ namespace PlayLoRWithMe
                 );
         }
 
-        // -------------------------------------------------------------------------
-        // Ally-only: hand, deck, EGO cards, team abnormality pages
-        // -------------------------------------------------------------------------
-
+        /// <summary>
+        /// Writes a JSON object representing an ally unit's available cards.<para/>
+        ///
+        /// This includes personal hand, deck, and personal/abnormality EGO pages.
+        /// </summary>
         private static void WriteAllyCards(JsonWriter w, BattleUnitModel unit)
         {
             // Personal hand and deck
@@ -546,6 +555,12 @@ namespace PlayLoRWithMe
             }
         }
 
+        /// <summary>
+        /// Writes a JSON object representing a list of cards associated with a given key.
+        ///
+        /// If a user is included, the availability of each card is also included, ie. whether it is not disabled.
+        /// It does not check light cost.
+        /// </summary>
         private static void WriteCardList(
             JsonWriter w,
             string key,
@@ -579,10 +594,11 @@ namespace PlayLoRWithMe
             );
         }
 
-        // -------------------------------------------------------------------------
-        // Card fields shared between hand/deck/ego lists and slotted cards
-        // -------------------------------------------------------------------------
-
+        /// <summary>
+        /// A helper that writes JSON fields common to all cards.<para/>
+        ///
+        /// Also includes tokens on cards, eg. Black Silence passive, Index unlock passive, Matchlight abnormality page.
+        /// </summary>
         private static void WriteCardFields(JsonWriter o, BattleDiceCardModel card)
         {
             var xml = card.XmlData;
@@ -670,10 +686,11 @@ namespace PlayLoRWithMe
                 );
         }
 
-        // -------------------------------------------------------------------------
-        // Helpers
-        // -------------------------------------------------------------------------
-
+        /// <summary>
+        /// A helper that adds the package ID to a JSON object for a specific key.<para/>
+        ///
+        /// Useful for workshop cards.
+        /// </summary>
         private static void AddLorId(JsonWriter w, string key, LorId lorId)
         {
             w.AddObject(
