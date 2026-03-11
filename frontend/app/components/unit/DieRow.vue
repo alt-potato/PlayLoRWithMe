@@ -67,8 +67,7 @@ const dieState: ComputedRef<DieState> = computed(() => {
   // die is broken
   if (props.die.staggered || isUnitBroken.value) return "broken";
 
-  // dice has no value
-  // TODO: check where dice value comes from and invalidate there
+  // Placeholder dice emitted by the serializer before rolls have occurred
   if (
     phase.value === "RoundEndPhase" ||
     phase.value === "RoundStartPhase_UI" ||

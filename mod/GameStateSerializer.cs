@@ -231,7 +231,7 @@ namespace PlayLoRWithMe
                         AddLorId(k, "id", book.ClassInfo.id);
 
                     k.Add("name", book.Name)
-                        .Add("speedDiceCount", book.equipeffect.SpeedDiceNum)
+                        .Add("speedDiceCount", book.SpeedDiceNum)
                         .Add("speedMin", book.equipeffect.SpeedMin)
                         .Add("speedMax", book.equipeffect.Speed)
                         .AddObject(
@@ -287,15 +287,29 @@ namespace PlayLoRWithMe
                 arr =>
                 {
                     var dice = unit.speedDiceResult;
-                    if (dice == null)
-                        return;
-                    for (int i = 0; i < dice.Count; i++)
+                    if (dice != null)
                     {
-                        var d = dice[i];
-                        int slot = i;
-                        arr.AddObject(o =>
-                            o.Add("slot", slot).Add("value", d.value).Add("staggered", d.breaked)
-                        );
+                        for (int i = 0; i < dice.Count; i++)
+                        {
+                            var d = dice[i];
+                            arr.AddObject(o =>
+                                o.Add("slot", i).Add("value", d.value).Add("staggered", d.breaked)
+                            );
+                        }
+                        return;
+                    }
+
+                    // Dice not yet rolled — emit placeholder slots so the frontend can
+                    // render them as invalid/empty rather than showing no dice at all.
+                    // Use GetSpeedDiceRule so passive/buff break adders are reflected (e.g. Yujin's
+                    // first die starts broken), matching what RollSpeedDice will produce.
+                    var rule = unit.Book?.GetSpeedDiceRule(unit);
+                    if (rule == null)
+                        return;
+                    for (int i = 0; i < rule.speedDiceList.Count; i++)
+                    {
+                        var d = rule.speedDiceList[i];
+                        arr.AddObject(o => o.Add("slot", i).Add("value", 0).Add("staggered", d.breaked));
                     }
                 }
             );
