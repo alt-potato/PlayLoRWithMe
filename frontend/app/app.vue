@@ -216,9 +216,6 @@ body {
   font-size: 0.55rem;
   color: var(--text-3);
 }
-details[open] > summary::before {
-  content: "▾ ";
-}
 </style>
 
 <style scoped>
