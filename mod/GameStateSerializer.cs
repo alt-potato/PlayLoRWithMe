@@ -10,11 +10,27 @@ namespace PlayLoRWithMe
     /// </summary>
     public static class GameStateSerializer
     {
-        public static string Serialize()
+        /// <summary>
+        /// Serializes the full unfiltered game state. Used by the SSE path and as the
+        /// baseline for delta diffing.
+        /// </summary>
+        public static string Serialize() => BuildJsonSafe(ownedUnitIds: null);
+
+        /// <summary>
+        /// Serializes game state filtered for one session's owned units. Unowned allies
+        /// expose only <c>handCount</c>, <c>deckCount</c>, and <c>egoCount</c> instead
+        /// of the full hand/deck/ego arrays, so each client only sees their own
+        /// librarians' private card data.
+        /// </summary>
+        public static string SerializeForSession(
+            System.Collections.Generic.HashSet<int> ownedUnitIds
+        ) => BuildJsonSafe(ownedUnitIds);
+
+        private static string BuildJsonSafe(System.Collections.Generic.HashSet<int> ownedUnitIds)
         {
             try
             {
-                return BuildJson();
+                return BuildJson(ownedUnitIds);
             }
             catch (System.Exception ex)
             {
@@ -30,14 +46,14 @@ namespace PlayLoRWithMe
         /// <summary>
         /// Builds a JSON object representing the current game state.
         /// </summary>
-        private static string BuildJson()
+        private static string BuildJson(System.Collections.Generic.HashSet<int> ownedUnitIds)
         {
             var gsm = GameSceneManager.Instance;
             if (gsm == null)
                 return new JsonWriter().Add("scene", "loading").Build();
 
             if (gsm.battleScene != null && gsm.battleScene.gameObject.activeSelf)
-                return BuildBattleJson();
+                return BuildBattleJson(ownedUnitIds);
 
             if (gsm.uIController != null && gsm.uIController.gameObject.activeSelf)
                 return BuildMainJson();
@@ -70,7 +86,7 @@ namespace PlayLoRWithMe
         /// <summary>
         /// Builds a JSON representing the current battle state.
         /// </summary>
-        private static string BuildBattleJson()
+        private static string BuildBattleJson(System.Collections.Generic.HashSet<int> ownedUnitIds)
         {
             var w = new JsonWriter().Add("scene", "battle");
 
@@ -102,7 +118,11 @@ namespace PlayLoRWithMe
                     arr =>
                     {
                         foreach (var unit in bom.GetList(Faction.Player))
-                            WriteUnit(arr, unit, isAlly: true);
+                        {
+                            // ownedUnitIds == null means no filtering (SSE / full-state path).
+                            bool isOwned = ownedUnitIds == null || ownedUnitIds.Contains(unit.id);
+                            WriteUnit(arr, unit, isAlly: true, isOwned: isOwned);
+                        }
                     }
                 );
                 w.AddArray(
@@ -110,7 +130,7 @@ namespace PlayLoRWithMe
                     arr =>
                     {
                         foreach (var unit in bom.GetList(Faction.Enemy))
-                            WriteUnit(arr, unit, isAlly: false);
+                            WriteUnit(arr, unit, isAlly: false, isOwned: false);
                     }
                 );
             }
@@ -189,7 +209,12 @@ namespace PlayLoRWithMe
         /// <summary>
         /// Writes a JSON object representing a unit in battle.
         /// </summary>
-        private static void WriteUnit(JsonArrayWriter aw, BattleUnitModel unit, bool isAlly)
+        private static void WriteUnit(
+            JsonArrayWriter aw,
+            BattleUnitModel unit,
+            bool isAlly,
+            bool isOwned
+        )
         {
             if (unit == null)
                 return;
@@ -219,7 +244,12 @@ namespace PlayLoRWithMe
                 WriteEmotion(w, unit);
 
                 if (isAlly)
-                    WriteAllyCards(w, unit);
+                {
+                    if (isOwned)
+                        WriteAllyCards(w, unit);
+                    else
+                        WriteAllyCardCounts(w, unit);
+                }
             });
         }
 
@@ -561,6 +591,17 @@ namespace PlayLoRWithMe
         /// If a user is included, the availability of each card is also included, ie. whether it is not disabled.
         /// It does not check light cost.
         /// </summary>
+        /// <summary>
+        /// Written for unowned allies: exposes card counts without revealing identities.
+        /// The frontend shows these as "N cards" summaries.
+        /// </summary>
+        private static void WriteAllyCardCounts(JsonWriter w, BattleUnitModel unit)
+        {
+            w.Add("handCount", unit.allyCardDetail?.GetHand()?.Count ?? 0)
+                .Add("deckCount", unit.allyCardDetail?.GetDeck()?.Count ?? 0)
+                .Add("egoCount", unit.personalEgoDetail?.GetCardAll()?.Count ?? 0);
+        }
+
         private static void WriteCardList(
             JsonWriter w,
             string key,

@@ -12,7 +12,7 @@
  */
 
 import type { InjectionKey, Ref, ComputedRef } from "vue";
-import type { AllyUnit, Unit } from "~/types/game";
+import type { AllyUnit, Unit, SessionState, ActionResult } from "~/types/game";
 
 export interface BattleCtx {
   phase: ComputedRef<string>;
@@ -105,6 +105,18 @@ export interface BattleCtx {
 
   /** Called when a remote player picks an abnormality page from the LevelUpUI. */
   onSelectAbnormality: (cardId: number, targetUnitId?: number) => Promise<void>;
+
+  /** The current session (null until the server sends a hello message). */
+  session: Ref<SessionState | null>;
+
+  /** Returns true when this session owns (or has uncontested access to) the unit. */
+  isOwnUnit: (unitId: number) => boolean;
+
+  /** Claim a librarian for this session. */
+  claimUnit: (unitId: number) => Promise<ActionResult>;
+
+  /** Release a previously claimed librarian. */
+  releaseUnit: (unitId: number) => Promise<ActionResult>;
 }
 
 /** InjectionKey used to share BattleCtx from BattleView down to unit components. */

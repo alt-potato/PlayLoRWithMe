@@ -1,9 +1,13 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  compatibilityDate: "2025-07-15",
+  compatibilityDate: "2026-03-12",
   devtools: { enabled: true },
 
   nitro: {
+    // Nuxt nitro websocket proxy does not work T-T
+    experimental: {
+      websocket: true,
+    },
     devProxy: {
       "/action": {
         target: "http://localhost:8080/action",
@@ -19,6 +23,11 @@ export default defineNuxtConfig({
         target: "http://localhost:8080/state",
         changeOrigin: true,
         ws: false,
+      },
+      "/ws": {
+        target: "ws://localhost:8080",
+        changeOrigin: true,
+        ws: true,
       },
       "/assets": {
         target: "http://localhost:8080/assets",

@@ -27,10 +27,24 @@ namespace PlayLoRWithMe
             new ConcurrentDictionary<Guid, SseClient>();
 
         private readonly SessionManager _sessionManager = new SessionManager();
+        private readonly DeltaEngine _deltaEngine = new DeltaEngine();
 
-        // Monotonically increasing sequence number included in every WebSocket
-        // state message so clients can detect missed broadcasts and request a resync.
-        private int _broadcastSeq = 0;
+        // Last full (unfiltered) state snapshot, updated on the Unity main thread
+        // by Broadcast(). Used to give new WebSocket clients an immediate initial
+        // state without accessing Unity objects from the listener thread.
+        private volatile string _lastFullJson = null;
+
+        // Set by claim/release handlers (listener thread) to request a filtered
+        // broadcast from the Unity main thread on the next OnUpdate tick.
+        private volatile bool _pendingBroadcast = false;
+
+        /// <summary>
+        /// When false, all players may control any librarian without claiming.
+        ///
+        /// Read from <c>AppData\LocalLow\Project Moon\LibraryOfRuina\ModConfigs\meconeko.playlorwithme.xml</c>;
+        /// defaults to true.
+        /// </summary>
+        public bool ClaimsEnabled { get; private set; } = true;
 
         public static Server Instance { get; private set; }
 
@@ -41,6 +55,7 @@ namespace PlayLoRWithMe
         public void Start()
         {
             Instance = this;
+            LoadConfig();
             _listener = new HttpListener();
             _listener.Prefixes.Add($"http://*:{Port}/");
             _listener.Start();
@@ -59,6 +74,42 @@ namespace PlayLoRWithMe
         {
             _cts.Cancel();
             _listener?.Stop();
+        }
+
+        /// <summary>
+        /// Reads optional settings from the mod's XML config file.
+        ///
+        /// The file is at: <c>&lt;persistentDataPath&gt;/ModConfigs/meconeko.playlorwithme.xml</c>.
+        /// Missing file or missing elements silently fall back to defaults.
+        /// </summary>
+        private void LoadConfig()
+        {
+            string path = System.IO.Path.Combine(
+                Application.persistentDataPath,
+                "ModConfigs",
+                Initializer.packageId + ".xml"
+            );
+
+            Debug.Log($"[PlayLoRWithMe] Config path: {path}");
+
+            if (!File.Exists(path))
+                return;
+            try
+            {
+                var doc = new System.Xml.XmlDocument();
+                doc.Load(path);
+                var root = doc.DocumentElement;
+
+                var node = root?.SelectSingleNode("ClaimsEnabled");
+                if (node != null && bool.TryParse(node.InnerText, out bool ce))
+                    ClaimsEnabled = ce;
+
+                Debug.Log($"[PlayLoRWithMe] Config loaded: claimsEnabled={ClaimsEnabled}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] Failed to read config.xml: {ex.Message}");
+            }
         }
 
         // -------------------------------------------------------------------------
@@ -184,16 +235,12 @@ namespace PlayLoRWithMe
                 rsp.Close();
             }
             catch { }
-            Debug.Log($"[PlayLoRWithMe] SSE client disconnected ({id})");
         }
 
-        /// <summary>
-        /// Pushes a JSON state snapshot to all connected clients (SSE and WebSocket).
-        /// SSE dead clients are removed lazily on the next send.
-        /// Safe to call from any thread.
-        /// </summary>
         public void Broadcast(string json)
         {
+            _lastFullJson = json;
+
             foreach (var kvp in _clients)
             {
                 kvp.Value.Send(json);
@@ -201,25 +248,34 @@ namespace PlayLoRWithMe
                     _clients.TryRemove(kvp.Key, out _);
             }
 
-            BroadcastFiltered(json);
+            BroadcastFiltered();
+        }
+
+        public void BroadcastFiltered()
+        {
+            // All sessions receive the full unfiltered state; ownership only
+            // controls interactivity on the frontend, not data visibility.
+            string json = GameStateSerializer.Serialize();
+            foreach (var session in _sessionManager.GetConnectedSessions())
+            {
+                string msg = _deltaEngine.BuildMessage(session.SessionId, json);
+                if (msg != null)
+                    session.Client?.Send(msg);
+            }
         }
 
         /// <summary>
-        /// Wraps <paramref name="json"/> in the WebSocket state envelope and pushes
-        /// it to every connected WebSocket client. Per-session filtering is added in
-        /// a later batch; for now all clients receive the same full state.
-        /// Safe to call from any thread.
+        /// Returns true (and clears the flag) if a broadcast was requested from a
+        /// background thread (e.g. after claim/release or new connection). Called
+        /// from the Unity main thread so the resulting serialization is safe.
         /// </summary>
-        public void BroadcastFiltered(string json)
+        public bool ConsumePendingBroadcast()
         {
-            int seq = Interlocked.Increment(ref _broadcastSeq);
-            string wrapped = "{\"type\":\"state\",\"seq\":" + seq + ",\"data\":" + json + "}";
-            _sessionManager.BroadcastAll(wrapped);
+            if (!_pendingBroadcast)
+                return false;
+            _pendingBroadcast = false;
+            return true;
         }
-
-        // -------------------------------------------------------------------------
-        // WebSocket
-        // -------------------------------------------------------------------------
 
         private void HandleWebSocket(HttpListenerContext ctx)
         {
@@ -245,18 +301,36 @@ namespace PlayLoRWithMe
             var session = _sessionManager.GetOrCreate(sessionToken);
 
             var client = new WebSocketClient(session.SessionId, stream, OnWebSocketMessage);
+            _deltaEngine.AddSession(session.SessionId);
             _sessionManager.Attach(session.SessionId, client);
             Debug.Log(
                 $"[PlayLoRWithMe] WebSocket connected: {session.SessionId} ({session.DisplayName})"
             );
 
             client.Send(BuildHelloMessage(session));
-            client.Send(WrapStateMessage(GameStateSerializer.Serialize(), seq: 0));
+
+            // Send the cached last-known state as the initial snapshot. This avoids
+            // accessing Unity game objects from the listener thread (not thread-safe).
+            // The next Broadcast() call from the Unity main thread will follow with a
+            // properly per-session filtered view; _pendingBroadcast ensures it fires
+            // soon even if no game event occurs.
+            // Use the cached last-broadcast JSON if available (fast, main-thread-safe).
+            // Fall back to serializing immediately if the cache is cold (first ever
+            // connection before any game event has fired a broadcast).
+            string cachedJson = _lastFullJson ?? GameStateSerializer.Serialize();
+            string initialMsg = _deltaEngine.BuildMessage(session.SessionId, cachedJson);
+            if (initialMsg != null)
+                client.Send(initialMsg);
+
+            // Request a fresh filtered broadcast on the next Unity tick so any
+            // ownership-based data is sent promptly even if no game event fires.
+            _pendingBroadcast = true;
 
             // Blocks until the connection closes.
             client.ReceiveLoop();
 
             _sessionManager.Detach(session.SessionId);
+            _deltaEngine.RemoveSession(session.SessionId);
             Debug.Log($"[PlayLoRWithMe] WebSocket disconnected: {session.SessionId}");
         }
 
@@ -282,6 +356,8 @@ namespace PlayLoRWithMe
                     if (r.TryGetInt("unitId", out int claimUnitId))
                     {
                         bool claimed = _sessionManager.ClaimUnit(client.SessionId, claimUnitId);
+                        if (claimed)
+                            _pendingBroadcast = true;
                         if (reqId != null)
                             client.Send(
                                 BuildActionResult(
@@ -297,33 +373,62 @@ namespace PlayLoRWithMe
                     if (r.TryGetInt("unitId", out int releaseUnitId))
                     {
                         _sessionManager.ReleaseUnit(client.SessionId, releaseUnitId);
+                        _pendingBroadcast = true;
                         if (reqId != null)
                             client.Send(BuildActionResult(reqId, true, null));
                     }
                     break;
 
                 case "resync":
-                    // Client detected a missed sequence number; send a fresh full snapshot.
-                    client.Send(WrapStateMessage(GameStateSerializer.Serialize(), seq: 0));
+                    // Client detected a missed sequence number; reset delta state and
+                    // send a fresh full snapshot so the client can resync cleanly.
+                    _deltaEngine.RemoveSession(client.SessionId);
+                    _deltaEngine.AddSession(client.SessionId);
+                    string resyncMsg = _deltaEngine.BuildMessage(
+                        client.SessionId,
+                        GameStateSerializer.Serialize()
+                    );
+                    if (resyncMsg != null)
+                        client.Send(resyncMsg);
                     break;
             }
         }
 
-        // Dispatches a game action to ActionInjector and sends the result back to the
-        // originating client. Blocks the receive-loop thread briefly (≤500 ms).
-        // Authorization and async callback variants are added in a later batch.
-        private static void HandleWsAction(WebSocketClient client, string json, string reqId)
+        // Dispatches a game action to ActionInjector. Non-blocking: enqueues the
+        // action and returns immediately; the actionResult is sent back via the
+        // WebSocket on the Unity main thread when DrainQueue runs.
+        private void HandleWsAction(WebSocketClient client, string json, string reqId)
         {
-            var (ok, error) = ActionInjector.EnqueueAndWait(json);
-            if (reqId != null)
-                client.Send(BuildActionResult(reqId, ok, error));
+            // Unit-targeted actions require the session to own (or have unclaimed access to)
+            // the unit. confirm and selectAbnormality have no unitId and are always allowed.
+            var r = new JsonReader(json);
+            if (
+                ClaimsEnabled
+                && r.TryGetInt("unitId", out int unitId)
+                && !_sessionManager.IsAuthorized(client.SessionId, unitId)
+            )
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Not authorized for this unit"));
+                return;
+            }
+
+            ActionInjector.EnqueueWithCallback(
+                json,
+                (ok, error) =>
+                {
+                    if (reqId != null)
+                        client.Send(BuildActionResult(reqId, ok, error));
+                }
+            );
         }
 
-        private static string BuildHelloMessage(PlayerSession session)
+        private string BuildHelloMessage(PlayerSession session)
         {
             return new JsonWriter()
                 .Add("type", "hello")
                 .Add("sessionId", session.SessionId)
+                .Add("claimsEnabled", ClaimsEnabled)
                 .AddArray(
                     "assignedUnits",
                     arr =>

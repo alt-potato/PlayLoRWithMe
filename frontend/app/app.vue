@@ -1,11 +1,5 @@
 <script setup lang="ts">
-import type { GameState } from "~/types/game";
-
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
-
-const status = ref<ConnectionStatus>("connecting");
-const gameState = ref<GameState | null>(null);
-const rawJson = ref<string>("—");
 
 const statusLabel: Record<ConnectionStatus, string> = {
   connecting: "Connecting…",
@@ -24,24 +18,11 @@ useHead({
   ],
 });
 
-onMounted(() => {
-  const es = new EventSource("/events");
-  es.onopen = () => {
-    status.value = "connected";
-  };
-  es.onmessage = (ev: MessageEvent) => {
-    try {
-      const parsed = JSON.parse(ev.data as string);
-      gameState.value = parsed;
-      rawJson.value = JSON.stringify(parsed, null, 2);
-    } catch {
-      rawJson.value = ev.data as string;
-    }
-  };
-  es.onerror = () => {
-    status.value = "disconnected";
-  };
-});
+const { gameState, session, status, players, sendAction, claimUnit, releaseUnit } = useWebSocket();
+
+const rawJson = computed(() =>
+  gameState.value ? JSON.stringify(gameState.value, null, 2) : "—",
+);
 </script>
 
 <template>
@@ -52,7 +33,15 @@ onMounted(() => {
     </header>
 
     <main>
-      <BattleView v-if="gameState?.scene === 'battle'" :state="gameState" />
+      <BattleView
+        v-if="gameState?.scene === 'battle'"
+        :state="gameState"
+        :session="session"
+        :players="players"
+        :send-action="sendAction"
+        :claim-unit="claimUnit"
+        :release-unit="releaseUnit"
+      />
 
       <div v-else-if="gameState" class="scene-idle">
         <div class="scene-name">{{ gameState.scene }}</div>

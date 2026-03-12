@@ -9,10 +9,36 @@
 -->
 <script setup lang="ts">
 import type { BattleCtx } from "~/composables/useBattleContext";
-import type { AllyUnit, GameState, Unit } from "~/types/game";
+import type {
+  AllyUnit,
+  GameState,
+  PlayerInfo,
+  Unit,
+  SessionState,
+  ActionResult,
+} from "~/types/game";
 import DisplayCard from "./unit/DisplayCard.vue";
 
-const props = defineProps<{ state: GameState }>();
+const props = defineProps<{
+  state: GameState;
+  session: SessionState | null;
+  players: PlayerInfo[];
+  sendAction: (action: Record<string, unknown>) => Promise<ActionResult>;
+  claimUnit: (unitId: number) => Promise<ActionResult>;
+  releaseUnit: (unitId: number) => Promise<ActionResult>;
+}>();
+
+const session = computed(() => props.session);
+
+/** True when this session owns the unit (or the unit is unclaimed by anyone). */
+function isOwnUnit(unitId: number): boolean {
+  const s = props.session;
+  if (!s || !s.claimsEnabled) return true;
+  // Unit is accessible if no player (including us) has claimed it.
+  const claimedByAnyone = props.players.some((p) => p.units.includes(unitId));
+  if (!claimedByAnyone) return true;
+  return s.assignedUnits.includes(unitId);
+}
 
 // ---------------------------------------------------------------------------
 // Interactive state (only meaningful during SelectCard phase)
@@ -211,32 +237,21 @@ onMounted(() => {
 // Action senders
 // ---------------------------------------------------------------------------
 
-async function sendAction(action: object): Promise<boolean> {
+async function doSendAction(action: Record<string, unknown>): Promise<boolean> {
   if (errorTimer) {
     clearTimeout(errorTimer);
     errorTimer = null;
   }
   actionError.value = null;
-  try {
-    const res = await fetch("/action", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(action),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      actionError.value = (data as any).error ?? `Server error ${res.status}`;
-      errorTimer = setTimeout(() => {
-        actionError.value = null;
-        errorTimer = null;
-      }, 3000);
-      return false;
-    }
-    return true;
-  } catch (e) {
-    actionError.value = String(e);
-    return false;
+  const { ok, error } = await props.sendAction(action);
+  if (!ok) {
+    actionError.value = error ?? "Action failed";
+    errorTimer = setTimeout(() => {
+      actionError.value = null;
+      errorTimer = null;
+    }, 3000);
   }
+  return ok;
 }
 
 // ---------------------------------------------------------------------------
@@ -244,6 +259,7 @@ async function sendAction(action: object): Promise<boolean> {
 // ---------------------------------------------------------------------------
 
 function onCardClick(unitId: number, cardIndex: number, isEgo = false) {
+  if (!isOwnUnit(unitId)) return;
   // Step 2 re-route: already in targeting for this unit → switch card
   if (selectingTargetFor.value?.unitId === unitId) {
     const diceSlot = selectingTargetFor.value.diceSlot;
@@ -278,7 +294,7 @@ function routeCard(
         cardName: card?.name ?? "?",
       };
     } else {
-      sendAction({
+      doSendAction({
         type: "playCard",
         unitId,
         cardIndex,
@@ -318,7 +334,7 @@ function onSlotSelectClick(unit: Unit, diceSlot: number) {
 async function onAllyTargetClick(targetUnitId: number) {
   if (!selectingAllyTargetFor.value) return;
   const { unitId, cardIndex, isEgo, diceSlot } = selectingAllyTargetFor.value;
-  const ok = await sendAction({
+  const ok = await doSendAction({
     type: "playCard",
     unitId,
     cardIndex,
@@ -332,7 +348,7 @@ async function onAllyTargetClick(targetUnitId: number) {
 async function onTargetDieClick(targetUnitId: number, targetDiceSlot: number) {
   if (!selectingTargetFor.value) return;
   const { unitId, cardIndex, isEgo, diceSlot } = selectingTargetFor.value;
-  const ok = await sendAction({
+  const ok = await doSendAction({
     type: "playCard",
     unitId,
     cardIndex,
@@ -351,7 +367,7 @@ function cancelTargeting() {
 }
 
 async function onRemoveCard(unitId: number, diceSlot: number) {
-  await sendAction({ type: "removeCard", unitId, diceSlot });
+  await doSendAction({ type: "removeCard", unitId, diceSlot });
   if (
     selectingTargetFor.value?.unitId === unitId &&
     selectingTargetFor.value?.diceSlot === diceSlot
@@ -368,11 +384,11 @@ async function onRemoveCard(unitId: number, diceSlot: number) {
 async function onSelectAbnormality(cardId: number, targetUnitId?: number) {
   const body: any = { type: "selectAbnormality", cardId };
   if (targetUnitId !== undefined) body.targetUnitId = targetUnitId;
-  await sendAction(body);
+  await doSendAction(body);
 }
 
 async function onConfirm() {
-  await sendAction({ type: "confirm" });
+  await doSendAction({ type: "confirm" });
   selectingSlot.value = null;
   selectingTargetFor.value = null;
 }
@@ -405,6 +421,10 @@ provide(BATTLE_CTX, {
   attackMap,
   allUnits,
   onSelectAbnormality,
+  session,
+  isOwnUnit,
+  claimUnit: props.claimUnit,
+  releaseUnit: props.releaseUnit,
 } satisfies BattleCtx);
 </script>
 
@@ -443,35 +463,12 @@ provide(BATTLE_CTX, {
     </div>
 
     <div class="teaser-right">
-      <div class="arrow-toggles">
-        <button
-          class="toggle-btn"
-          :class="{ active: showIncoming }"
-          :style="showIncoming ? { '--tc': '#c62828' } : {}"
-          title="Incoming one-sided attacks"
-          @click="showIncoming = !showIncoming"
-        >
-          →
-        </button>
-        <button
-          class="toggle-btn"
-          :class="{ active: showClash }"
-          :style="showClash ? { '--tc': '#c9a227' } : {}"
-          title="Clashes"
-          @click="showClash = !showClash"
-        >
-          ⚔
-        </button>
-        <button
-          class="toggle-btn"
-          :class="{ active: showOutgoing }"
-          :style="showOutgoing ? { '--tc': '#4fc3f7' } : {}"
-          title="Outgoing one-sided attacks"
-          @click="showOutgoing = !showOutgoing"
-        >
-          ←
-        </button>
-      </div>
+      <!-- Session / claim panel (only meaningful when claim enforcement is on) -->
+      <SessionPanel
+        v-if="session?.claimsEnabled"
+        :allies="state.allies ?? []"
+        :players="players"
+      />
     </div>
   </div>
 
@@ -513,7 +510,37 @@ provide(BATTLE_CTX, {
       </div>
     </section>
 
-    <section class="stage-center"></section>
+    <section class="stage-center">
+      <div class="arrow-toggles">
+        <button
+          class="toggle-btn"
+          :class="{ active: showIncoming }"
+          :style="showIncoming ? { '--tc': '#c62828' } : {}"
+          title="Incoming one-sided attacks"
+          @click="showIncoming = !showIncoming"
+        >
+          →
+        </button>
+        <button
+          class="toggle-btn"
+          :class="{ active: showClash }"
+          :style="showClash ? { '--tc': '#c9a227' } : {}"
+          title="Clashes"
+          @click="showClash = !showClash"
+        >
+          ⚔
+        </button>
+        <button
+          class="toggle-btn"
+          :class="{ active: showOutgoing }"
+          :style="showOutgoing ? { '--tc': '#4fc3f7' } : {}"
+          title="Outgoing one-sided attacks"
+          @click="showOutgoing = !showOutgoing"
+        >
+          ←
+        </button>
+      </div>
+    </section>
 
     <section class="wing wing--ally">
       <h2 class="wing-heading wing-heading--ally">Librarians</h2>
@@ -797,6 +824,9 @@ provide(BATTLE_CTX, {
 
 .stage-center {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .wing {

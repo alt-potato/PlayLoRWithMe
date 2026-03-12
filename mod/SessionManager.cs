@@ -178,16 +178,23 @@ namespace PlayLoRWithMe
         /// </summary>
         public void ReleaseUnit(string sessionId, int unitId)
         {
-            string playerListJson;
+            string sessionUpdateJson,
+                playerListJson;
+            WebSocketClient clientToUpdate;
 
             lock (_lock)
             {
                 if (!_sessions.TryGetValue(sessionId, out var session))
                     return;
                 session.AssignedUnitIds.Remove(unitId);
+                clientToUpdate = session.Client;
+                sessionUpdateJson = BuildSessionUpdateJson(session);
                 playerListJson = BuildPlayerListJson();
             }
 
+            // Notify the releasing session that its assignments changed, then
+            // broadcast the updated player list to everyone.
+            clientToUpdate?.Send(sessionUpdateJson);
             BroadcastAll(playerListJson);
         }
 
@@ -196,26 +203,23 @@ namespace PlayLoRWithMe
         // -------------------------------------------------------------------------
 
         /// <summary>
-        /// Returns true when the session may act on <paramref name="unitId"/>:
-        /// either the session owns it, or no session owns it (unassigned pool).
+        /// Returns true when the session may act on <paramref name="unitId"/>.
+        ///
+        /// Returns false if the unit is not currently assigned to a session.
         /// </summary>
         public bool IsAuthorized(string sessionId, int unitId)
         {
             lock (_lock)
             {
-                // Always allowed if no session has claimed this unit.
-                bool anyClaimed = false;
                 foreach (var s in _sessions.Values)
                 {
                     if (s.AssignedUnitIds.Contains(unitId))
                     {
-                        anyClaimed = true;
-                        if (s.SessionId == sessionId)
-                            return true; // owned by this session
-                        // else owned by someone else — keep scanning to be sure
+                        // the unit is claimed by some session. hopefully this one, then it's authorized.
+                        return s.SessionId == sessionId;
                     }
                 }
-                return !anyClaimed; // unassigned pool
+                return false; // unclaimed, unauthorized
             }
         }
 

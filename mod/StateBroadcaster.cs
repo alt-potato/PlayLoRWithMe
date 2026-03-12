@@ -89,10 +89,12 @@ namespace PlayLoRWithMe
             static void Postfix(StageController __instance)
             {
                 var current = __instance.Phase;
-                if (current == _lastPhase)
-                    return;
-                _lastPhase = current;
-                Broadcast();
+                bool phaseChanged = current != _lastPhase;
+                if (phaseChanged)
+                    _lastPhase = current;
+
+                if (phaseChanged || Server.Instance?.ConsumePendingBroadcast() == true)
+                    Broadcast();
             }
         }
 

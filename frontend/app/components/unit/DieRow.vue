@@ -35,6 +35,7 @@ const {
   onTargetDieClick,
   onRemoveCard,
   allUnits,
+  isOwnUnit,
 } = inject(BATTLE_CTX) as BattleCtx;
 
 type DieState =
@@ -92,6 +93,8 @@ const dieState: ComputedRef<DieState> = computed(() => {
     )
       return "pending";
 
+    // suppress slot interaction for unowned ally units
+    if (props.isAlly && !isOwnUnit(props.unit.id)) return "empty";
     return isSelectPhase.value ? "available" : "empty";
   } else {
     // card is slotted, target is set
@@ -151,6 +154,7 @@ function handleSlotClick(d: SpeedDie, sc: SlottedCardEntry | undefined) {
 
   if (props.isAlly) {
     // ally: handle slot selection for playing cards only
+    if (!isOwnUnit(props.unit.id)) return;
     if (sc != null || d.staggered || isUnitBroken.value) return;
     onSlotSelectClick(props.unit, d.slot);
   } else {

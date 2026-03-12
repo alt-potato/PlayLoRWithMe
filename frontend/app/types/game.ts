@@ -190,10 +190,18 @@ export interface AllyUnit extends Unit {
   playPoint: number;
   maxPlayPoint: number;
   reservedPlayPoint: number;
-  hand: Card[];
-  deck: Card[];
-  ego: Card[];
+  /** Present when this ally is owned by the current session. */
+  hand?: Card[];
+  deck?: Card[];
+  ego?: Card[];
   teamHand?: Card[];
+  /**
+   * Present instead of hand/deck/ego when this ally belongs to another
+   * session. The server sends counts rather than card data to preserve privacy.
+   */
+  handCount?: number;
+  deckCount?: number;
+  egoCount?: number;
 }
 
 // ── Abnormality selection phase ───────────────────────────────────────────────
@@ -215,6 +223,30 @@ export interface AbnormalitySelection {
   teamCoinMax?: number;
   teamPositiveCoins?: number;
   teamNegativeCoins?: number;
+}
+
+// ── Session & WebSocket ───────────────────────────────────────────────────────
+
+/** The current browser tab's session identity. */
+export interface SessionState {
+  sessionId: string;
+  /** Unit IDs this session has claimed. */
+  assignedUnits: number[];
+  /** Whether the server is enforcing unit claims. False means everyone can play any unit. */
+  claimsEnabled: boolean;
+}
+
+/** One connected player as reported in a playerList message. */
+export interface PlayerInfo {
+  sessionId: string;
+  name: string;
+  units: number[];
+}
+
+/** Result returned when a WebSocket action resolves. */
+export interface ActionResult {
+  ok: boolean;
+  error?: string;
 }
 
 // ── Root state ────────────────────────────────────────────────────────────────

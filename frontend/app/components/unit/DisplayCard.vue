@@ -34,6 +34,7 @@ const {
   onTargetDieClick,
   allyColors,
   attackMap,
+  isOwnUnit,
 } = inject(BATTLE_CTX) as BattleCtx;
 
 const slots = computed(() => sortedSlots(props.unit));
@@ -230,7 +231,7 @@ function passiveClass(p: Passive) {
       </span>
     </div>
 
-    <!-- ── Interactive hand (for allies in select phase only) ── -->
+    <!-- ── Hand (all allies during select phase; non-owned cards are dimmed and unplayable) ── -->
     <template v-if="isAlly && isSelectPhase && (ally.hand?.length || hasEgo)">
       <div class="hand-section">
         <div class="hand-header" @click.stop="handExpanded = !handExpanded">
@@ -266,6 +267,7 @@ function passiveClass(p: Passive) {
                   selectingTargetFor?.isEgo === true
                 "
                 :dimmed="
+                  !isOwnUnit(unit.id) ||
                   (selectingSlot !== null &&
                     selectingSlot.unitId !== unit.id) ||
                   (selectingTargetFor !== null &&
@@ -275,7 +277,7 @@ function passiveClass(p: Passive) {
                       selectingTargetFor.isEgo === true
                     ))
                 "
-                :unusable="c.canUse === false"
+                :unusable="!isOwnUnit(unit.id) || c.canUse === false"
                 @click="onCardClick(unit.id, Number(i), true)"
                 @detail="detailCard = c"
               />
@@ -291,6 +293,7 @@ function passiveClass(p: Passive) {
                   !selectingTargetFor?.isEgo
                 "
                 :dimmed="
+                  !isOwnUnit(unit.id) ||
                   (selectingSlot !== null &&
                     selectingSlot.unitId !== unit.id) ||
                   (selectingTargetFor !== null &&
@@ -300,7 +303,7 @@ function passiveClass(p: Passive) {
                       !selectingTargetFor.isEgo
                     ))
                 "
-                :unusable="c.canUse === false"
+                :unusable="!isOwnUnit(unit.id) || c.canUse === false"
                 @click="onCardClick(unit.id, Number(i))"
                 @detail="detailCard = c"
               />

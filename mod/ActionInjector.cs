@@ -25,11 +25,26 @@ namespace PlayLoRWithMe
             public readonly string Json;
             public bool Ok;
             public string Error;
-            public readonly ManualResetEventSlim Done = new ManualResetEventSlim(false);
 
+            // Sync path (EnqueueAndWait): set when execution completes.
+            public readonly ManualResetEventSlim Done;
+
+            // Async path (EnqueueWithCallback): invoked on the Unity main thread
+            // after execution so the response can be sent back via WebSocket.
+            public readonly Action<bool, string> Callback;
+
+            /// <summary>Sync constructor — used by the SSE/HTTP POST path.</summary>
             public PendingAction(string json)
             {
                 Json = json;
+                Done = new ManualResetEventSlim(false);
+            }
+
+            /// <summary>Async constructor — used by the WebSocket path.</summary>
+            public PendingAction(string json, Action<bool, string> callback)
+            {
+                Json = json;
+                Callback = callback;
             }
         }
 
@@ -47,6 +62,18 @@ namespace PlayLoRWithMe
             if (!pending.Done.Wait(500))
                 return (false, "Action timed out");
             return (pending.Ok, pending.Error);
+        }
+
+        /// <summary>Called each frame from the Unity main thread to execute queued actions.</summary>
+        /// <summary>
+        /// Called from the WebSocket receive thread. Non-blocking; returns immediately.
+        /// <paramref name="onComplete"/> is invoked on the Unity main thread after
+        /// execution with (ok, errorMessage), so the caller can send an actionResult
+        /// response back over the WebSocket without blocking the receive loop.
+        /// </summary>
+        public static void EnqueueWithCallback(string actionJson, Action<bool, string> onComplete)
+        {
+            _queue.Enqueue(new PendingAction(actionJson, onComplete));
         }
 
         /// <summary>Called each frame from the Unity main thread to execute queued actions.</summary>
@@ -68,7 +95,9 @@ namespace PlayLoRWithMe
                 }
                 finally
                 {
-                    pending.Done.Set();
+                    // Exactly one of Done/Callback is set depending on which path enqueued this.
+                    pending.Done?.Set();
+                    pending.Callback?.Invoke(pending.Ok, pending.Error);
                 }
             }
         }
