@@ -664,8 +664,7 @@ provide(BATTLE_CTX, {
 .phase {
   color: var(--text-2);
   font-size: 0.65rem;
-  font-style: italic;
-  font-family: var(--font-body);
+  font-family: var(--font-mono);
   white-space: nowrap;
 }
 .confirm-btn {
