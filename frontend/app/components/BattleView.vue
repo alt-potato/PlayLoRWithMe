@@ -223,7 +223,7 @@ function moveEnemy(unitId: number, dir: -1 | 1) {
 const showArrows = ref(false);
 
 onMounted(() => {
-  const mq = window.matchMedia("(min-width: 900px)");
+  const mq = window.matchMedia("(min-width: 600px)");
   showArrows.value = mq.matches;
   mq.addEventListener("change", (e: MediaQueryListEvent) => {
     showArrows.value = e.matches;
@@ -508,7 +508,10 @@ provide(BATTLE_CTX, {
     </section>
 
     <section class="stage-center">
-      <div class="arrow-toggles">
+      <div
+        v-if="showArrows && state.allies && state.enemies"
+        class="arrow-toggles"
+      >
         <button
           class="toggle-btn"
           :class="{ active: showIncoming }"
@@ -820,7 +823,7 @@ provide(BATTLE_CTX, {
 }
 
 .stage-center {
-  flex: 1;
+  flex: none;
   display: flex;
   flex-direction: column;
   align-items: center;
