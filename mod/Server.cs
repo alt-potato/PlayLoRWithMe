@@ -26,6 +26,12 @@ namespace PlayLoRWithMe
         private readonly ConcurrentDictionary<Guid, SseClient> _clients =
             new ConcurrentDictionary<Guid, SseClient>();
 
+        private readonly SessionManager _sessionManager = new SessionManager();
+
+        // Monotonically increasing sequence number included in every WebSocket
+        // state message so clients can detect missed broadcasts and request a resync.
+        private int _broadcastSeq = 0;
+
         public static Server Instance { get; private set; }
 
         // -------------------------------------------------------------------------
@@ -98,7 +104,9 @@ namespace PlayLoRWithMe
                 string path = ctx.Request.Url.AbsolutePath;
                 string method = ctx.Request.HttpMethod;
 
-                if (method == "GET" && path == "/events")
+                if (method == "GET" && path == "/ws")
+                    HandleWebSocket(ctx); // blocks until client disconnects
+                else if (method == "GET" && path == "/events")
                     HandleEvents(ctx); // blocks until client disconnects
                 else if (method == "GET" && path == "/state")
                     SendJson(ctx, GameStateSerializer.Serialize());
@@ -180,8 +188,8 @@ namespace PlayLoRWithMe
         }
 
         /// <summary>
-        /// Pushes a JSON state snapshot to every connected SSE client.
-        /// Dead clients are removed lazily on the next send.
+        /// Pushes a JSON state snapshot to all connected clients (SSE and WebSocket).
+        /// SSE dead clients are removed lazily on the next send.
         /// Safe to call from any thread.
         /// </summary>
         public void Broadcast(string json)
@@ -192,6 +200,153 @@ namespace PlayLoRWithMe
                 if (!kvp.Value.IsAlive)
                     _clients.TryRemove(kvp.Key, out _);
             }
+
+            BroadcastFiltered(json);
+        }
+
+        /// <summary>
+        /// Wraps <paramref name="json"/> in the WebSocket state envelope and pushes
+        /// it to every connected WebSocket client. Per-session filtering is added in
+        /// a later batch; for now all clients receive the same full state.
+        /// Safe to call from any thread.
+        /// </summary>
+        public void BroadcastFiltered(string json)
+        {
+            int seq = Interlocked.Increment(ref _broadcastSeq);
+            string wrapped = "{\"type\":\"state\",\"seq\":" + seq + ",\"data\":" + json + "}";
+            _sessionManager.BroadcastAll(wrapped);
+        }
+
+        // -------------------------------------------------------------------------
+        // WebSocket
+        // -------------------------------------------------------------------------
+
+        private void HandleWebSocket(HttpListenerContext ctx)
+        {
+            Stream stream;
+            try
+            {
+                stream = WebSocketCodec.PerformHandshake(ctx);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] WebSocket handshake failed: {ex.Message}");
+                try
+                {
+                    ctx.Response.StatusCode = 400;
+                    ctx.Response.Close();
+                }
+                catch { }
+                return;
+            }
+
+            // Look up or create a persistent session from the ?session=<token> query param.
+            string sessionToken = ctx.Request.QueryString["session"];
+            var session = _sessionManager.GetOrCreate(sessionToken);
+
+            var client = new WebSocketClient(session.SessionId, stream, OnWebSocketMessage);
+            _sessionManager.Attach(session.SessionId, client);
+            Debug.Log(
+                $"[PlayLoRWithMe] WebSocket connected: {session.SessionId} ({session.DisplayName})"
+            );
+
+            client.Send(BuildHelloMessage(session));
+            client.Send(WrapStateMessage(GameStateSerializer.Serialize(), seq: 0));
+
+            // Blocks until the connection closes.
+            client.ReceiveLoop();
+
+            _sessionManager.Detach(session.SessionId);
+            Debug.Log($"[PlayLoRWithMe] WebSocket disconnected: {session.SessionId}");
+        }
+
+        private void OnWebSocketMessage(WebSocketClient client, string json)
+        {
+            var r = new JsonReader(json);
+            string type = r.GetString("type");
+            if (type == null)
+                return;
+
+            string reqId = r.GetString("reqId");
+
+            switch (type)
+            {
+                case "playCard":
+                case "removeCard":
+                case "confirm":
+                case "selectAbnormality":
+                    HandleWsAction(client, json, reqId);
+                    break;
+
+                case "claimUnit":
+                    if (r.TryGetInt("unitId", out int claimUnitId))
+                    {
+                        bool claimed = _sessionManager.ClaimUnit(client.SessionId, claimUnitId);
+                        if (reqId != null)
+                            client.Send(
+                                BuildActionResult(
+                                    reqId,
+                                    claimed,
+                                    claimed ? null : "Unit already claimed by another player"
+                                )
+                            );
+                    }
+                    break;
+
+                case "releaseUnit":
+                    if (r.TryGetInt("unitId", out int releaseUnitId))
+                    {
+                        _sessionManager.ReleaseUnit(client.SessionId, releaseUnitId);
+                        if (reqId != null)
+                            client.Send(BuildActionResult(reqId, true, null));
+                    }
+                    break;
+
+                case "resync":
+                    // Client detected a missed sequence number; send a fresh full snapshot.
+                    client.Send(WrapStateMessage(GameStateSerializer.Serialize(), seq: 0));
+                    break;
+            }
+        }
+
+        // Dispatches a game action to ActionInjector and sends the result back to the
+        // originating client. Blocks the receive-loop thread briefly (≤500 ms).
+        // Authorization and async callback variants are added in a later batch.
+        private static void HandleWsAction(WebSocketClient client, string json, string reqId)
+        {
+            var (ok, error) = ActionInjector.EnqueueAndWait(json);
+            if (reqId != null)
+                client.Send(BuildActionResult(reqId, ok, error));
+        }
+
+        private static string BuildHelloMessage(PlayerSession session)
+        {
+            return new JsonWriter()
+                .Add("type", "hello")
+                .Add("sessionId", session.SessionId)
+                .AddArray(
+                    "assignedUnits",
+                    arr =>
+                    {
+                        foreach (int uid in session.AssignedUnitIds)
+                            arr.AddInt(uid);
+                    }
+                )
+                .Build();
+        }
+
+        // Wraps the raw game-state JSON object in the {type, seq, data} envelope
+        // expected by the frontend. seq=0 is used for targeted sends (hello, resync)
+        // where the client should not validate sequence continuity.
+        private static string WrapStateMessage(string stateJson, int seq) =>
+            "{\"type\":\"state\",\"seq\":" + seq + ",\"data\":" + stateJson + "}";
+
+        private static string BuildActionResult(string reqId, bool ok, string error)
+        {
+            var w = new JsonWriter().Add("type", "actionResult").Add("reqId", reqId).Add("ok", ok);
+            if (!ok && error != null)
+                w.Add("error", error);
+            return w.Build();
         }
 
         // -------------------------------------------------------------------------

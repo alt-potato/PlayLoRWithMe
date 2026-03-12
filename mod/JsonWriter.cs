@@ -131,6 +131,13 @@ namespace PlayLoRWithMe
             return this;
         }
 
+        public JsonArrayWriter AddInt(int value)
+        {
+            Comma();
+            _sb.Append(value);
+            return this;
+        }
+
         public JsonArrayWriter AddObject(Action<JsonWriter> build)
         {
             Comma();
