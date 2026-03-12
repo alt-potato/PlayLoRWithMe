@@ -128,8 +128,10 @@ const slotState = computed(() => {
       return "slot-pending";
     case "broken":
       return "slot-broken";
-    default:
+    case "available":
       return "slot-available";
+    default:
+      return "slot-empty";
   }
 });
 
@@ -223,7 +225,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
         />
         <div v-else class="slot-empty">—</div>
         <button
-          v-if="isAlly && isSelectPhase && card != null"
+          v-if="isAlly && isSelectPhase && card != null && isOwnUnit(unit.id)"
           class="remove-btn"
           title="Return to hand"
           @click="onRemoveCard(unit.id, card.slot)"
@@ -278,6 +280,9 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
 }
 .slot-target {
   cursor: pointer;
+}
+.slot-empty {
+  cursor: default;
 }
 .slot-available {
   cursor: pointer;

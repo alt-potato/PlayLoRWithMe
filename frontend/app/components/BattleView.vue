@@ -34,9 +34,6 @@ const session = computed(() => props.session);
 function isOwnUnit(unitId: number): boolean {
   const s = props.session;
   if (!s || !s.claimsEnabled) return true;
-  // Unit is accessible if no player (including us) has claimed it.
-  const claimedByAnyone = props.players.some((p) => p.units.includes(unitId));
-  if (!claimedByAnyone) return true;
   return s.assignedUnits.includes(unitId);
 }
 
