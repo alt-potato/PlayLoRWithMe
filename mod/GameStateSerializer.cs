@@ -219,28 +219,28 @@ namespace PlayLoRWithMe
                             )
                 );
 
-                // Passives from the key page equipment effect
-                var passiveIds = book.equipeffect?.PassiveList;
-                if (passiveIds != null && passiveIds.Count > 0)
+                // Passives from CreatePassiveList — covers both key-page built-in passives
+                // and the librarian's equipped floor passive deck (equipedBookIdListInPassive),
+                // matching what the battle phase serialises via passiveDetail.PassiveList.
+                var passiveList = book.CreatePassiveList();
+                if (passiveList != null && passiveList.Count > 0)
                 {
-                    var passiveXmlList = Singleton<PassiveXmlList>.Instance;
                     o.AddArray(
                         "passives",
                         arr2 =>
                         {
-                            foreach (var lorId in passiveIds)
+                            foreach (var p in passiveList)
                             {
-                                var xml = passiveXmlList?.GetData(lorId);
-                                if (xml == null || xml.isHide || string.IsNullOrEmpty(xml.name))
+                                if (p == null || p.isHide || string.IsNullOrEmpty(p.name))
                                     continue;
-                                arr2.AddObject(p =>
+                                arr2.AddObject(po =>
                                 {
-                                    AddLorId(p, "id", xml.id);
-                                    p.Add("name", xml.name)
-                                        .Add("rare", xml.rare.ToString())
-                                        .Add("isNegative", xml.isNegative);
-                                    if (!string.IsNullOrEmpty(xml.desc))
-                                        p.Add("desc", xml.desc);
+                                    AddLorId(po, "id", p.id);
+                                    po.Add("name", p.name)
+                                        .Add("rare", p.rare.ToString())
+                                        .Add("isNegative", p.isNegative);
+                                    if (!string.IsNullOrEmpty(p.desc))
+                                        po.Add("desc", p.desc);
                                 });
                             }
                         }
