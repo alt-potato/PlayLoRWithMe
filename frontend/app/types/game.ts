@@ -254,7 +254,10 @@ export interface ActionResult {
 /** Top-level SSE / GET /state payload. */
 export interface GameState {
   scene: SceneName;
+  /** Raw C# StageController.Phase class name (e.g. "ApplyLibrarianCardPhase"). */
   phase?: string;
+  /** Raw C# StageController.State enum value (e.g. "BattleSetting"). */
+  stageState?: string;
   uiPhase?: string;
   stage?: StageInfo;
   allies?: AllyUnit[];

@@ -33,8 +33,22 @@ const rawJson = computed(() =>
     </header>
 
     <main>
+      <!--
+        BattleSetting phase: pre-battle formation/claim screen shown while the
+        main menu is in its BattleSetting UI phase (before the battle scene loads).
+      -->
+      <BattleSettingView
+        v-if="gameState?.scene === 'main' && gameState.uiPhase === 'BattleSetting'"
+        :state="gameState"
+        :session="session"
+        :players="players"
+        :send-action="sendAction"
+        :claim-unit="claimUnit"
+        :release-unit="releaseUnit"
+      />
+
       <BattleView
-        v-if="gameState?.scene === 'battle'"
+        v-else-if="gameState?.scene === 'battle'"
         :state="gameState"
         :session="session"
         :players="players"
