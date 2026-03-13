@@ -15,36 +15,58 @@ defineProps<{ resistances: Resistances | undefined }>();
 
 <template>
   <table class="resist-table">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Slash</th>
-        <th>Pierce</th>
-        <th>Blunt</th>
-      </tr>
-    </thead>
     <tbody>
       <tr>
-        <th>HP</th>
         <td :style="{ color: resistColor(resistances?.slashHp) }">
+          <img
+            src="/assets/stats/sHpResist.png"
+            class="stat-icon"
+            alt="Slash Damage Resistance"
+          />
           {{ resistances?.slashHp }}
         </td>
-        <td :style="{ color: resistColor(resistances?.pierceHp) }">
-          {{ resistances?.pierceHp }}
-        </td>
-        <td :style="{ color: resistColor(resistances?.bluntHp) }">
-          {{ resistances?.bluntHp }}
+        <td :style="{ color: resistColor(resistances?.slashBp) }">
+          <img
+            src="/assets/stats/sBpResist.png"
+            class="stat-icon"
+            alt="Slash Stagger Damage Resistance"
+          />
+          {{ resistances?.slashBp }}
         </td>
       </tr>
       <tr>
-        <th>SP</th>
-        <td :style="{ color: resistColor(resistances?.slashBp) }">
-          {{ resistances?.slashBp }}
+        <td :style="{ color: resistColor(resistances?.pierceHp) }">
+          <img
+            src="/assets/stats/pHpResist.png"
+            class="stat-icon"
+            alt="Pierce Damage Resistance"
+          />
+          {{ resistances?.pierceHp }}
         </td>
         <td :style="{ color: resistColor(resistances?.pierceBp) }">
+          <img
+            src="/assets/stats/pBpResist.png"
+            class="stat-icon"
+            alt="Pierce Stagger Damage Resistance"
+          />
           {{ resistances?.pierceBp }}
         </td>
+      </tr>
+      <tr>
+        <td :style="{ color: resistColor(resistances?.bluntHp) }">
+          <img
+            src="/assets/stats/bHpResist.png"
+            class="stat-icon"
+            alt="Blunt Damage Resistance"
+          />
+          {{ resistances?.bluntHp }}
+        </td>
         <td :style="{ color: resistColor(resistances?.bluntBp) }">
+          <img
+            src="/assets/stats/bBpResist.png"
+            class="stat-icon"
+            alt="Blunt Stagger Damage Resistance"
+          />
           {{ resistances?.bluntBp }}
         </td>
       </tr>
@@ -65,10 +87,13 @@ defineProps<{ resistances: Resistances | undefined }>();
   font-weight: normal;
   text-align: center;
   padding: 0.1rem 0.3rem;
-  font-family: var(--font-display);
-  font-size: 0.55rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+}
+
+.stat-icon {
+  height: 1rem;
+  width: auto;
+  vertical-align: middle;
+  opacity: 0.85;
 }
 .resist-table thead th:first-child {
   width: 1.8rem;

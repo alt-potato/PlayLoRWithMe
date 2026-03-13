@@ -48,6 +48,7 @@ const detailCard = ref<Card | null>(null);
 <template>
   <div class="detail-panel" :class="{ 'detail-panel--flip': flip }">
     <!-- Resistance table -->
+    <div class="section-label">Resistances</div>
     <UnitResistanceTable v-if="kp?.resistances" :resistances="kp.resistances" />
 
     <!-- Passives -->
@@ -63,7 +64,8 @@ const detailCard = ref<Card | null>(null);
           <span
             class="passive-name"
             :style="{ color: rarityColor(p.rare ?? '') }"
-          >{{ p.name }}</span>
+            >{{ p.name }}</span
+          >
           <span v-if="p.desc" class="passive-desc">{{ p.desc }}</span>
         </div>
       </div>

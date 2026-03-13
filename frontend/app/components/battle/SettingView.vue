@@ -196,20 +196,17 @@ async function onConfirm() {
             </div>
             <div class="unit-stats">
               <div class="stats-inner">
-                <span class="stat-k">HP</span
-                ><span class="stat-v" :style="{ color: hpColor(unit) }"
+                <img src="/assets/stats/health.png" class="stat-icon" alt="HP" /><span class="stat-v" :style="{ color: hpColor(unit) }"
                   >{{ unit.hp
                   }}<span class="stat-max"> / {{ unit.maxHp }}</span></span
                 >
                 <template v-if="unit.maxStaggerGauge">
                   <span class="stat-sep">·</span>
-                  <span class="stat-k">Stagger</span
-                  ><span class="stat-v">{{ unit.maxStaggerGauge }}</span>
+                  <img src="/assets/stats/stagger.png" class="stat-icon" alt="Stagger" /><span class="stat-v">{{ unit.maxStaggerGauge }}</span>
                 </template>
                 <template v-if="unit.keyPage?.speedMin != null">
                   <span class="stat-sep">·</span>
-                  <span class="stat-k">Speed</span
-                  ><span class="stat-v"
+                  <img src="/assets/stats/speed.png" class="stat-icon" alt="Speed" /><span class="stat-v"
                     >{{ unit.keyPage.speedMin }}–{{
                       unit.keyPage.speedMax
                     }}</span
@@ -317,20 +314,17 @@ async function onConfirm() {
                 >▸</span
               >
               <div class="stats-inner stats-inner--ally">
-                <span class="stat-k">HP</span
-                ><span class="stat-v" :style="{ color: hpColor(ally) }"
+                <img src="/assets/stats/health.png" class="stat-icon" alt="HP" /><span class="stat-v" :style="{ color: hpColor(ally) }"
                   >{{ ally.hp
                   }}<span class="stat-max"> / {{ ally.maxHp }}</span></span
                 >
                 <template v-if="ally.maxStaggerGauge">
                   <span class="stat-sep">·</span>
-                  <span class="stat-k">Stagger</span
-                  ><span class="stat-v">{{ ally.maxStaggerGauge }}</span>
+                  <img src="/assets/stats/stagger.png" class="stat-icon" alt="Stagger" /><span class="stat-v">{{ ally.maxStaggerGauge }}</span>
                 </template>
                 <template v-if="ally.keyPage?.speedMin != null">
                   <span class="stat-sep">·</span>
-                  <span class="stat-k">Speed</span
-                  ><span class="stat-v"
+                  <img src="/assets/stats/speed.png" class="stat-icon" alt="Speed" /><span class="stat-v"
                     >{{ ally.keyPage.speedMin }}–{{
                       ally.keyPage.speedMax
                     }}</span
@@ -775,6 +769,13 @@ async function onConfirm() {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-3);
+}
+
+.stat-icon {
+  height: 0.85rem;
+  width: auto;
+  vertical-align: middle;
+  opacity: 0.8;
 }
 
 .stat-v {
