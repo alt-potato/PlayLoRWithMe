@@ -200,6 +200,48 @@ namespace PlayLoRWithMe
 
         // -------------------------------------------------------------------------
         // -------------------------------------------------------------------------
+        // Battle ID translation
+        // -------------------------------------------------------------------------
+
+        /// <summary>
+        /// Remaps every session's assigned unit IDs using <paramref name="oldToNew"/>.
+        /// Called once when the battle scene starts to convert pre-battle position
+        /// indices (0, 1, 2…) to the actual <c>BattleUnitModel.id</c> values assigned
+        /// by the game engine. IDs not present in the map are dropped.
+        /// </summary>
+        public void TranslateUnitIds(System.Collections.Generic.Dictionary<int, int> oldToNew)
+        {
+            var updates = new System.Collections.Generic.List<(WebSocketClient, string)>();
+            string playerListJson;
+
+            lock (_lock)
+            {
+                foreach (var session in _sessions.Values)
+                {
+                    var newIds = new HashSet<int>();
+                    foreach (int oldId in session.AssignedUnitIds)
+                        if (oldToNew.TryGetValue(oldId, out int newId))
+                            newIds.Add(newId);
+
+                    if (newIds.SetEquals(session.AssignedUnitIds))
+                        continue;
+
+                    session.AssignedUnitIds.Clear();
+                    foreach (int id in newIds)
+                        session.AssignedUnitIds.Add(id);
+
+                    if (session.Client != null)
+                        updates.Add((session.Client, BuildSessionUpdateJson(session)));
+                }
+                playerListJson = BuildPlayerListJson();
+            }
+
+            foreach (var (client, msg) in updates)
+                client.Send(msg);
+            BroadcastAll(playerListJson);
+        }
+
+        // -------------------------------------------------------------------------
         // Rename
         // -------------------------------------------------------------------------
 

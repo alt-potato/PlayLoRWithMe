@@ -50,7 +50,12 @@ namespace PlayLoRWithMe
         [HarmonyPatch(typeof(GameSceneManager), "ActivateBattleScene")]
         static class Patch_ActivateBattle
         {
-            static void Postfix() => Broadcast();
+            static void Postfix()
+            {
+                // Reset so TryTranslateClaimsForBattle runs once for this battle.
+                Server.Instance?.ResetClaimsTranslation();
+                Broadcast();
+            }
         }
 
         [HarmonyPatch(typeof(GameSceneManager), "ActivateUIController")]
@@ -113,7 +118,12 @@ namespace PlayLoRWithMe
                     _lastPhase = current;
 
                 if (phaseChanged || Server.Instance?.ConsumePendingBroadcast() == true)
+                {
+                    // Translate BattleSetting position-indices to battle unit IDs on the
+                    // first tick where BattleObjectManager has units loaded.
+                    Server.Instance?.TryTranslateClaimsForBattle();
                     Broadcast();
+                }
             }
         }
 

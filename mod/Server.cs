@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Threading;
+using LOR_DiceSystem;
 using UnityEngine;
 
 namespace PlayLoRWithMe
@@ -183,6 +184,44 @@ namespace PlayLoRWithMe
                 if (msg != null)
                     session.Client?.Send(msg);
             }
+        }
+
+        // Tracks whether BattleSetting claim IDs have been translated to battle unit IDs
+        // for the current battle. Reset each time the battle scene activates.
+        private bool _claimsTranslated = false;
+
+        /// <summary>
+        /// Resets the claims-translation flag so the next battle start triggers
+        /// a fresh translation. Call this when the battle scene activates.
+        /// </summary>
+        public void ResetClaimsTranslation() => _claimsTranslated = false;
+
+        /// <summary>
+        /// Translates each session's BattleSetting position-indices (0, 1, 2…) to
+        /// the actual <c>BattleUnitModel.id</c> values now that the battle has loaded.
+        /// Runs at most once per battle; no-ops until <c>BattleObjectManager</c> has units.
+        /// Must be called from the Unity main thread.
+        /// </summary>
+        public void TryTranslateClaimsForBattle()
+        {
+            if (_claimsTranslated)
+                return;
+
+            var bom = BattleObjectManager.instance;
+            if (bom == null)
+                return;
+
+            var allies = bom.GetList(Faction.Player);
+            if (allies == null || allies.Count == 0)
+                return;
+
+            var map = new System.Collections.Generic.Dictionary<int, int>();
+            for (int i = 0; i < allies.Count; i++)
+                map[i] = allies[i].id;
+
+            _sessionManager.TranslateUnitIds(map);
+            _claimsTranslated = true;
+            Debug.Log($"[PlayLoRWithMe] Translated {map.Count} unit claim IDs for battle.");
         }
 
         /// <summary>
