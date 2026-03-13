@@ -24,6 +24,10 @@ const props = defineProps<{
   dimmed?: boolean;
   color?: string;
   unusable?: boolean;
+  /** When true, suppresses click interaction (no slot selection) while keeping long-press for detail. */
+  readonly?: boolean;
+  /** Copy count shown as a ×N badge; omit or set to 1 to hide. */
+  count?: number;
 }>();
 
 const emit = defineEmits<{ click: []; detail: [] }>();
@@ -54,7 +58,7 @@ onUnmounted(() => {
 });
 
 function handleClick() {
-  if (props.unusable) return;
+  if (props.unusable || props.readonly) return;
   if (longPressed) {
     longPressed = false;
     return;
@@ -70,6 +74,7 @@ function handleClick() {
       'hcard--selected': selected,
       'hcard--dim': dimmed,
       'hcard--unusable': unusable,
+      'hcard--readonly': readonly,
     }"
     :style="{
       borderColor: selected && color ? color : cardBorderColor(card),
@@ -123,6 +128,7 @@ function handleClick() {
         <span v-if="b.stack > 0" class="hcard-token-stack">×{{ b.stack }}</span>
       </span>
     </div>
+    <span v-if="count && count > 1" class="hcard-count">×{{ count }}</span>
   </div>
 </template>
 
@@ -170,6 +176,12 @@ function handleClick() {
 .hcard--unusable:hover {
   transform: none;
   box-shadow: none;
+}
+.hcard--readonly {
+  cursor: default;
+}
+.hcard--readonly:hover {
+  transform: none;
 }
 
 .hcard-header {
@@ -290,5 +302,13 @@ function handleClick() {
 
 .hcard-token-stack {
   font-size: 0.4rem;
+}
+
+.hcard-count {
+  font-size: 0.46rem;
+  color: var(--text-3);
+  font-family: var(--font-body);
+  align-self: flex-end;
+  margin-top: auto;
 }
 </style>

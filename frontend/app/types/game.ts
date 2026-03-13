@@ -159,10 +159,25 @@ export interface Resistances {
 
 export interface KeyPage {
   name: string;
+  speedDiceCount?: number;
+  speedMin?: number;
+  speedMax?: number;
   resistances?: Resistances;
 }
 
 // ── Unit shapes ───────────────────────────────────────────────────────────────
+
+/** Card entry in a BattleSetting deck preview (grouped by card type with a count). */
+export interface DeckCardPreview {
+  name: string;
+  cost: number;
+  range: string;
+  rarity?: string;
+  /** How many copies of this card are in the deck. */
+  count: number;
+  dice?: Die[];
+  abilityDesc?: string;
+}
 
 /** Fields shared by both ally and enemy units. */
 export interface Unit {
@@ -183,6 +198,13 @@ export interface Unit {
   emotionLevel: number;
   emotionCoins: EmotionCoins;
   keyPage?: KeyPage;
+  /**
+   * False when the unit is dead or locked — only present in BattleSetting phase.
+   * Undefined (absent) during battle means no restriction.
+   */
+  enabled?: boolean;
+  /** Deck card preview — only present in BattleSetting phase. */
+  deckPreview?: DeckCardPreview[];
 }
 
 /** Ally-only extras: light, hand, deck, EGO. */

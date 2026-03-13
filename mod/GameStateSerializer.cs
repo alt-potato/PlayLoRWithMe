@@ -107,14 +107,16 @@ namespace PlayLoRWithMe
                 }
             );
 
-            // Allied librarians selected for this battle
+            // Allied librarians selected for this battle — GetUnitAddedBattleDataList
+            // filters by IsAddedBattle, which reflects the actual per-unit selection
+            // rather than the full floor roster.
             var floor = sc.GetCurrentStageFloorModel();
             if (floor != null)
                 w.AddArray(
                     "allies",
                     arr =>
                     {
-                        var units = floor.GetUnitBattleDataList();
+                        var units = floor.GetUnitAddedBattleDataList();
                         for (int i = 0; i < units.Count; i++)
                             WriteUnitBattleData(arr, i, units[i]);
                     }
@@ -136,7 +138,10 @@ namespace PlayLoRWithMe
 
         /// <summary>
         /// Serializes a pre-battle unit preview from a <c>UnitBattleDataModel</c>.
-        /// Only name, HP, and key page are available before the battle scene loads.
+        /// Emits: name, HP, max stagger, key page (speed range + resistances),
+        /// passives, deck card preview, and enabled status.
+        /// Battle-specific fields (speedDice, slottedCards, buffs, etc.) are omitted
+        /// because the battle scene has not loaded yet.
         /// </summary>
         private static void WriteUnitBattleData(
             JsonArrayWriter arr,
@@ -146,22 +151,27 @@ namespace PlayLoRWithMe
         {
             if (unit?.unitData == null)
                 return;
+
             var book = unit.unitData.bookItem;
             arr.AddObject(o =>
             {
                 o.Add("id", index)
                     .Add("name", unit.unitData.name)
-                    .Add("hp", unit.unitData.MaxHp)
-                    .Add("maxHp", unit.unitData.MaxHp);
+                    .Add("hp", (int)unit.hp)
+                    .Add("maxHp", unit.unitData.MaxHp)
+                    .Add("maxStaggerGauge", book?.Break ?? 0)
+                    // enabled: false when dead or locked — used by the frontend to
+                    // dim unavailable units in the formation screen
+                    .Add("enabled", !unit.isDead && !unit.isLocked);
 
                 if (book == null)
                     return;
+
+                // Key page: speed range and resistances (no dice count — display uses range only)
                 o.AddObject(
                     "keyPage",
                     k =>
-                    {
                         k.Add("name", book.Name)
-                            .Add("speedDiceCount", book.SpeedDiceNum)
                             .Add("speedMin", book.SpeedMin)
                             .Add("speedMax", book.SpeedMax)
                             .AddObject(
@@ -173,9 +183,93 @@ namespace PlayLoRWithMe
                                         .Add("slashBp", book.sBpResist.ToString())
                                         .Add("pierceBp", book.pBpResist.ToString())
                                         .Add("bluntBp", book.hBpResist.ToString())
-                            );
-                    }
+                            )
                 );
+
+                // Passives from the key page equipment effect
+                var passiveIds = book.equipeffect?.PassiveList;
+                if (passiveIds != null && passiveIds.Count > 0)
+                {
+                    var passiveXmlList = Singleton<PassiveXmlList>.Instance;
+                    o.AddArray(
+                        "passives",
+                        arr2 =>
+                        {
+                            foreach (var lorId in passiveIds)
+                            {
+                                var xml = passiveXmlList?.GetData(lorId);
+                                if (xml == null || xml.isHide || string.IsNullOrEmpty(xml.name))
+                                    continue;
+                                arr2.AddObject(p =>
+                                {
+                                    AddLorId(p, "id", xml.id);
+                                    p.Add("name", xml.name)
+                                        .Add("rare", xml.rare.ToString())
+                                        .Add("isNegative", xml.isNegative);
+                                    if (!string.IsNullOrEmpty(xml.desc))
+                                        p.Add("desc", xml.desc);
+                                });
+                            }
+                        }
+                    );
+                }
+
+                // Deck card preview — grouped by card type, each entry carries a count,
+                // dice behaviour list, and ability description so the frontend can render
+                // the same HandCard tile used during battle.
+                var deckCards = book.GetDeckCardModelAll();
+                if (deckCards != null && deckCards.Count > 0)
+                {
+                    var abilityDescList = Singleton<BattleCardAbilityDescXmlList>.Instance;
+                    o.AddArray(
+                        "deckPreview",
+                        arr2 =>
+                        {
+                            foreach (var card in deckCards)
+                            {
+                                if (card == null)
+                                    continue;
+                                var spec = card.GetSpec();
+                                var xml = card.ClassInfo;
+                                arr2.AddObject(c =>
+                                {
+                                    c.Add("name", card.GetName())
+                                        .Add("cost", spec.Cost)
+                                        .Add("range", spec.Ranged.ToString())
+                                        .Add("rarity", card.GetRarity().ToString())
+                                        .Add("count", card.num);
+
+                                    if (xml?.DiceBehaviourList != null && xml.DiceBehaviourList.Count > 0)
+                                        c.AddArray(
+                                            "dice",
+                                            diceArr =>
+                                            {
+                                                foreach (var d in xml.DiceBehaviourList)
+                                                    diceArr.AddObject(die =>
+                                                    {
+                                                        die.Add("type", d.Type.ToString())
+                                                            .Add("detail", d.Detail.ToString())
+                                                            .Add("min", d.Min)
+                                                            .Add("max", d.Dice);
+                                                        var desc =
+                                                            abilityDescList?.GetAbilityDesc(d) ?? "";
+                                                        if (string.IsNullOrEmpty(desc))
+                                                            desc = d.Desc ?? "";
+                                                        if (!string.IsNullOrEmpty(desc))
+                                                            die.Add("desc", desc);
+                                                    });
+                                            }
+                                        );
+
+                                    var abilityDesc =
+                                        abilityDescList?.GetAbilityDescString(xml) ?? "";
+                                    if (!string.IsNullOrEmpty(abilityDesc))
+                                        c.Add("abilityDesc", abilityDesc);
+                                });
+                            }
+                        }
+                    );
+                }
             });
         }
 

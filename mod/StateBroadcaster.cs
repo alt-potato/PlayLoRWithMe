@@ -75,6 +75,25 @@ namespace PlayLoRWithMe
             static void Postfix() => Broadcast();
         }
 
+        // Fires whenever the player toggles a librarian slot in the BattleSetting screen.
+        // SelectedToggles calls SetYesToggleState / SetNoToggleState, which write
+        // IsAddedBattle on the UnitBattleDataModel, so we broadcast after it returns to
+        // reflect the updated selection.
+        [HarmonyPatch(typeof(UI.UIBattleSettingPanel), "SelectedToggles")]
+        static class Patch_SelectedToggles
+        {
+            static void Postfix() => Broadcast();
+        }
+
+        // Fires whenever the player switches to a different floor (Sephirah) in the
+        // BattleSetting screen. SetNextSephirah updates StageController.CurrentSephirah,
+        // so the serializer will pick up the new floor's unit list on the next broadcast.
+        [HarmonyPatch(typeof(UI.UIBattleSettingPanel), "SetNextSephirah")]
+        static class Patch_SetNextSephirah
+        {
+            static void Postfix() => Broadcast();
+        }
+
         // ------------------------------------------------------------------
         // Battle phase tracking — poll in OnUpdate since some phase transitions
         // bypass the property setter with direct _phase field writes, making

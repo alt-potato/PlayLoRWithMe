@@ -4,8 +4,11 @@
   librarians on the right with inline claim/release controls for multi-player
   sessions.
 
+  Clicking a unit card expands an inline detail panel showing speed dice range
+  and the resistance table.
+
   Props:
-    state       – full battle state (scene = 'battle', BattleSetting phase)
+    state       – full battle state (scene = 'main', uiPhase = 'BattleSetting')
     session     – current session identity (null if not yet connected)
     players     – connected player list (from playerList WS messages)
     sendAction  – WebSocket action dispatcher
@@ -59,6 +62,31 @@ function hpPct(unit: Unit | AllyUnit): number {
   return Math.round((100 * unit.hp) / Math.max(unit.maxHp, 1));
 }
 
+/** Fill color keyed to HP percentage — green → orange → red as health drops. */
+function hpColor(unit: Unit | AllyUnit): string {
+  const pct = hpPct(unit);
+  if (pct > 66) return "var(--green)";
+  if (pct > 33) return "var(--orange)";
+  return "var(--red-hi)";
+}
+
+// ── Click-to-expand detail panels ─────────────────────────────────────────
+
+/** ID of the currently expanded enemy card (null = none). */
+const expandedEnemy = ref<number | null>(null);
+/** ID of the currently expanded ally card (null = none). */
+const expandedAlly = ref<number | null>(null);
+
+function toggleEnemy(id: number) {
+  expandedEnemy.value = expandedEnemy.value === id ? null : id;
+}
+
+function toggleAlly(id: number) {
+  expandedAlly.value = expandedAlly.value === id ? null : id;
+}
+
+// ── Confirm ────────────────────────────────────────────────────────────────
+
 const isConfirming = ref(false);
 
 async function onConfirm() {
@@ -92,7 +120,7 @@ async function onConfirm() {
           <strong>{{ state.stage?.wave ?? "—" }}</strong>
         </span>
       </div>
-      <span class="bar-phase">{{ state.phase }}</span>
+      <span class="bar-phase">{{ state.uiPhase }}</span>
     </div>
 
     <div class="bar-center">
@@ -122,21 +150,52 @@ async function onConfirm() {
           v-for="unit in enemies"
           :key="unit.id"
           class="unit-card unit-card--enemy"
+          :class="{
+            'unit-card--open': expandedEnemy === unit.id,
+            'unit-card--disabled': unit.enabled === false,
+          }"
+          @click="toggleEnemy(unit.id)"
         >
           <span class="unit-stripe unit-stripe--enemy" />
           <div class="unit-body">
-            <div class="unit-name">
-              {{ unit.name ?? unit.keyPage?.name ?? `Unit #${unit.id}` }}
+            <div class="unit-header">
+              <div class="unit-title">
+                <span class="unit-name">
+                  {{ unit.name ?? unit.keyPage?.name ?? `Unit #${unit.id}` }}
+                </span>
+                <span
+                  v-if="unit.keyPage?.name && unit.name !== unit.keyPage.name"
+                  class="unit-keypage"
+                >{{ unit.keyPage.name }}</span>
+              </div>
             </div>
-            <div
-              v-if="unit.keyPage?.name && unit.name !== unit.keyPage.name"
-              class="unit-subname"
-            >
-              {{ unit.keyPage.name }}
+            <div class="unit-stats">
+              <div class="stats-inner">
+                <span class="stat-k">HP</span><span class="stat-v" :style="{ color: hpColor(unit) }">{{ unit.hp }}<span class="stat-max"> / {{ unit.maxHp }}</span></span>
+                <template v-if="unit.maxStaggerGauge">
+                  <span class="stat-sep">·</span>
+                  <span class="stat-k">Stagger</span><span class="stat-v">{{ unit.maxStaggerGauge }}</span>
+                </template>
+                <template v-if="unit.keyPage?.speedMin != null">
+                  <span class="stat-sep">·</span>
+                  <span class="stat-k">Speed</span><span class="stat-v">{{ unit.keyPage.speedMin }}–{{ unit.keyPage.speedMax }}</span>
+                </template>
+              </div>
+              <span
+                class="unit-chevron"
+                :class="{ open: expandedEnemy === unit.id }"
+                >▸</span
+              >
             </div>
             <div class="hp-bar">
-              <div class="hp-fill" :style="{ width: `${hpPct(unit)}%` }" />
+              <div class="hp-fill" :style="{ width: `${hpPct(unit)}%`, background: hpColor(unit) }" />
             </div>
+
+            <Transition name="detail-expand">
+              <div v-if="expandedEnemy === unit.id" class="unit-detail" @click.stop>
+                <BattleSettingDetailPanel :unit="unit" />
+              </div>
+            </Transition>
           </div>
         </div>
       </TransitionGroup>
@@ -173,27 +232,56 @@ async function onConfirm() {
           v-for="(ally, i) in allies"
           :key="ally.id"
           class="unit-card unit-card--ally"
+          :class="{
+            'unit-card--open': expandedAlly === ally.id,
+            'unit-card--disabled': ally.enabled === false,
+          }"
           :style="{ '--ac': allyColors[ally.id] ?? 'var(--gold-dim)' }"
+          @click="toggleAlly(ally.id)"
         >
           <div class="unit-body unit-body--ally">
-            <div class="unit-name">
-              {{ ally.name ?? ally.keyPage?.name ?? `Unit #${ally.id}` }}
+            <div class="unit-header unit-header--ally">
+              <div class="unit-title unit-title--ally">
+                <span
+                  v-if="ally.keyPage?.name && ally.name !== ally.keyPage.name"
+                  class="unit-keypage unit-keypage--ally"
+                >{{ ally.keyPage.name }}</span>
+                <span class="unit-name">
+                  {{ ally.name ?? ally.keyPage?.name ?? `Unit #${ally.id}` }}
+                </span>
+              </div>
             </div>
-            <div
-              v-if="ally.keyPage?.name && ally.name !== ally.keyPage.name"
-              class="unit-subname"
-            >
-              {{ ally.keyPage.name }}
+            <div class="unit-stats unit-stats--ally">
+              <span
+                class="unit-chevron"
+                :class="{ open: expandedAlly === ally.id }"
+                >▸</span
+              >
+              <div class="stats-inner stats-inner--ally">
+                <span class="stat-k">HP</span><span class="stat-v" :style="{ color: hpColor(ally) }">{{ ally.hp }}<span class="stat-max"> / {{ ally.maxHp }}</span></span>
+                <template v-if="ally.maxStaggerGauge">
+                  <span class="stat-sep">·</span>
+                  <span class="stat-k">Stagger</span><span class="stat-v">{{ ally.maxStaggerGauge }}</span>
+                </template>
+                <template v-if="ally.keyPage?.speedMin != null">
+                  <span class="stat-sep">·</span>
+                  <span class="stat-k">Speed</span><span class="stat-v">{{ ally.keyPage.speedMin }}–{{ ally.keyPage.speedMax }}</span>
+                </template>
+              </div>
             </div>
             <div class="hp-bar">
               <div
-                class="hp-fill hp-fill--ally"
-                :style="{ width: `${hpPct(ally)}%` }"
+                class="hp-fill"
+                :style="{ width: `${hpPct(ally)}%`, background: hpColor(ally) }"
               />
             </div>
 
-            <!-- Inline claim/release row -->
-            <div v-if="claimsEnabled" class="claim-row">
+            <!-- Inline claim/release row — stop propagation so click doesn't toggle detail -->
+            <div
+              v-if="claimsEnabled"
+              class="claim-row"
+              @click.stop
+            >
               <span
                 v-if="ownerOf(ally.id)"
                 class="owner-label"
@@ -218,6 +306,12 @@ async function onConfirm() {
                 Claim
               </button>
             </div>
+
+            <Transition name="detail-expand">
+              <div v-if="expandedAlly === ally.id" class="unit-detail unit-detail--ally" @click.stop>
+                <BattleSettingDetailPanel :unit="ally" :flip="true" />
+              </div>
+            </Transition>
           </div>
           <span class="unit-stripe unit-stripe--ally" />
         </div>
@@ -447,6 +541,7 @@ async function onConfirm() {
   background: var(--bg-card);
   border: 1px solid var(--border);
   overflow: hidden;
+  cursor: pointer;
   transition:
     background 0.13s,
     border-color 0.13s;
@@ -455,6 +550,16 @@ async function onConfirm() {
 .unit-card:hover {
   background: var(--bg-card-2);
   border-color: var(--border-mid);
+}
+
+.unit-card--open {
+  border-color: var(--border-mid);
+}
+
+/* Dead or locked units: dimmed and non-interactive */
+.unit-card--disabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 /* 3px accent stripe mirrors the unit card side border in the battle view */
@@ -491,7 +596,39 @@ async function onConfirm() {
   }
 }
 
+/* ── Unit header row (name + expand chevron) ─────────────────────────────── */
+.unit-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+}
+
+/* Ally header contains only the title; no extra layout needed */
+.unit-header--ally {}
+
+.unit-title {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.05rem 0.35rem;
+  min-width: 0;
+}
+
+/* Ally title right-aligns content so the name sits on the right side */
+.unit-title--ally {
+  justify-content: flex-end;
+}
+
+@media (max-width: 599px) {
+  .unit-title--ally {
+    justify-content: flex-start;
+  }
+}
+
 .unit-name {
+  flex-shrink: 0;
   font-family: var(--font-display);
   font-size: 0.7rem;
   font-weight: 600;
@@ -500,34 +637,132 @@ async function onConfirm() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+  max-width: 100%;
 }
 
-.unit-subname {
+/* Key page name shown beside the unit name; margin-left:auto pushes it right */
+.unit-keypage {
+  flex-shrink: 0;
+  margin-left: auto;
   font-family: var(--font-body);
-  font-size: 0.58rem;
+  font-size: 0.55rem;
   color: var(--text-3);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+/* Ally variant: keypage sits on the left, margin-right:auto pushes name right */
+.unit-keypage--ally {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.unit-chevron {
+  color: var(--text-3);
+  font-size: 0.55rem;
+  display: inline-block;
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+}
+
+.unit-chevron.open {
+  transform: rotate(90deg);
+}
+
+/* ── Always-visible stats row (HP · Stagger · Speed · chevron) ───────────── */
+.unit-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Ally: chevron on left, stats pushed to the right */
+.unit-stats--ally {
+  flex-direction: row; /* chevron first in DOM → left side */
+}
+
+/* Stat chip group — fills remaining space in the row */
+.stats-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+/* Right-align chips inside the ally stats row */
+.stats-inner--ally {
+  justify-content: flex-end;
+}
+
+@media (max-width: 599px) {
+  .stats-inner--ally {
+    justify-content: flex-start;
+  }
+}
+
+.stat-k {
+  font-family: var(--font-display);
+  font-size: 0.46rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+}
+
+.stat-v {
+  font-family: var(--font-body);
+  font-size: 0.6rem;
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+.stat-sep {
+  color: var(--border-hi);
+  font-size: 0.55rem;
 }
 
 /* ── HP bar ───────────────────────────────────────────────────────────────── */
 .hp-bar {
   width: 100%;
-  height: 2px;
+  height: 4px;
   background: var(--bg-card-3);
-  margin-top: 0.1rem;
+  margin-top: 0.15rem;
+  border-radius: 1px;
+  overflow: hidden;
 }
 
 .hp-fill {
   height: 100%;
-  background: var(--crimson-hi);
-  transition: width 0.4s ease;
+  /* color set inline via hpColor() */
+  transition:
+    width 0.4s ease,
+    background 0.4s ease;
 }
 
-.hp-fill--ally {
-  background: var(--gold-dim);
+/* Dimmed "/ max" portion of the HP label in the stats row */
+.stat-max {
+  color: var(--text-3);
+  font-size: 0.55em;
 }
+
+/* ── Detail panel ─────────────────────────────────────────────────────────── */
+.unit-detail {
+  border-top: 1px solid var(--border);
+  margin-top: 0.2rem;
+  padding-top: 0.3rem;
+}
+
+/* Right-aligned detail for ally cards mirrors the body text alignment */
+.unit-detail--ally {
+  text-align: right;
+}
+
+@media (max-width: 599px) {
+  .unit-detail--ally {
+    text-align: left;
+  }
+}
+
 
 /* ── Claim row ────────────────────────────────────────────────────────────── */
 .claim-row {
@@ -599,20 +834,16 @@ async function onConfirm() {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
-  /* Width chosen to be unobtrusive but visually grounding */
   width: 5rem;
   align-self: stretch;
 }
 
-/* Horizontal rule on mobile */
 @media (max-width: 599px) {
   .reception {
     width: 100%;
     flex-direction: row;
     align-items: center;
     align-self: auto;
-    gap: 0;
   }
 }
 
@@ -710,5 +941,27 @@ async function onConfirm() {
 .roster-leave-to,
 .roster-ally-leave-to {
   opacity: 0;
+}
+
+/* ── Detail panel expand/collapse transition ──────────────────────────────── */
+.detail-expand-enter-active {
+  transition:
+    opacity 0.18s ease,
+    max-height 0.22s ease;
+  overflow: hidden;
+  max-height: 200px;
+}
+
+.detail-expand-leave-active {
+  transition:
+    opacity 0.13s ease,
+    max-height 0.15s ease;
+  overflow: hidden;
+}
+
+.detail-expand-enter-from,
+.detail-expand-leave-to {
+  opacity: 0;
+  max-height: 0;
 }
 </style>
