@@ -441,12 +441,12 @@ provide(BATTLE_CTX, {
         >
         <span class="teaser-sep">·</span>
         <span class="teaser-item"
-          ><span class="k">Wave</span>
+          ><span class="k">Act</span>
           <strong>{{ state.stage?.wave }}</strong></span
         >
         <span class="teaser-sep">·</span>
         <span class="teaser-item"
-          ><span class="k">Round</span>
+          ><span class="k">Scene</span>
           <strong>{{ state.stage?.round }}</strong></span
         >
       </div>

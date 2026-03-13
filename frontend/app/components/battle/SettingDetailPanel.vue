@@ -20,10 +20,6 @@ const kp = computed(() => props.unit.keyPage);
 const passives = computed(() => props.unit.passives ?? []);
 const deck = computed(() => props.unit.deckPreview ?? []);
 
-const totalCards = computed(() =>
-  deck.value.reduce((sum, c) => sum + (c.count ?? 1), 0),
-);
-
 /**
  * Converts a DeckCardPreview to a minimal Card shape so it can be passed to
  * HandCard. id/index are set to the list position — HandCard does not use them
@@ -59,10 +55,7 @@ const detailCard = ref<Card | null>(null);
 
     <!-- Deck preview — uses HandCard tiles; long-press opens CardDetail -->
     <template v-if="deck.length">
-      <div class="section-label">
-        Deck
-        <span class="section-count">{{ totalCards }}</span>
-      </div>
+      <div class="section-label">Deck</div>
       <div class="deck-cards">
         <HandCard
           v-for="(card, i) in deck"

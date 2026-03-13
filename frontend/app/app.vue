@@ -4,7 +4,7 @@ type ConnectionStatus = "connecting" | "connected" | "disconnected";
 const statusLabel: Record<ConnectionStatus, string> = {
   connecting: "Connecting…",
   connected: "Connected",
-  disconnected: "Disconnected — reconnecting…",
+  disconnected: "Disconnected",
 };
 
 useHead({
