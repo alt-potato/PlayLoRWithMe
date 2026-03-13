@@ -93,8 +93,8 @@ const dieState: ComputedRef<DieState> = computed(() => {
     )
       return "pending";
 
-    // suppress slot interaction for unowned ally units
-    if (props.isAlly && !isOwnUnit(props.unit.id)) return "empty";
+    // suppress slot interaction for unowned ally units and all enemy units
+    if (!props.isAlly || !isOwnUnit(props.unit.id)) return "empty";
     return isSelectPhase.value ? "available" : "empty";
   } else {
     // card is slotted, target is set
