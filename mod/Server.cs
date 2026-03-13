@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
-using System.Text;
 using System.Threading;
 using UnityEngine;
 
@@ -22,16 +20,13 @@ namespace PlayLoRWithMe
         private HttpListener _listener;
         private Thread _listenerThread;
 
-        private readonly CancellationTokenSource _cts = new CancellationTokenSource();
-        private readonly ConcurrentDictionary<Guid, SseClient> _clients =
-            new ConcurrentDictionary<Guid, SseClient>();
-
         private readonly SessionManager _sessionManager = new SessionManager();
         private readonly DeltaEngine _deltaEngine = new DeltaEngine();
 
         // Last full (unfiltered) state snapshot, updated on the Unity main thread
         // by Broadcast(). Used to give new WebSocket clients an immediate initial
         // state without accessing Unity objects from the listener thread.
+        private volatile bool _running = false;
         private volatile string _lastFullJson = null;
 
         // Set by claim/release handlers (listener thread) to request a filtered
@@ -59,6 +54,7 @@ namespace PlayLoRWithMe
             _listener = new HttpListener();
             _listener.Prefixes.Add($"http://*:{Port}/");
             _listener.Start();
+            _running = true;
 
             _listenerThread = new Thread(ListenLoop)
             {
@@ -72,7 +68,7 @@ namespace PlayLoRWithMe
 
         public void Stop()
         {
-            _cts.Cancel();
+            _running = false;
             _listener?.Stop();
         }
 
@@ -114,18 +110,16 @@ namespace PlayLoRWithMe
 
         // -------------------------------------------------------------------------
         // Accept loop
-        // -------------------------------------------------------------------------
-
         private void ListenLoop()
         {
-            while (!_cts.IsCancellationRequested)
+            while (_running)
             {
                 try
                 {
                     var ctx = _listener.GetContext();
                     ThreadPool.QueueUserWorkItem(_ => HandleContext(ctx));
                 }
-                catch (HttpListenerException) when (_cts.IsCancellationRequested)
+                catch (HttpListenerException) when (!_running)
                 {
                     break;
                 }
@@ -157,27 +151,6 @@ namespace PlayLoRWithMe
 
                 if (method == "GET" && path == "/ws")
                     HandleWebSocket(ctx); // blocks until client disconnects
-                else if (method == "GET" && path == "/events")
-                    HandleEvents(ctx); // blocks until client disconnects
-                else if (method == "GET" && path == "/state")
-                    SendJson(ctx, GameStateSerializer.Serialize());
-                else if (method == "POST" && path == "/action")
-                {
-                    string body;
-                    using (var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8))
-                        body = reader.ReadToEnd();
-                    var (ok, error) = ActionInjector.EnqueueAndWait(body);
-                    if (ok)
-                        SendJson(ctx, "{\"ok\":true}");
-                    else
-                    {
-                        ctx.Response.StatusCode = 400;
-                        string safe = (error ?? "invalid action")
-                            .Replace("\\", "\\\\")
-                            .Replace("\"", "\\\"");
-                        SendJson(ctx, "{\"ok\":false,\"error\":\"" + safe + "\"}");
-                    }
-                }
                 else if (method == "GET")
                     ServeStaticFile(ctx, path);
                 else
@@ -198,64 +171,12 @@ namespace PlayLoRWithMe
             }
         }
 
-        // -------------------------------------------------------------------------
-        // Server-Sent Events
-        // -------------------------------------------------------------------------
-
-        private void HandleEvents(HttpListenerContext ctx)
-        {
-            var id = Guid.NewGuid();
-            var rsp = ctx.Response;
-
-            WriteCorsHeaders(rsp);
-            rsp.ContentType = "text/event-stream; charset=utf-8";
-            rsp.SendChunked = true;
-            rsp.Headers.Add("Cache-Control", "no-cache");
-            rsp.Headers.Add("X-Accel-Buffering", "no");
-
-            var client = new SseClient(id, rsp);
-            _clients[id] = client;
-            Debug.Log($"[PlayLoRWithMe] SSE client connected ({id})");
-
-            client.Send(GameStateSerializer.Serialize());
-
-            // Hold the thread open, sending a keepalive comment every 15 s.
-            // WaitOne returns true when the token is cancelled, false on timeout.
-            while (!_cts.IsCancellationRequested && client.IsAlive)
-            {
-                bool cancelled = _cts.Token.WaitHandle.WaitOne(millisecondsTimeout: 15_000);
-                if (cancelled)
-                    break;
-                client.SendKeepAlive();
-            }
-
-            _clients.TryRemove(id, out _);
-            try
-            {
-                rsp.Close();
-            }
-            catch { }
-        }
-
-        public void Broadcast(string json)
-        {
-            _lastFullJson = json;
-
-            foreach (var kvp in _clients)
-            {
-                kvp.Value.Send(json);
-                if (!kvp.Value.IsAlive)
-                    _clients.TryRemove(kvp.Key, out _);
-            }
-
-            BroadcastFiltered();
-        }
-
         public void BroadcastFiltered()
         {
             // All sessions receive the full unfiltered state; ownership only
             // controls interactivity on the frontend, not data visibility.
             string json = GameStateSerializer.Serialize();
+            _lastFullJson = json;
             foreach (var session in _sessionManager.GetConnectedSessions())
             {
                 string msg = _deltaEngine.BuildMessage(session.SessionId, json);
@@ -455,59 +376,8 @@ namespace PlayLoRWithMe
         }
 
         // -------------------------------------------------------------------------
-        // SSE client wrapper
-        // -------------------------------------------------------------------------
-
-        private sealed class SseClient
-        {
-            public readonly Guid Id;
-            public bool IsAlive { get; private set; } = true;
-
-            private readonly HttpListenerResponse _response;
-            private readonly object _lock = new object();
-
-            public SseClient(Guid id, HttpListenerResponse response)
-            {
-                Id = id;
-                _response = response;
-            }
-
-            public void Send(string json) => Write(Encoding.UTF8.GetBytes($"data: {json}\n\n"));
-
-            public void SendKeepAlive() => Write(Encoding.UTF8.GetBytes(":\n\n"));
-
-            private void Write(byte[] bytes)
-            {
-                if (!IsAlive)
-                    return;
-                try
-                {
-                    lock (_lock)
-                    {
-                        _response.OutputStream.Write(bytes, 0, bytes.Length);
-                        _response.OutputStream.Flush();
-                    }
-                }
-                catch
-                {
-                    IsAlive = false;
-                }
-            }
-        }
-
-        // -------------------------------------------------------------------------
         // HTTP helpers
         // -------------------------------------------------------------------------
-
-        private static void SendJson(HttpListenerContext ctx, string json)
-        {
-            byte[] bytes = Encoding.UTF8.GetBytes(json);
-            WriteCorsHeaders(ctx.Response);
-            ctx.Response.ContentType = "application/json; charset=utf-8";
-            ctx.Response.ContentLength64 = bytes.Length;
-            ctx.Response.OutputStream.Write(bytes, 0, bytes.Length);
-            ctx.Response.Close();
-        }
 
         private static void ServeStaticFile(HttpListenerContext ctx, string urlPath)
         {

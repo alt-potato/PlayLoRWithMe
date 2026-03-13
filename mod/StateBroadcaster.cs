@@ -14,7 +14,7 @@ namespace PlayLoRWithMe
 
         public static void Broadcast()
         {
-            Server.Instance?.Broadcast(GameStateSerializer.Serialize());
+            Server.Instance?.BroadcastFiltered();
         }
 
         // Subscribe to UIController.PhaseEnterEvent once the instance is available.
@@ -28,7 +28,7 @@ namespace PlayLoRWithMe
             if (uic == null)
                 return;
 
-            uic.PhaseEnterEvent += (UI.UIPhase _) => Broadcast();
+            uic.PhaseEnterEvent += _ => Broadcast();
             _subscribedToUIPhase = true;
             Debug.Log("[PlayLoRWithMe] Subscribed to UIController.PhaseEnterEvent");
         }
