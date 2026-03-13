@@ -42,12 +42,12 @@ const unclaimedCount = computed(
 <template>
   <div class="session-panel">
     <button class="session-toggle" @click="expanded = !expanded">
+      <span class="toggle-chevron" :class="{ open: expanded }">▸</span>
       <span class="toggle-label">Players</span>
       <span class="toggle-count">{{ players.length }}</span>
       <span v-if="unclaimedCount > 0" class="unclaimed-pip">
         {{ unclaimedCount }}
       </span>
-      <span class="toggle-chevron" :class="{ open: expanded }">▸</span>
     </button>
 
     <Transition name="session-drop">

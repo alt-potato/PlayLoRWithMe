@@ -201,9 +201,16 @@ body {
   display: none;
 }
 .collapse summary::before {
-  content: "▸ ";
+  content: "▸";
   font-size: 0.55rem;
   color: var(--text-3);
+  display: inline-block;
+  margin-right: 0.3em;
+  transition: transform 0.18s ease;
+}
+details[open] .collapse summary::before,
+.collapse details[open] > summary::before {
+  transform: rotate(90deg);
 }
 </style>
 

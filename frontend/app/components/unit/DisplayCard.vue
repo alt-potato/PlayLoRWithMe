@@ -236,7 +236,7 @@ function passiveClass(p: Passive) {
       <div class="hand-section">
         <div class="hand-header" @click.stop="handExpanded = !handExpanded">
           <span class="section-label">
-            <span class="hand-chevron">{{ showHandCards ? "▾" : "▸" }}</span>
+            <span class="hand-chevron" :class="{ open: showHandCards }">▸</span>
             {{ egoMode ? "EGO hand" : "Hand" }}
             <span class="hand-count"
               >({{
@@ -600,6 +600,11 @@ function passiveClass(p: Passive) {
 .hand-chevron {
   font-size: 0.55rem;
   color: var(--gold-dim);
+  display: inline-block;
+  transition: transform 0.18s ease;
+}
+.hand-chevron.open {
+  transform: rotate(90deg);
 }
 .hand-count {
   color: var(--text-3);
@@ -703,13 +708,16 @@ details.passive-entry > .passive-name {
   cursor: pointer;
 }
 details.passive-entry > .passive-name::before {
-  content: "▸ ";
+  content: "▸";
   font-size: 0.5rem;
   color: var(--text-3);
   flex-shrink: 0;
+  display: inline-block;
+  margin-right: 0.25em;
+  transition: transform 0.18s ease;
 }
 details[open].passive-entry > .passive-name::before {
-  content: "▾ ";
+  transform: rotate(90deg);
 }
 .passive-negative > .passive-name {
   color: var(--crimson-hi);
