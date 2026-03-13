@@ -807,9 +807,10 @@ provide(BATTLE_CTX, {
 .stage {
   margin-left: 0.6em;
   margin-right: 0.6em;
+  display: flex;
+  justify-content: space-between;
 
   /* Mobile: single column, enemies → allies */
-  display: flex;
   flex-direction: column;
   gap: 1rem;
 }
@@ -844,6 +845,9 @@ provide(BATTLE_CTX, {
   flex-direction: row;
   align-items: stretch;
   gap: 0.2rem;
+}
+.wing--ally .unit-slot {
+  justify-content: right;
 }
 
 .unit-slot--dead {
