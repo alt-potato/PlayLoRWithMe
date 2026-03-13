@@ -83,7 +83,7 @@ const rawJson = computed(() =>
     </main>
 
     <details class="debug-info">
-      <summary>debug info</summary>
+      <summary><span class="chevron">▸</span>debug info</summary>
       <pre>{{ rawJson }}</pre>
     </details>
   </div>
@@ -233,18 +233,6 @@ body {
 .collapse summary::-webkit-details-marker {
   display: none;
 }
-.collapse summary::before {
-  content: "▸";
-  font-size: 1rem;
-  color: var(--text-3);
-  display: inline-block;
-  margin-right: 0.3em;
-  transition: transform 0.18s ease;
-}
-details[open] .collapse summary::before,
-.collapse details[open] > summary::before {
-  transform: rotate(90deg);
-}
 </style>
 
 <style scoped>
@@ -319,12 +307,27 @@ main {
   border: 1px solid var(--border);
   padding: 0.4rem 0.75rem;
 }
+.chevron {
+  font-size: 0.8rem;
+  color: var(--text-3);
+  display: inline-block;
+  margin-right: 0.3em;
+  transition: transform 0.18s ease;
+}
 .debug-info summary {
   cursor: pointer;
   color: var(--text-3);
   font-size: 0.68rem;
   font-family: var(--font-mono);
   user-select: none;
+  list-style: none;
+}
+.debug-info summary::marker,
+.debug-info summary::-webkit-details-marker {
+  display: none;
+}
+.debug-info[open] summary .chevron {
+  transform: rotate(90deg);
 }
 .debug-info pre {
   margin-top: 0.4rem;

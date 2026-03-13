@@ -28,7 +28,7 @@ function passiveClass(p: Passive) {
   <div class="passive-list">
     <template v-for="p in passives" :key="p.id.id + p.id.packageId">
       <details v-if="p.desc" class="passive-entry" :class="passiveClass(p)">
-        <summary class="passive-name">{{ p.name }}</summary>
+        <summary class="passive-name"><span class="chevron">▸</span>{{ p.name }}</summary>
         <p class="passive-desc">{{ p.desc }}</p>
       </details>
       <div v-else class="passive-entry" :class="passiveClass(p)">
@@ -98,9 +98,8 @@ details.passive-entry > .passive-name {
   cursor: pointer;
 }
 
-details.passive-entry > .passive-name::before {
-  content: "▸";
-  font-size: 0.5rem;
+.chevron {
+  font-size: 0.55rem;
   color: var(--text-3);
   flex-shrink: 0;
   display: inline-block;
@@ -108,7 +107,7 @@ details.passive-entry > .passive-name::before {
   transition: transform 0.18s ease;
 }
 
-details[open].passive-entry > .passive-name::before {
+details[open].passive-entry > .passive-name .chevron {
   transform: rotate(90deg);
 }
 

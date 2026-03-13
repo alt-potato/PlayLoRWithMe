@@ -313,7 +313,7 @@ const detailsLabel = computed(() => {
 
     <!-- ── Collapsed details ── -->
     <details v-if="hasDetails" class="collapse">
-      <summary class="section-label">{{ detailsLabel }}</summary>
+      <summary class="section-label"><span class="hand-chevron">▸</span>{{ detailsLabel }}</summary>
 
       <!-- Passives -->
       <template v-if="unit.passives?.length">
@@ -576,11 +576,12 @@ const detailsLabel = computed(() => {
 }
 .hand-chevron {
   font-size: 0.55rem;
-  color: var(--gold-dim);
+  color: var(--text-3);
   display: inline-block;
   transition: transform 0.18s ease;
 }
-.hand-chevron.open {
+.hand-chevron.open,
+details[open] > .section-label .hand-chevron {
   transform: rotate(90deg);
 }
 .hand-count {
