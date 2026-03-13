@@ -19,6 +19,13 @@ const props = defineProps<{
 
 const hpPercent = computed(() => fillPercentage(props.hp, props.maxHp));
 const sgPercent = computed(() => fillPercentage(props.sg, props.maxSg));
+
+const hpColor = computed(() => {
+  if (hpPercent.value > 66) return "var(--green)";
+  if (hpPercent.value > 33) return "var(--orange)";
+  return "var(--red-hi)";
+});
+
 const sgColor = computed(() => {
   // red when broken, orange when low, blue otherwise
   if (sgPercent.value <= 0) return "#e53935";
@@ -30,7 +37,7 @@ const sgColor = computed(() => {
 <template>
   <div class="bar-row" :title="`HP: ${hp} / ${maxHp}`">
     <div class="bar-track">
-      <div class="bar-fill bar-hp" :style="{ width: hpPercent + '%' }" />
+      <div class="bar-fill" :style="{ width: hpPercent + '%', background: hpColor }" />
     </div>
     <span class="bar-num">{{ hp }}/{{ maxHp }}</span>
   </div>
@@ -59,10 +66,9 @@ const sgColor = computed(() => {
 }
 .bar-fill {
   height: 100%;
-  transition: width 0.3s;
-}
-.bar-hp {
-  background: var(--green-hi);
+  transition:
+    width 0.3s ease,
+    background 0.4s ease;
 }
 .bar-num {
   color: var(--text-2);
