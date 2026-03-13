@@ -18,7 +18,15 @@ useHead({
   ],
 });
 
-const { gameState, session, status, players, sendAction, claimUnit, releaseUnit } = useWebSocket();
+const {
+  gameState,
+  session,
+  status,
+  players,
+  sendAction,
+  claimUnit,
+  releaseUnit,
+} = useWebSocket();
 
 const rawJson = computed(() =>
   gameState.value ? JSON.stringify(gameState.value, null, 2) : "—",
@@ -38,7 +46,9 @@ const rawJson = computed(() =>
         main menu is in its BattleSetting UI phase (before the battle scene loads).
       -->
       <BattleSettingView
-        v-if="gameState?.scene === 'main' && gameState.uiPhase === 'BattleSetting'"
+        v-if="
+          gameState?.scene === 'main' && gameState.uiPhase === 'BattleSetting'
+        "
         :state="gameState"
         :session="session"
         :players="players"
@@ -47,7 +57,7 @@ const rawJson = computed(() =>
         :release-unit="releaseUnit"
       />
 
-      <BattleView
+      <BattleStage
         v-else-if="gameState?.scene === 'battle'"
         :state="gameState"
         :session="session"

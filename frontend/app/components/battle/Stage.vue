@@ -17,7 +17,7 @@ import type {
   SessionState,
   ActionResult,
 } from "~/types/game";
-import DisplayCard from "./unit/DisplayCard.vue";
+import UnitDisplayCard from "~/components/unit/DisplayCard.vue";
 
 const props = defineProps<{
   state: GameState;

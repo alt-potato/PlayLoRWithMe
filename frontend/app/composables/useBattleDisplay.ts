@@ -1,7 +1,7 @@
 /**
  * useBattleDisplay.ts
  *
- * Shared pure display helpers used by BattleView, EnemyUnit, and AllyUnit.
+ * Shared pure display helpers used by BattleStage, EnemyUnit, and AllyUnit.
  * All exports are auto-imported by Nuxt; no import statements needed in .vue files.
  */
 

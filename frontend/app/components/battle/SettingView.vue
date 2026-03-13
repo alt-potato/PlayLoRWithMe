@@ -125,7 +125,7 @@ async function onConfirm() {
 </script>
 
 <template>
-  <!-- ── Top bar (mirrors BattleView teaser-bar) ────────────────────────────── -->
+  <!-- ── Top bar (mirrors BattleStage teaser-bar) ────────────────────────────── -->
   <div class="setting-bar">
     <div class="bar-left">
       <div class="stage-chips">
@@ -390,7 +390,7 @@ async function onConfirm() {
 </template>
 
 <style scoped>
-/* ── Top bar (mirrors .teaser-bar in BattleView) ──────────────────────────── */
+/* ── Top bar (mirrors .teaser-bar in BattleStage) ──────────────────────────── */
 .setting-bar {
   padding: 0.4rem 0.75rem;
   background: var(--bg-surface);
@@ -421,7 +421,7 @@ async function onConfirm() {
   align-items: center;
 }
 
-/* Stage info chips (mirrors .teaser-item / .teaser-item .k in BattleView) */
+/* Stage info chips (mirrors .teaser-item / .teaser-item .k in BattleStage) */
 .stage-chips {
   display: flex;
   align-items: center;
@@ -512,6 +512,7 @@ async function onConfirm() {
 .briefing {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 0.75rem;
   padding: 0 0.6rem;
 }

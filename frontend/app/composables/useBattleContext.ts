@@ -2,9 +2,9 @@
  * useBattleContext.ts
  *
  * Typed provide/inject key for the interactive battle state shared between
- * BattleView (provider) and EnemyUnit / AllyUnit (consumers).
+ * BattleStage (provider) and EnemyUnit / AllyUnit (consumers).
  *
- * Usage in BattleView:
+ * Usage in BattleStage:
  *   provide(BATTLE_CTX, { isSelectPhase, selectingSlotFor, ... })
  *
  * Usage in child components:
@@ -119,5 +119,5 @@ export interface BattleCtx {
   releaseUnit: (unitId: number) => Promise<ActionResult>;
 }
 
-/** InjectionKey used to share BattleCtx from BattleView down to unit components. */
+/** InjectionKey used to share BattleCtx from BattleStage down to unit components. */
 export const BATTLE_CTX: InjectionKey<BattleCtx> = Symbol("battleCtx");
