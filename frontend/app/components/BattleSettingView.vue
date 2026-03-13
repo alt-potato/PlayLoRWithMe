@@ -987,6 +987,9 @@ async function onConfirm() {
 .reception-img--glow {
   display: block;
   opacity: 0.9;
+  /* color shift to gold */
+  filter: invert(36%) sepia(68%) saturate(502%) hue-rotate(6deg) brightness(90%)
+    contrast(85%);
 }
 
 /* Icon: centered over the glow at its own natural size. */
