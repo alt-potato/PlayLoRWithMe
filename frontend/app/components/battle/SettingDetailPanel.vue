@@ -54,21 +54,7 @@ const detailCard = ref<Card | null>(null);
     <!-- Passives -->
     <template v-if="passives.length">
       <div class="section-label">Passives</div>
-      <div class="passive-list">
-        <div
-          v-for="(p, i) in passives"
-          :key="i"
-          class="passive-row"
-          :class="{ 'passive-row--negative': p.isNegative }"
-        >
-          <span
-            class="passive-name"
-            :style="{ color: rarityColor(p.rare ?? '') }"
-            >{{ p.name }}</span
-          >
-          <span v-if="p.desc" class="passive-desc">{{ p.desc }}</span>
-        </div>
-      </div>
+      <UnitPassiveList :passives="passives" />
     </template>
 
     <!-- Deck preview — uses HandCard tiles; long-press opens CardDetail -->
@@ -132,47 +118,6 @@ const detailCard = ref<Card | null>(null);
   font-family: var(--font-body);
   font-size: 0.58rem;
   letter-spacing: 0;
-}
-
-/* ── Passives ─────────────────────────────────────────────────────────────── */
-.passive-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.passive-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.05rem;
-}
-
-.detail-panel--flip .passive-row {
-  align-items: flex-end;
-}
-
-@media (max-width: 599px) {
-  .detail-panel--flip .passive-row {
-    align-items: flex-start;
-  }
-}
-
-.passive-name {
-  font-family: var(--font-display);
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-}
-
-.passive-row--negative .passive-name {
-  color: var(--text-red) !important;
-}
-
-.passive-desc {
-  font-family: var(--font-body);
-  font-size: 0.58rem;
-  color: var(--text-3);
-  line-height: 1.35;
 }
 
 /* ── Deck preview ─────────────────────────────────────────────────────────── */
