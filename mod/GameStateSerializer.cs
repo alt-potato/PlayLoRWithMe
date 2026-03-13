@@ -69,6 +69,8 @@ namespace PlayLoRWithMe
 
         /// <summary>
         /// Builds a JSON representing the current main menu page.
+        /// During <c>BattleSetting</c> phase also emits pre-battle ally/enemy
+        /// previews so the frontend can render the formation screen.
         /// </summary>
         private static string BuildMainJson()
         {
@@ -76,7 +78,105 @@ namespace PlayLoRWithMe
             var uic = UI.UIController.Instance;
             if (uic != null)
                 w.Add("uiPhase", uic.CurrentUIPhase.ToString());
+
+            if (uic?.CurrentUIPhase == UI.UIPhase.BattleSetting)
+                WriteBattleSettingData(w);
+
             return w.Build();
+        }
+
+        /// <summary>
+        /// Appends stage info and pre-battle unit previews for the BattleSetting phase.
+        /// Uses <c>UnitBattleDataModel</c> rather than <c>BattleUnitModel</c> because
+        /// the battle scene has not loaded yet, so only formation and key page data is available.
+        /// </summary>
+        private static void WriteBattleSettingData(JsonWriter w)
+        {
+            var sc = Singleton<StageController>.Instance;
+            if (sc == null)
+                return;
+
+            w.AddObject(
+                "stage",
+                s =>
+                {
+                    s.Add("wave", sc.CurrentWave).Add("floor", sc.CurrentFloor.ToString());
+                    var stageModel = sc.GetStageModel();
+                    if (stageModel?.ClassInfo != null)
+                        s.Add("chapter", stageModel.ClassInfo.chapter);
+                }
+            );
+
+            // Allied librarians selected for this battle
+            var floor = sc.GetCurrentStageFloorModel();
+            if (floor != null)
+                w.AddArray(
+                    "allies",
+                    arr =>
+                    {
+                        var units = floor.GetUnitBattleDataList();
+                        for (int i = 0; i < units.Count; i++)
+                            WriteUnitBattleData(arr, i, units[i]);
+                    }
+                );
+
+            // Enemies in the current wave
+            var wave = sc.GetCurrentWaveModel();
+            if (wave != null)
+                w.AddArray(
+                    "enemies",
+                    arr =>
+                    {
+                        var units = wave.GetUnitBattleDataList();
+                        for (int i = 0; i < units.Count; i++)
+                            WriteUnitBattleData(arr, i, units[i]);
+                    }
+                );
+        }
+
+        /// <summary>
+        /// Serializes a pre-battle unit preview from a <c>UnitBattleDataModel</c>.
+        /// Only name, HP, and key page are available before the battle scene loads.
+        /// </summary>
+        private static void WriteUnitBattleData(
+            JsonArrayWriter arr,
+            int index,
+            UnitBattleDataModel unit
+        )
+        {
+            if (unit?.unitData == null)
+                return;
+            var book = unit.unitData.bookItem;
+            arr.AddObject(o =>
+            {
+                o.Add("id", index)
+                    .Add("name", unit.unitData.name)
+                    .Add("hp", unit.unitData.MaxHp)
+                    .Add("maxHp", unit.unitData.MaxHp);
+
+                if (book == null)
+                    return;
+                o.AddObject(
+                    "keyPage",
+                    k =>
+                    {
+                        k.Add("name", book.Name)
+                            .Add("speedDiceCount", book.SpeedDiceNum)
+                            .Add("speedMin", book.SpeedMin)
+                            .Add("speedMax", book.SpeedMax)
+                            .AddObject(
+                                "resistances",
+                                r =>
+                                    r.Add("slashHp", book.sHpResist.ToString())
+                                        .Add("pierceHp", book.pHpResist.ToString())
+                                        .Add("bluntHp", book.hHpResist.ToString())
+                                        .Add("slashBp", book.sBpResist.ToString())
+                                        .Add("pierceBp", book.pBpResist.ToString())
+                                        .Add("bluntBp", book.hBpResist.ToString())
+                            );
+                    }
+                );
+            });
         }
 
         // -------------------------------------------------------------------------
