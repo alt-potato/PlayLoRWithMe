@@ -20,24 +20,16 @@ const props = defineProps<{
 const hpPercent = computed(() => fillPercentage(props.hp, props.maxHp));
 const sgPercent = computed(() => fillPercentage(props.sg, props.maxSg));
 
-const hpColor = computed(() => {
-  if (hpPercent.value > 66) return "var(--green)";
-  if (hpPercent.value > 33) return "var(--orange)";
-  return "var(--red-hi)";
-});
-
-const sgColor = computed(() => {
-  // red when broken, orange when low, blue otherwise
-  if (sgPercent.value <= 0) return "#e53935";
-  if (sgPercent.value < 30) return "#ff9800";
-  return "#1976d2";
-});
+// Stagger bar turns red when fully depleted (broken), matching the in-game visual.
+const sgColor = computed(() =>
+  sgPercent.value <= 0 ? "var(--red-hi)" : "var(--stagger-bar)",
+);
 </script>
 
 <template>
   <div class="bar-row" :title="`HP: ${hp} / ${maxHp}`">
     <div class="bar-track">
-      <div class="bar-fill" :style="{ width: hpPercent + '%', background: hpColor }" />
+      <div class="bar-fill bar-fill--hp" :style="{ width: hpPercent + '%' }" />
     </div>
     <span class="bar-num">{{ hp }}/{{ maxHp }}</span>
   </div>
@@ -69,6 +61,10 @@ const sgColor = computed(() => {
   transition:
     width 0.3s ease,
     background 0.4s ease;
+}
+
+.bar-fill--hp {
+  background: var(--health-bar);
 }
 .bar-num {
   color: var(--text-2);

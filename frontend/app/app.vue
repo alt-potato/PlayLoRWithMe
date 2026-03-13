@@ -149,6 +149,12 @@ const rawJson = computed(() =>
   /* Flat-top hexagon: wider than tall, pointy sides */
   --hex: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
 
+  /* clash/stagger colors */
+  --health: #e56031;
+  --health-bar: #ed372c;
+  --stagger: #f0f464;
+  --stagger-bar: #e9f762;
+
   /* Clash-specific colors */
   /* 
     enemy -> ally: incoming
