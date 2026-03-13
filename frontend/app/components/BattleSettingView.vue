@@ -85,6 +85,30 @@ function toggleAlly(id: number) {
   expandedAlly.value = expandedAlly.value === id ? null : id;
 }
 
+// ── Reception icon scaling ─────────────────────────────────────────────────
+
+// 3.5rem at 16px base — matches .reception-frame width/height in CSS.
+const RECEPTION_FRAME_PX = 56;
+
+/** Natural pixel size of the glow sprite once it loads. */
+const glowNatural = ref({ w: 0, h: 0 });
+
+function onGlowLoad(e: Event) {
+  const img = e.target as HTMLImageElement;
+  glowNatural.value = { w: img.naturalWidth, h: img.naturalHeight };
+}
+
+/**
+ * Scale both images uniformly so the larger one (glow) fits the frame.
+ * Hidden until the glow loads so there's no flash of natural-size images.
+ */
+const receptionStackStyle = computed(() => {
+  const { w, h } = glowNatural.value;
+  if (!w || !h) return { visibility: "hidden" as const };
+  const scale = RECEPTION_FRAME_PX / Math.max(w, h);
+  return { width: `${w}px`, height: `${h}px`, transform: `scale(${scale})` };
+});
+
 // ── Confirm ────────────────────────────────────────────────────────────────
 
 const isConfirming = ref(false);
@@ -166,19 +190,30 @@ async function onConfirm() {
                 <span
                   v-if="unit.keyPage?.name && unit.name !== unit.keyPage.name"
                   class="unit-keypage"
-                >{{ unit.keyPage.name }}</span>
+                  >{{ unit.keyPage.name }}</span
+                >
               </div>
             </div>
             <div class="unit-stats">
               <div class="stats-inner">
-                <span class="stat-k">HP</span><span class="stat-v" :style="{ color: hpColor(unit) }">{{ unit.hp }}<span class="stat-max"> / {{ unit.maxHp }}</span></span>
+                <span class="stat-k">HP</span
+                ><span class="stat-v" :style="{ color: hpColor(unit) }"
+                  >{{ unit.hp
+                  }}<span class="stat-max"> / {{ unit.maxHp }}</span></span
+                >
                 <template v-if="unit.maxStaggerGauge">
                   <span class="stat-sep">·</span>
-                  <span class="stat-k">Stagger</span><span class="stat-v">{{ unit.maxStaggerGauge }}</span>
+                  <span class="stat-k">Stagger</span
+                  ><span class="stat-v">{{ unit.maxStaggerGauge }}</span>
                 </template>
                 <template v-if="unit.keyPage?.speedMin != null">
                   <span class="stat-sep">·</span>
-                  <span class="stat-k">Speed</span><span class="stat-v">{{ unit.keyPage.speedMin }}–{{ unit.keyPage.speedMax }}</span>
+                  <span class="stat-k">Speed</span
+                  ><span class="stat-v"
+                    >{{ unit.keyPage.speedMin }}–{{
+                      unit.keyPage.speedMax
+                    }}</span
+                  >
                 </template>
               </div>
               <span
@@ -188,11 +223,18 @@ async function onConfirm() {
               >
             </div>
             <div class="hp-bar">
-              <div class="hp-fill" :style="{ width: `${hpPct(unit)}%`, background: hpColor(unit) }" />
+              <div
+                class="hp-fill"
+                :style="{ width: `${hpPct(unit)}%`, background: hpColor(unit) }"
+              />
             </div>
 
             <Transition name="detail-expand">
-              <div v-if="expandedEnemy === unit.id" class="unit-detail" @click.stop>
+              <div
+                v-if="expandedEnemy === unit.id"
+                class="unit-detail"
+                @click.stop
+              >
                 <BattleSettingDetailPanel :unit="unit" />
               </div>
             </Transition>
@@ -205,13 +247,29 @@ async function onConfirm() {
     <div class="reception" role="presentation">
       <div class="reception-rule" />
       <div class="reception-body">
-        <span class="reception-label">Reception</span>
-        <!--
-          Future: replace .reception-placeholder with an <img> tag when the
-          GameStateSerializer emits a "receptionImage" field.
-        -->
+        <span class="reception-label">{{
+          state.stage?.name ?? "Reception"
+        }}</span>
         <div class="reception-frame">
-          <div class="reception-placeholder">
+          <div
+            v-if="state.stage?.icon"
+            class="reception-icon-stack"
+            :style="receptionStackStyle"
+          >
+            <img
+              v-if="state.stage.iconGlow"
+              :src="`/assets/stageicons/${state.stage.iconGlow}.png`"
+              alt=""
+              class="reception-img--glow"
+              @load="onGlowLoad"
+            />
+            <img
+              :src="`/assets/stageicons/${state.stage.icon}.png`"
+              alt=""
+              class="reception-img--icon"
+            />
+          </div>
+          <div v-else class="reception-placeholder">
             <span class="placeholder-mark">✦</span>
           </div>
         </div>
@@ -245,7 +303,8 @@ async function onConfirm() {
                 <span
                   v-if="ally.keyPage?.name && ally.name !== ally.keyPage.name"
                   class="unit-keypage unit-keypage--ally"
-                >{{ ally.keyPage.name }}</span>
+                  >{{ ally.keyPage.name }}</span
+                >
                 <span class="unit-name">
                   {{ ally.name ?? ally.keyPage?.name ?? `Unit #${ally.id}` }}
                 </span>
@@ -258,14 +317,24 @@ async function onConfirm() {
                 >▸</span
               >
               <div class="stats-inner stats-inner--ally">
-                <span class="stat-k">HP</span><span class="stat-v" :style="{ color: hpColor(ally) }">{{ ally.hp }}<span class="stat-max"> / {{ ally.maxHp }}</span></span>
+                <span class="stat-k">HP</span
+                ><span class="stat-v" :style="{ color: hpColor(ally) }"
+                  >{{ ally.hp
+                  }}<span class="stat-max"> / {{ ally.maxHp }}</span></span
+                >
                 <template v-if="ally.maxStaggerGauge">
                   <span class="stat-sep">·</span>
-                  <span class="stat-k">Stagger</span><span class="stat-v">{{ ally.maxStaggerGauge }}</span>
+                  <span class="stat-k">Stagger</span
+                  ><span class="stat-v">{{ ally.maxStaggerGauge }}</span>
                 </template>
                 <template v-if="ally.keyPage?.speedMin != null">
                   <span class="stat-sep">·</span>
-                  <span class="stat-k">Speed</span><span class="stat-v">{{ ally.keyPage.speedMin }}–{{ ally.keyPage.speedMax }}</span>
+                  <span class="stat-k">Speed</span
+                  ><span class="stat-v"
+                    >{{ ally.keyPage.speedMin }}–{{
+                      ally.keyPage.speedMax
+                    }}</span
+                  >
                 </template>
               </div>
             </div>
@@ -277,11 +346,7 @@ async function onConfirm() {
             </div>
 
             <!-- Inline claim/release row — stop propagation so click doesn't toggle detail -->
-            <div
-              v-if="claimsEnabled"
-              class="claim-row"
-              @click.stop
-            >
+            <div v-if="claimsEnabled" class="claim-row" @click.stop>
               <span
                 v-if="ownerOf(ally.id)"
                 class="owner-label"
@@ -308,7 +373,11 @@ async function onConfirm() {
             </div>
 
             <Transition name="detail-expand">
-              <div v-if="expandedAlly === ally.id" class="unit-detail unit-detail--ally" @click.stop>
+              <div
+                v-if="expandedAlly === ally.id"
+                class="unit-detail unit-detail--ally"
+                @click.stop
+              >
                 <BattleSettingDetailPanel :unit="ally" :flip="true" />
               </div>
             </Transition>
@@ -605,8 +674,6 @@ async function onConfirm() {
 }
 
 /* Ally header contains only the title; no extra layout needed */
-.unit-header--ally {}
-
 .unit-title {
   flex: 1;
   display: flex;
@@ -763,7 +830,6 @@ async function onConfirm() {
   }
 }
 
-
 /* ── Claim row ────────────────────────────────────────────────────────────── */
 .claim-row {
   display: flex;
@@ -889,10 +955,13 @@ async function onConfirm() {
   text-transform: uppercase;
   letter-spacing: 0.22em;
   color: var(--text-3);
+  text-align: center;
 }
 
-/* Square frame for the reception image (future: replace placeholder with <img>) */
+/* Square frame for the reception image */
+/* Square frame for the reception image. */
 .reception-frame {
+  position: relative;
   width: 3.5rem;
   height: 3.5rem;
   border: 1px solid var(--border);
@@ -900,6 +969,32 @@ async function onConfirm() {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+/*
+ * Wrapper sized to the glow's natural pixel dimensions via :style.
+ * A uniform scale() transform is applied so the glow fills the frame and
+ * the icon scales by the same factor — both images sit at natural size inside.
+ */
+.reception-icon-stack {
+  position: relative;
+  flex-shrink: 0;
+  transform-origin: center;
+}
+
+/* Glow: flow element that defines the stack's natural size. */
+.reception-img--glow {
+  display: block;
+  opacity: 0.9;
+}
+
+/* Icon: centered over the glow at its own natural size. */
+.reception-img--icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .reception-placeholder {

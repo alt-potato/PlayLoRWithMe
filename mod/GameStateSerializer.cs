@@ -102,8 +102,41 @@ namespace PlayLoRWithMe
                 {
                     s.Add("wave", sc.CurrentWave).Add("floor", sc.CurrentFloor.ToString());
                     var stageModel = sc.GetStageModel();
-                    if (stageModel?.ClassInfo != null)
-                        s.Add("chapter", stageModel.ClassInfo.chapter);
+                    if (stageModel?.ClassInfo == null)
+                        return;
+
+                    s.Add("chapter", stageModel.ClassInfo.chapter);
+
+                    // Prefer the localized name from StageNameXmlList; falls back to
+                    // stageName (raw XML) for workshop/mod stages that have no entry.
+                    var localizedName = Singleton<StageNameXmlList>.Instance?.GetName(
+                        stageModel.ClassInfo
+                    );
+                    if (!string.IsNullOrEmpty(localizedName) && localizedName != "Unknown")
+                        s.Add("name", localizedName);
+                    else if (!string.IsNullOrEmpty(stageModel.ClassInfo.stageName))
+                        s.Add("name", stageModel.ClassInfo.stageName);
+
+                    // Extract the story-chapter icon pair used by the in-game BattleSetting
+                    // screen (same sprites UISpriteDataManager serves to img_enemyTitleIcon
+                    // and img_enemyTitleIconBg). The glow is rendered behind the icon.
+                    var spriteDataMgr = UI.UISpriteDataManager.instance;
+                    if (spriteDataMgr != null)
+                    {
+                        var iconSet = spriteDataMgr.GetStoryIcon(stageModel.ClassInfo.storyType);
+                        if (iconSet?.icon != null)
+                        {
+                            var iconId = IconCache.EnsureStageIcon(iconSet.icon);
+                            if (iconId != null)
+                                s.Add("icon", iconId);
+                        }
+                        if (iconSet?.iconGlow != null)
+                        {
+                            var glowId = IconCache.EnsureStageIcon(iconSet.iconGlow);
+                            if (glowId != null)
+                                s.Add("iconGlow", glowId);
+                        }
+                    }
                 }
             );
 
@@ -239,7 +272,10 @@ namespace PlayLoRWithMe
                                         .Add("rarity", card.GetRarity().ToString())
                                         .Add("count", card.num);
 
-                                    if (xml?.DiceBehaviourList != null && xml.DiceBehaviourList.Count > 0)
+                                    if (
+                                        xml?.DiceBehaviourList != null
+                                        && xml.DiceBehaviourList.Count > 0
+                                    )
                                         c.AddArray(
                                             "dice",
                                             diceArr =>
@@ -252,7 +288,8 @@ namespace PlayLoRWithMe
                                                             .Add("min", d.Min)
                                                             .Add("max", d.Dice);
                                                         var desc =
-                                                            abilityDescList?.GetAbilityDesc(d) ?? "";
+                                                            abilityDescList?.GetAbilityDesc(d)
+                                                            ?? "";
                                                         if (string.IsNullOrEmpty(desc))
                                                             desc = d.Desc ?? "";
                                                         if (!string.IsNullOrEmpty(desc))

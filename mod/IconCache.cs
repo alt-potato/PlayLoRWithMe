@@ -8,9 +8,12 @@ namespace PlayLoRWithMe
     {
         private static readonly HashSet<string> _written = new HashSet<string>();
         private static readonly HashSet<string> _cardWritten = new HashSet<string>();
+        private static readonly HashSet<string> _stageWritten = new HashSet<string>();
         private static string BuficonDir => Path.Combine(Server.WwwRootPath, "assets", "buficons");
         private static string CardIconDir =>
             Path.Combine(Server.WwwRootPath, "assets", "cardicons");
+        private static string StageIconDir =>
+            Path.Combine(Server.WwwRootPath, "assets", "stageicons");
 
         // Returns the icon ID (sprite.name) on success, null if sprite is null.
         internal static string EnsureIcon(Sprite sprite)
@@ -51,6 +54,33 @@ namespace PlayLoRWithMe
             {
                 Debug.LogWarning(
                     $"[PlayLoRWithMe] IconCache (card) failed for '{id}': {ex.Message}"
+                );
+                return null;
+            }
+            return id;
+        }
+
+        /// <summary>
+        /// Extracts and caches the story-chapter icon used on the BattleSetting screen.
+        /// Returns the sprite name (icon ID) on success, or null if the sprite is null.
+        /// </summary>
+        internal static string EnsureStageIcon(Sprite sprite)
+        {
+            if (sprite == null)
+                return null;
+            var id = sprite.name;
+            if (_stageWritten.Contains(id))
+                return id;
+            try
+            {
+                Directory.CreateDirectory(StageIconDir);
+                File.WriteAllBytes(Path.Combine(StageIconDir, id + ".png"), SpriteToPng(sprite));
+                _stageWritten.Add(id);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning(
+                    $"[PlayLoRWithMe] IconCache (stage) failed for '{id}': {ex.Message}"
                 );
                 return null;
             }

@@ -29,6 +29,12 @@ export interface StageInfo {
   chapter?: number;
   wave?: number;
   round?: number;
+  /** Reception/stage name from StageClassInfo.stageName. */
+  name?: string;
+  /** Story-chapter icon sprite ID; served at /assets/stageicons/<icon>.png. */
+  icon?: string;
+  /** Glow layer rendered behind the icon (same sprite set as icon). */
+  iconGlow?: string;
 }
 
 // ── Cards & dice ──────────────────────────────────────────────────────────────
