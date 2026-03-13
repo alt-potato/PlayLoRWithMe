@@ -42,25 +42,29 @@ const unclaimedCount = computed(
 <template>
   <div class="session-panel">
     <button class="session-toggle" @click="expanded = !expanded">
-      <span class="session-toggle-label">
-        Players ({{ players.length }})
-        <span v-if="unclaimedCount > 0" class="unclaimed-badge">
-          {{ unclaimedCount }} unclaimed
-        </span>
+      <span class="toggle-label">Players</span>
+      <span class="toggle-count">{{ players.length }}</span>
+      <span v-if="unclaimedCount > 0" class="unclaimed-pip">
+        {{ unclaimedCount }}
       </span>
-      <span class="session-chevron">{{ expanded ? "▾" : "▸" }}</span>
+      <span class="toggle-chevron" :class="{ open: expanded }">▸</span>
     </button>
 
-    <Transition name="session-expand">
+    <Transition name="session-drop">
       <div v-if="expanded" class="session-body">
-        <!-- Librarian rows -->
+        <div class="body-header">
+          <span class="body-title">Librarians</span>
+        </div>
+
         <div
           v-for="ally in allies"
           :key="ally.id"
           class="librarian-row"
           :style="{ '--lc': allyColors[ally.id] ?? 'var(--gold-dim)' }"
         >
-          <span class="librarian-dot" />
+          <!-- Ally color stripe -->
+          <span class="ally-stripe" />
+
           <span class="librarian-name">{{
             ally.name ?? ally.keyPage?.name ?? `Unit #${ally.id}`
           }}</span>
@@ -71,27 +75,27 @@ const unclaimedCount = computed(
           >
             {{ (ownerOf(ally.id) as PlayerInfo).name }}
           </span>
-          <span v-else class="owner-tag owner-tag--unclaimed">unclaimed</span>
+          <span v-else class="owner-tag owner-tag--unclaimed">—</span>
 
           <button
             v-if="isMyUnit(ally.id)"
-            class="claim-btn claim-btn--release"
+            class="action-btn action-btn--release"
             @click="releaseUnit(ally.id)"
           >
             Release
           </button>
           <button
             v-else-if="!ownerOf(ally.id)"
-            class="claim-btn"
+            class="action-btn"
             @click="claimUnit(ally.id)"
           >
             Claim
           </button>
+          <span v-else class="action-placeholder" />
         </div>
 
-        <!-- Connected players not assigned to any unit -->
-        <div v-if="players.length === 0" class="session-empty">
-          No other players connected.
+        <div v-if="allies.length === 0" class="session-empty">
+          No librarians in battle.
         </div>
       </div>
     </Transition>
@@ -99,136 +103,213 @@ const unclaimedCount = computed(
 </template>
 
 <style scoped>
+/* ── Toggle (lives inside teaser-bar, must be visually flush) ── */
 .session-panel {
   position: relative;
-  background: var(--bg-mid, #1a1a1a);
-  border-bottom: 1px solid var(--gold-dim, #4a3f28);
-  font-size: 0.8rem;
 }
 
 .session-toggle {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.3rem 0.75rem;
+  gap: 0.3rem;
+  padding: 0.15rem 0.4rem;
   background: none;
   border: none;
-  color: var(--gold, #c9a227);
   cursor: pointer;
-  font: inherit;
-  font-size: 0.8rem;
-  text-align: left;
+  color: var(--text-2);
+  font-family: var(--font-display);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: color 0.15s;
 }
 
 .session-toggle:hover {
-  background: rgba(201, 162, 39, 0.08);
+  color: var(--text-1);
 }
 
-.session-toggle-label {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.toggle-label {
+  color: inherit;
 }
 
-.unclaimed-badge {
-  background: var(--crimson, #8b0000);
-  color: #fff;
+.toggle-count {
+  color: var(--gold);
   font-size: 0.7rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: 3px;
+  font-family: var(--font-body);
+  font-style: normal;
+  letter-spacing: 0;
 }
 
-.session-chevron {
-  color: var(--gold-dim, #4a3f28);
+/* Red pip for unclaimed count */
+.unclaimed-pip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1rem;
+  height: 1rem;
+  background: var(--crimson);
+  color: var(--text-red);
+  font-size: 0.52rem;
+  font-family: var(--font-body);
+  letter-spacing: 0;
+  padding: 0 0.2rem;
 }
 
+.toggle-chevron {
+  color: var(--text-3);
+  font-size: 0.55rem;
+  display: inline-block;
+  transition: transform 0.18s ease;
+}
+
+.toggle-chevron.open {
+  transform: rotate(90deg);
+}
+
+/* ── Dropdown body ── */
 .session-body {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 0.35rem);
   right: 0;
   z-index: 100;
-  min-width: 16rem;
-  padding: 0.25rem 0.75rem 0.5rem;
+  min-width: 15rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-mid);
+  border-top: 2px solid var(--gold-dim);
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  background: var(--bg-mid, #1a1a1a);
-  border: 1px solid var(--gold-dim, #4a3f28);
 }
 
+.body-header {
+  padding: 0.3rem 0.6rem 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.body-title {
+  font-family: var(--font-display);
+  font-size: 0.52rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-3);
+}
+
+/* ── Librarian rows ── */
 .librarian-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  padding: 0.28rem 0.6rem 0.28rem 0;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
 }
 
-.librarian-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.librarian-row:last-child {
+  border-bottom: none;
+}
+
+.librarian-row:hover {
+  background: var(--bg-card-2);
+}
+
+/* Left color stripe, mirrors the unit card side border */
+.ally-stripe {
+  width: 2px;
+  align-self: stretch;
   background: var(--lc);
   flex-shrink: 0;
+  margin-left: 0;
 }
 
 .librarian-name {
   flex: 1;
-  color: var(--text, #ccc);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: var(--text-1);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .owner-tag {
-  color: var(--gold, #c9a227);
-  font-size: 0.75rem;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  color: var(--gold);
   white-space: nowrap;
+  letter-spacing: 0.02em;
 }
 
 .owner-tag--unclaimed {
-  color: var(--text-dim, #666);
-  font-style: italic;
+  color: var(--text-3);
 }
 
-.claim-btn {
-  padding: 0.15rem 0.5rem;
-  border: 1px solid var(--gold-dim, #4a3f28);
-  background: none;
-  color: var(--gold, #c9a227);
+/* ── Action buttons (match ego-toggle style from DisplayCard) ── */
+.action-btn {
+  font-family: var(--font-display);
+  font-size: 0.48rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.12rem 0.45rem;
+  background: transparent;
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
   cursor: pointer;
-  font: inherit;
-  font-size: 0.75rem;
-  border-radius: 3px;
   white-space: nowrap;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+  flex-shrink: 0;
+  margin-right: 0.5rem;
 }
 
-.claim-btn:hover {
-  background: rgba(201, 162, 39, 0.15);
+.action-btn:hover {
+  background: rgba(201, 162, 39, 0.12);
+  border-color: var(--gold);
 }
 
-.claim-btn--release {
-  border-color: var(--crimson, #8b0000);
-  color: #e57373;
+.action-btn--release {
+  border-color: var(--crimson);
+  color: var(--text-red);
 }
 
-.claim-btn--release:hover {
-  background: rgba(139, 0, 0, 0.15);
+.action-btn--release:hover {
+  background: var(--crimson-dim);
+  border-color: var(--crimson-hi);
+}
+
+.action-placeholder {
+  /* keeps row height stable when no button shown */
+  display: inline-block;
+  width: 3.2rem;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
 }
 
 .session-empty {
-  color: var(--text-dim, #666);
+  padding: 0.5rem 0.6rem;
+  font-size: 0.68rem;
+  color: var(--text-3);
   font-style: italic;
-  padding: 0.25rem 0;
+  font-family: var(--font-body);
 }
 
-.session-expand-enter-active,
-.session-expand-leave-active {
-  transition: opacity 0.15s ease;
+/* ── Drop transition (mirrors hand-expand in DisplayCard) ── */
+.session-drop-enter-active {
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
 
-.session-expand-enter-from,
-.session-expand-leave-to {
+.session-drop-leave-active {
+  transition:
+    opacity 0.13s ease,
+    transform 0.13s ease;
+}
+
+.session-drop-enter-from,
+.session-drop-leave-to {
   opacity: 0;
+  transform: translateY(-5px);
 }
 </style>
