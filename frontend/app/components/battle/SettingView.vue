@@ -32,6 +32,7 @@ const props = defineProps<{
   sendAction: (action: Record<string, unknown>) => Promise<ActionResult>;
   claimUnit: (unitId: number) => Promise<ActionResult>;
   releaseUnit: (unitId: number) => Promise<ActionResult>;
+  renamePlayer: (name: string) => Promise<ActionResult>;
 }>();
 
 const ALLY_COLORS = ["#4fc3f7", "#81c784", "#ffb74d", "#ce93d8", "#f48fb1"];
@@ -125,41 +126,22 @@ async function onConfirm() {
 </script>
 
 <template>
-  <!-- ── Top bar (mirrors BattleStage teaser-bar) ────────────────────────────── -->
-  <div class="setting-bar">
-    <div class="bar-left">
-      <div class="stage-chips">
-        <span class="chip">
-          <span class="k">Floor</span>
-          <strong>{{ state.stage?.floor ?? "—" }}</strong>
-        </span>
-        <span class="chip-sep">·</span>
-        <span class="chip">
-          <span class="k">Ch</span>
-          <strong>{{ state.stage?.chapter ?? "—" }}</strong>
-        </span>
-        <span class="chip-sep">·</span>
-        <span class="chip">
-          <span class="k">Wave</span>
-          <strong>{{ state.stage?.wave ?? "—" }}</strong>
-        </span>
-      </div>
-      <span class="bar-phase">{{ state.uiPhase }}</span>
-    </div>
-
-    <div class="bar-center">
-      <button class="confirm-btn" :disabled="isConfirming" @click="onConfirm">
-        {{ isConfirming ? "…" : "CONFIRM" }}
-      </button>
-    </div>
-
-    <div class="bar-right">
-      <span v-if="players.length > 0" class="players-chip">
-        <span class="k">Players</span>
-        <span class="players-count">{{ players.length }}</span>
-      </span>
-    </div>
-  </div>
+  <!-- ── Top bar ──────────────────────────────────────────────────────────── -->
+  <BattleStatusBar
+    :stage="state.stage"
+    :phase="state.uiPhase"
+    :confirm-enabled="false"
+    confirm-label="WAITING"
+    :players="players"
+    :allies="allies"
+    :session="session"
+    :ally-colors="allyColors"
+    :show-librarians="false"
+    :claim-unit="claimUnit"
+    :release-unit="releaseUnit"
+    :rename-player="renamePlayer"
+    @confirm="onConfirm"
+  />
 
   <!-- ── Briefing layout ───────────────────────────────────────────────────── -->
   <div class="briefing">
@@ -408,124 +390,6 @@ async function onConfirm() {
 </template>
 
 <style scoped>
-/* ── Top bar (mirrors .teaser-bar in BattleStage) ──────────────────────────── */
-.setting-bar {
-  padding: 0.4rem 0.75rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-mid);
-  border-bottom: 1px solid var(--gold-dim);
-  margin-bottom: 0.75rem;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.bar-left {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 0;
-}
-
-.bar-center {
-  display: flex;
-  justify-content: center;
-}
-
-.bar-right {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-/* Stage info chips (mirrors .teaser-item / .teaser-item .k in BattleStage) */
-.stage-chips {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  flex-wrap: wrap;
-}
-
-.chip {
-  font-size: 0.72rem;
-  color: var(--text-2);
-  font-family: var(--font-body);
-}
-
-.chip .k {
-  font-family: var(--font-display);
-  font-size: 0.58rem;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--text-2);
-}
-
-.chip strong {
-  color: var(--gold);
-}
-
-.chip-sep {
-  color: var(--border-hi);
-  font-size: 0.65rem;
-}
-
-.bar-phase {
-  color: var(--text-2);
-  font-size: 0.65rem;
-  font-family: var(--font-mono);
-  white-space: nowrap;
-}
-
-.confirm-btn {
-  padding: 0.25rem 1rem;
-  background: var(--bg-green);
-  border: 1px solid var(--green-hi);
-  color: var(--green);
-  font-size: 0.7rem;
-  font-family: var(--font-display);
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background 0.15s,
-    color 0.15s;
-}
-
-.confirm-btn:hover:not(:disabled) {
-  background: var(--green-hi);
-  color: #fff;
-}
-
-.confirm-btn:disabled {
-  border-color: var(--border-mid);
-  color: var(--text-3);
-  background: transparent;
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.players-chip {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.62rem;
-  color: var(--text-2);
-  font-family: var(--font-body);
-}
-
-.players-chip .k {
-  font-family: var(--font-display);
-  font-size: 0.58rem;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.players-count {
-  color: var(--gold);
-  font-size: 0.7rem;
-}
-
 /* ── Briefing layout ──────────────────────────────────────────────────────── */
 .briefing {
   display: flex;

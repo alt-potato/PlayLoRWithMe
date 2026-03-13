@@ -168,7 +168,11 @@ export function useWebSocket() {
     return sendAction({ type: "releaseUnit", unitId });
   }
 
+  function renamePlayer(name: string): Promise<ActionResult> {
+    return sendAction({ type: "rename", name: name.trim() });
+  }
+
   onMounted(connect);
 
-  return { gameState, session, status, players, sendAction, claimUnit, releaseUnit };
+  return { gameState, session, status, players, sendAction, claimUnit, releaseUnit, renamePlayer };
 }

@@ -13,7 +13,7 @@ namespace PlayLoRWithMe
     internal sealed class PlayerSession
     {
         public readonly string SessionId;
-        public readonly string DisplayName;
+        public string DisplayName { get; internal set; }
 
         // Units this player has claimed. Guarded by SessionManager._lock.
         public readonly HashSet<int> AssignedUnitIds = new HashSet<int>();
@@ -199,6 +199,27 @@ namespace PlayLoRWithMe
         }
 
         // -------------------------------------------------------------------------
+        // -------------------------------------------------------------------------
+        // Rename
+        // -------------------------------------------------------------------------
+
+        /// <summary>
+        /// Updates the display name for a session and broadcasts the updated
+        /// player list to all connected clients.
+        /// </summary>
+        public void RenameSession(string sessionId, string newName)
+        {
+            string playerListJson;
+            lock (_lock)
+            {
+                if (!_sessions.TryGetValue(sessionId, out var session))
+                    return;
+                session.DisplayName = newName;
+                playerListJson = BuildPlayerListJson();
+            }
+            BroadcastAll(playerListJson);
+        }
+
         // Authorization
         // -------------------------------------------------------------------------
 

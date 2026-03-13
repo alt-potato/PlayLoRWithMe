@@ -300,6 +300,16 @@ namespace PlayLoRWithMe
                     }
                     break;
 
+                case "rename":
+                    string newName = r.GetString("name");
+                    if (!string.IsNullOrWhiteSpace(newName))
+                    {
+                        _sessionManager.RenameSession(client.SessionId, newName.Trim());
+                        if (reqId != null)
+                            client.Send(BuildActionResult(reqId, true, null));
+                    }
+                    break;
+
                 case "resync":
                     // Client detected a missed sequence number; reset delta state and
                     // send a fresh full snapshot so the client can resync cleanly.

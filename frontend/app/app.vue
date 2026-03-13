@@ -26,6 +26,7 @@ const {
   sendAction,
   claimUnit,
   releaseUnit,
+  renamePlayer,
 } = useWebSocket();
 
 const rawJson = computed(() =>
@@ -55,6 +56,7 @@ const rawJson = computed(() =>
         :send-action="sendAction"
         :claim-unit="claimUnit"
         :release-unit="releaseUnit"
+        :rename-player="renamePlayer"
       />
 
       <BattleStage
@@ -65,6 +67,7 @@ const rawJson = computed(() =>
         :send-action="sendAction"
         :claim-unit="claimUnit"
         :release-unit="releaseUnit"
+        :rename-player="renamePlayer"
       />
 
       <div v-else-if="gameState" class="scene-idle">
@@ -232,7 +235,7 @@ body {
 }
 .collapse summary::before {
   content: "▸";
-  font-size: 0.55rem;
+  font-size: 1rem;
   color: var(--text-3);
   display: inline-block;
   margin-right: 0.3em;

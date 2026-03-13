@@ -26,6 +26,7 @@ const props = defineProps<{
   sendAction: (action: Record<string, unknown>) => Promise<ActionResult>;
   claimUnit: (unitId: number) => Promise<ActionResult>;
   releaseUnit: (unitId: number) => Promise<ActionResult>;
+  renamePlayer: (name: string) => Promise<ActionResult>;
 }>();
 
 const session = computed(() => props.session);
@@ -426,48 +427,22 @@ provide(BATTLE_CTX, {
 </script>
 
 <template>
-  <!-- Teaser (top bar) -->
-  <div class="teaser-bar">
-    <div class="teaser-left">
-      <div class="teaser-info">
-        <span class="teaser-item"
-          ><span class="k">Floor</span>
-          <strong>{{ state.stage?.floor }}</strong></span
-        >
-        <span class="teaser-sep">·</span>
-        <span class="teaser-item"
-          ><span class="k">Ch</span>
-          <strong>{{ state.stage?.chapter }}</strong></span
-        >
-        <span class="teaser-sep">·</span>
-        <span class="teaser-item"
-          ><span class="k">Act</span>
-          <strong>{{ state.stage?.wave }}</strong></span
-        >
-        <span class="teaser-sep">·</span>
-        <span class="teaser-item"
-          ><span class="k">Scene</span>
-          <strong>{{ state.stage?.round }}</strong></span
-        >
-      </div>
-      <span class="phase">{{ state.phase }}</span>
-    </div>
-
-    <div class="teaser-center">
-      <button class="confirm-btn" :disabled="!isSelectPhase" @click="onConfirm">
-        {{ isSelectPhase ? "CONFIRM" : "WAITING" }}
-      </button>
-    </div>
-
-    <div class="teaser-right">
-      <!-- Session / claim panel (only meaningful when claim enforcement is on) -->
-      <SessionPanel
-        v-if="session?.claimsEnabled"
-        :allies="state.allies ?? []"
-        :players="players"
-      />
-    </div>
-  </div>
+  <!-- Status bar -->
+  <BattleStatusBar
+    :stage="state.stage"
+    :phase="state.phase"
+    :confirm-enabled="isSelectPhase"
+    :confirm-label="isSelectPhase ? 'START' : 'WAITING'"
+    :players="players"
+    :allies="state.allies ?? []"
+    :session="session"
+    :ally-colors="allyColors"
+    :show-librarians="true"
+    :claim-unit="claimUnit"
+    :release-unit="releaseUnit"
+    :rename-player="renamePlayer"
+    @confirm="onConfirm"
+  />
 
   <!-- Error banner -->
   <div v-if="actionError" class="banner-error">{{ actionError }}</div>
@@ -634,92 +609,6 @@ provide(BATTLE_CTX, {
 </template>
 
 <style scoped>
-/* ── Stage bar ─────────────────────────────────────────────────────────────── */
-.teaser-bar {
-  padding: 0.4rem 0.75rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-mid);
-  border-bottom: 1px solid var(--gold-dim);
-  margin-bottom: 0.75rem;
-
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 0.5rem;
-}
-.teaser-left {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 0;
-}
-.teaser-center {
-  display: flex;
-  justify-content: center;
-}
-.teaser-right {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-}
-.teaser-info {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  flex-wrap: wrap;
-}
-.teaser-item {
-  font-size: 0.72rem;
-  color: var(--text-2);
-  font-family: var(--font-body);
-}
-.teaser-item .k {
-  font-family: var(--font-display);
-  font-size: 0.58rem;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--text-2);
-}
-.teaser-item strong {
-  color: var(--gold);
-}
-.teaser-sep {
-  color: var(--border-hi);
-  font-size: 0.65rem;
-}
-
-.phase {
-  color: var(--text-2);
-  font-size: 0.65rem;
-  font-family: var(--font-mono);
-  white-space: nowrap;
-}
-.confirm-btn {
-  padding: 0.25rem 1rem;
-  background: var(--bg-green);
-  border: 1px solid var(--green-hi);
-  color: var(--green);
-  font-size: 0.7rem;
-  font-family: var(--font-display);
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background 0.15s,
-    color 0.15s;
-}
-.confirm-btn:hover:not(:disabled) {
-  background: var(--green-hi);
-  color: #fff;
-}
-.confirm-btn:disabled {
-  border-color: var(--border-mid);
-  color: var(--text-3);
-  background: transparent;
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 /* ── Targeting banner ──────────────────────────────────────────────────────── */
 .targeting-banner {
   position: fixed;
