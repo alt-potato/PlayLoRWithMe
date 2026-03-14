@@ -210,7 +210,7 @@ namespace PlayLoRWithMe
             if (payload == null)
                 payload = new byte[0];
 
-            int len = payload.Length;
+            long len = payload.Length;
 
             // Header is at most 10 bytes: 1 (opcode) + 1 (len) + 8 (extended len).
             byte[] header = new byte[10];
@@ -239,7 +239,7 @@ namespace PlayLoRWithMe
 
             stream.Write(header, 0, headerLen);
             if (len > 0)
-                stream.Write(payload, 0, len);
+                stream.Write(payload, 0, (int)len);
             stream.Flush();
         }
 
