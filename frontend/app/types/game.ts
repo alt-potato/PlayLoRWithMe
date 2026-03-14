@@ -185,6 +185,17 @@ export interface DeckCardPreview {
   abilityDesc?: string;
 }
 
+export interface LibrarianEntry {
+  floorIndex: number;
+  unitIndex: number;
+  name: string;
+  keyPage: KeyPage;
+  passives: Passive[];
+  deckPreview: DeckCardPreview[];
+  /** Session ID of the player currently editing this librarian, or null. */
+  lockedBy: string | null;
+}
+
 /** Fields shared by both ally and enemy units. */
 export interface Unit {
   id: number;
@@ -292,4 +303,6 @@ export interface GameState {
   enemies?: Unit[];
   /** Only present during the key-page selection phase. */
   abnormalitySelection?: AbnormalitySelection;
+  /** Present in main scene (non-BattleSetting) — full librarian roster. */
+  librarians?: LibrarianEntry[];
 }

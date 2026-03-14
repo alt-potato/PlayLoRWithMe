@@ -70,6 +70,17 @@ const rawJson = computed(() =>
         :rename-player="renamePlayer"
       />
 
+      <LibrarianManager
+        v-else-if="gameState?.scene === 'main'"
+        :state="gameState"
+        :session="session"
+        :players="players"
+        :send-action="sendAction"
+        :claim-unit="claimUnit"
+        :release-unit="releaseUnit"
+        :rename-player="renamePlayer"
+      />
+
       <div v-else-if="gameState" class="scene-idle">
         <div class="scene-name">{{ gameState.scene }}</div>
         <div v-if="gameState.uiPhase" class="scene-sub">

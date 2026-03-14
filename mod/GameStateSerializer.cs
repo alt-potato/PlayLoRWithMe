@@ -81,6 +81,8 @@ namespace PlayLoRWithMe
 
             if (uic?.CurrentUIPhase == UI.UIPhase.BattleSetting)
                 WriteBattleSettingData(w);
+            else
+                WriteLibrarians(w);
 
             return w.Build();
         }
@@ -167,6 +169,206 @@ namespace PlayLoRWithMe
                             WriteUnitBattleData(arr, i, units[i]);
                     }
                 );
+        }
+
+        /// <summary>
+        /// Appends the full librarian roster to the writer. Called from BuildMainJson
+        /// for any main-scene phase other than BattleSetting.
+        /// </summary>
+        private static void WriteLibrarians(JsonWriter w)
+        {
+            var lib = LibraryModel.Instance;
+            if (lib == null)
+                return;
+
+            // The 10 named Sephirah floors in canonical order; index becomes floorIndex.
+            var sephirahs = new[]
+            {
+                SephirahType.Malkuth,
+                SephirahType.Yesod,
+                SephirahType.Hod,
+                SephirahType.Netzach,
+                SephirahType.Tiphereth,
+                SephirahType.Gebura,
+                SephirahType.Chesed,
+                SephirahType.Binah,
+                SephirahType.Hokma,
+                SephirahType.Keter,
+            };
+
+            var abilityDescList = Singleton<BattleCardAbilityDescXmlList>.Instance;
+
+            w.AddArray(
+                "librarians",
+                arr =>
+                {
+                    for (int fi = 0; fi < sephirahs.Length; fi++)
+                    {
+                        var floor = lib.GetFloor(sephirahs[fi]);
+                        if (floor == null)
+                            continue;
+
+                        var units = floor.GetUnitDataList();
+                        for (int ui = 0; ui < units.Count; ui++)
+                        {
+                            var unit = units[ui];
+                            if (unit == null)
+                                continue;
+
+                            var book = unit.bookItem;
+                            if (book == null)
+                                continue;
+
+                            int floorIdx = fi;
+                            int unitIdx = ui;
+                            arr.AddObject(o =>
+                            {
+                                o.Add("floorIndex", floorIdx)
+                                    .Add("unitIndex", unitIdx)
+                                    .Add("name", unit.name);
+
+                                // Key page — reads base values directly from BookModel (no battle
+                                // buffs applied outside of combat).
+                                o.AddObject(
+                                    "keyPage",
+                                    k =>
+                                        k.Add("name", book.Name)
+                                            .Add("speedMin", book.SpeedMin)
+                                            .Add("speedMax", book.SpeedMax)
+                                            .AddObject(
+                                                "resistances",
+                                                r =>
+                                                    r.Add("slashHp", book.sHpResist.ToString())
+                                                        .Add("pierceHp", book.pHpResist.ToString())
+                                                        .Add("bluntHp", book.hHpResist.ToString())
+                                                        .Add("slashBp", book.sBpResist.ToString())
+                                                        .Add("pierceBp", book.pBpResist.ToString())
+                                                        .Add("bluntBp", book.hBpResist.ToString())
+                                            )
+                                );
+
+                                // Passives via CreatePassiveList — covers built-in key-page
+                                // passives and equipped passive books.
+                                var passiveList = book.CreatePassiveList();
+                                o.AddArray(
+                                    "passives",
+                                    parr =>
+                                    {
+                                        if (passiveList == null)
+                                            return;
+                                        foreach (var p in passiveList)
+                                        {
+                                            if (
+                                                p == null
+                                                || p.isHide
+                                                || string.IsNullOrEmpty(p.name)
+                                            )
+                                                continue;
+                                            parr.AddObject(po =>
+                                            {
+                                                AddLorId(po, "id", p.id);
+                                                po.Add("name", p.name)
+                                                    .Add("rare", p.rare.ToString())
+                                                    .Add("isNegative", p.isNegative);
+                                                if (!string.IsNullOrEmpty(p.desc))
+                                                    po.Add("desc", p.desc);
+                                            });
+                                        }
+                                    }
+                                );
+
+                                // Deck preview — collapse duplicate copies into one entry
+                                // with a count field.  GetCardListFromCurrentDeck returns one
+                                // entry per copy, so we aggregate here.
+                                var rawCards = book.GetCardListFromCurrentDeck();
+                                o.AddArray(
+                                    "deckPreview",
+                                    darr =>
+                                    {
+                                        if (rawCards == null)
+                                            return;
+                                        var counts = new Dictionary<string, int>();
+                                        var firstSeen =
+                                            new Dictionary<
+                                                string,
+                                                LOR_DiceSystem.DiceCardXmlInfo
+                                            >();
+                                        var order = new List<string>();
+                                        foreach (var xml in rawCards)
+                                        {
+                                            if (xml == null)
+                                                continue;
+                                            var key = xml._id + "_" + xml.workshopID;
+                                            if (!counts.ContainsKey(key))
+                                            {
+                                                counts[key] = 0;
+                                                firstSeen[key] = xml;
+                                                order.Add(key);
+                                            }
+                                            counts[key]++;
+                                        }
+                                        foreach (var key in order)
+                                        {
+                                            var xml = firstSeen[key];
+                                            var spec = xml.Spec;
+                                            darr.AddObject(c =>
+                                            {
+                                                c.Add("name", xml.Name)
+                                                    .Add("cost", spec.Cost)
+                                                    .Add("range", spec.Ranged.ToString())
+                                                    .Add("rarity", xml.Rarity.ToString())
+                                                    .Add("count", counts[key]);
+
+                                                if (
+                                                    xml.DiceBehaviourList != null
+                                                    && xml.DiceBehaviourList.Count > 0
+                                                )
+                                                    c.AddArray(
+                                                        "dice",
+                                                        diceArr =>
+                                                        {
+                                                            foreach (var d in xml.DiceBehaviourList)
+                                                                diceArr.AddObject(die =>
+                                                                {
+                                                                    die.Add(
+                                                                            "type",
+                                                                            d.Type.ToString()
+                                                                        )
+                                                                        .Add(
+                                                                            "detail",
+                                                                            d.Detail.ToString()
+                                                                        )
+                                                                        .Add("min", d.Min)
+                                                                        .Add("max", d.Dice);
+                                                                    var desc =
+                                                                        abilityDescList?.GetAbilityDesc(
+                                                                            d
+                                                                        ) ?? "";
+                                                                    if (string.IsNullOrEmpty(desc))
+                                                                        desc = d.Desc ?? "";
+                                                                    if (!string.IsNullOrEmpty(desc))
+                                                                        die.Add("desc", desc);
+                                                                });
+                                                        }
+                                                    );
+
+                                                var abilityDesc =
+                                                    abilityDescList?.GetAbilityDescString(xml)
+                                                    ?? "";
+                                                if (!string.IsNullOrEmpty(abilityDesc))
+                                                    c.Add("abilityDesc", abilityDesc);
+                                            });
+                                        }
+                                    }
+                                );
+
+                                // lockedBy will be populated in Batch 2 by SessionManager.
+                                o.Add("lockedBy", (string)null);
+                            });
+                        }
+                    }
+                }
+            );
         }
 
         /// <summary>
