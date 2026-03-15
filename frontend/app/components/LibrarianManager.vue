@@ -1,15 +1,23 @@
 <!--
   LibrarianManager.vue
 
-  Read-only roster of all library floor librarians, shown in the main scene
-  (any UIPhase except BattleSetting). Each card displays name, key page,
-  passive count, and deck size. Tapping a card expands an inline detail panel
-  with the resistance table, full passive list, and deck card preview.
+  Librarian roster for the main scene (any UIPhase except BattleSetting).
+  A wrap-grid of floor tiles across the top switches between floors; all
+  occupied floors are visible at once — no horizontal scrolling.
+
+  Each floor tile shows the floor's stage icon, official name, and current
+  realization level (Roman numeral). The active tile is highlighted with the
+  floor's accent color.
+
+  Below the tiles the active floor shows:
+    • Floor banner: official name + level badge
+    • Abnormality/EGO pages section (collapsed; grouped by unlock level, displayed as HandCard tiles)
+    • Individual librarian cards (expandable for resistances / passives / deck)
 
   Props:
-    state       – full game state (scene = 'main', librarians array present)
-    session     – current session identity
-    players     – connected player list
+    state       – full game state (scene = 'main', floors array present)
+    session     – current session identity (unused in Batch 1, reserved)
+    players     – connected player list (unused in Batch 1, reserved)
     sendAction  – WebSocket action dispatcher (unused in Batch 1, reserved)
     claimUnit   – claim a librarian unit (unused in Batch 1, reserved)
     releaseUnit – release a librarian unit (unused in Batch 1, reserved)
@@ -36,41 +44,74 @@ const props = defineProps<{
   renamePlayer: (name: string) => Promise<ActionResult>;
 }>();
 
-/** Human-readable floor names, indexed by floorIndex (matches SephirahType enum order). */
-const FLOOR_NAMES = [
-  "Malkuth",
-  "Yesod",
-  "Hod",
-  "Netzach",
-  "Tiphereth",
-  "Gebura",
-  "Chesed",
-  "Binah",
-  "Hokma",
-  "Keter",
-] as const;
+/** Accent color keyed by floorIndex (0 = Malkuth … 9 = Keter). */
+const FLOOR_COLORS: Record<number, string> = {
+  0: "#be9966", // Malkuth
+  1: "#6968c4", // Yesod
+  2: "#e5881b", // Hod
+  3: "#4ed564", // Netzach
+  4: "#ffe527", // Tiphereth
+  5: "#ff3326", // Gebura
+  6: "#5ccaf6", // Chesed
+  7: "#957704", // Binah
+  8: "#7c7b7c", // Hokma
+  9: "#dddddd", // Keter
+};
 
-const librarians = computed(() => props.state.librarians ?? []);
+/** Roman numeral labels for realization levels 1–6. */
+const ROMAN = ["I", "II", "III", "IV", "V", "VI"] as const;
 
-/** Group librarians by floorIndex, preserving insertion order. */
-const floors = computed(() => {
-  const map = new Map<number, LibrarianEntry[]>();
-  for (const lib of librarians.value) {
-    if (!map.has(lib.floorIndex)) map.set(lib.floorIndex, []);
-    map.get(lib.floorIndex)!.push(lib);
-  }
-  return [...map.entries()].map(([idx, units]) => ({
-    idx,
-    name: FLOOR_NAMES[idx] ?? `Floor ${idx}`,
-    units,
-  }));
+function toRoman(level: number): string {
+  return ROMAN[level - 1] ?? String(level);
+}
+
+function floorColor(floorIdx: number): string {
+  return FLOOR_COLORS[floorIdx] ?? "#888";
+}
+
+function floorIconUrl(floorIdx: number): string {
+  // SephirahType is 1-indexed; floorIndex is 0-indexed.
+  return `/assets/stageicons/${floorIdx + 1}.png`;
+}
+
+const floors = computed(() => props.state.floors ?? []);
+
+const totalLibrarians = computed(() =>
+  floors.value.reduce((s, f) => s + f.librarians.length, 0),
+);
+
+/** Currently selected floor index. Defaults to the first available floor. */
+const activeFloor = ref<number | null>(null);
+
+watchEffect(() => {
+  if (activeFloor.value === null && floors.value.length > 0)
+    activeFloor.value = floors.value[0]!.floorIndex;
 });
+
+const activeFloorData = computed(
+  () => floors.value.find((f) => f.floorIndex === activeFloor.value) ?? null,
+);
+
+function selectFloor(idx: number): void {
+  if (activeFloor.value !== idx) {
+    activeFloor.value = idx;
+    expandedKey.value = null;
+    emotionCardsOpen.value = false;
+    egoCardsOpen.value = false;
+  }
+}
 
 /** Key of the currently expanded librarian card, or null. */
 const expandedKey = ref<string | null>(null);
 
+/** Whether the abnormality pages section is expanded for the active floor. */
+const emotionCardsOpen = ref(false);
+
+/** Whether the EGO pages section is expanded for the active floor. */
+const egoCardsOpen = ref(false);
+
 function cardKey(lib: LibrarianEntry): string {
-  return `${lib.floorIndex}:${lib.unitIndex}`;
+  return `${activeFloor.value}:${lib.unitIndex}`;
 }
 
 function toggleExpand(lib: LibrarianEntry): void {
@@ -79,8 +120,31 @@ function toggleExpand(lib: LibrarianEntry): void {
   detailCard.value = null;
 }
 
+/**
+ * Groups emotion cards by their unlock level (each level = one abnormality
+ * encounter on this floor).
+ */
+const groupedEmotionCards = computed(() => {
+  const floor = activeFloorData.value;
+  if (!floor) return [];
+  const map = new Map<number, typeof floor.emotionCards>();
+  for (const ec of floor.emotionCards) {
+    if (!map.has(ec.level)) map.set(ec.level, []);
+    map.get(ec.level)!.push(ec);
+  }
+  return [...map.entries()].map(([level, cards]) => ({ level, cards }));
+});
+
 /** Card currently shown in the full CardDetail overlay. */
 const detailCard = ref<Card | null>(null);
+
+/**
+ * Converts a DeckCardPreview EGO card to a Card with the EGO option set,
+ * which triggers crimson border and the EGO tag in CardDetail.
+ */
+function egoCardToCard(p: DeckCardPreview, i: number): Card {
+  return { ...previewToCard(p, i), options: ["EGO"] };
+}
 
 /**
  * Converts a DeckCardPreview to a minimal Card shape for HandCard rendering.
@@ -104,101 +168,209 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   <div class="lib-manager">
     <div class="lib-header">
       <span class="lib-title">Library</span>
-      <span class="lib-sub">{{ librarians.length }} librarian{{
-        librarians.length === 1 ? "" : "s"
-      }}</span>
+      <span class="lib-sub"
+        >{{ totalLibrarians }} librarian{{
+          totalLibrarians === 1 ? "" : "s"
+        }}</span
+      >
     </div>
 
-    <div v-if="librarians.length === 0" class="lib-empty">
+    <div v-if="floors.length === 0" class="lib-empty">
       No librarian data available.
     </div>
 
-    <div v-else class="floors">
-      <section v-for="floor in floors" :key="floor.idx" class="floor">
-        <div class="floor-label">
-          <span class="floor-name">{{ floor.name }}</span>
+    <template v-else>
+      <!-- Floor tile grid — all floors visible at once, wraps on narrow viewports -->
+      <div class="floor-grid">
+        <button
+          v-for="floor in floors"
+          :key="floor.floorIndex"
+          class="floor-tile"
+          :class="{ active: activeFloor === floor.floorIndex }"
+          :style="{ '--floor-color': floorColor(floor.floorIndex) }"
+          @click="selectFloor(floor.floorIndex)"
+        >
+          <img
+            :src="floorIconUrl(floor.floorIndex)"
+            class="tile-icon"
+            :alt="floor.officialName"
+            @error="($event.target as HTMLImageElement).style.display = 'none'"
+          />
+          <span class="tile-name">{{ floor.officialName }}</span>
+          <span class="tile-level">{{ toRoman(floor.realizationLevel) }}</span>
+        </button>
+      </div>
+
+      <!-- Active floor content -->
+      <div v-if="activeFloorData" class="floor-content">
+        <!-- Floor banner -->
+        <div
+          class="floor-banner"
+          :style="{ borderLeftColor: floorColor(activeFloorData.floorIndex) }"
+        >
+          <span
+            class="banner-name"
+            :style="{ color: floorColor(activeFloorData.floorIndex) }"
+            >{{ activeFloorData.officialName }}</span
+          >
+          <span
+            class="banner-level"
+            :style="{ color: floorColor(activeFloorData.floorIndex) }"
+            >{{ toRoman(activeFloorData.realizationLevel) }}</span
+          >
         </div>
 
-        <div class="units">
+        <!-- Emotion cards (collapsed toggle) -->
+        <div
+          v-if="activeFloorData.emotionCards.length"
+          class="section-toggle"
+          @click="emotionCardsOpen = !emotionCardsOpen"
+        >
+          <span class="section-toggle-label">Abnormality Pages</span>
+          <span class="section-toggle-count">{{
+            activeFloorData.emotionCards.length
+          }}</span>
+          <span class="chevron" :class="{ open: emotionCardsOpen }">▸</span>
+        </div>
+
+        <div v-if="emotionCardsOpen" class="emotion-groups">
           <div
-            v-for="lib in floor.units"
-            :key="cardKey(lib)"
-            class="lib-card"
-            :class="{ 'lib-card--expanded': expandedKey === cardKey(lib) }"
-            @click="toggleExpand(lib)"
+            v-for="group in groupedEmotionCards"
+            :key="group.level"
+            class="emotion-group"
           >
-            <!-- Card header row -->
-            <div class="card-header">
-              <div class="card-main">
-                <span class="card-name">{{ lib.name }}</span>
-                <span class="card-page">{{ lib.keyPage.name }}</span>
-              </div>
-              <div class="card-meta">
-                <span class="meta-chip">
-                  {{ lib.keyPage.speedMin }}–{{ lib.keyPage.speedMax }}
-                </span>
-                <span v-if="lib.passives.length" class="meta-chip meta-chip--passive">
-                  {{ lib.passives.length }} passive{{ lib.passives.length === 1 ? "" : "s" }}
-                </span>
-                <span v-if="lib.deckPreview.length" class="meta-chip meta-chip--deck">
-                  {{ lib.deckPreview.reduce((s, c) => s + c.count, 0) }} cards
-                </span>
-                <span
-                  v-if="lib.lockedBy"
-                  class="meta-chip meta-chip--locked"
-                  title="Being edited"
-                >
-                  ✎
-                </span>
-                <span class="chevron" :class="{ open: expandedKey === cardKey(lib) }">
-                  ▸
-                </span>
-              </div>
+            <div class="emotion-group-label">
+              {{ toRoman(group.level) }}
+              <span v-if="group.cards[0]?.abnormalityName" class="emotion-group-name">
+                — {{ group.cards[0].abnormalityName }}
+              </span>
             </div>
-
-            <!-- Expandable detail -->
-            <div
-              v-if="expandedKey === cardKey(lib)"
-              class="card-detail"
-              @click.stop
-            >
-              <!-- Speed range + resistance table -->
-              <div class="section-label">Resistances</div>
-              <UnitResistanceTable
-                v-if="lib.keyPage.resistances"
-                :resistances="lib.keyPage.resistances"
+            <div class="em-cards">
+              <AbnormalityPageCard
+                v-for="ec in group.cards"
+                :key="ec.name"
+                :name="ec.name"
+                :state="ec.state"
+                :emotion-level="ec.emotionLevel"
+                :target-type="ec.targetType"
+                :desc="ec.desc"
+                :flavor-text="ec.flavorText"
+                readonly
               />
-
-              <!-- Passives -->
-              <template v-if="lib.passives.length">
-                <div class="section-label">Passives</div>
-                <UnitPassiveList :passives="lib.passives" />
-              </template>
-
-              <!-- Deck card preview -->
-              <template v-if="lib.deckPreview.length">
-                <div class="section-label">
-                  Deck
-                  <span class="section-count">
-                    ({{ lib.deckPreview.reduce((s, c) => s + c.count, 0) }})
-                  </span>
-                </div>
-                <div class="deck-cards">
-                  <HandCard
-                    v-for="(card, i) in lib.deckPreview"
-                    :key="i"
-                    :card="previewToCard(card, i)"
-                    :count="card.count"
-                    readonly
-                    @detail="detailCard = previewToCard(card, i)"
-                  />
-                </div>
-              </template>
             </div>
           </div>
         </div>
-      </section>
-    </div>
+
+        <!-- EGO pages section (full battle cards, separate from abnormality pages) -->
+        <div
+          v-if="activeFloorData.egoCards.length"
+          class="section-toggle"
+          @click="egoCardsOpen = !egoCardsOpen"
+        >
+          <span class="section-toggle-label">EGO Pages</span>
+          <span class="section-toggle-count">{{
+            activeFloorData.egoCards.length
+          }}</span>
+          <span class="chevron" :class="{ open: egoCardsOpen }">▸</span>
+        </div>
+
+        <div v-if="egoCardsOpen" class="emotion-groups">
+          <div class="emotion-cards">
+            <HandCard
+              v-for="(card, i) in activeFloorData.egoCards"
+              :key="card.name"
+              :card="egoCardToCard(card, i)"
+              readonly
+              @detail="detailCard = egoCardToCard(card, i)"
+            />
+          </div>
+        </div>
+
+        <!-- Librarian cards -->
+        <div
+          v-for="lib in activeFloorData.librarians"
+          :key="cardKey(lib)"
+          class="lib-card"
+          :class="{ 'lib-card--expanded': expandedKey === cardKey(lib) }"
+          @click="toggleExpand(lib)"
+        >
+          <!-- Card header row -->
+          <div class="card-header">
+            <div class="card-main">
+              <span class="card-name">{{ lib.name }}</span>
+              <span class="card-page">{{ lib.keyPage.name }}</span>
+            </div>
+            <div class="card-meta">
+              <span class="meta-chip">
+                {{ lib.keyPage.speedMin }}–{{ lib.keyPage.speedMax }}
+              </span>
+              <span
+                v-if="lib.passives.length"
+                class="meta-chip meta-chip--passive"
+              >
+                {{ lib.passives.length }} passive{{
+                  lib.passives.length === 1 ? "" : "s"
+                }}
+              </span>
+              <span
+                v-if="lib.deckPreview.length"
+                class="meta-chip meta-chip--deck"
+              >
+                {{ lib.deckPreview.reduce((s, c) => s + c.count, 0) }} cards
+              </span>
+              <span
+                v-if="lib.lockedBy"
+                class="meta-chip meta-chip--locked"
+                title="Being edited"
+                >✎</span
+              >
+              <span
+                class="chevron"
+                :class="{ open: expandedKey === cardKey(lib) }"
+                >▸</span
+              >
+            </div>
+          </div>
+
+          <!-- Expandable detail -->
+          <div
+            v-if="expandedKey === cardKey(lib)"
+            class="card-detail"
+            @click.stop
+          >
+            <div class="section-label">Resistances</div>
+            <UnitResistanceTable
+              v-if="lib.keyPage.resistances"
+              :resistances="lib.keyPage.resistances"
+            />
+
+            <template v-if="lib.passives.length">
+              <div class="section-label">Passives</div>
+              <UnitPassiveList :passives="lib.passives" />
+            </template>
+
+            <template v-if="lib.deckPreview.length">
+              <div class="section-label">
+                Deck
+                <span class="section-count">
+                  ({{ lib.deckPreview.reduce((s, c) => s + c.count, 0) }})
+                </span>
+              </div>
+              <div class="deck-cards">
+                <HandCard
+                  v-for="(card, i) in lib.deckPreview"
+                  :key="i"
+                  :card="previewToCard(card, i)"
+                  :count="card.count"
+                  readonly
+                  @detail="detailCard = previewToCard(card, i)"
+                />
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <CardDetail
       v-if="detailCard"
@@ -212,7 +384,7 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
 .lib-manager {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.6rem;
   padding: 0.5rem 0;
 }
 
@@ -243,40 +415,204 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   text-align: center;
 }
 
-/* ── Floor sections ────────────────────────────────────────────────────────── */
-.floors {
+/* ── Floor tile grid ───────────────────────────────────────────────────────── */
+/*
+ * Tiles wrap rather than scroll, so all occupied floors are always visible.
+ * --floor-color is injected per tile via inline style.
+ */
+.floor-grid {
   display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
+  flex-wrap: wrap;
+  gap: 0.3rem;
 }
 
-.floor {
+.floor-tile {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-}
-
-.floor-label {
-  display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding-bottom: 0.2rem;
-  border-bottom: 1px solid var(--border);
+  gap: 0.15rem;
+  padding: 0.3rem 0.5rem 0.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 2px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  transition:
+    border-top-color 0.15s,
+    background 0.12s,
+    opacity 0.15s;
+  min-width: 3rem;
 }
 
-.floor-name {
+.floor-tile:hover {
+  background: var(--bg-card-2);
+  border-top-color: color-mix(in srgb, var(--floor-color) 50%, transparent);
+}
+
+.floor-tile.active {
+  border-top-color: var(--floor-color);
+  background: var(--bg-card-2);
+}
+
+.tile-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.floor-tile.active .tile-icon,
+.floor-tile:hover .tile-icon {
+  opacity: 1;
+}
+
+.tile-name {
   font-family: var(--font-display);
-  font-size: 0.62rem;
+  font-size: 0.52rem;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--gold-dim);
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+  white-space: nowrap;
 }
 
-/* ── Unit grid ─────────────────────────────────────────────────────────────── */
-.units {
+.floor-tile.active .tile-name {
+  color: var(--floor-color);
+}
+
+.tile-level {
+  font-family: var(--font-display);
+  font-size: 0.48rem;
+  color: var(--text-3);
+  letter-spacing: 0.05em;
+}
+
+.floor-tile.active .tile-level {
+  color: var(--floor-color);
+  opacity: 0.8;
+}
+
+/* ── Active floor content ──────────────────────────────────────────────────── */
+.floor-content {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
+}
+
+/* ── Floor banner ──────────────────────────────────────────────────────────── */
+.floor-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-left: 3px solid var(--border);
+  background: var(--bg-card);
+  border-radius: 0 3px 3px 0;
+}
+
+.banner-name {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.banner-level {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  opacity: 0.7;
+  margin-left: -0.25rem;
+}
+
+/* ── Abnormality page cards (mirrors AbnormalityPicker .ab-card style) ─────── */
+.section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.section-toggle:hover {
+  border-color: var(--border-mid);
+}
+
+.section-toggle-label {
+  font-family: var(--font-display);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-2);
+}
+
+.section-toggle-count {
+  font-size: 0.55rem;
+  color: var(--text-3);
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 0 0.25rem;
+}
+
+.chevron {
+  font-size: 0.65rem;
+  color: var(--text-3);
+  display: inline-block;
+  transition: transform 0.18s ease;
+  margin-left: auto;
+}
+
+.chevron.open {
+  transform: rotate(90deg);
+}
+
+.emotion-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.emotion-group-label {
+  font-family: var(--font-display);
+  font-size: 0.48rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+  margin-bottom: 0.1rem;
+}
+
+.emotion-group-name {
+  color: var(--text-2);
+}
+
+/* Card visuals are owned by AbnormalityPageCard; only the flex container is set here. */
+.em-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@media (min-width: 500px) {
+  .em-cards {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+}
+
+.emotion-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 
 /* ── Individual librarian card ─────────────────────────────────────────────── */
@@ -360,18 +696,6 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
 .meta-chip--locked {
   color: var(--gold);
   border-color: var(--gold-dim);
-}
-
-.chevron {
-  font-size: 0.65rem;
-  color: var(--text-3);
-  display: inline-block;
-  transition: transform 0.18s ease;
-  margin-left: 0.1rem;
-}
-
-.chevron.open {
-  transform: rotate(90deg);
 }
 
 /* ── Expanded detail panel ─────────────────────────────────────────────────── */

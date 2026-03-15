@@ -185,8 +185,39 @@ export interface DeckCardPreview {
   abilityDesc?: string;
 }
 
-export interface LibrarianEntry {
+export interface EmotionCardEntry {
+  /** Floor realization level at which this card unlocks (1–6). */
+  level: number;
+  name: string;
+  state: "Positive" | "Negative";
+  targetType: "All" | "SelectOne" | "AllIncludingEnemy";
+  /** Emotion coin cost during battle. */
+  emotionLevel: number;
+  /** Name of the abnormality this card belongs to (e.g. "Big Bird"). */
+  abnormalityName?: string;
+  /** Ability description from AbnormalityCardDescXmlList (same source as battle selection). */
+  desc?: string;
+  flavorText?: string;
+}
+
+export interface FloorEntry {
   floorIndex: number;
+  /** Localized floor name from the game's text system (e.g. "Malkuth"). */
+  officialName: string;
+  /** Current realization level (1–6). */
+  realizationLevel: number;
+  /**
+   * EGO pages: full battle cards (with dice) from EmotionEgoXmlList.
+   * These are distinct from abnormality pages — they are real DiceCardXmlInfo
+   * objects, serialized identically to deckPreview cards.
+   */
+  egoCards: DeckCardPreview[];
+  /** All abnormality pages (Awakening/Breakdown) unlocked up to the current realization level. */
+  emotionCards: EmotionCardEntry[];
+  librarians: LibrarianEntry[];
+}
+
+export interface LibrarianEntry {
   unitIndex: number;
   name: string;
   keyPage: KeyPage;
@@ -303,6 +334,6 @@ export interface GameState {
   enemies?: Unit[];
   /** Only present during the key-page selection phase. */
   abnormalitySelection?: AbnormalitySelection;
-  /** Present in main scene (non-BattleSetting) — full librarian roster. */
-  librarians?: LibrarianEntry[];
+  /** Present in main scene (non-BattleSetting) — floor roster with nested librarians. */
+  floors?: FloorEntry[];
 }
