@@ -44,6 +44,9 @@ namespace PlayLoRWithMe
 
         public static Server Instance { get; private set; }
 
+        /// <summary>Exposes the session manager for read-only queries (e.g. lock lookups in serializer).</summary>
+        internal SessionManager SessionManager => _sessionManager;
+
         // -------------------------------------------------------------------------
         // Lifecycle
         // -------------------------------------------------------------------------
@@ -349,6 +352,44 @@ namespace PlayLoRWithMe
                     }
                     break;
 
+                case "lockLibrarian":
+                    if (
+                        r.TryGetInt("floorIndex", out int lockFi)
+                        && r.TryGetInt("unitIndex", out int lockUi)
+                    )
+                    {
+                        string lockKey = lockFi + ":" + lockUi;
+                        bool locked = _sessionManager.TryLockLibrarian(lockKey, client.SessionId);
+                        if (locked)
+                            StateBroadcaster.Broadcast();
+                        if (reqId != null)
+                            client.Send(
+                                BuildActionResult(
+                                    reqId,
+                                    locked,
+                                    locked ? null : "Librarian is being edited by another player"
+                                )
+                            );
+                    }
+                    break;
+
+                case "unlockLibrarian":
+                    if (
+                        r.TryGetInt("floorIndex", out int ulFi)
+                        && r.TryGetInt("unitIndex", out int ulUi)
+                    )
+                    {
+                        _sessionManager.UnlockLibrarian(ulFi + ":" + ulUi, client.SessionId);
+                        StateBroadcaster.Broadcast();
+                        if (reqId != null)
+                            client.Send(BuildActionResult(reqId, true, null));
+                    }
+                    break;
+
+                case "renameLibrarian":
+                    HandleRenameLibrarian(client, r, reqId);
+                    break;
+
                 case "resync":
                     // Client detected a missed sequence number; reset delta state and
                     // send a fresh full snapshot so the client can resync cleanly.
@@ -391,6 +432,87 @@ namespace PlayLoRWithMe
                         client.Send(BuildActionResult(reqId, ok, error));
                 }
             );
+        }
+
+        /// <summary>
+        /// Handles renameLibrarian actions. Requires the requesting session to
+        /// hold the edit lock for this librarian. Enqueues the rename on the
+        /// Unity main thread via ActionInjector.
+        /// </summary>
+        private void HandleRenameLibrarian(WebSocketClient client, JsonReader r, string reqId)
+        {
+            if (
+                !r.TryGetInt("floorIndex", out int fi)
+                || !r.TryGetInt("unitIndex", out int ui)
+            )
+                return;
+
+            string newName = r.GetString("name");
+            if (string.IsNullOrWhiteSpace(newName))
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Name cannot be empty"));
+                return;
+            }
+
+            string key = fi + ":" + ui;
+            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Not authorized — acquire lock first"));
+                return;
+            }
+
+            // UnitDataModel is a plain C# object and SavePlayData is file I/O —
+            // both are safe to invoke directly from the server thread.
+            // ActionInjector is not used here because its drain hook is a Harmony
+            // postfix on StageController.OnUpdate, which only fires during battle.
+            var unit = GetLibrarianUnit(fi, ui);
+            if (unit == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
+                return;
+            }
+
+            unit.SetCustomName(newName.Trim());
+            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
+            StateBroadcaster.Broadcast();
+            if (reqId != null)
+                client.Send(BuildActionResult(reqId, true, null));
+        }
+
+        /// <summary>
+        /// Resolves a floor/unit index pair to the corresponding UnitDataModel,
+        /// or null if the floor is not open or the index is out of range.
+        /// Internal so ActionInjector can reuse it for the rename action.
+        /// </summary>
+        internal static UnitDataModel GetLibrarianUnit(int floorIndex, int unitIndex)
+        {
+            var sephirahs = new[]
+            {
+                SephirahType.Malkuth, SephirahType.Yesod, SephirahType.Hod,
+                SephirahType.Netzach, SephirahType.Tiphereth, SephirahType.Gebura,
+                SephirahType.Chesed, SephirahType.Binah, SephirahType.Hokma,
+                SephirahType.Keter,
+            };
+
+            if (floorIndex < 0 || floorIndex >= sephirahs.Length)
+                return null;
+
+            var lib = LibraryModel.Instance;
+            if (lib == null)
+                return null;
+
+            var floor = lib.GetFloor(sephirahs[floorIndex]);
+            if (floor == null)
+                return null;
+
+            var units = floor.GetUnitDataList();
+            if (units == null || unitIndex < 0 || unitIndex >= units.Count)
+                return null;
+
+            return units[unitIndex];
         }
 
         private string BuildHelloMessage(PlayerSession session)

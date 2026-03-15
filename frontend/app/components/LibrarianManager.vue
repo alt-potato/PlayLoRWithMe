@@ -42,7 +42,14 @@ const props = defineProps<{
   claimUnit: (unitId: number) => Promise<ActionResult>;
   releaseUnit: (unitId: number) => Promise<ActionResult>;
   renamePlayer: (name: string) => Promise<ActionResult>;
-}>();
+  lockLibrarian: (floorIndex: number, unitIndex: number) => Promise<ActionResult>;
+  unlockLibrarian: (floorIndex: number, unitIndex: number) => Promise<ActionResult>;
+  renameLibrarian: (
+    floorIndex: number,
+    unitIndex: number,
+    name: string,
+  ) => Promise<ActionResult>;
+}>(); 
 
 /** Accent color keyed by floorIndex (0 = Malkuth … 9 = Keter). */
 const FLOOR_COLORS: Record<number, string> = {
@@ -103,6 +110,76 @@ function selectFloor(idx: number): void {
 
 /** Key of the currently expanded librarian card, or null. */
 const expandedKey = ref<string | null>(null);
+
+/**
+ * Key of the librarian card currently in edit mode (this session holds the lock).
+ * Format: "floorIndex:unitIndex"
+ */
+const editingKey = ref<string | null>(null);
+
+/** Pending rename value while the inline input is open. */
+const editName = ref("");
+
+/** True while a lock/unlock/rename request is in-flight. */
+const editBusy = ref(false);
+
+/**
+ * Whether this session holds the lock for a given librarian.
+ * We track this client-side so we can show the edit button only
+ * when the librarian is not locked by anyone else.
+ */
+function isLockedByOther(lib: LibrarianEntry): boolean {
+  return !!lib.lockedBy;
+}
+
+function isEditingThis(lib: LibrarianEntry): boolean {
+  return editingKey.value === cardKey(lib);
+}
+
+async function startEdit(lib: LibrarianEntry): Promise<void> {
+  if (editBusy.value) return;
+  editBusy.value = true;
+  const result = await props.lockLibrarian(
+    lib.floorIndex,
+    lib.unitIndex,
+  );
+  editBusy.value = false;
+  if (!result.ok) return;
+  editingKey.value = cardKey(lib);
+  editName.value = lib.name;
+  // Ensure the card is expanded so the edit panel is visible.
+  expandedKey.value = editingKey.value;
+}
+
+async function commitEdit(lib: LibrarianEntry): Promise<void> {
+  if (editBusy.value) return;
+  const key = cardKey(lib);
+  const trimmed = editName.value.trim();
+  editBusy.value = true;
+  try {
+    if (trimmed && trimmed !== lib.name) {
+      const result = await props.renameLibrarian(
+        lib.floorIndex,
+        lib.unitIndex,
+        trimmed,
+      );
+      if (!result.ok) return;
+    }
+    await props.unlockLibrarian(lib.floorIndex, lib.unitIndex);
+  } finally {
+    editBusy.value = false;
+    if (editingKey.value === key) editingKey.value = null;
+  }
+}
+
+async function cancelEdit(lib: LibrarianEntry): Promise<void> {
+  if (editBusy.value) return;
+  const key = cardKey(lib);
+  editBusy.value = true;
+  await props.unlockLibrarian(lib.floorIndex, lib.unitIndex);
+  editBusy.value = false;
+  if (editingKey.value === key) editingKey.value = null;
+}
 
 /** Whether the abnormality pages section is expanded for the active floor. */
 const emotionCardsOpen = ref(false);
@@ -297,7 +374,17 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
           <!-- Card header row -->
           <div class="card-header">
             <div class="card-main">
-              <span class="card-name">{{ lib.name }}</span>
+              <!-- Inline rename input (shown while this session holds the lock) -->
+              <input
+                v-if="isEditingThis(lib)"
+                v-model="editName"
+                class="name-input"
+                maxlength="40"
+                @click.stop
+                @keydown.enter.prevent="commitEdit(lib)"
+                @keydown.escape.prevent="cancelEdit(lib)"
+              />
+              <span v-else class="card-name">{{ lib.name }}</span>
               <span class="card-page">{{ lib.keyPage.name }}</span>
             </div>
             <div class="card-meta">
@@ -318,11 +405,39 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
               >
                 {{ lib.deckPreview.reduce((s, c) => s + c.count, 0) }} cards
               </span>
+              <!-- Edit / Done / Cancel controls -->
+              <template v-if="isEditingThis(lib)">
+                <button
+                  class="edit-btn edit-btn--done"
+                  :disabled="editBusy"
+                  title="Save name"
+                  @click.stop="commitEdit(lib)"
+                >
+                  ✓
+                </button>
+                <button
+                  class="edit-btn edit-btn--cancel"
+                  :disabled="editBusy"
+                  title="Cancel"
+                  @click.stop="cancelEdit(lib)"
+                >
+                  ✕
+                </button>
+              </template>
+              <button
+                v-else-if="!isLockedByOther(lib)"
+                class="edit-btn"
+                :disabled="editBusy"
+                title="Edit librarian"
+                @click.stop="startEdit(lib)"
+              >
+                ✎
+              </button>
               <span
-                v-if="lib.lockedBy"
+                v-else
                 class="meta-chip meta-chip--locked"
-                title="Being edited"
-                >✎</span
+                :title="'Being edited by ' + lib.lockedBy"
+                >✎ {{ lib.lockedBy }}</span
               >
               <span
                 class="chevron"
@@ -731,5 +846,61 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
+}
+
+/* ── Edit controls ─────────────────────────────────────────────────────────── */
+.name-input {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-1);
+  background: var(--bg-card-2);
+  border: 1px solid var(--gold-dim);
+  border-radius: 2px;
+  padding: 0.1rem 0.35rem;
+  outline: none;
+  width: 100%;
+  max-width: 14rem;
+}
+
+.name-input:focus {
+  border-color: var(--gold);
+}
+
+.edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--text-2);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+
+.edit-btn:hover:not(:disabled) {
+  color: var(--gold);
+  border-color: var(--gold-dim);
+}
+
+.edit-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.edit-btn--done:hover:not(:disabled) {
+  color: #81c784;
+  border-color: #2a4a2a;
+}
+
+.edit-btn--cancel:hover:not(:disabled) {
+  color: var(--crimson);
+  border-color: #5a1a1a;
 }
 </style>

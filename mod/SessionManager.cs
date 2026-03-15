@@ -54,6 +54,12 @@ namespace PlayLoRWithMe
 
         private int _playerCounter = 0;
 
+        // Tracks which session holds an exclusive edit lock on each librarian.
+        // Key: "floorIndex:unitIndex", Value: sessionId.
+        // Guarded by _lock; released automatically on disconnect.
+        private readonly Dictionary<string, string> _librarianLocks =
+            new Dictionary<string, string>();
+
         // -------------------------------------------------------------------------
         // Session lifecycle
         // -------------------------------------------------------------------------
@@ -111,6 +117,10 @@ namespace PlayLoRWithMe
         {
             if (!_sessions.TryGetValue(sessionId, out var session))
                 return;
+
+            // Release any librarian edit locks immediately so other players
+            // aren't blocked waiting for the expiry timer.
+            ReleaseAllLibrarianLocks(sessionId);
 
             lock (_lock)
             {
@@ -196,6 +206,89 @@ namespace PlayLoRWithMe
             // broadcast the updated player list to everyone.
             clientToUpdate?.Send(sessionUpdateJson);
             BroadcastAll(playerListJson);
+        }
+
+        // -------------------------------------------------------------------------
+        // Librarian edit locks
+        // -------------------------------------------------------------------------
+
+        /// <summary>
+        /// Tries to acquire an exclusive edit lock on a librarian for this session.
+        /// Returns false if another session already holds the lock.
+        /// </summary>
+        /// <param name="key">"floorIndex:unitIndex" lock key.</param>
+        public bool TryLockLibrarian(string key, string sessionId)
+        {
+            lock (_lock)
+            {
+                if (
+                    _librarianLocks.TryGetValue(key, out var holder)
+                    && holder != sessionId
+                )
+                    return false;
+                _librarianLocks[key] = sessionId;
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Releases a librarian lock held by <paramref name="sessionId"/>.
+        /// No-op if the session doesn't hold the lock.
+        /// </summary>
+        /// <param name="key">"floorIndex:unitIndex" lock key.</param>
+        public void UnlockLibrarian(string key, string sessionId)
+        {
+            lock (_lock)
+            {
+                if (
+                    _librarianLocks.TryGetValue(key, out var holder)
+                    && holder == sessionId
+                )
+                    _librarianLocks.Remove(key);
+            }
+        }
+
+        /// <summary>
+        /// Returns true if <paramref name="sessionId"/> currently holds the
+        /// edit lock for <paramref name="key"/>.
+        /// </summary>
+        public bool IsLibrarianLockHolder(string key, string sessionId)
+        {
+            lock (_lock)
+            {
+                return _librarianLocks.TryGetValue(key, out var holder) && holder == sessionId;
+            }
+        }
+
+        /// <summary>
+        /// Returns the display name of the session holding the lock for
+        /// <paramref name="key"/>, or null if the lock is free.
+        /// </summary>
+        public string GetLibrarianLockerName(string key)
+        {
+            lock (_lock)
+            {
+                if (!_librarianLocks.TryGetValue(key, out var holderId))
+                    return null;
+                return _sessions.TryGetValue(holderId, out var s) ? s.DisplayName : null;
+            }
+        }
+
+        /// <summary>
+        /// Releases all librarian locks held by this session.
+        /// Called when a session disconnects so others aren't permanently blocked.
+        /// </summary>
+        public void ReleaseAllLibrarianLocks(string sessionId)
+        {
+            lock (_lock)
+            {
+                var keys = new System.Collections.Generic.List<string>();
+                foreach (var kv in _librarianLocks)
+                    if (kv.Value == sessionId)
+                        keys.Add(kv.Key);
+                foreach (var k in keys)
+                    _librarianLocks.Remove(k);
+            }
         }
 
         // -------------------------------------------------------------------------

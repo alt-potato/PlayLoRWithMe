@@ -218,6 +218,7 @@ export interface FloorEntry {
 }
 
 export interface LibrarianEntry {
+  floorIndex: number;
   unitIndex: number;
   name: string;
   keyPage: KeyPage;

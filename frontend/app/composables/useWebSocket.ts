@@ -172,7 +172,35 @@ export function useWebSocket() {
     return sendAction({ type: "rename", name: name.trim() });
   }
 
+  function lockLibrarian(floorIndex: number, unitIndex: number): Promise<ActionResult> {
+    return sendAction({ type: "lockLibrarian", floorIndex, unitIndex });
+  }
+
+  function unlockLibrarian(floorIndex: number, unitIndex: number): Promise<ActionResult> {
+    return sendAction({ type: "unlockLibrarian", floorIndex, unitIndex });
+  }
+
+  function renameLibrarian(
+    floorIndex: number,
+    unitIndex: number,
+    name: string,
+  ): Promise<ActionResult> {
+    return sendAction({ type: "renameLibrarian", floorIndex, unitIndex, name: name.trim() });
+  }
+
   onMounted(connect);
 
-  return { gameState, session, status, players, sendAction, claimUnit, releaseUnit, renamePlayer };
+  return {
+    gameState,
+    session,
+    status,
+    players,
+    sendAction,
+    claimUnit,
+    releaseUnit,
+    renamePlayer,
+    lockLibrarian,
+    unlockLibrarian,
+    renameLibrarian,
+  };
 }

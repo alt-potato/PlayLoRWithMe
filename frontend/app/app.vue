@@ -27,6 +27,9 @@ const {
   claimUnit,
   releaseUnit,
   renamePlayer,
+  lockLibrarian,
+  unlockLibrarian,
+  renameLibrarian,
 } = useWebSocket();
 
 const rawJson = computed(() =>
@@ -79,6 +82,9 @@ const rawJson = computed(() =>
         :claim-unit="claimUnit"
         :release-unit="releaseUnit"
         :rename-player="renamePlayer"
+        :lock-librarian="lockLibrarian"
+        :unlock-librarian="unlockLibrarian"
+        :rename-librarian="renameLibrarian"
       />
 
       <div v-else-if="gameState" class="scene-idle">

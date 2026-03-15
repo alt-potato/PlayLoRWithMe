@@ -392,7 +392,18 @@ namespace PlayLoRWithMe
                                         int unitIdx = ui;
                                         libArr.AddObject(o =>
                                         {
-                                            o.Add("unitIndex", unitIdx).Add("name", unit.name);
+                                            o.Add("floorIndex", floorIdx)
+                                                .Add("unitIndex", unitIdx)
+                                                .Add("name", unit.name);
+
+                                            // Emit the display name of whoever holds the edit lock,
+                                            // so the UI can show a "being edited by X" badge.
+                                            var lockerName =
+                                                Server.Instance?.SessionManager?.GetLibrarianLockerName(
+                                                    floorIdx + ":" + unitIdx
+                                                );
+                                            if (!string.IsNullOrEmpty(lockerName))
+                                                o.Add("lockedBy", lockerName);
 
                                             // Key page — reads base values directly from BookModel (no battle
                                             // buffs applied outside of combat).
