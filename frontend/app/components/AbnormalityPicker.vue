@@ -63,10 +63,6 @@ function onBack() {
   pendingCard.value = null;
 }
 
-function stateColor(state: string) {
-  return state === "Positive" ? "#4caf50" : "#c62828";
-}
-
 const totalCoins = computed(
   () => (props.teamPositiveCoins ?? 0) + (props.teamNegativeCoins ?? 0),
 );
@@ -123,35 +119,17 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
       <Transition name="ab-slide" mode="out-in">
         <!-- Choice list -->
         <div v-if="!pendingCard" key="choices" class="ab-choices">
-          <button
+          <AbnormalityPageCard
             v-for="card in choices"
             :key="card.id"
-            class="ab-card"
-            :style="{ borderColor: stateColor(card.state) }"
+            :name="card.name"
+            :state="card.state"
+            :emotion-level="card.emotionLevel"
+            :target-type="card.targetType"
+            :desc="card.desc"
+            :flavor-text="card.flavorText"
             @click="onCardClick(card)"
-          >
-            <div class="ab-card-header">
-              <span
-                class="ab-card-badge"
-                :style="{
-                  background: stateColor(card.state) + '33',
-                  color: stateColor(card.state),
-                }"
-              >
-                {{ toRoman(card.emotionLevel) }}
-              </span>
-              <span
-                v-if="card.targetType === 'SelectOne'"
-                class="ab-card-target-hint"
-                >1 ally</span
-              >
-            </div>
-            <span class="ab-card-name">{{ card.name }}</span>
-            <p v-if="card.desc" class="ab-card-desc">{{ card.desc }}</p>
-            <p v-if="card.flavorText" class="ab-card-flavor">
-              {{ card.flavorText }}
-            </p>
-          </button>
+          />
         </div>
 
         <!-- Ally picker (SelectOne) -->
@@ -162,29 +140,16 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
           </div>
           <div class="ab-ally-body">
             <!-- Left: card preview -->
-            <div
-              class="ab-card ab-card--preview"
-              :style="{ borderColor: stateColor(pendingCard.state) }"
-            >
-              <div class="ab-card-header">
-                <span
-                  class="ab-card-badge"
-                  :style="{
-                    background: stateColor(pendingCard.state) + '33',
-                    color: stateColor(pendingCard.state),
-                  }"
-                >
-                  {{ toRoman(pendingCard.emotionLevel) }}
-                </span>
-              </div>
-              <span class="ab-card-name">{{ pendingCard.name }}</span>
-              <p v-if="pendingCard.desc" class="ab-card-desc">
-                {{ pendingCard.desc }}
-              </p>
-              <p v-if="pendingCard.flavorText" class="ab-card-flavor">
-                {{ pendingCard.flavorText }}
-              </p>
-            </div>
+            <AbnormalityPageCard
+              class="ab-preview"
+              :name="pendingCard.name"
+              :state="pendingCard.state"
+              :emotion-level="pendingCard.emotionLevel"
+              :target-type="pendingCard.targetType"
+              :desc="pendingCard.desc"
+              :flavor-text="pendingCard.flavorText"
+              readonly
+            />
 
             <!-- Right: ally list -->
             <div class="ab-ally-list">
@@ -339,87 +304,7 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
   }
 }
 
-/* Match HandCard/CardDetail visual language: gradient bg, colored 1px border */
-.ab-card {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.55rem 0.6rem 0.6rem;
-  background: linear-gradient(
-    160deg,
-    var(--bg-card-2) 0%,
-    var(--bg-card-3) 100%
-  );
-  border: 1px solid; /* color set inline via stateColor */
-  cursor: pointer;
-  text-align: left;
-  transition:
-    box-shadow 0.15s,
-    transform 0.1s;
-}
-
-.ab-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px color-mix(in srgb, currentColor 20%, transparent);
-}
-
-.ab-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.3rem;
-}
-
-/* Emotion level badge — styled like the cost badge in HandCard */
-.ab-card-badge {
-  min-width: 1.4rem;
-  height: 1.4rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-size: 0.78rem;
-  font-weight: 700;
-  flex-shrink: 0;
-  padding: 0 0.25rem;
-}
-
-.ab-card-target-hint {
-  font-family: var(--font-body);
-  font-size: 0.55rem;
-  color: var(--text-3);
-  font-style: italic;
-  white-space: nowrap;
-}
-
-.ab-card-name {
-  font-family: var(--font-display);
-  font-size: 0.75rem;
-  color: var(--text-1);
-  letter-spacing: 0.03em;
-  line-height: 1.3;
-}
-
-.ab-card-desc {
-  font-family: var(--font-body);
-  font-size: 0.65rem;
-  color: var(--text-2);
-  margin: 0;
-  line-height: 1.45;
-}
-
-.ab-card-flavor {
-  font-family: var(--font-body);
-  font-size: 0.6rem;
-  color: var(--text-3);
-  font-style: italic;
-  margin: 0;
-  line-height: 1.4;
-  border-top: 1px solid var(--border-mid);
-  padding-top: 0.35rem;
-  margin-top: 0.15rem;
-}
+/* Card visuals are owned by AbnormalityPageCard; no .ab-card* rules needed here. */
 
 /* ── Ally picker ─────────────────────────────────────────────────────────── */
 .ab-ally-picker {
@@ -469,21 +354,14 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
   overflow: hidden;
 }
 
-/* Card preview column — reuses .ab-card styles, fixed width */
-.ab-card--preview {
+/* Layout overrides for the AbnormalityPageCard used as a preview in the ally-picker step. */
+.ab-preview {
   flex: 0 0 auto;
   width: 44%;
   max-width: 180px;
-  border-right: none; /* right edge is the divider */
   border-right: 1px solid var(--border-mid);
   overflow-y: auto;
-  cursor: default;
-  pointer-events: none; /* not interactive */
-}
-
-.ab-card--preview:hover {
-  transform: none;
-  box-shadow: none;
+  pointer-events: none;
 }
 
 .ab-ally-list {
