@@ -236,12 +236,12 @@ namespace PlayLoRWithMe
                                 )
                                 .Add("realizationLevel", floor.Level);
 
-                            // EGO pages are full battle cards (DiceCardXmlInfo) tied to the
-                            // Sephirah, distinct from the abnormality/emotion cards below.
-                            // GetEgoCardList handles the Keter end-game edge case internally.
-                            var egoCards =
-                                egoCardList?.GetEgoCardList(sephirah)
-                                ?? new System.Collections.Generic.List<LOR_DiceSystem.DiceCardXmlInfo>();
+                            // EGO pages are only available at max realization (level 6).
+                            // This matches UIEgoCardPanel.SetData which empties all slots
+                            // when floor.Level < 6.
+                            var egoCards = new System.Collections.Generic.List<LOR_DiceSystem.DiceCardXmlInfo>();
+                            if (floor.Level >= 6 && egoCardList != null)
+                                egoCards = egoCardList.GetEgoCardList(sephirah);
                             floorObj.AddArray(
                                 "egoCards",
                                 egoArr =>
