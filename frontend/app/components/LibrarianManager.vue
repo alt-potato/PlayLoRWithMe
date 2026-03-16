@@ -30,6 +30,8 @@ import type {
   PlayerInfo,
   SessionState,
   ActionResult,
+  AvailableKeyPage,
+  AvailableCard,
   Card,
   DeckCardPreview,
 } from "~/types/game";
@@ -48,6 +50,23 @@ const props = defineProps<{
     floorIndex: number,
     unitIndex: number,
     name: string,
+  ) => Promise<ActionResult>;
+  equipKeyPage: (
+    floorIndex: number,
+    unitIndex: number,
+    bookInstanceId: number,
+  ) => Promise<ActionResult>;
+  addCardToDeck: (
+    floorIndex: number,
+    unitIndex: number,
+    cardId: number,
+    packageId: string,
+  ) => Promise<ActionResult>;
+  removeCardFromDeck: (
+    floorIndex: number,
+    unitIndex: number,
+    cardId: number,
+    packageId: string,
   ) => Promise<ActionResult>;
 }>(); 
 
@@ -105,6 +124,8 @@ function selectFloor(idx: number): void {
     expandedKey.value = null;
     emotionCardsOpen.value = false;
     egoCardsOpen.value = false;
+    editTab.value = "keypage";
+    rarityFilter.value = "All";
   }
 }
 
@@ -181,11 +202,95 @@ async function cancelEdit(lib: LibrarianEntry): Promise<void> {
   if (editingKey.value === key) editingKey.value = null;
 }
 
+/** Which edit sub-panel is active when a card is in edit mode. */
+const editTab = ref<"keypage" | "deck">("keypage");
+
+/** Rarity filter for the "Add cards" list in the deck editor. */
+const rarityFilter = ref("All");
+
+/**
+ * Available key pages grouped by story line (bookIcon), sorted by chapter then
+ * bookIcon — matching the in-game equip screen's UIStoryLine organisation.
+ */
+/**
+ * Available key pages grouped by story line (bookIcon).
+ * Insertion order matches the game's sort (chapter desc → workshopId asc → storyLine desc),
+ * which is applied server-side before serialization.
+ */
+const groupedKeyPages = computed(() => {
+  const pages = props.state.availableKeyPages ?? [];
+  const groups = new Map<string, { chapter: number; bookIcon: string; pages: AvailableKeyPage[] }>();
+  for (const kp of pages) {
+    if (!groups.has(kp.bookIcon)) {
+      groups.set(kp.bookIcon, { chapter: kp.chapter, bookIcon: kp.bookIcon, pages: [] });
+    }
+    groups.get(kp.bookIcon)!.pages.push(kp);
+  }
+  return [...groups.values()];
+});
+
+/** Distinct rarity values present in the available card inventory, plus "All". */
+const rarityFilters = computed(() => {
+  const rarities = new Set<string>();
+  for (const c of props.state.availableCards ?? []) {
+    if (c.rarity) rarities.add(c.rarity);
+  }
+  return ["All", ...Array.from(rarities).sort()];
+});
+
+/** Available cards filtered by the selected rarity. */
+const filteredAvailableCards = computed(() => {
+  const cards = props.state.availableCards ?? [];
+  if (rarityFilter.value === "All") return cards;
+  return cards.filter((c) => c.rarity === rarityFilter.value);
+});
+
+async function doEquipKeyPage(lib: LibrarianEntry, kp: AvailableKeyPage): Promise<void> {
+  if (editBusy.value) return;
+  editBusy.value = true;
+  await props.equipKeyPage(lib.floorIndex, lib.unitIndex, kp.instanceId);
+  editBusy.value = false;
+}
+
+async function doAddCard(lib: LibrarianEntry, card: AvailableCard): Promise<void> {
+  if (editBusy.value) return;
+  editBusy.value = true;
+  await props.addCardToDeck(
+    lib.floorIndex,
+    lib.unitIndex,
+    card.cardId.id,
+    card.cardId.packageId,
+  );
+  editBusy.value = false;
+}
+
+async function doRemoveCard(lib: LibrarianEntry, card: DeckCardPreview): Promise<void> {
+  if (editBusy.value || !card.cardId) return;
+  editBusy.value = true;
+  await props.removeCardFromDeck(
+    lib.floorIndex,
+    lib.unitIndex,
+    card.cardId.id,
+    card.cardId.packageId,
+  );
+  editBusy.value = false;
+}
+
 /** Whether the abnormality pages section is expanded for the active floor. */
 const emotionCardsOpen = ref(false);
 
 /** Whether the EGO pages section is expanded for the active floor. */
 const egoCardsOpen = ref(false);
+
+/** Returns a color for each card rarity for use in inline styles. */
+function rarityColor(rarity?: string): string {
+  switch (rarity) {
+    case "Uncommon": return "var(--rarity-uncommon, #81c784)";
+    case "Rare": return "var(--rarity-rare, #4fc3f7)";
+    case "Unique": return "var(--rarity-unique, #ce93d8)";
+    default: return "var(--text-3)";
+  }
+}
 
 function cardKey(lib: LibrarianEntry): string {
   return `${activeFloor.value}:${lib.unitIndex}`;
@@ -480,6 +585,117 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
                   readonly
                   @detail="detailCard = previewToCard(card, i)"
                 />
+              </div>
+            </template>
+
+            <!-- Edit panels: key page equip and deck management (edit mode only) -->
+            <template v-if="isEditingThis(lib)">
+              <div class="edit-section-tabs">
+                <button
+                  class="edit-section-tab"
+                  :class="{ active: editTab === 'keypage' }"
+                  @click.stop="editTab = 'keypage'"
+                >
+                  Key Page
+                </button>
+                <button
+                  class="edit-section-tab"
+                  :class="{ active: editTab === 'deck' }"
+                  @click.stop="editTab = 'deck'"
+                >
+                  Deck
+                </button>
+              </div>
+
+              <!-- Key page picker — grouped by story line, matching in-game order -->
+              <div v-if="editTab === 'keypage'" class="edit-panel">
+                <div v-if="!groupedKeyPages.length" class="edit-empty">
+                  No key pages in inventory.
+                </div>
+                <template v-for="group in groupedKeyPages" :key="group.bookIcon">
+                  <div class="kp-group-label">{{ group.bookIcon }}</div>
+                  <div
+                    v-for="kp in group.pages"
+                    :key="kp.instanceId"
+                    class="kp-row"
+                    :class="{ 'kp-row--current': kp.instanceId === lib.keyPage.instanceId }"
+                  >
+                    <span class="kp-name">{{ kp.name }}</span>
+                    <span class="kp-speed">{{ kp.speedMin }}–{{ kp.speedMax }}</span>
+                    <button
+                      class="equip-btn"
+                      :disabled="editBusy || kp.instanceId === lib.keyPage.instanceId"
+                      title="Equip this key page"
+                      @click.stop="doEquipKeyPage(lib, kp)"
+                    >
+                      →
+                    </button>
+                  </div>
+                </template>
+              </div>
+
+              <!-- Deck editor -->
+              <div v-if="editTab === 'deck'" class="edit-panel">
+                <div class="section-label">Current deck</div>
+                <div v-if="!lib.deckPreview.length" class="edit-empty">
+                  No cards in deck.
+                </div>
+                <div v-else class="deck-edit-list">
+                  <div
+                    v-for="(card, i) in lib.deckPreview"
+                    :key="i"
+                    class="deck-edit-row"
+                  >
+                    <span class="deck-edit-name">{{ card.name }}</span>
+                    <span class="deck-edit-count">×{{ card.count }}</span>
+                    <button
+                      class="remove-btn"
+                      :disabled="editBusy || !card.cardId"
+                      title="Remove one copy"
+                      @click.stop="doRemoveCard(lib, card)"
+                    >
+                      −
+                    </button>
+                  </div>
+                </div>
+
+                <div class="section-label" style="margin-top: 0.4rem">Add cards</div>
+                <div class="rarity-filter">
+                  <button
+                    v-for="r in rarityFilters"
+                    :key="r"
+                    class="rarity-tab"
+                    :class="{ active: rarityFilter === r }"
+                    @click.stop="rarityFilter = r"
+                  >
+                    {{ r }}
+                  </button>
+                </div>
+                <div v-if="!filteredAvailableCards.length" class="edit-empty">
+                  No cards available.
+                </div>
+                <div v-else class="deck-add-list">
+                  <div
+                    v-for="card in filteredAvailableCards"
+                    :key="card.cardId.id + '_' + card.cardId.packageId"
+                    class="deck-add-row"
+                  >
+                    <span
+                      class="deck-edit-rarity"
+                      :style="{ color: rarityColor(card.rarity) }"
+                    >{{ card.rarity[0] }}</span>
+                    <span class="deck-edit-name">{{ card.name }}</span>
+                    <span class="deck-edit-count">×{{ card.count }}</span>
+                    <button
+                      class="add-btn"
+                      :disabled="editBusy"
+                      title="Add one copy to deck"
+                      @click.stop="doAddCard(lib, card)"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
               </div>
             </template>
           </div>
@@ -902,5 +1118,225 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
 .edit-btn--cancel:hover:not(:disabled) {
   color: var(--crimson);
   border-color: #5a1a1a;
+}
+
+/* ── Edit sub-panel tabs (Key Page / Deck) ───────────────────────────────── */
+.edit-section-tabs {
+  display: flex;
+  gap: 0.15rem;
+  border-bottom: 1px solid var(--border);
+  margin-top: 0.25rem;
+}
+
+.edit-section-tab {
+  padding: 0.2rem 0.55rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-3);
+  font-family: var(--font-display);
+  font-size: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.edit-section-tab.active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+
+.edit-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.edit-empty {
+  font-size: 0.6rem;
+  color: var(--text-3);
+  padding: 0.25rem 0;
+}
+
+/* Key page group header */
+.kp-group-label {
+  font-family: var(--font-display);
+  font-size: 0.48rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+  padding: 0.15rem 0 0.05rem;
+  margin-top: 0.15rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Key page picker rows */
+.kp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.35rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+.kp-row--current {
+  border-color: var(--gold-dim);
+  background: color-mix(in srgb, var(--gold) 6%, var(--bg-card));
+}
+
+.kp-name {
+  flex: 1;
+  font-size: 0.65rem;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kp-speed {
+  font-size: 0.58rem;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.equip-btn {
+  width: 1.4rem;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--text-2);
+  font-size: 0.75rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.equip-btn:hover:not(:disabled) {
+  color: var(--gold);
+  border-color: var(--gold-dim);
+}
+
+.equip-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Deck editor rows */
+.deck-edit-list,
+.deck-add-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.deck-edit-row,
+.deck-add-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.35rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+.deck-edit-name {
+  flex: 1;
+  font-size: 0.63rem;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deck-edit-rarity {
+  font-family: var(--font-display);
+  font-size: 0.55rem;
+  font-weight: 700;
+  width: 0.7rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.deck-edit-count {
+  font-size: 0.58rem;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.remove-btn,
+.add-btn {
+  width: 1.4rem;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.remove-btn {
+  color: var(--crimson);
+}
+
+.remove-btn:hover:not(:disabled) {
+  border-color: #5a1a1a;
+}
+
+.add-btn {
+  color: #81c784;
+}
+
+.add-btn:hover:not(:disabled) {
+  border-color: #2a4a2a;
+}
+
+.remove-btn:disabled,
+.add-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Rarity filter tabs */
+.rarity-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-bottom: 0.1rem;
+}
+
+.rarity-tab {
+  padding: 0.1rem 0.35rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--text-3);
+  font-size: 0.52rem;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.rarity-tab.active {
+  color: var(--gold);
+  border-color: var(--gold-dim);
+}
+
+.rarity-tab:hover:not(.active) {
+  color: var(--text-1);
 }
 </style>

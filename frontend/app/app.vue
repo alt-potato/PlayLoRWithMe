@@ -30,6 +30,9 @@ const {
   lockLibrarian,
   unlockLibrarian,
   renameLibrarian,
+  equipKeyPage,
+  addCardToDeck,
+  removeCardFromDeck,
 } = useWebSocket();
 
 const rawJson = computed(() =>
@@ -85,6 +88,9 @@ const rawJson = computed(() =>
         :lock-librarian="lockLibrarian"
         :unlock-librarian="unlockLibrarian"
         :rename-librarian="renameLibrarian"
+        :equip-key-page="equipKeyPage"
+        :add-card-to-deck="addCardToDeck"
+        :remove-card-from-deck="removeCardFromDeck"
       />
 
       <div v-else-if="gameState" class="scene-idle">

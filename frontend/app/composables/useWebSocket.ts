@@ -188,6 +188,32 @@ export function useWebSocket() {
     return sendAction({ type: "renameLibrarian", floorIndex, unitIndex, name: name.trim() });
   }
 
+  function equipKeyPage(
+    floorIndex: number,
+    unitIndex: number,
+    bookInstanceId: number,
+  ): Promise<ActionResult> {
+    return sendAction({ type: "equipKeyPage", floorIndex, unitIndex, bookInstanceId });
+  }
+
+  function addCardToDeck(
+    floorIndex: number,
+    unitIndex: number,
+    cardId: number,
+    packageId: string,
+  ): Promise<ActionResult> {
+    return sendAction({ type: "addCardToDeck", floorIndex, unitIndex, cardId, packageId });
+  }
+
+  function removeCardFromDeck(
+    floorIndex: number,
+    unitIndex: number,
+    cardId: number,
+    packageId: string,
+  ): Promise<ActionResult> {
+    return sendAction({ type: "removeCardFromDeck", floorIndex, unitIndex, cardId, packageId });
+  }
+
   onMounted(connect);
 
   return {
@@ -202,5 +228,8 @@ export function useWebSocket() {
     lockLibrarian,
     unlockLibrarian,
     renameLibrarian,
+    equipKeyPage,
+    addCardToDeck,
+    removeCardFromDeck,
   };
 }

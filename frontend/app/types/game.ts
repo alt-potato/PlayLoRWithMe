@@ -164,6 +164,8 @@ export interface Resistances {
 }
 
 export interface KeyPage {
+  /** BookModel.instanceId — present on librarian key pages, absent on battle unit key pages. */
+  instanceId?: number;
   name: string;
   speedDiceCount?: number;
   speedMin?: number;
@@ -175,6 +177,8 @@ export interface KeyPage {
 
 /** Card entry in a BattleSetting deck preview (grouped by card type with a count). */
 export interface DeckCardPreview {
+  /** LorId of the card — present in librarian deck previews, absent in BattleSetting previews. */
+  cardId?: { id: number; packageId: string };
   name: string;
   cost: number;
   range: string;
@@ -322,6 +326,34 @@ export interface ActionResult {
 
 // ── Root state ────────────────────────────────────────────────────────────────
 
+/** A key page from the book inventory available to equip to a librarian. */
+export interface AvailableKeyPage {
+  instanceId: number;
+  name: string;
+  speedMin: number;
+  speedMax: number;
+  bookId: { id: number; packageId: string };
+  /** Story/origin chapter number — mirrors BookXmlInfo.Chapter. */
+  chapter: number;
+  /**
+   * Story line identifier — mirrors BookXmlInfo.BookIcon (= UIStoryLine enum name,
+   * e.g. "Rats", "Chapter1"). Used to group key pages the same way the in-game
+   * equip screen does.
+   */
+  bookIcon: string;
+}
+
+/** A card from the shared inventory available to add to a librarian's deck. */
+export interface AvailableCard {
+  cardId: { id: number; packageId: string };
+  name: string;
+  cost: number;
+  range: string;
+  rarity: string;
+  count: number;
+  abilityDesc?: string;
+}
+
 /** Top-level SSE / GET /state payload. */
 export interface GameState {
   scene: SceneName;
@@ -337,4 +369,8 @@ export interface GameState {
   abnormalitySelection?: AbnormalitySelection;
   /** Present in main scene (non-BattleSetting) — floor roster with nested librarians. */
   floors?: FloorEntry[];
+  /** Key pages in the book inventory available to equip to a librarian. */
+  availableKeyPages?: AvailableKeyPage[];
+  /** Cards in the shared inventory available to add to a librarian's deck. */
+  availableCards?: AvailableCard[];
 }

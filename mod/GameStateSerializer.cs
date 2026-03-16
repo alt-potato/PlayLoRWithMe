@@ -82,7 +82,10 @@ namespace PlayLoRWithMe
             if (uic?.CurrentUIPhase == UI.UIPhase.BattleSetting)
                 WriteBattleSettingData(w);
             else
+            {
                 WriteFloors(w);
+                WriteLibraryInventory(w);
+            }
 
             return w.Build();
         }
@@ -239,7 +242,8 @@ namespace PlayLoRWithMe
                             // EGO pages are only available at max realization (level 6).
                             // This matches UIEgoCardPanel.SetData which empties all slots
                             // when floor.Level < 6.
-                            var egoCards = new System.Collections.Generic.List<LOR_DiceSystem.DiceCardXmlInfo>();
+                            var egoCards =
+                                new System.Collections.Generic.List<LOR_DiceSystem.DiceCardXmlInfo>();
                             if (floor.Level >= 6 && egoCardList != null)
                                 egoCards = egoCardList.GetEgoCardList(sephirah);
                             floorObj.AddArray(
@@ -410,7 +414,8 @@ namespace PlayLoRWithMe
                                             o.AddObject(
                                                 "keyPage",
                                                 k =>
-                                                    k.Add("name", book.Name)
+                                                    k.Add("instanceId", book.instanceId)
+                                                        .Add("name", book.Name)
                                                         .Add("speedMin", book.SpeedMin)
                                                         .Add("speedMax", book.SpeedMax)
                                                         .AddObject(
@@ -509,6 +514,9 @@ namespace PlayLoRWithMe
                                                         var spec = xml.Spec;
                                                         darr.AddObject(c =>
                                                         {
+                                                            // cardId lets the frontend identify the
+                                                            // card for deck-editing actions.
+                                                            AddLorId(c, "cardId", xml.id);
                                                             c.Add("name", xml.Name)
                                                                 .Add("cost", spec.Cost)
                                                                 .Add(
@@ -585,13 +593,101 @@ namespace PlayLoRWithMe
                                                     }
                                                 }
                                             );
-
-                                            // lockedBy will be populated in Batch 2 by SessionManager.
-                                            o.Add("lockedBy", (string)null);
                                         });
                                     }
                                 }
                             );
+                        });
+                    }
+                }
+            );
+        }
+
+        /// <summary>
+        /// Serializes book and card inventories available for equipping to librarians.
+        /// Written alongside floors in the main-scene (non-BattleSetting) payload.
+        /// </summary>
+        private static void WriteLibraryInventory(JsonWriter w)
+        {
+            var abilityDescList = Singleton<BattleCardAbilityDescXmlList>.Instance;
+
+            // Key pages sitting in the inventory pool (not yet assigned to any librarian).
+            var availableBooks =
+                BookInventoryModel.Instance?.GetBookList_equip()
+                ?? new System.Collections.Generic.List<BookModel>();
+
+            // Replicate UISettingEquipPageScrollList.SetData sort + Reverse:
+            //   primary  : chapter ascending
+            //   secondary: workshopId descending (larger packageId first)
+            //   tertiary : UIStoryLine enum value ascending
+            // After Reverse → chapter descending, workshopId ascending, storyLine descending.
+            availableBooks.Sort(
+                (x, y) =>
+                {
+                    if (x.ClassInfo.Chapter != y.ClassInfo.Chapter)
+                        return x.ClassInfo.Chapter.CompareTo(y.ClassInfo.Chapter);
+                    int wsComp = x.ClassInfo.workshopID.CompareTo(y.ClassInfo.workshopID);
+                    if (wsComp != 0)
+                        return wsComp > 0 ? -1 : 1; // descending before Reverse
+                    return GetStoryLineInt(x).CompareTo(GetStoryLineInt(y));
+                }
+            );
+            availableBooks.Reverse();
+
+            w.AddArray(
+                "availableKeyPages",
+                arr =>
+                {
+                    foreach (var book in availableBooks)
+                    {
+                        if (book == null)
+                            continue;
+                        arr.AddObject(o =>
+                        {
+                            // The in-game equip screen (UISettingEquipPageScrollList.SetData)
+                            // groups vanilla books by UIStoryLine (= BookXmlInfo.BookIcon) and
+                            // workshop books by their package/workshop ID instead, because
+                            // workshop BookIcon values are not valid UIStoryLine enum members.
+                            string bookGroupKey = book.IsWorkshop
+                                ? book.ClassInfo.workshopID
+                                : book.ClassInfo.BookIcon;
+                            o.Add("instanceId", book.instanceId)
+                                .Add("name", book.Name)
+                                .Add("speedMin", book.SpeedMin)
+                                .Add("speedMax", book.SpeedMax)
+                                .Add("chapter", book.ClassInfo.Chapter)
+                                .Add("bookIcon", bookGroupKey);
+                            AddLorId(o, "bookId", book.ClassInfo.id);
+                        });
+                    }
+                }
+            );
+
+            // Cards in the shared inventory (not currently slotted in any librarian's deck).
+            var cardList =
+                Singleton<InventoryModel>.Instance?.GetCardList()
+                ?? new System.Collections.Generic.List<DiceCardItemModel>();
+            w.AddArray(
+                "availableCards",
+                arr =>
+                {
+                    foreach (var item in cardList)
+                    {
+                        if (item == null || item.ClassInfo == null || item.num <= 0)
+                            continue;
+                        var xml = item.ClassInfo;
+                        var spec = xml.Spec;
+                        arr.AddObject(o =>
+                        {
+                            AddLorId(o, "cardId", xml.id);
+                            o.Add("name", xml.Name)
+                                .Add("cost", spec.Cost)
+                                .Add("range", spec.Ranged.ToString())
+                                .Add("rarity", xml.Rarity.ToString())
+                                .Add("count", item.num);
+                            var abilityDesc = abilityDescList?.GetAbilityDescString(xml) ?? "";
+                            if (!string.IsNullOrEmpty(abilityDesc))
+                                o.Add("abilityDesc", abilityDesc);
                         });
                     }
                 }
@@ -1398,6 +1494,21 @@ namespace PlayLoRWithMe
                 key,
                 o => o.Add("id", lorId?.id ?? -1).Add("packageId", lorId?.packageId ?? "")
             );
+        }
+
+        /// <summary>
+        /// Returns the integer value of the <see cref="UI.UIStoryLine"/> enum that corresponds
+        /// to <paramref name="book"/>'s BookIcon field, or 0 for workshop books and any
+        /// BookIcon that does not map to a valid enum member.
+        /// Used to replicate the game's key-page group sort order.
+        /// </summary>
+        private static int GetStoryLineInt(BookModel book)
+        {
+            if (book.IsWorkshop)
+                return 0;
+            if (System.Enum.IsDefined(typeof(UI.UIStoryLine), book.ClassInfo.BookIcon))
+                return (int)System.Enum.Parse(typeof(UI.UIStoryLine), book.ClassInfo.BookIcon);
+            return 0;
         }
     }
 }

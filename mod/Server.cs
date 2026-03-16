@@ -390,6 +390,18 @@ namespace PlayLoRWithMe
                     HandleRenameLibrarian(client, r, reqId);
                     break;
 
+                case "equipKeyPage":
+                    HandleEquipKeyPage(client, r, reqId);
+                    break;
+
+                case "addCardToDeck":
+                    HandleAddCardToDeck(client, r, reqId);
+                    break;
+
+                case "removeCardFromDeck":
+                    HandleRemoveCardFromDeck(client, r, reqId);
+                    break;
+
                 case "resync":
                     // Client detected a missed sequence number; reset delta state and
                     // send a fresh full snapshot so the client can resync cleanly.
@@ -441,10 +453,7 @@ namespace PlayLoRWithMe
         /// </summary>
         private void HandleRenameLibrarian(WebSocketClient client, JsonReader r, string reqId)
         {
-            if (
-                !r.TryGetInt("floorIndex", out int fi)
-                || !r.TryGetInt("unitIndex", out int ui)
-            )
+            if (!r.TryGetInt("floorIndex", out int fi) || !r.TryGetInt("unitIndex", out int ui))
                 return;
 
             string newName = r.GetString("name");
@@ -459,7 +468,9 @@ namespace PlayLoRWithMe
             if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
             {
                 if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Not authorized — acquire lock first"));
+                    client.Send(
+                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
+                    );
                 return;
             }
 
@@ -483,6 +494,197 @@ namespace PlayLoRWithMe
         }
 
         /// <summary>
+        /// Equips a key page from the book inventory to a librarian.
+        /// Requires the caller to hold the edit lock for the librarian.
+        /// </summary>
+        /// <summary>
+        /// Equips a key page from the book inventory to a librarian.
+        /// Requires the caller to hold the edit lock for the librarian.
+        /// </summary>
+        private void HandleEquipKeyPage(WebSocketClient client, JsonReader r, string reqId)
+        {
+            if (!r.TryGetInt("floorIndex", out int fi) || !r.TryGetInt("unitIndex", out int ui))
+                return;
+
+            if (!r.TryGetInt("bookInstanceId", out int bookInstanceId))
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Missing bookInstanceId"));
+                return;
+            }
+
+            string key = fi + ":" + ui;
+            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
+            {
+                if (reqId != null)
+                    client.Send(
+                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
+                    );
+                return;
+            }
+
+            var unit = GetLibrarianUnit(fi, ui);
+            if (unit == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
+                return;
+            }
+
+            var book = BookInventoryModel
+                .Instance?.GetBookList_equip()
+                ?.Find(b => b?.instanceId == bookInstanceId);
+            if (book == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Key page not found in inventory"));
+                return;
+            }
+
+            // EquipBook's return value is always false (the method never returns true),
+            // so we cannot use it to detect success. Pre-check the only hard-failure
+            // case (book already owned by another unit) and then verify the equip
+            // by inspecting unit.bookItem afterward.
+            if (book.owner != null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Key page is already in use"));
+                return;
+            }
+
+            unit.EquipBook(book);
+
+            bool equipped = unit.bookItem?.instanceId == bookInstanceId;
+            if (!equipped)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Equip was blocked by game state"));
+                return;
+            }
+
+            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
+            StateBroadcaster.Broadcast();
+            if (reqId != null)
+                client.Send(BuildActionResult(reqId, true, null));
+        }
+
+        /// <summary>
+        /// Moves a card from the shared inventory into a librarian's deck.
+        /// Requires the caller to hold the edit lock for the librarian.
+        /// </summary>
+        private void HandleAddCardToDeck(WebSocketClient client, JsonReader r, string reqId)
+        {
+            if (
+                !r.TryGetInt("floorIndex", out int fi)
+                || !r.TryGetInt("unitIndex", out int ui)
+                || !r.TryGetInt("cardId", out int cardId)
+            )
+                return;
+
+            // packageId is an empty string for vanilla cards and a workshop ID for mods.
+            string packageId = r.GetString("packageId") ?? "";
+
+            string key = fi + ":" + ui;
+            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
+            {
+                if (reqId != null)
+                    client.Send(
+                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
+                    );
+                return;
+            }
+
+            var unit = GetLibrarianUnit(fi, ui);
+            if (unit == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
+                return;
+            }
+
+            var deck = unit.bookItem?.GetDeckAll_nocopy()?[0];
+            if (deck == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Deck not found"));
+                return;
+            }
+
+            var lorId = string.IsNullOrEmpty(packageId)
+                ? new LorId(cardId)
+                : new LorId(packageId, cardId);
+            var result = deck.AddCardFromInventory(lorId);
+            bool ok = result == CardEquipState.Equippable;
+
+            if (ok)
+            {
+                Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
+                StateBroadcaster.Broadcast();
+            }
+
+            if (reqId != null)
+                client.Send(BuildActionResult(reqId, ok, ok ? null : result.ToString()));
+        }
+
+        /// <summary>
+        /// Returns a card from a librarian's deck back to the shared inventory.
+        /// Requires the caller to hold the edit lock for the librarian.
+        /// </summary>
+        private void HandleRemoveCardFromDeck(WebSocketClient client, JsonReader r, string reqId)
+        {
+            if (
+                !r.TryGetInt("floorIndex", out int fi)
+                || !r.TryGetInt("unitIndex", out int ui)
+                || !r.TryGetInt("cardId", out int cardId)
+            )
+                return;
+
+            string packageId = r.GetString("packageId") ?? "";
+
+            string key = fi + ":" + ui;
+            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
+            {
+                if (reqId != null)
+                    client.Send(
+                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
+                    );
+                return;
+            }
+
+            var unit = GetLibrarianUnit(fi, ui);
+            if (unit == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
+                return;
+            }
+
+            var deck = unit.bookItem?.GetDeckAll_nocopy()?[0];
+            if (deck == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Deck not found"));
+                return;
+            }
+
+            var lorId = string.IsNullOrEmpty(packageId)
+                ? new LorId(cardId)
+                : new LorId(packageId, cardId);
+            bool removed = deck.MoveCardToInventory(lorId);
+
+            if (removed)
+            {
+                Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
+                StateBroadcaster.Broadcast();
+            }
+
+            if (reqId != null)
+                client.Send(
+                    BuildActionResult(reqId, removed, removed ? null : "Card not found in deck")
+                );
+        }
+
+        /// <summary>
         /// Resolves a floor/unit index pair to the corresponding UnitDataModel,
         /// or null if the floor is not open or the index is out of range.
         /// Internal so ActionInjector can reuse it for the rename action.
@@ -491,9 +693,15 @@ namespace PlayLoRWithMe
         {
             var sephirahs = new[]
             {
-                SephirahType.Malkuth, SephirahType.Yesod, SephirahType.Hod,
-                SephirahType.Netzach, SephirahType.Tiphereth, SephirahType.Gebura,
-                SephirahType.Chesed, SephirahType.Binah, SephirahType.Hokma,
+                SephirahType.Malkuth,
+                SephirahType.Yesod,
+                SephirahType.Hod,
+                SephirahType.Netzach,
+                SephirahType.Tiphereth,
+                SephirahType.Gebura,
+                SephirahType.Chesed,
+                SephirahType.Binah,
+                SephirahType.Hokma,
                 SephirahType.Keter,
             };
 
