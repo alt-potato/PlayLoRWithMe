@@ -143,6 +143,12 @@ const emit = defineEmits<{ confirm: [] }>();
   font-size: 0.72rem;
   color: var(--text-2);
   font-family: var(--font-body);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
 }
 
 .chip .k {
