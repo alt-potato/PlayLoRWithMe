@@ -562,6 +562,77 @@ namespace PlayLoRWithMe
                 return;
             }
 
+            // SetCharacter/AssetBundle.Unload are native Unity APIs that crash off the main
+            // thread. Schedule the appearance reload and panel refresh for the next
+            // UIController.Update tick.
+            //
+            // Refresh strategy:
+            //   Floor overview (UIPhase.Sephirah): unit appearance lives at slot 5+unitIndex in
+            //   UICharacterRenderer. We force-reload that slot so the new key page art is picked
+            //   up, then call SetLibrarianCharacterListPanel_Default to re-render thumbnails —
+            //   same path the game uses on floor-tab switch. Only done when the displayed floor
+            //   matches the unit's floor.
+            //
+            //   Librarian detail view (UIPhase.Librarian): unit appearance lives at slot 10.
+            //   Force-reload that slot and call UpdatePanel to refresh the portrait and book info.
+            //
+            //   Without the force-reload, SetCharacterRenderer's inner SetCharacter call is a
+            //   no-op (same-unit cache hit: unitModel == unit), so the old appearance persists.
+            var unitRef = unit;
+            var unitSephirah = unit.OwnerSephirah;
+            // Slot assignment: SetCharacterRenderer(fromLeft:false) starts at index 5.
+            int characterSlot = 5 + ui;
+            StateBroadcaster.RunOnMainThread(() =>
+            {
+                var uic = UI.UIController.Instance;
+                if (uic == null)
+                    return;
+
+                var renderer = SingletonBehavior<UI.UICharacterRenderer>.Instance;
+
+                // Refresh the floor character list if the host is currently viewing
+                // the same floor as the changed unit.
+                if (uic.CurrentSephirah == unitSephirah)
+                {
+                    renderer?.SetCharacter(unitRef, characterSlot, forcelyReload: true);
+                    var listPanel =
+                        uic.GetUIPanel(UI.UIPanelType.CharacterList_Right)
+                        as UI.UILibrarianCharacterListPanel;
+                    listPanel?.SetLibrarianCharacterListPanel_Default(unitSephirah);
+                }
+
+                // Refresh the panel showing the current librarian's key page.
+                // The relevant panel differs by phase — UILibrarianInfoPanel._selectedUnit
+                // is only set via OnUpdatePhase and is null in Librarian_CardList, so we
+                // compare UIController.CurrentUnit instead.
+                if (uic.CurrentUnit == unitRef)
+                {
+                    if (uic.CurrentUIPhase == UI.UIPhase.Librarian)
+                    {
+                        // UIPhase.Librarian shows UILibrarianInfoPanel (portrait at slot 10
+                        // + book/stats info). Force-reload slot 10 so the new appearance
+                        // is picked up, then UpdatePanel to refresh book name/icon/stats.
+                        var infoPanel =
+                            uic.GetUIPanel(UI.UIPanelType.LibrarianInfo) as UI.UILibrarianInfoPanel;
+                        if (infoPanel != null)
+                        {
+                            renderer?.SetCharacter(unitRef, 10, forcelyReload: true);
+                            infoPanel.UpdatePanel();
+                        }
+                    }
+                    else if (uic.CurrentUIPhase == UI.UIPhase.Librarian_CardList)
+                    {
+                        // UIPhase.Librarian_CardList shows UICardPanel. Its LibrarianInfoPanel
+                        // (UILibrarianInfoInCardPhase) displays the key page name/icon and
+                        // reads data.textureIndex for the portrait. The floor-list refresh
+                        // above already reloaded slot 5+ui and updated textureIndex, so
+                        // SetData here picks up both the new portrait and the new book info.
+                        var cardPanel = uic.GetUIPanel(UI.UIPanelType.Page) as UI.UICardPanel;
+                        cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
+                    }
+                }
+            });
+
             Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
             StateBroadcaster.Broadcast();
             if (reqId != null)

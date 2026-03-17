@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using HarmonyLib;
 using UnityEngine;
@@ -166,6 +168,42 @@ namespace PlayLoRWithMe
                 AbnormalitySelectionState.Choices = null;
                 AbnormalitySelectionState.Floor = null;
                 Broadcast();
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Main-thread dispatcher — for Unity APIs that must run on the main
+        // thread but are triggered from background threads (e.g. WebSocket).
+        // ------------------------------------------------------------------
+
+        private static readonly ConcurrentQueue<Action> _mainThreadQueue =
+            new ConcurrentQueue<Action>();
+
+        /// <summary>
+        /// Schedules <paramref name="action"/> to run on the Unity main thread
+        /// on the next <c>UIController.Update</c> tick.
+        /// </summary>
+        public static void RunOnMainThread(Action action) => _mainThreadQueue.Enqueue(action);
+
+        // Drain the queue every frame while the main scene (UIController) is active.
+        [HarmonyPatch(typeof(UI.UIController), "Update")]
+        static class Patch_UIControllerUpdate
+        {
+            static void Postfix()
+            {
+                while (_mainThreadQueue.TryDequeue(out var action))
+                {
+                    try
+                    {
+                        action();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError(
+                            $"[PlayLoRWithMe] MainThread action failed: {ex.Message}\n{ex.StackTrace}"
+                        );
+                    }
+                }
             }
         }
     }
