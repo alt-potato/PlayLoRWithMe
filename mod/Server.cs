@@ -622,13 +622,18 @@ namespace PlayLoRWithMe
                     }
                     else if (uic.CurrentUIPhase == UI.UIPhase.Librarian_CardList)
                     {
-                        // UIPhase.Librarian_CardList shows UICardPanel. Its LibrarianInfoPanel
-                        // (UILibrarianInfoInCardPhase) displays the key page name/icon and
-                        // reads data.textureIndex for the portrait. The floor-list refresh
-                        // above already reloaded slot 5+ui and updated textureIndex, so
-                        // SetData here picks up both the new portrait and the new book info.
+                        // UIPhase.Librarian_CardList shows UICardPanel with two sub-panels:
+                        //   Left:  UILibrarianEquipDeckPanel — combat page deck and book header
+                        //   Right: UILibrarianInfoInCardPhase — key page portrait and book info
+                        //
+                        // The floor-list refresh above already reloaded slot 5+ui and updated
+                        // textureIndex, so both SetData calls pick up the new portrait.
                         var cardPanel = uic.GetUIPanel(UI.UIPanelType.Page) as UI.UICardPanel;
+                        // Refresh right panel (key page name, icon, passives).
                         cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
+                        // Refresh left panel (book header + combat page deck list).
+                        // SetData() reads UIController.CurrentUnit, which is already unitRef.
+                        cardPanel?.EquipInfoDeckPanel?.SetData();
                     }
                 }
             });
