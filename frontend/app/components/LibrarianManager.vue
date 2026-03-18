@@ -44,8 +44,14 @@ const props = defineProps<{
   claimUnit: (unitId: number) => Promise<ActionResult>;
   releaseUnit: (unitId: number) => Promise<ActionResult>;
   renamePlayer: (name: string) => Promise<ActionResult>;
-  lockLibrarian: (floorIndex: number, unitIndex: number) => Promise<ActionResult>;
-  unlockLibrarian: (floorIndex: number, unitIndex: number) => Promise<ActionResult>;
+  lockLibrarian: (
+    floorIndex: number,
+    unitIndex: number,
+  ) => Promise<ActionResult>;
+  unlockLibrarian: (
+    floorIndex: number,
+    unitIndex: number,
+  ) => Promise<ActionResult>;
   renameLibrarian: (
     floorIndex: number,
     unitIndex: number,
@@ -68,7 +74,7 @@ const props = defineProps<{
     cardId: number,
     packageId: string,
   ) => Promise<ActionResult>;
-}>(); 
+}>();
 
 /** Accent color keyed by floorIndex (0 = Malkuth … 9 = Keter). */
 const FLOOR_COLORS: Record<number, string> = {
@@ -160,10 +166,7 @@ function isEditingThis(lib: LibrarianEntry): boolean {
 async function startEdit(lib: LibrarianEntry): Promise<void> {
   if (editBusy.value) return;
   editBusy.value = true;
-  const result = await props.lockLibrarian(
-    lib.floorIndex,
-    lib.unitIndex,
-  );
+  const result = await props.lockLibrarian(lib.floorIndex, lib.unitIndex);
   editBusy.value = false;
   if (!result.ok) return;
   editingKey.value = cardKey(lib);
@@ -219,10 +222,17 @@ const rarityFilter = ref("All");
  */
 const groupedKeyPages = computed(() => {
   const pages = props.state.availableKeyPages ?? [];
-  const groups = new Map<string, { chapter: number; bookIcon: string; pages: AvailableKeyPage[] }>();
+  const groups = new Map<
+    string,
+    { chapter: number; bookIcon: string; pages: AvailableKeyPage[] }
+  >();
   for (const kp of pages) {
     if (!groups.has(kp.bookIcon)) {
-      groups.set(kp.bookIcon, { chapter: kp.chapter, bookIcon: kp.bookIcon, pages: [] });
+      groups.set(kp.bookIcon, {
+        chapter: kp.chapter,
+        bookIcon: kp.bookIcon,
+        pages: [],
+      });
     }
     groups.get(kp.bookIcon)!.pages.push(kp);
   }
@@ -245,14 +255,20 @@ const filteredAvailableCards = computed(() => {
   return cards.filter((c) => c.rarity === rarityFilter.value);
 });
 
-async function doEquipKeyPage(lib: LibrarianEntry, kp: AvailableKeyPage): Promise<void> {
+async function doEquipKeyPage(
+  lib: LibrarianEntry,
+  kp: AvailableKeyPage,
+): Promise<void> {
   if (editBusy.value) return;
   editBusy.value = true;
   await props.equipKeyPage(lib.floorIndex, lib.unitIndex, kp.instanceId);
   editBusy.value = false;
 }
 
-async function doAddCard(lib: LibrarianEntry, card: AvailableCard): Promise<void> {
+async function doAddCard(
+  lib: LibrarianEntry,
+  card: AvailableCard,
+): Promise<void> {
   if (editBusy.value) return;
   editBusy.value = true;
   await props.addCardToDeck(
@@ -264,7 +280,10 @@ async function doAddCard(lib: LibrarianEntry, card: AvailableCard): Promise<void
   editBusy.value = false;
 }
 
-async function doRemoveCard(lib: LibrarianEntry, card: DeckCardPreview): Promise<void> {
+async function doRemoveCard(
+  lib: LibrarianEntry,
+  card: DeckCardPreview,
+): Promise<void> {
   if (editBusy.value || !card.cardId) return;
   editBusy.value = true;
   await props.removeCardFromDeck(
@@ -285,10 +304,14 @@ const egoCardsOpen = ref(false);
 /** Returns a color for each card rarity for use in inline styles. */
 function rarityColor(rarity?: string): string {
   switch (rarity) {
-    case "Uncommon": return "var(--rarity-uncommon, #81c784)";
-    case "Rare": return "var(--rarity-rare, #4fc3f7)";
-    case "Unique": return "var(--rarity-unique, #ce93d8)";
-    default: return "var(--text-3)";
+    case "Uncommon":
+      return "var(--rarity-uncommon, #81c784)";
+    case "Rare":
+      return "var(--rarity-rare, #4fc3f7)";
+    case "Unique":
+      return "var(--rarity-unique, #ce93d8)";
+    default:
+      return "var(--text-3)";
   }
 }
 
@@ -423,7 +446,10 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
           >
             <div class="emotion-group-label">
               {{ toRoman(group.level) }}
-              <span v-if="group.cards[0]?.abnormalityName" class="emotion-group-name">
+              <span
+                v-if="group.cards[0]?.abnormalityName"
+                class="emotion-group-name"
+              >
                 — {{ group.cards[0].abnormalityName }}
               </span>
             </div>
@@ -612,19 +638,29 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
                 <div v-if="!groupedKeyPages.length" class="edit-empty">
                   No key pages in inventory.
                 </div>
-                <template v-for="group in groupedKeyPages" :key="group.bookIcon">
+                <template
+                  v-for="group in groupedKeyPages"
+                  :key="group.bookIcon"
+                >
                   <div class="kp-group-label">{{ group.bookIcon }}</div>
                   <div
                     v-for="kp in group.pages"
                     :key="kp.instanceId"
                     class="kp-row"
-                    :class="{ 'kp-row--current': kp.instanceId === lib.keyPage.instanceId }"
+                    :class="{
+                      'kp-row--current':
+                        kp.instanceId === lib.keyPage.instanceId,
+                    }"
                   >
                     <span class="kp-name">{{ kp.name }}</span>
-                    <span class="kp-speed">{{ kp.speedMin }}–{{ kp.speedMax }}</span>
+                    <span class="kp-speed"
+                      >{{ kp.speedMin }}–{{ kp.speedMax }}</span
+                    >
                     <button
                       class="equip-btn"
-                      :disabled="editBusy || kp.instanceId === lib.keyPage.instanceId"
+                      :disabled="
+                        editBusy || kp.instanceId === lib.keyPage.instanceId
+                      "
                       title="Equip this key page"
                       @click.stop="doEquipKeyPage(lib, kp)"
                     >
@@ -659,7 +695,9 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
                   </div>
                 </div>
 
-                <div class="section-label" style="margin-top: 0.4rem">Add cards</div>
+                <div class="section-label" style="margin-top: 0.4rem">
+                  Add cards
+                </div>
                 <div class="rarity-filter">
                   <button
                     v-for="r in rarityFilters"
@@ -683,7 +721,8 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
                     <span
                       class="deck-edit-rarity"
                       :style="{ color: rarityColor(card.rarity) }"
-                    >{{ card.rarity[0] }}</span>
+                      >{{ card.rarity[0] }}</span
+                    >
                     <span class="deck-edit-name">{{ card.name }}</span>
                     <span class="deck-edit-count">×{{ card.count }}</span>
                     <button
@@ -765,7 +804,7 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   padding: 0.3rem 0.5rem 0.25rem;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-top: 2px solid transparent;
+  margin-top: 1px;
   border-radius: 3px;
   cursor: pointer;
   transition:
@@ -781,7 +820,8 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
 }
 
 .floor-tile.active {
-  border-top-color: var(--floor-color);
+  border-top: 2px solid var(--floor-color);
+  margin-top: 0px;
   background: var(--bg-card-2);
 }
 
@@ -1096,7 +1136,9 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   color: var(--text-2);
   font-size: 0.7rem;
   cursor: pointer;
-  transition: color 0.12s, border-color 0.12s;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
   flex-shrink: 0;
 }
 
@@ -1140,7 +1182,9 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   letter-spacing: 0.1em;
   cursor: pointer;
   margin-bottom: -1px;
-  transition: color 0.12s, border-color 0.12s;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
 }
 
 .edit-section-tab.active {
@@ -1217,7 +1261,9 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   font-size: 0.75rem;
   cursor: pointer;
   flex-shrink: 0;
-  transition: color 0.12s, border-color 0.12s;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
 }
 
 .equip-btn:hover:not(:disabled) {
@@ -1287,7 +1333,9 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   font-size: 0.85rem;
   cursor: pointer;
   flex-shrink: 0;
-  transition: color 0.12s, border-color 0.12s;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
 }
 
 .remove-btn {
@@ -1328,7 +1376,9 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   color: var(--text-3);
   font-size: 0.52rem;
   cursor: pointer;
-  transition: color 0.12s, border-color 0.12s;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
 }
 
 .rarity-tab.active {
