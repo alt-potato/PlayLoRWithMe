@@ -627,13 +627,21 @@ namespace PlayLoRWithMe
                         //   Right: UILibrarianInfoInCardPhase — key page portrait and book info
                         //
                         // The floor-list refresh above already reloaded slot 5+ui and updated
-                        // textureIndex, so both SetData calls pick up the new portrait.
+                        // textureIndex, so all SetData calls pick up the new portrait.
                         var cardPanel = uic.GetUIPanel(UI.UIPanelType.Page) as UI.UICardPanel;
                         // Refresh right panel (key page name, icon, passives).
                         cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
-                        // Refresh left panel (book header + combat page deck list).
+                        // Refresh left panel header (book name, icon, rarity color).
                         // SetData() reads UIController.CurrentUnit, which is already unitRef.
                         cardPanel?.EquipInfoDeckPanel?.SetData();
+                        // Center panel: rebuild from inventory with the new key page applied.
+                        // UIInvenCardListScroll.SetData resets _originCardList and _unitdata,
+                        // then calls ApplyFilterAll() which re-filters by the new book's
+                        // RangeType and GetOnlyCards() list. RefreshCardSlotsByInven() alone
+                        // is insufficient — it only re-renders the stale _currentCardListForFilter.
+                        // This mirrors UICardPanel.OnUpdatePhase() exactly.
+                        cardPanel?.InvenCardList?.SetData(
+                            Singleton<InventoryModel>.Instance?.GetCardList(), unitRef);
                     }
                 }
             });
