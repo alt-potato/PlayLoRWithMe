@@ -12,15 +12,15 @@
   Below the tiles the active floor shows:
     • Floor banner: official name + level badge
     • Abnormality/EGO pages section (collapsed; grouped by unlock level, displayed as HandCard tiles)
-    • Individual librarian cards (expandable for resistances / passives / deck)
+    • Compact librarian tiles — click Edit to open the full EditPanel overlay
 
   Props:
     state       – full game state (scene = 'main', floors array present)
-    session     – current session identity (unused in Batch 1, reserved)
-    players     – connected player list (unused in Batch 1, reserved)
-    sendAction  – WebSocket action dispatcher (unused in Batch 1, reserved)
-    claimUnit   – claim a librarian unit (unused in Batch 1, reserved)
-    releaseUnit – release a librarian unit (unused in Batch 1, reserved)
+    session     – current session identity
+    players     – connected player list
+    sendAction  – WebSocket action dispatcher
+    claimUnit   – claim a librarian unit
+    releaseUnit – release a librarian unit
     renamePlayer – rename the current player
 -->
 <script setup lang="ts">
@@ -127,203 +127,85 @@ const activeFloorData = computed(
 function selectFloor(idx: number): void {
   if (activeFloor.value !== idx) {
     activeFloor.value = idx;
-    expandedKey.value = null;
     emotionCardsOpen.value = false;
     egoCardsOpen.value = false;
-    editTab.value = "keypage";
-    rarityFilter.value = "All";
   }
 }
 
-/** Key of the currently expanded librarian card, or null. */
-const expandedKey = ref<string | null>(null);
+/** Librarian currently open in the EditPanel, or null. */
+const editingLibrarian = ref<LibrarianEntry | null>(null);
 
-/**
- * Key of the librarian card currently in edit mode (this session holds the lock).
- * Format: "floorIndex:unitIndex"
- */
-const editingKey = ref<string | null>(null);
-
-/** Pending rename value while the inline input is open. */
-const editName = ref("");
-
-/** True while a lock/unlock/rename request is in-flight. */
-const editBusy = ref(false);
-
-/**
- * Whether this session holds the lock for a given librarian.
- * We track this client-side so we can show the edit button only
- * when the librarian is not locked by anyone else.
- */
-function isLockedByOther(lib: LibrarianEntry): boolean {
-  return !!lib.lockedBy;
+function openEdit(lib: LibrarianEntry): void {
+  editingLibrarian.value = lib;
 }
 
-function isEditingThis(lib: LibrarianEntry): boolean {
-  return editingKey.value === cardKey(lib);
+function closeEdit(): void {
+  editingLibrarian.value = null;
 }
 
-async function startEdit(lib: LibrarianEntry): Promise<void> {
-  if (editBusy.value) return;
-  editBusy.value = true;
-  const result = await props.lockLibrarian(lib.floorIndex, lib.unitIndex);
-  editBusy.value = false;
-  if (!result.ok) return;
-  editingKey.value = cardKey(lib);
-  editName.value = lib.name;
-  // Ensure the card is expanded so the edit panel is visible.
-  expandedKey.value = editingKey.value;
+// Keep the editingLibrarian in sync with state updates (e.g. after a rename).
+watch(
+  () => props.state.floors,
+  () => {
+    const cur = editingLibrarian.value;
+    if (!cur) return;
+    const floor = props.state.floors?.find((f) => f.floorIndex === cur.floorIndex);
+    const lib = floor?.librarians.find((l) => l.unitIndex === cur.unitIndex);
+    if (lib) editingLibrarian.value = lib;
+  },
+  { deep: true },
+);
+
+// ── EditPanel action callbacks ─────────────────────────────────────────────
+
+async function onLock(): Promise<ActionResult> {
+  const lib = editingLibrarian.value;
+  if (!lib) return { ok: false, error: "No librarian selected" };
+  return props.lockLibrarian(lib.floorIndex, lib.unitIndex);
 }
 
-async function commitEdit(lib: LibrarianEntry): Promise<void> {
-  if (editBusy.value) return;
-  const key = cardKey(lib);
-  const trimmed = editName.value.trim();
-  editBusy.value = true;
-  try {
-    if (trimmed && trimmed !== lib.name) {
-      const result = await props.renameLibrarian(
-        lib.floorIndex,
-        lib.unitIndex,
-        trimmed,
-      );
-      if (!result.ok) return;
-    }
-    await props.unlockLibrarian(lib.floorIndex, lib.unitIndex);
-  } finally {
-    editBusy.value = false;
-    if (editingKey.value === key) editingKey.value = null;
-  }
+async function onUnlock(): Promise<ActionResult> {
+  const lib = editingLibrarian.value;
+  if (!lib) return { ok: false, error: "No librarian selected" };
+  return props.unlockLibrarian(lib.floorIndex, lib.unitIndex);
 }
 
-async function cancelEdit(lib: LibrarianEntry): Promise<void> {
-  if (editBusy.value) return;
-  const key = cardKey(lib);
-  editBusy.value = true;
-  await props.unlockLibrarian(lib.floorIndex, lib.unitIndex);
-  editBusy.value = false;
-  if (editingKey.value === key) editingKey.value = null;
+async function onRename(name: string): Promise<ActionResult> {
+  const lib = editingLibrarian.value;
+  if (!lib) return { ok: false, error: "No librarian selected" };
+  return props.renameLibrarian(lib.floorIndex, lib.unitIndex, name);
 }
 
-/** Which edit sub-panel is active when a card is in edit mode. */
-const editTab = ref<"keypage" | "deck">("keypage");
-
-/** Rarity filter for the "Add cards" list in the deck editor. */
-const rarityFilter = ref("All");
-
-/**
- * Available key pages grouped by story line (bookIcon), sorted by chapter then
- * bookIcon — matching the in-game equip screen's UIStoryLine organisation.
- */
-/**
- * Available key pages grouped by story line (bookIcon).
- * Insertion order matches the game's sort (chapter desc → workshopId asc → storyLine desc),
- * which is applied server-side before serialization.
- */
-const groupedKeyPages = computed(() => {
-  const pages = props.state.availableKeyPages ?? [];
-  const groups = new Map<
-    string,
-    { chapter: number; bookIcon: string; pages: AvailableKeyPage[] }
-  >();
-  for (const kp of pages) {
-    if (!groups.has(kp.bookIcon)) {
-      groups.set(kp.bookIcon, {
-        chapter: kp.chapter,
-        bookIcon: kp.bookIcon,
-        pages: [],
-      });
-    }
-    groups.get(kp.bookIcon)!.pages.push(kp);
-  }
-  return [...groups.values()];
-});
-
-/** Distinct rarity values present in the available card inventory, plus "All". */
-const rarityFilters = computed(() => {
-  const rarities = new Set<string>();
-  for (const c of props.state.availableCards ?? []) {
-    if (c.rarity) rarities.add(c.rarity);
-  }
-  return ["All", ...Array.from(rarities).sort()];
-});
-
-/** Available cards filtered by the selected rarity. */
-const filteredAvailableCards = computed(() => {
-  const cards = props.state.availableCards ?? [];
-  if (rarityFilter.value === "All") return cards;
-  return cards.filter((c) => c.rarity === rarityFilter.value);
-});
-
-async function doEquipKeyPage(
-  lib: LibrarianEntry,
-  kp: AvailableKeyPage,
-): Promise<void> {
-  if (editBusy.value) return;
-  editBusy.value = true;
+async function onEquipPage(kp: AvailableKeyPage): Promise<void> {
+  const lib = editingLibrarian.value;
+  if (!lib) return;
   await props.equipKeyPage(lib.floorIndex, lib.unitIndex, kp.instanceId);
-  editBusy.value = false;
 }
 
-async function doAddCard(
-  lib: LibrarianEntry,
-  card: AvailableCard,
-): Promise<void> {
-  if (editBusy.value) return;
-  editBusy.value = true;
-  await props.addCardToDeck(
-    lib.floorIndex,
-    lib.unitIndex,
-    card.cardId.id,
-    card.cardId.packageId,
-  );
-  editBusy.value = false;
+async function onAddCard(card: AvailableCard): Promise<void> {
+  const lib = editingLibrarian.value;
+  if (!lib) return;
+  await props.addCardToDeck(lib.floorIndex, lib.unitIndex, card.cardId.id, card.cardId.packageId);
 }
 
-async function doRemoveCard(
-  lib: LibrarianEntry,
-  card: DeckCardPreview,
-): Promise<void> {
-  if (editBusy.value || !card.cardId) return;
-  editBusy.value = true;
+async function onRemoveCard(card: DeckCardPreview): Promise<void> {
+  const lib = editingLibrarian.value;
+  if (!lib || !card.cardId) return;
   await props.removeCardFromDeck(
     lib.floorIndex,
     lib.unitIndex,
     card.cardId.id,
     card.cardId.packageId,
   );
-  editBusy.value = false;
 }
+
+// ── Abnormality / EGO sections ─────────────────────────────────────────────
 
 /** Whether the abnormality pages section is expanded for the active floor. */
 const emotionCardsOpen = ref(false);
 
 /** Whether the EGO pages section is expanded for the active floor. */
 const egoCardsOpen = ref(false);
-
-/** Returns a color for each card rarity for use in inline styles. */
-function rarityColor(rarity?: string): string {
-  switch (rarity) {
-    case "Uncommon":
-      return "var(--rarity-uncommon, #81c784)";
-    case "Rare":
-      return "var(--rarity-rare, #4fc3f7)";
-    case "Unique":
-      return "var(--rarity-unique, #ce93d8)";
-    default:
-      return "var(--text-3)";
-  }
-}
-
-function cardKey(lib: LibrarianEntry): string {
-  return `${activeFloor.value}:${lib.unitIndex}`;
-}
-
-function toggleExpand(lib: LibrarianEntry): void {
-  const key = cardKey(lib);
-  expandedKey.value = expandedKey.value === key ? null : key;
-  detailCard.value = null;
-}
 
 /**
  * Groups emotion cards by their unlock level (each level = one abnormality
@@ -494,31 +376,18 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
           </div>
         </div>
 
-        <!-- Librarian cards -->
+        <!-- Compact librarian tiles -->
         <div
           v-for="lib in activeFloorData.librarians"
-          :key="cardKey(lib)"
-          class="lib-card"
-          :class="{ 'lib-card--expanded': expandedKey === cardKey(lib) }"
-          @click="toggleExpand(lib)"
+          :key="`${lib.floorIndex}:${lib.unitIndex}`"
+          class="lib-tile"
         >
-          <!-- Card header row -->
-          <div class="card-header">
-            <div class="card-main">
-              <!-- Inline rename input (shown while this session holds the lock) -->
-              <input
-                v-if="isEditingThis(lib)"
-                v-model="editName"
-                class="name-input"
-                maxlength="40"
-                @click.stop
-                @keydown.enter.prevent="commitEdit(lib)"
-                @keydown.escape.prevent="cancelEdit(lib)"
-              />
-              <span v-else class="card-name">{{ lib.name }}</span>
-              <span class="card-page">{{ lib.keyPage.name }}</span>
+          <div class="tile-main">
+            <div class="tile-info">
+              <span class="tile-name-text">{{ lib.name }}</span>
+              <span class="tile-page-name">{{ lib.keyPage.name }}</span>
             </div>
-            <div class="card-meta">
+            <div class="tile-meta">
               <span class="meta-chip">
                 {{ lib.keyPage.speedMin }}–{{ lib.keyPage.speedMax }}
               </span>
@@ -526,221 +395,46 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
                 v-if="lib.passives.length"
                 class="meta-chip meta-chip--passive"
               >
-                {{ lib.passives.length }} passive{{
-                  lib.passives.length === 1 ? "" : "s"
-                }}
+                {{ lib.passives.length }}P
               </span>
               <span
                 v-if="lib.deckPreview.length"
                 class="meta-chip meta-chip--deck"
               >
-                {{ lib.deckPreview.reduce((s, c) => s + c.count, 0) }} cards
+                {{ lib.deckPreview.reduce((s, c) => s + c.count, 0) }}
               </span>
-              <!-- Edit / Done / Cancel controls -->
-              <template v-if="isEditingThis(lib)">
-                <button
-                  class="edit-btn edit-btn--done"
-                  :disabled="editBusy"
-                  title="Save name"
-                  @click.stop="commitEdit(lib)"
-                >
-                  ✓
-                </button>
-                <button
-                  class="edit-btn edit-btn--cancel"
-                  :disabled="editBusy"
-                  title="Cancel"
-                  @click.stop="cancelEdit(lib)"
-                >
-                  ✕
-                </button>
-              </template>
-              <button
-                v-else-if="!isLockedByOther(lib)"
-                class="edit-btn"
-                :disabled="editBusy"
-                title="Edit librarian"
-                @click.stop="startEdit(lib)"
-              >
-                ✎
-              </button>
+              <!-- Lock badge -->
               <span
-                v-else
+                v-if="lib.lockedBy"
                 class="meta-chip meta-chip--locked"
-                :title="'Being edited by ' + lib.lockedBy"
-                >✎ {{ lib.lockedBy }}</span
+                :title="`Being edited by ${lib.lockedBy}`"
               >
-              <span
-                class="chevron"
-                :class="{ open: expandedKey === cardKey(lib) }"
-                >▸</span
-              >
+                ✎ {{ lib.lockedBy }}
+              </span>
+              <button class="edit-btn" title="Edit librarian" @click="openEdit(lib)">
+                Edit
+              </button>
             </div>
-          </div>
-
-          <!-- Expandable detail -->
-          <div
-            v-if="expandedKey === cardKey(lib)"
-            class="card-detail"
-            @click.stop
-          >
-            <div class="section-label">Resistances</div>
-            <UnitResistanceTable
-              v-if="lib.keyPage.resistances"
-              :resistances="lib.keyPage.resistances"
-            />
-
-            <template v-if="lib.passives.length">
-              <div class="section-label">Passives</div>
-              <UnitPassiveList :passives="lib.passives" />
-            </template>
-
-            <template v-if="lib.deckPreview.length">
-              <div class="section-label">
-                Deck
-                <span class="section-count">
-                  ({{ lib.deckPreview.reduce((s, c) => s + c.count, 0) }})
-                </span>
-              </div>
-              <div class="deck-cards">
-                <HandCard
-                  v-for="(card, i) in lib.deckPreview"
-                  :key="i"
-                  :card="previewToCard(card, i)"
-                  :count="card.count"
-                  readonly
-                  @detail="detailCard = previewToCard(card, i)"
-                />
-              </div>
-            </template>
-
-            <!-- Edit panels: key page equip and deck management (edit mode only) -->
-            <template v-if="isEditingThis(lib)">
-              <div class="edit-section-tabs">
-                <button
-                  class="edit-section-tab"
-                  :class="{ active: editTab === 'keypage' }"
-                  @click.stop="editTab = 'keypage'"
-                >
-                  Key Page
-                </button>
-                <button
-                  class="edit-section-tab"
-                  :class="{ active: editTab === 'deck' }"
-                  @click.stop="editTab = 'deck'"
-                >
-                  Deck
-                </button>
-              </div>
-
-              <!-- Key page picker — grouped by story line, matching in-game order -->
-              <div v-if="editTab === 'keypage'" class="edit-panel">
-                <div v-if="!groupedKeyPages.length" class="edit-empty">
-                  No key pages in inventory.
-                </div>
-                <template
-                  v-for="group in groupedKeyPages"
-                  :key="group.bookIcon"
-                >
-                  <div class="kp-group-label">{{ group.bookIcon }}</div>
-                  <div
-                    v-for="kp in group.pages"
-                    :key="kp.instanceId"
-                    class="kp-row"
-                    :class="{
-                      'kp-row--current':
-                        kp.instanceId === lib.keyPage.instanceId,
-                    }"
-                  >
-                    <span class="kp-name">{{ kp.name }}</span>
-                    <span class="kp-speed"
-                      >{{ kp.speedMin }}–{{ kp.speedMax }}</span
-                    >
-                    <button
-                      class="equip-btn"
-                      :disabled="
-                        editBusy || kp.instanceId === lib.keyPage.instanceId
-                      "
-                      title="Equip this key page"
-                      @click.stop="doEquipKeyPage(lib, kp)"
-                    >
-                      →
-                    </button>
-                  </div>
-                </template>
-              </div>
-
-              <!-- Deck editor -->
-              <div v-if="editTab === 'deck'" class="edit-panel">
-                <div class="section-label">Current deck</div>
-                <div v-if="!lib.deckPreview.length" class="edit-empty">
-                  No cards in deck.
-                </div>
-                <div v-else class="deck-edit-list">
-                  <div
-                    v-for="(card, i) in lib.deckPreview"
-                    :key="i"
-                    class="deck-edit-row"
-                  >
-                    <span class="deck-edit-name">{{ card.name }}</span>
-                    <span class="deck-edit-count">×{{ card.count }}</span>
-                    <button
-                      class="remove-btn"
-                      :disabled="editBusy || !card.cardId"
-                      title="Remove one copy"
-                      @click.stop="doRemoveCard(lib, card)"
-                    >
-                      −
-                    </button>
-                  </div>
-                </div>
-
-                <div class="section-label" style="margin-top: 0.4rem">
-                  Add cards
-                </div>
-                <div class="rarity-filter">
-                  <button
-                    v-for="r in rarityFilters"
-                    :key="r"
-                    class="rarity-tab"
-                    :class="{ active: rarityFilter === r }"
-                    @click.stop="rarityFilter = r"
-                  >
-                    {{ r }}
-                  </button>
-                </div>
-                <div v-if="!filteredAvailableCards.length" class="edit-empty">
-                  No cards available.
-                </div>
-                <div v-else class="deck-add-list">
-                  <div
-                    v-for="card in filteredAvailableCards"
-                    :key="card.cardId.id + '_' + card.cardId.packageId"
-                    class="deck-add-row"
-                  >
-                    <span
-                      class="deck-edit-rarity"
-                      :style="{ color: rarityColor(card.rarity) }"
-                      >{{ card.rarity[0] }}</span
-                    >
-                    <span class="deck-edit-name">{{ card.name }}</span>
-                    <span class="deck-edit-count">×{{ card.count }}</span>
-                    <button
-                      class="add-btn"
-                      :disabled="editBusy"
-                      title="Add one copy to deck"
-                      @click.stop="doAddCard(lib, card)"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </template>
           </div>
         </div>
       </div>
     </template>
+
+    <!-- Full-screen EditPanel overlay -->
+    <LibrarianEditPanel
+      v-if="editingLibrarian"
+      :lib="editingLibrarian"
+      :state="state"
+      :session="session"
+      :floor-color="floorColor(editingLibrarian.floorIndex)"
+      :on-close="closeEdit"
+      :on-lock="onLock"
+      :on-unlock="onUnlock"
+      :on-rename="onRename"
+      :on-equip-page="onEquipPage"
+      :on-add-card="onAddCard"
+      :on-remove-card="onRemoveCard"
+    />
 
     <CardDetail
       v-if="detailCard"
@@ -896,7 +590,7 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   margin-left: -0.25rem;
 }
 
-/* ── Abnormality page cards (mirrors AbnormalityPicker .ab-card style) ─────── */
+/* ── Abnormality page cards ─────────────────────────────────────────────────── */
 .section-toggle {
   display: flex;
   align-items: center;
@@ -965,7 +659,6 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   color: var(--text-2);
 }
 
-/* Card visuals are owned by AbnormalityPageCard; only the flex container is set here. */
 .em-cards {
   display: flex;
   flex-direction: column;
@@ -986,25 +679,20 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   gap: 0.35rem;
 }
 
-/* ── Individual librarian card ─────────────────────────────────────────────── */
-.lib-card {
+/* ── Compact librarian tile ─────────────────────────────────────────────────── */
+.lib-tile {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 3px;
   overflow: hidden;
-  cursor: pointer;
   transition: border-color 0.15s;
 }
 
-.lib-card:hover {
+.lib-tile:hover {
   border-color: var(--border-mid);
 }
 
-.lib-card--expanded {
-  border-color: var(--gold-dim);
-}
-
-.card-header {
+.tile-main {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1012,14 +700,14 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   padding: 0.45rem 0.6rem;
 }
 
-.card-main {
+.tile-info {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
   min-width: 0;
 }
 
-.card-name {
+.tile-name-text {
   font-family: var(--font-display);
   font-size: 0.78rem;
   font-weight: 600;
@@ -1029,7 +717,7 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   text-overflow: ellipsis;
 }
 
-.card-page {
+.tile-page-name {
   font-size: 0.62rem;
   color: var(--text-2);
   white-space: nowrap;
@@ -1037,7 +725,7 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   text-overflow: ellipsis;
 }
 
-.card-meta {
+.tile-meta {
   display: flex;
   align-items: center;
   gap: 0.3rem;
@@ -1060,333 +748,25 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   border-color: #2a3a6a;
 }
 
-.meta-chip--deck {
-  color: var(--text-2);
-}
-
 .meta-chip--locked {
   color: var(--gold);
   border-color: var(--gold-dim);
 }
 
-/* ── Expanded detail panel ─────────────────────────────────────────────────── */
-.card-detail {
-  padding: 0.5rem 0.6rem 0.6rem;
-  border-top: 1px solid var(--border);
-  background: var(--bg-card-2);
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.section-label {
-  font-family: var(--font-display);
-  font-size: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--text-3);
-  margin-top: 0.1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.3em;
-}
-
-.section-count {
-  color: var(--text-3);
-  font-family: var(--font-body);
-  font-size: 0.58rem;
-  letter-spacing: 0;
-}
-
-.deck-cards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-/* ── Edit controls ─────────────────────────────────────────────────────────── */
-.name-input {
-  font-family: var(--font-display);
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-1);
-  background: var(--bg-card-2);
-  border: 1px solid var(--gold-dim);
-  border-radius: 2px;
-  padding: 0.1rem 0.35rem;
-  outline: none;
-  width: 100%;
-  max-width: 14rem;
-}
-
-.name-input:focus {
-  border-color: var(--gold);
-}
-
 .edit-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.4rem;
-  height: 1.4rem;
-  padding: 0;
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  color: var(--text-2);
-  font-size: 0.7rem;
-  cursor: pointer;
-  transition:
-    color 0.12s,
-    border-color 0.12s;
-  flex-shrink: 0;
-}
-
-.edit-btn:hover:not(:disabled) {
-  color: var(--gold);
-  border-color: var(--gold-dim);
-}
-
-.edit-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.edit-btn--done:hover:not(:disabled) {
-  color: #81c784;
-  border-color: #2a4a2a;
-}
-
-.edit-btn--cancel:hover:not(:disabled) {
-  color: var(--crimson);
-  border-color: #5a1a1a;
-}
-
-/* ── Edit sub-panel tabs (Key Page / Deck) ───────────────────────────────── */
-.edit-section-tabs {
-  display: flex;
-  gap: 0.15rem;
-  border-bottom: 1px solid var(--border);
-  margin-top: 0.25rem;
-}
-
-.edit-section-tab {
   padding: 0.2rem 0.55rem;
   background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-3);
-  font-family: var(--font-display);
-  font-size: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  cursor: pointer;
-  margin-bottom: -1px;
-  transition:
-    color 0.12s,
-    border-color 0.12s;
-}
-
-.edit-section-tab.active {
-  color: var(--gold);
-  border-bottom-color: var(--gold);
-}
-
-.edit-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.edit-empty {
-  font-size: 0.6rem;
-  color: var(--text-3);
-  padding: 0.25rem 0;
-}
-
-/* Key page group header */
-.kp-group-label {
-  font-family: var(--font-display);
-  font-size: 0.48rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--text-3);
-  padding: 0.15rem 0 0.05rem;
-  margin-top: 0.15rem;
-  border-bottom: 1px solid var(--border);
-}
-
-/* Key page picker rows */
-.kp-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.2rem 0.35rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-}
-
-.kp-row--current {
-  border-color: var(--gold-dim);
-  background: color-mix(in srgb, var(--gold) 6%, var(--bg-card));
-}
-
-.kp-name {
-  flex: 1;
-  font-size: 0.65rem;
-  color: var(--text-1);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.kp-speed {
-  font-size: 0.58rem;
-  color: var(--text-2);
-  white-space: nowrap;
-}
-
-.equip-btn {
-  width: 1.4rem;
-  height: 1.4rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  background: none;
   border: 1px solid var(--border);
   border-radius: 2px;
   color: var(--text-2);
-  font-size: 0.75rem;
+  font-size: 0.62rem;
   cursor: pointer;
-  flex-shrink: 0;
-  transition:
-    color 0.12s,
-    border-color 0.12s;
-}
-
-.equip-btn:hover:not(:disabled) {
-  color: var(--gold);
-  border-color: var(--gold-dim);
-}
-
-.equip-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-/* Deck editor rows */
-.deck-edit-list,
-.deck-add-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.deck-edit-row,
-.deck-add-row {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.18rem 0.35rem;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-}
-
-.deck-edit-name {
-  flex: 1;
-  font-size: 0.63rem;
-  color: var(--text-1);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.deck-edit-rarity {
-  font-family: var(--font-display);
-  font-size: 0.55rem;
-  font-weight: 700;
-  width: 0.7rem;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.deck-edit-count {
-  font-size: 0.58rem;
-  color: var(--text-3);
+  transition: color 0.12s, border-color 0.12s;
   white-space: nowrap;
 }
 
-.remove-btn,
-.add-btn {
-  width: 1.4rem;
-  height: 1.4rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition:
-    color 0.12s,
-    border-color 0.12s;
-}
-
-.remove-btn {
-  color: var(--crimson);
-}
-
-.remove-btn:hover:not(:disabled) {
-  border-color: #5a1a1a;
-}
-
-.add-btn {
-  color: #81c784;
-}
-
-.add-btn:hover:not(:disabled) {
-  border-color: #2a4a2a;
-}
-
-.remove-btn:disabled,
-.add-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-/* Rarity filter tabs */
-.rarity-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-  margin-bottom: 0.1rem;
-}
-
-.rarity-tab {
-  padding: 0.1rem 0.35rem;
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  color: var(--text-3);
-  font-size: 0.52rem;
-  cursor: pointer;
-  transition:
-    color 0.12s,
-    border-color 0.12s;
-}
-
-.rarity-tab.active {
+.edit-btn:hover {
   color: var(--gold);
   border-color: var(--gold-dim);
-}
-
-.rarity-tab:hover:not(.active) {
-  color: var(--text-1);
 }
 </style>

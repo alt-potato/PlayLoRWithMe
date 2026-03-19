@@ -171,6 +171,12 @@ export interface KeyPage {
   speedMin?: number;
   speedMax?: number;
   resistances?: Resistances;
+  /** Max HP including gift bonuses — present on librarian key pages. */
+  hp?: number;
+  /** Break (stagger) gauge capacity — present on librarian key pages. */
+  breakGauge?: number;
+  /** BookXmlInfo.RangeType: "Melee" | "Range" | "Hybrid" — determines which card ranges can be equipped. */
+  equipRangeType?: string;
 }
 
 // ── Unit shapes ───────────────────────────────────────────────────────────────
@@ -230,6 +236,12 @@ export interface LibrarianEntry {
   deckPreview: DeckCardPreview[];
   /** Session ID of the player currently editing this librarian, or null. */
   lockedBy: string | null;
+  /**
+   * Page-exclusive cards (CardOption.OnlyPage) belonging to this key page
+   * that are currently in the shared inventory. Empty array when none exist.
+   * Presented first in the deck editor's add-cards list.
+   */
+  onlyCards?: AvailableCard[];
 }
 
 /** Fields shared by both ally and enemy units. */
@@ -341,6 +353,12 @@ export interface AvailableKeyPage {
    * equip screen does.
    */
   bookIcon: string;
+  hp: number;
+  breakGauge: number;
+  /** BookXmlInfo.RangeType: "Melee" | "Range" | "Hybrid" — determines which card ranges can be equipped. */
+  equipRangeType: string;
+  resistances: Resistances;
+  passives: Passive[];
 }
 
 /** A card from the shared inventory available to add to a librarian's deck. */
@@ -352,6 +370,8 @@ export interface AvailableCard {
   rarity: string;
   count: number;
   abilityDesc?: string;
+  dice?: Die[];
+  chapter?: number;
 }
 
 /** Top-level SSE / GET /state payload. */

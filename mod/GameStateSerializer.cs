@@ -263,35 +263,7 @@ namespace PlayLoRWithMe
                                                 .Add("rarity", xml.Rarity.ToString())
                                                 .Add("count", 1);
 
-                                            if (
-                                                xml.DiceBehaviourList != null
-                                                && xml.DiceBehaviourList.Count > 0
-                                            )
-                                                c.AddArray(
-                                                    "dice",
-                                                    diceArr =>
-                                                    {
-                                                        foreach (var d in xml.DiceBehaviourList)
-                                                            diceArr.AddObject(die =>
-                                                            {
-                                                                die.Add("type", d.Type.ToString())
-                                                                    .Add(
-                                                                        "detail",
-                                                                        d.Detail.ToString()
-                                                                    )
-                                                                    .Add("min", d.Min)
-                                                                    .Add("max", d.Dice);
-                                                                var desc =
-                                                                    abilityDescList?.GetAbilityDesc(
-                                                                        d
-                                                                    ) ?? "";
-                                                                if (string.IsNullOrEmpty(desc))
-                                                                    desc = d.Desc ?? "";
-                                                                if (!string.IsNullOrEmpty(desc))
-                                                                    die.Add("desc", desc);
-                                                            });
-                                                    }
-                                                );
+                                            WriteDiceBehaviours(c, xml.DiceBehaviourList, abilityDescList);
 
                                             var abilityDesc =
                                                 abilityDescList?.GetAbilityDescString(xml) ?? "";
@@ -418,6 +390,11 @@ namespace PlayLoRWithMe
                                                         .Add("name", book.Name)
                                                         .Add("speedMin", book.SpeedMin)
                                                         .Add("speedMax", book.SpeedMax)
+                                                        // unit.MaxHp includes gift/bonus HP consistent
+                                                        // with the BattleSetting preview.
+                                                        .Add("hp", unit.MaxHp)
+                                                        .Add("breakGauge", book.Break)
+                                                        .Add("equipRangeType", book.ClassInfo.RangeType.ToString())
                                                         .AddObject(
                                                             "resistances",
                                                             r =>
@@ -529,59 +506,7 @@ namespace PlayLoRWithMe
                                                                 )
                                                                 .Add("count", counts[key]);
 
-                                                            if (
-                                                                xml.DiceBehaviourList != null
-                                                                && xml.DiceBehaviourList.Count > 0
-                                                            )
-                                                                c.AddArray(
-                                                                    "dice",
-                                                                    diceArr =>
-                                                                    {
-                                                                        foreach (
-                                                                            var d in xml.DiceBehaviourList
-                                                                        )
-                                                                            diceArr.AddObject(die =>
-                                                                            {
-                                                                                die.Add(
-                                                                                        "type",
-                                                                                        d.Type.ToString()
-                                                                                    )
-                                                                                    .Add(
-                                                                                        "detail",
-                                                                                        d.Detail.ToString()
-                                                                                    )
-                                                                                    .Add(
-                                                                                        "min",
-                                                                                        d.Min
-                                                                                    )
-                                                                                    .Add(
-                                                                                        "max",
-                                                                                        d.Dice
-                                                                                    );
-                                                                                var desc =
-                                                                                    abilityDescList?.GetAbilityDesc(
-                                                                                        d
-                                                                                    ) ?? "";
-                                                                                if (
-                                                                                    string.IsNullOrEmpty(
-                                                                                        desc
-                                                                                    )
-                                                                                )
-                                                                                    desc =
-                                                                                        d.Desc
-                                                                                        ?? "";
-                                                                                if (
-                                                                                    !string.IsNullOrEmpty(
-                                                                                        desc
-                                                                                    )
-                                                                                )
-                                                                                    die.Add(
-                                                                                        "desc",
-                                                                                        desc
-                                                                                    );
-                                                                            });
-                                                                    }
-                                                                );
+                                                            WriteDiceBehaviours(c, xml.DiceBehaviourList, abilityDescList);
 
                                                             var abilityDesc =
                                                                 abilityDescList?.GetAbilityDescString(
@@ -589,6 +514,46 @@ namespace PlayLoRWithMe
                                                                 ) ?? "";
                                                             if (!string.IsNullOrEmpty(abilityDesc))
                                                                 c.Add("abilityDesc", abilityDesc);
+                                                        });
+                                                    }
+                                                }
+                                            );
+
+                                            // Page-exclusive (OnlyPage) cards belonging to this book
+                                            // that are currently in inventory. Serialized separately so
+                                            // the deck editor can surface them first in the add-cards list.
+                                            var onlyCardIds = book.ClassInfo.EquipEffect?.OnlyCard;
+                                            var pageInventory = Singleton<InventoryModel>.Instance;
+                                            o.AddArray(
+                                                "onlyCards",
+                                                oArr =>
+                                                {
+                                                    if (pageInventory == null || onlyCardIds == null)
+                                                        return;
+                                                    foreach (var id in onlyCardIds)
+                                                    {
+                                                        var lorId = new LorId(id);
+                                                        var count = pageInventory.GetCardCount(lorId);
+                                                        if (count <= 0)
+                                                            continue;
+                                                        var xml = ItemXmlDataList.instance.GetCardItem(lorId);
+                                                        if (xml == null)
+                                                            continue;
+                                                        var spec = xml.Spec;
+                                                        oArr.AddObject(c =>
+                                                        {
+                                                            AddLorId(c, "cardId", xml.id);
+                                                            c.Add("name", xml.Name)
+                                                                .Add("cost", spec.Cost)
+                                                                .Add("range", spec.Ranged.ToString())
+                                                                .Add("rarity", xml.Rarity.ToString())
+                                                                .Add("count", count)
+                                                                .Add("chapter", xml.Chapter);
+                                                            var abilityDesc =
+                                                                abilityDescList?.GetAbilityDescString(xml) ?? "";
+                                                            if (!string.IsNullOrEmpty(abilityDesc))
+                                                                c.Add("abilityDesc", abilityDesc);
+                                                            WriteDiceBehaviours(c, xml.DiceBehaviourList, abilityDescList);
                                                         });
                                                     }
                                                 }
@@ -656,8 +621,48 @@ namespace PlayLoRWithMe
                                 .Add("speedMin", book.SpeedMin)
                                 .Add("speedMax", book.SpeedMax)
                                 .Add("chapter", book.ClassInfo.Chapter)
-                                .Add("bookIcon", bookGroupKey);
+                                .Add("bookIcon", bookGroupKey)
+                                .Add("hp", book.HP)
+                                .Add("breakGauge", book.Break)
+                                .Add("equipRangeType", book.ClassInfo.RangeType.ToString())
+                                .AddObject(
+                                    "resistances",
+                                    r =>
+                                        r.Add("slashHp", book.sHpResist.ToString())
+                                            .Add("pierceHp", book.pHpResist.ToString())
+                                            .Add("bluntHp", book.hHpResist.ToString())
+                                            .Add("slashBp", book.sBpResist.ToString())
+                                            .Add("pierceBp", book.pBpResist.ToString())
+                                            .Add("bluntBp", book.hBpResist.ToString())
+                                );
                             AddLorId(o, "bookId", book.ClassInfo.id);
+                            var inventoryPassiveList = book.CreatePassiveList();
+                            o.AddArray(
+                                "passives",
+                                parr =>
+                                {
+                                    if (inventoryPassiveList == null)
+                                        return;
+                                    foreach (var p in inventoryPassiveList)
+                                    {
+                                        if (
+                                            p == null
+                                            || p.isHide
+                                            || string.IsNullOrEmpty(p.name)
+                                        )
+                                            continue;
+                                        parr.AddObject(po =>
+                                        {
+                                            AddLorId(po, "id", p.id);
+                                            po.Add("name", p.name)
+                                                .Add("rare", p.rare.ToString())
+                                                .Add("isNegative", p.isNegative);
+                                            if (!string.IsNullOrEmpty(p.desc))
+                                                po.Add("desc", p.desc);
+                                        });
+                                    }
+                                }
+                            );
                         });
                     }
                 }
@@ -675,6 +680,12 @@ namespace PlayLoRWithMe
                     {
                         if (item == null || item.ClassInfo == null || item.num <= 0)
                             continue;
+                        // Personal and OnlyPage cards are bound to a specific key page and
+                        // cannot be manually added to arbitrary decks. The game's
+                        // AddCardFromInventoryToCurrentDeck rejects OnlyPage cards unless
+                        // they appear in that book's EquipEffect.OnlyCard list.
+                        if (item.ClassInfo.IsPersonal() || item.ClassInfo.IsOnlyPage())
+                            continue;
                         var xml = item.ClassInfo;
                         var spec = xml.Spec;
                         arr.AddObject(o =>
@@ -684,10 +695,12 @@ namespace PlayLoRWithMe
                                 .Add("cost", spec.Cost)
                                 .Add("range", spec.Ranged.ToString())
                                 .Add("rarity", xml.Rarity.ToString())
-                                .Add("count", item.num);
+                                .Add("count", item.num)
+                                .Add("chapter", xml.Chapter);
                             var abilityDesc = abilityDescList?.GetAbilityDescString(xml) ?? "";
                             if (!string.IsNullOrEmpty(abilityDesc))
                                 o.Add("abilityDesc", abilityDesc);
+                            WriteDiceBehaviours(o, xml.DiceBehaviourList, abilityDescList);
                         });
                     }
                 }
@@ -1458,29 +1471,45 @@ namespace PlayLoRWithMe
                 o.Add("abilityDesc", abilityDesc);
 
             // Dice behaviours
-            if (xml.DiceBehaviourList != null && xml.DiceBehaviourList.Count > 0)
-                o.AddArray(
-                    "dice",
-                    arr =>
-                    {
-                        foreach (var d in xml.DiceBehaviourList)
+            WriteDiceBehaviours(o, xml.DiceBehaviourList, abilityDescList);
+        }
+
+        /// <summary>
+        /// Writes a "dice" array for a card's DiceBehaviourList.
+        /// Skips the array entirely when the list is null or empty.
+        /// </summary>
+        private static void WriteDiceBehaviours(
+            JsonWriter o,
+            IEnumerable<DiceBehaviour> behaviours,
+            BattleCardAbilityDescXmlList abilityDescList
+        )
+        {
+            if (behaviours == null)
+                return;
+            var list =
+                behaviours as IList<DiceBehaviour>
+                ?? new List<DiceBehaviour>(behaviours);
+            if (list.Count == 0)
+                return;
+            o.AddArray(
+                "dice",
+                arr =>
+                {
+                    foreach (var d in list)
+                        arr.AddObject(die =>
                         {
-                            arr.AddObject(die =>
-                            {
-                                die.Add("type", d.Type.ToString())
-                                    .Add("detail", d.Detail.ToString())
-                                    .Add("min", d.Min)
-                                    .Add("max", d.Dice);
-                                // Per-die ability text (Script → BattleCardAbilityText.xml entry)
-                                var desc = abilityDescList?.GetAbilityDesc(d) ?? "";
-                                if (string.IsNullOrEmpty(desc))
-                                    desc = d.Desc ?? "";
-                                if (!string.IsNullOrEmpty(desc))
-                                    die.Add("desc", desc);
-                            });
-                        }
-                    }
-                );
+                            die.Add("type", d.Type.ToString())
+                                .Add("detail", d.Detail.ToString())
+                                .Add("min", d.Min)
+                                .Add("max", d.Dice);
+                            var desc = abilityDescList?.GetAbilityDesc(d) ?? "";
+                            if (string.IsNullOrEmpty(desc))
+                                desc = d.Desc ?? "";
+                            if (!string.IsNullOrEmpty(desc))
+                                die.Add("desc", desc);
+                        });
+                }
+            );
         }
 
         /// <summary>
