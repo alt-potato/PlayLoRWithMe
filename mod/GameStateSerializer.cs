@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using LOR_DiceSystem;
 using UnityEngine;
 
@@ -85,6 +86,7 @@ namespace PlayLoRWithMe
             {
                 WriteFloors(w);
                 WriteLibraryInventory(w);
+                WriteCustomizeOptions(w);
             }
 
             return w.Build();
@@ -558,6 +560,76 @@ namespace PlayLoRWithMe
                                                     }
                                                 }
                                             );
+
+                                            // Appearance customization fields.
+                                            // Always serialize so the UI can pre-fill current values.
+                                            // If customizeData is null (non-customizable unit), emit zeros.
+                                            var cd = unit.customizeData;
+                                            Color32 hair = cd != null ? (Color32)cd.hairColor : new Color32(13, 13, 13, 255);
+                                            Color32 skin = cd != null ? (Color32)cd.skinColor : new Color32(224, 188, 157, 255);
+                                            Color32 eyeC = cd != null ? (Color32)cd.eyeColor  : new Color32(13, 13, 13, 255);
+                                            o.AddObject("appearance", a =>
+                                                a.Add("frontHairID", cd?.frontHairID ?? 0)
+                                                    .Add("backHairID", cd?.backHairID ?? 0)
+                                                    .Add("eyeID",       cd?.eyeID      ?? 0)
+                                                    .Add("browID",      cd?.browID     ?? 0)
+                                                    .Add("mouthID",     cd?.mouthID    ?? 0)
+                                                    .Add("headID",      cd?.headID     ?? 0)
+                                                    .Add("height",      cd?.height     ?? 175)
+                                                    .AddArray("hairColor", cArr =>
+                                                        cArr.AddInt(hair.r).AddInt(hair.g).AddInt(hair.b))
+                                                    .AddArray("skinColor", cArr =>
+                                                        cArr.AddInt(skin.r).AddInt(skin.g).AddInt(skin.b))
+                                                    .AddArray("eyeColor", cArr =>
+                                                        cArr.AddInt(eyeC.r).AddInt(eyeC.g).AddInt(eyeC.b))
+                                            );
+
+                                            // Per-type custom battle dialogue text.
+                                            // Only serialized when the librarian has a dialogue model
+                                            // (i.e. is a customizable librarian, not a Sephirah boss).
+                                            var dlgModel = unit.battleDialogModel;
+                                            if (dlgModel != null)
+                                            {
+                                                var dlgTypes = new[]
+                                                {
+                                                    LOR_XML.DialogType.START_BATTLE,
+                                                    LOR_XML.DialogType.BATTLE_VICTORY,
+                                                    LOR_XML.DialogType.DEATH,
+                                                    LOR_XML.DialogType.COLLEAGUE_DEATH,
+                                                    LOR_XML.DialogType.KILLS_OPPONENT,
+                                                };
+                                                var dlgKeys = new[]
+                                                {
+                                                    "startBattle",
+                                                    "victory",
+                                                    "death",
+                                                    "colleagueDeath",
+                                                    "killsOpponent",
+                                                };
+                                                o.AddObject("dialogue", d =>
+                                                {
+                                                    for (int di = 0; di < dlgTypes.Length; di++)
+                                                    {
+                                                        var dlgData = dlgModel.GetDialogData(dlgTypes[di]);
+                                                        // Prefer custom text; fall back to the currently-active
+                                                        // preset text so the UI can pre-fill the field even when
+                                                        // no explicit customization has been made yet.
+                                                        string text = dlgData?.customText;
+                                                        if (string.IsNullOrEmpty(text))
+                                                            text = dlgData?.xmlData?.dialogContent;
+                                                        d.Add(
+                                                            dlgKeys[di],
+                                                            string.IsNullOrEmpty(text) ? null : text
+                                                        );
+                                                    }
+                                                });
+                                            }
+
+                                            // Title prefix/suffix gift IDs.
+                                            o.AddObject("titles", t =>
+                                                t.Add("prefixID", unit.prefixID)
+                                                    .Add("postfixID", unit.postfixID)
+                                            );
                                         });
                                     }
                                 }
@@ -705,6 +777,105 @@ namespace PlayLoRWithMe
                     }
                 }
             );
+
+            // Customization options: name pool, gift-based title lists, and dialogue presets.
+            // Sent once per library inventory snapshot so the frontend can populate
+            // dropdowns and preset pickers without hard-coding game data.
+            WriteCustomizeOptions(w);
+        }
+
+        // Serializes global customization option tables (names, titles, dialogue presets).
+        private static void WriteCustomizeOptions(JsonWriter w)
+        {
+            w.AddObject("customizeOptions", o =>
+            {
+                // Suggested name pool via reflection (LibrariansNameXmlList._dictionary is private).
+                var nameXml = Singleton<LibrariansNameXmlList>.Instance;
+                var nameDict =
+                    typeof(LibrariansNameXmlList)
+                        .GetField(
+                            "_dictionary",
+                            System.Reflection.BindingFlags.NonPublic
+                                | System.Reflection.BindingFlags.Instance
+                        )
+                        ?.GetValue(nameXml)
+                    as Dictionary<int, string>;
+
+                o.AddArray("suggestedNames", arr =>
+                {
+                    if (nameDict == null)
+                        return;
+                    foreach (var name in nameDict.Values)
+                        arr.AddString(name);
+                });
+
+                // Gift-based prefix and suffix titles.
+                // prefixID / postfixID in UnitDataModel reference GiftXmlInfo IDs whose
+                // text is looked up via GiftXmlList.GetPrefix / GetPostfix.
+                var giftList = Singleton<GiftXmlList>.Instance?.GetAvailableList()
+                    ?? new System.Collections.Generic.List<GiftXmlInfo>();
+
+                o.AddArray("prefixTitles", arr =>
+                {
+                    foreach (var gift in giftList)
+                    {
+                        var text = Singleton<GiftXmlList>.Instance?.GetPrefix(gift.id) ?? "";
+                        if (
+                            string.IsNullOrEmpty(text)
+                            || text == "Unknown Gift Prefix"
+                        )
+                            continue;
+                        arr.AddObject(t =>
+                            t.Add("id", gift.id).Add("text", text)
+                        );
+                    }
+                });
+
+                o.AddArray("suffixTitles", arr =>
+                {
+                    foreach (var gift in giftList)
+                    {
+                        var text = Singleton<GiftXmlList>.Instance?.GetPostfix(gift.id) ?? "";
+                        if (
+                            string.IsNullOrEmpty(text)
+                            || text == "Unknown Gift Posfix"
+                        )
+                            continue;
+                        arr.AddObject(t =>
+                            t.Add("id", gift.id).Add("text", text)
+                        );
+                    }
+                });
+
+                // Dialogue preset text per dialog type for the frontend preset picker.
+                var dlgXml = Singleton<BattleDialogXmlList>.Instance;
+                var dlgTypeMap = new[]
+                {
+                    (LOR_XML.DialogType.START_BATTLE, "startBattle"),
+                    (LOR_XML.DialogType.BATTLE_VICTORY, "victory"),
+                    (LOR_XML.DialogType.DEATH, "death"),
+                    (LOR_XML.DialogType.COLLEAGUE_DEATH, "colleagueDeath"),
+                    (LOR_XML.DialogType.KILLS_OPPONENT, "killsOpponent"),
+                };
+                o.AddObject("dialoguePresets", dp =>
+                {
+                    foreach (var (dlgType, key) in dlgTypeMap)
+                    {
+                        dp.AddArray(key, arr =>
+                        {
+                            if (dlgXml == null)
+                                return;
+                            try
+                            {
+                                var presets = dlgXml.GetDialogPresetByType(dlgType);
+                                foreach (var p in presets)
+                                    arr.AddString(p.dialogContent);
+                            }
+                            catch { /* "Librarian" group may not exist for non-standard saves */ }
+                        });
+                    }
+                });
+            });
         }
 
         /// <summary>

@@ -34,6 +34,7 @@ import type {
   AvailableCard,
   Card,
   DeckCardPreview,
+  CustomizePayload,
 } from "~/types/game";
 
 const props = defineProps<{
@@ -75,6 +76,26 @@ const props = defineProps<{
     packageId: string,
   ) => Promise<ActionResult>;
 }>();
+
+// ── setCustomization callback ──────────────────────────────────────────────
+
+/**
+ * Sends a setCustomization action for the currently editing librarian.
+ * Uses the generic sendAction dispatcher since this action is not a common
+ * enough operation to warrant a dedicated prop on app.vue.
+ */
+async function onSetCustomization(
+  payload: Omit<CustomizePayload, "floorIndex" | "unitIndex">,
+): Promise<ActionResult> {
+  const lib = editingLibrarian.value;
+  if (!lib) return { ok: false, error: "No librarian selected" };
+  return await props.sendAction({
+    type: "setCustomization",
+    floorIndex: lib.floorIndex,
+    unitIndex: lib.unitIndex,
+    ...payload,
+  });
+}
 
 /** Accent color keyed by floorIndex (0 = Malkuth … 9 = Keter). */
 const FLOOR_COLORS: Record<number, string> = {
@@ -434,6 +455,7 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
       :on-equip-page="onEquipPage"
       :on-add-card="onAddCard"
       :on-remove-card="onRemoveCard"
+      :on-set-customization="onSetCustomization"
     />
 
     <CardDetail

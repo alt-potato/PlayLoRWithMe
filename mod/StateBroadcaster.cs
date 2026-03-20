@@ -66,6 +66,9 @@ namespace PlayLoRWithMe
             static void Postfix()
             {
                 SubscribeToUIPhaseChanges();
+                // Extract customization sprites once the main scene is loaded and
+                // CustomizingResourceLoader's singleton is available.
+                AppearanceCache.EnsureExtracted();
                 Broadcast();
             }
         }

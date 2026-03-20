@@ -242,6 +242,12 @@ export interface LibrarianEntry {
    * Presented first in the deck editor's add-cards list.
    */
   onlyCards?: AvailableCard[];
+  /** Appearance customization data (present for customizable librarians). */
+  appearance?: AppearanceData;
+  /** Per-type custom battle dialogue text (null = using a random game preset). */
+  dialogue?: DialogueData;
+  /** Title gift IDs for the name bar prefix and suffix. */
+  titles?: TitleData;
 }
 
 /** Fields shared by both ally and enemy units. */
@@ -374,6 +380,77 @@ export interface AvailableCard {
   chapter?: number;
 }
 
+/** Appearance customization fields mirroring UnitCustomizingData. Colors are [R, G, B] (0–255). */
+export interface AppearanceData {
+  frontHairID: number;
+  backHairID: number;
+  eyeID: number;
+  browID: number;
+  mouthID: number;
+  headID: number;
+  height: number;
+  hairColor: [number, number, number];
+  skinColor: [number, number, number];
+  eyeColor: [number, number, number];
+}
+
+/** Per-type custom battle dialogue text. null = game uses a randomly-selected preset. */
+export interface DialogueData {
+  startBattle: string | null;
+  victory: string | null;
+  death: string | null;
+  colleagueDeath: string | null;
+  killsOpponent: string | null;
+}
+
+/** Gift-based title IDs (prefix = before name, suffix = after name). */
+export interface TitleData {
+  prefixID: number;
+  postfixID: number;
+}
+
+export interface TitleOption {
+  id: number;
+  text: string;
+}
+
+/** Global customization option tables sent once per library state snapshot. */
+export interface CustomizeOptions {
+  suggestedNames: string[];
+  prefixTitles: TitleOption[];
+  suffixTitles: TitleOption[];
+  dialoguePresets: Record<keyof DialogueData, string[]>;
+}
+
+/** Flat payload sent via setCustomization WebSocket action. */
+export interface CustomizePayload {
+  floorIndex: number;
+  unitIndex: number;
+  frontHairID: number;
+  backHairID: number;
+  eyeID: number;
+  browID: number;
+  mouthID: number;
+  headID: number;
+  height: number;
+  hairR: number;
+  hairG: number;
+  hairB: number;
+  skinR: number;
+  skinG: number;
+  skinB: number;
+  eyeR: number;
+  eyeG: number;
+  eyeB: number;
+  dlgStartBattle: string;
+  dlgVictory: string;
+  dlgDeath: string;
+  dlgColleagueDeath: string;
+  dlgKillsOpponent: string;
+  prefixID: number;
+  postfixID: number;
+}
+
 /** Top-level SSE / GET /state payload. */
 export interface GameState {
   scene: SceneName;
@@ -393,4 +470,6 @@ export interface GameState {
   availableKeyPages?: AvailableKeyPage[];
   /** Cards in the shared inventory available to add to a librarian's deck. */
   availableCards?: AvailableCard[];
+  /** Global customization option tables (names, title lists, dialogue presets). */
+  customizeOptions?: CustomizeOptions;
 }

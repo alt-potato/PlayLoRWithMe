@@ -402,6 +402,10 @@ namespace PlayLoRWithMe
                     HandleRemoveCardFromDeck(client, r, reqId);
                     break;
 
+                case "setCustomization":
+                    HandleSetCustomization(client, r, reqId);
+                    break;
+
                 case "resync":
                     // Client detected a missed sequence number; reset delta state and
                     // send a fresh full snapshot so the client can resync cleanly.
@@ -766,6 +770,209 @@ namespace PlayLoRWithMe
                 client.Send(
                     BuildActionResult(reqId, removed, removed ? null : "Card not found in deck")
                 );
+        }
+
+        /// <summary>
+        /// Applies a batch customization update (appearance, dialogue, titles) to a librarian.
+        /// All fields are sent flat in the JSON payload to avoid nested-parsing complexity.
+        /// Colors are passed as separate R/G/B integer fields (0–255).
+        /// An empty string for a dialogue field restores a random game preset.
+        /// </summary>
+        private void HandleSetCustomization(
+            WebSocketClient client,
+            JsonReader r,
+            string reqId
+        )
+        {
+            if (!r.TryGetInt("floorIndex", out int fi) || !r.TryGetInt("unitIndex", out int ui))
+                return;
+
+            string key = fi + ":" + ui;
+            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
+            {
+                if (reqId != null)
+                    client.Send(
+                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
+                    );
+                return;
+            }
+
+            var unit = GetLibrarianUnit(fi, ui);
+            if (unit == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
+                return;
+            }
+
+            var cd = unit.customizeData;
+            if (cd != null)
+            {
+                if (r.TryGetInt("frontHairID", out int fh))
+                    cd.frontHairID = fh;
+                if (r.TryGetInt("backHairID", out int bh))
+                    cd.backHairID = bh;
+                if (r.TryGetInt("eyeID", out int eid))
+                    cd.eyeID = eid;
+                if (r.TryGetInt("browID", out int bid))
+                    cd.browID = bid;
+                if (r.TryGetInt("mouthID", out int mid))
+                    cd.mouthID = mid;
+                if (r.TryGetInt("headID", out int hid))
+                    cd.headID = hid;
+                if (r.TryGetInt("height", out int ht))
+                    cd.height = ht;
+
+                if (
+                    r.TryGetInt("hairR", out int hairR)
+                    && r.TryGetInt("hairG", out int hairG)
+                    && r.TryGetInt("hairB", out int hairB)
+                )
+                    cd.hairColor = new Color32(
+                        (byte)hairR,
+                        (byte)hairG,
+                        (byte)hairB,
+                        255
+                    );
+
+                if (
+                    r.TryGetInt("skinR", out int skinR)
+                    && r.TryGetInt("skinG", out int skinG)
+                    && r.TryGetInt("skinB", out int skinB)
+                )
+                    cd.skinColor = new Color32(
+                        (byte)skinR,
+                        (byte)skinG,
+                        (byte)skinB,
+                        255
+                    );
+
+                if (
+                    r.TryGetInt("eyeR", out int eyeR)
+                    && r.TryGetInt("eyeG", out int eyeG)
+                    && r.TryGetInt("eyeB", out int eyeB)
+                )
+                    cd.eyeColor = new Color32((byte)eyeR, (byte)eyeG, (byte)eyeB, 255);
+            }
+
+            // Apply dialogue changes. An empty/null custom text restores a random preset.
+            var dlgXml = Singleton<BattleDialogXmlList>.Instance;
+            var dlgModel = unit.battleDialogModel;
+            if (dlgModel == null && dlgXml != null)
+            {
+                // Initialize dialogue model for librarians that never had one set
+                // (e.g. freshly-created non-Sephirah units).
+                try
+                {
+                    var charData = dlgXml.GetCharacterData("Librarian", "Librarian");
+                    if (charData != null)
+                    {
+                        dlgModel = new BattleDialogueModel(charData);
+                        unit.battleDialogModel = dlgModel;
+                    }
+                }
+                catch { /* Librarian character data unavailable — skip dialogue */ }
+            }
+
+            if (dlgModel != null)
+            {
+                ApplyDialogue(
+                    dlgModel,
+                    r,
+                    LOR_XML.DialogType.START_BATTLE,
+                    "dlgStartBattle"
+                );
+                ApplyDialogue(
+                    dlgModel,
+                    r,
+                    LOR_XML.DialogType.BATTLE_VICTORY,
+                    "dlgVictory"
+                );
+                ApplyDialogue(dlgModel, r, LOR_XML.DialogType.DEATH, "dlgDeath");
+                ApplyDialogue(
+                    dlgModel,
+                    r,
+                    LOR_XML.DialogType.COLLEAGUE_DEATH,
+                    "dlgColleagueDeath"
+                );
+                ApplyDialogue(
+                    dlgModel,
+                    r,
+                    LOR_XML.DialogType.KILLS_OPPONENT,
+                    "dlgKillsOpponent"
+                );
+            }
+
+            // Title IDs.
+            if (r.TryGetInt("prefixID", out int pfx))
+                unit.prefixID = pfx;
+            if (r.TryGetInt("postfixID", out int sfx))
+                unit.postfixID = sfx;
+
+            // Refresh the in-game character renderer (same pattern as HandleEquipKeyPage).
+            var unitRef = unit;
+            var unitSephirah = unit.OwnerSephirah;
+            int characterSlot = 5 + ui;
+            StateBroadcaster.RunOnMainThread(() =>
+            {
+                var uic = UI.UIController.Instance;
+                if (uic == null)
+                    return;
+
+                var renderer = SingletonBehavior<UI.UICharacterRenderer>.Instance;
+
+                if (uic.CurrentSephirah == unitSephirah)
+                {
+                    renderer?.SetCharacter(unitRef, characterSlot, forcelyReload: true);
+                    var listPanel =
+                        uic.GetUIPanel(UI.UIPanelType.CharacterList_Right)
+                        as UI.UILibrarianCharacterListPanel;
+                    listPanel?.SetLibrarianCharacterListPanel_Default(unitSephirah);
+                }
+
+                if (uic.CurrentUnit == unitRef)
+                {
+                    if (uic.CurrentUIPhase == UI.UIPhase.Librarian)
+                    {
+                        var infoPanel =
+                            uic.GetUIPanel(UI.UIPanelType.LibrarianInfo)
+                            as UI.UILibrarianInfoPanel;
+                        if (infoPanel != null)
+                        {
+                            renderer?.SetCharacter(unitRef, 10, forcelyReload: true);
+                            infoPanel.UpdatePanel();
+                        }
+                    }
+                    else if (uic.CurrentUIPhase == UI.UIPhase.Librarian_CardList)
+                    {
+                        var cardPanel =
+                            uic.GetUIPanel(UI.UIPanelType.Page) as UI.UICardPanel;
+                        cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
+                    }
+                }
+            });
+
+            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
+            StateBroadcaster.Broadcast();
+            if (reqId != null)
+                client.Send(BuildActionResult(reqId, true, null));
+        }
+
+        // Applies one dialogue field: empty/absent = restore random; non-empty = set custom.
+        private static void ApplyDialogue(
+            BattleDialogueModel model,
+            JsonReader r,
+            LOR_XML.DialogType type,
+            string key
+        )
+        {
+            string val = r.GetString(key);
+            if (val == null)
+                return; // field not present — leave unchanged
+            if (string.IsNullOrEmpty(val))
+                model.SetDialogByRandom(type); // clear custom, restore random preset
+            else
+                model.SetDialogByCustom(type, val);
         }
 
         /// <summary>

@@ -8,18 +8,18 @@
   another session the panel shows a read-only locked state.
 
   Props:
-    lib              – the librarian being edited
-    state            – full game state
-    session          – current session
-    floorColor       – accent hex for the floor header
-    editBusy         – in-flight flag (passed from parent to avoid double submits)
-    onClose          – called when the user closes the panel
-    onLock           – acquire the edit lock
-    onUnlock         – release the edit lock
-    onRename         – rename the librarian
-    onEquipPage      – equip a key page
-    onAddCard        – add a card to the deck
-    onRemoveCard     – remove one copy from the deck
+    lib                – the librarian being edited
+    state              – full game state
+    session            – current session
+    floorColor         – accent hex for the floor header
+    onClose            – called when the user closes the panel
+    onLock             – acquire the edit lock
+    onUnlock           – release the edit lock
+    onRename           – rename the librarian
+    onEquipPage        – equip a key page
+    onAddCard          – add a card to the deck
+    onRemoveCard       – remove one copy from the deck
+    onSetCustomization – save appearance, dialogue, and title changes
 -->
 <script setup lang="ts">
 import type {
@@ -29,6 +29,8 @@ import type {
   AvailableKeyPage,
   AvailableCard,
   DeckCardPreview,
+  CustomizePayload,
+  ActionResult,
 } from "~/types/game";
 
 const props = defineProps<{
@@ -43,6 +45,9 @@ const props = defineProps<{
   onEquipPage: (kp: AvailableKeyPage) => Promise<void>;
   onAddCard: (card: AvailableCard) => Promise<void>;
   onRemoveCard: (card: DeckCardPreview) => Promise<void>;
+  onSetCustomization: (
+    payload: Omit<CustomizePayload, "floorIndex" | "unitIndex">,
+  ) => Promise<ActionResult>;
 }>();
 
 type Tab = "keypage" | "deck" | "info";
@@ -99,9 +104,12 @@ async function onRemoveCard(card: DeckCardPreview) {
   await props.onRemoveCard(card);
 }
 
-// Close on Escape key
+// Customize panel state
+const showCustomize = ref(false);
+
+// Close on Escape key (but not if CustomizePanel is open — it handles Escape itself)
 function handleKeyDown(e: KeyboardEvent) {
-  if (e.key === "Escape") props.onClose();
+  if (e.key === "Escape" && !showCustomize.value) props.onClose();
 }
 
 onMounted(() => window.addEventListener("keydown", handleKeyDown));
@@ -162,7 +170,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
             :on-remove-card="onRemoveCard"
           />
 
-          <!-- Info tab: rename + current key page summary -->
+          <!-- Info tab: rename + customize button + current key page summary -->
           <div v-else class="info-tab">
             <div class="section-label">Name</div>
             <div class="rename-row">
@@ -183,6 +191,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
             </div>
             <div v-if="renameError" class="rename-error">{{ renameError }}</div>
 
+            <button
+              class="customize-btn"
+              :disabled="lockedByOther || !hasLock"
+              @click="showCustomize = true"
+            >
+              Customize Appearance &amp; Dialogue…
+            </button>
+
             <div class="section-label" style="margin-top: 0.75rem;">Key Page</div>
             <LibrarianKeyPageDetail :key-page="lib.keyPage" />
           </div>
@@ -190,6 +206,18 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
       </div>
     </div>
   </Teleport>
+
+  <!-- Customize overlay — stacks above EditPanel (z-index: 300) -->
+  <LibrarianCustomizePanel
+    v-if="showCustomize"
+    :lib="lib"
+    :state="state"
+    :session="session"
+    :busy="editBusy"
+    :on-rename="props.onRename"
+    :on-save="props.onSetCustomization"
+    :on-close="() => (showCustomize = false)"
+  />
 </template>
 
 <style scoped>
@@ -370,5 +398,28 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
 .rename-error {
   font-size: 0.65rem;
   color: var(--crimson-hi);
+}
+
+.customize-btn {
+  margin-top: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 0.72rem;
+  text-align: left;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.customize-btn:hover:not(:disabled) {
+  color: var(--gold);
+  border-color: var(--gold-dim);
+}
+
+.customize-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 </style>
