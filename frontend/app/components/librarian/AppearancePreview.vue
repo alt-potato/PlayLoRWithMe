@@ -22,9 +22,17 @@
     appearance – AppearanceData with sprite IDs and color tuples (0–255 bytes).
 -->
 <script setup lang="ts">
-import type { AppearanceData } from "~/types/game";
+import type { AppearanceData, FashionBook } from "~/types/game";
 
-const props = defineProps<{ appearance: AppearanceData }>();
+const props = defineProps<{
+  appearance: AppearanceData;
+  /**
+   * When a fashion book is active, it changes the character body model.
+   * If replacesHead is true, the face/hair composite is also replaced and
+   * an overlay is shown to indicate the preview is not representative.
+   */
+  fashionBook?: FashionBook | null;
+}>();
 
 const BASE = "/assets/customize/";
 
@@ -82,12 +90,15 @@ function markFailed(src: string) {
     <!--
       Visual layers: background-image + background-color blended with multiply,
       masked to the sprite's opaque pixel shape.
+      Dimmed when a fashion that replaces the head is active, since the composite
+      is not representative of the actual in-game appearance in that case.
     -->
     <div
       v-for="(layer, i) in layers"
       :key="`layer-${i}`"
       v-show="!failedSrcs.has(layer.src)"
       class="layer-sprite"
+      :class="{ dimmed: fashionBook?.replacesHead }"
       :style="{
         backgroundImage: `url(${layer.src})`,
         backgroundColor: layer.tint,
@@ -95,6 +106,15 @@ function markFailed(src: string) {
         WebkitMaskImage: `url(${layer.src})`,
       }"
     />
+
+    <!--
+      Fashion overlay: shown when a fashion skin is active.
+      When replacesHead is true the overlay also dims the composite to signal
+      that the face/hair preview does not match in-game appearance.
+    -->
+    <div v-if="fashionBook" class="fashion-overlay" :class="{ 'replaces-head': fashionBook.replacesHead }">
+      <span class="fashion-label">{{ fashionBook.name }}</span>
+    </div>
   </div>
 </template>
 
@@ -129,5 +149,38 @@ function markFailed(src: string) {
   -webkit-mask-size: contain;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-position: center bottom;
+  transition: opacity 0.2s;
+}
+
+.layer-sprite.dimmed {
+  opacity: 0.3;
+}
+
+/* Fashion overlay: sits above the sprite layers and labels the active skin. */
+.fashion-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 0.4rem;
+  pointer-events: none;
+}
+
+.fashion-overlay.replaces-head {
+  /* Semi-opaque backdrop to keep label legible over the dimmed composite. */
+  background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%);
+}
+
+.fashion-label {
+  font-size: 0.55rem;
+  color: #fff;
+  background: rgba(0,0,0,0.6);
+  border-radius: 3px;
+  padding: 0.15rem 0.35rem;
+  text-align: center;
+  max-width: 90%;
+  word-break: break-word;
+  line-height: 1.3;
 }
 </style>

@@ -630,6 +630,15 @@ namespace PlayLoRWithMe
                                                 t.Add("prefixID", unit.prefixID)
                                                     .Add("postfixID", unit.postfixID)
                                             );
+
+                                            // Fashion projection: which custom core book is active (-1 = none).
+                                            var customBook = unit.GetCustomBookItemData();
+                                            o.Add(
+                                                "customBookId",
+                                                customBook != null
+                                                    ? customBook.GetBookClassInfoId().id
+                                                    : -1
+                                            );
                                         });
                                     }
                                 }
@@ -843,6 +852,29 @@ namespace PlayLoRWithMe
                             continue;
                         arr.AddObject(t =>
                             t.Add("id", gift.id).Add("text", text)
+                        );
+                    }
+                });
+
+                // Fashion books: custom core books the player has unlocked and can use as
+                // appearance projections. Each entry carries rangeType and skinType so the
+                // frontend can filter by range-compatibility and show when the full head is
+                // replaced (skinType != "Lor" means the fashion skin overrides the head).
+                var ccbm = Singleton<CustomCoreBookInventoryModel>.Instance;
+                var fashionIds = ccbm?.GetBookIdList_CustomCoreBook(SephirahType.None, false)
+                    ?? new System.Collections.Generic.List<int>();
+                o.AddArray("fashionBooks", arr =>
+                {
+                    foreach (var bid in fashionIds)
+                    {
+                        var bxi = Singleton<BookXmlList>.Instance?.GetData(new LorId(bid));
+                        if (bxi == null || bxi.canNotEquip)
+                            continue;
+                        arr.AddObject(fb =>
+                            fb.Add("id", bid)
+                                .Add("name", bxi.Name)
+                                .Add("rangeType", bxi.RangeType.ToString())
+                                .Add("replacesHead", bxi.skinType != "Lor")
                         );
                     }
                 });

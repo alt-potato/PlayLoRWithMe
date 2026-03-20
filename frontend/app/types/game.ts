@@ -248,6 +248,11 @@ export interface LibrarianEntry {
   dialogue?: DialogueData;
   /** Title gift IDs for the name bar prefix and suffix. */
   titles?: TitleData;
+  /**
+   * ID of the custom core book currently used as an appearance projection, or -1 if none.
+   * Set by EquipCustomCoreBook; persisted in save data as customcorebookInstanceId.
+   */
+  customBookId?: number;
 }
 
 /** Fields shared by both ally and enemy units. */
@@ -415,11 +420,26 @@ export interface TitleOption {
 }
 
 /** Global customization option tables sent once per library state snapshot. */
+/** A custom core book that can be used as an appearance projection skin. */
+export interface FashionBook {
+  id: number;
+  name: string;
+  /** EquipRangeType string — controls compatibility with librarian's range type. */
+  rangeType: string;
+  /**
+   * True when the fashion skin overrides the head model in addition to the body
+   * (skinType != "Lor" in BookXmlInfo). The composite face preview is not accurate
+   * when this is true.
+   */
+  replacesHead: boolean;
+}
+
 export interface CustomizeOptions {
   suggestedNames: string[];
   prefixTitles: TitleOption[];
   suffixTitles: TitleOption[];
   dialoguePresets: Record<keyof DialogueData, string[]>;
+  fashionBooks?: FashionBook[];
 }
 
 /** Flat payload sent via setCustomization WebSocket action. */
@@ -449,6 +469,8 @@ export interface CustomizePayload {
   dlgKillsOpponent: string;
   prefixID: number;
   postfixID: number;
+  /** -1 = unequip; any other value = BookXmlInfo ID to equip as appearance projection. */
+  customBookId: number;
 }
 
 /** Top-level SSE / GET /state payload. */

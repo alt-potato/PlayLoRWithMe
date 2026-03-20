@@ -909,6 +909,22 @@ namespace PlayLoRWithMe
             if (r.TryGetInt("postfixID", out int sfx))
                 unit.postfixID = sfx;
 
+            // Fashion projection: equip a custom core book as appearance skin, or unequip.
+            // -1 means unequip; any other value is a BookXmlInfo ID to equip.
+            if (r.TryGetInt("customBookId", out int cbid))
+            {
+                if (cbid < 0)
+                {
+                    unit.EquipCustomCoreBook(null);
+                }
+                else
+                {
+                    var bxi = Singleton<BookXmlList>.Instance?.GetData(new LorId(cbid));
+                    if (bxi != null)
+                        unit.EquipCustomCoreBook(new BookModel(bxi));
+                }
+            }
+
             // Refresh the in-game character renderer (same pattern as HandleEquipKeyPage).
             var unitRef = unit;
             var unitSephirah = unit.OwnerSephirah;

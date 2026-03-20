@@ -78,6 +78,8 @@ const draft = reactive({
   dlgDeath:          props.lib.dialogue?.death          ?? "",
   dlgColleagueDeath: props.lib.dialogue?.colleagueDeath ?? "",
   dlgKillsOpponent:  props.lib.dialogue?.killsOpponent  ?? "",
+
+  customBookId: props.lib.customBookId ?? -1,
 });
 
 /** Live AppearanceData fed to AppearancePreview — recomputed whenever draft changes. */
@@ -95,6 +97,13 @@ const previewAppearance = computed<AppearanceData>(() => ({
 }));
 
 const customizeOptions = computed(() => props.state.customizeOptions);
+
+/** The fashion book currently selected in the draft, or null if none. */
+const activeFashionBook = computed(() =>
+  draft.customBookId >= 0
+    ? (customizeOptions.value?.fashionBooks?.find((b) => b.id === draft.customBookId) ?? null)
+    : null
+);
 
 // ── Actions ────────────────────────────────────────────────────────────────
 
@@ -139,8 +148,9 @@ async function handleComplete(): Promise<void> {
     dlgDeath:          dlgField(draft.dlgDeath,          origDlg?.death),
     dlgColleagueDeath: dlgField(draft.dlgColleagueDeath, origDlg?.colleagueDeath),
     dlgKillsOpponent:  dlgField(draft.dlgKillsOpponent,  origDlg?.killsOpponent),
-    prefixID:  draft.prefixID,
-    postfixID: draft.postfixID,
+    prefixID:     draft.prefixID,
+    postfixID:    draft.postfixID,
+    customBookId: draft.customBookId,
   };
 
   const result = await props.onSave(payload);
@@ -176,6 +186,7 @@ watch(
     draft.dlgDeath          = lib.dialogue?.death          ?? "";
     draft.dlgColleagueDeath = lib.dialogue?.colleagueDeath ?? "";
     draft.dlgKillsOpponent  = lib.dialogue?.killsOpponent  ?? "";
+    draft.customBookId      = lib.customBookId             ?? -1;
   },
   { immediate: true },
 );
@@ -195,7 +206,10 @@ watch(
         <div class="panel-body">
           <!-- Appearance preview (left on desktop, top on mobile) -->
           <div class="preview-col">
-            <LibrarianAppearancePreview :appearance="previewAppearance" />
+            <LibrarianAppearancePreview
+              :appearance="previewAppearance"
+              :fashion-book="activeFashionBook"
+            />
           </div>
 
           <!-- Sub-tab area -->
@@ -254,6 +268,9 @@ watch(
                 v-else-if="activeTab === 'projection'"
                 v-model:head-i-d="draft.headID"
                 v-model:height="draft.height"
+                v-model:custom-book-id="draft.customBookId"
+                :fashion-books="customizeOptions?.fashionBooks ?? []"
+                :lib-range-type="lib.keyPage.equipRangeType"
                 :busy="isBusy"
               />
 
