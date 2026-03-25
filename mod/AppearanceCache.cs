@@ -25,9 +25,11 @@ namespace PlayLoRWithMe
         /// fractions of the canvas [0,1] from left and top respectively.
         /// HasFrontLayer is true when fashionbodies_front/{id}.png was extracted (some
         /// body sprites render in front of the face overlay in-game).
+        /// HidesBackHair is true when the character model has a Hood sprite; the game
+        /// hides all back hair renderers in that case.
         /// </summary>
-        internal static readonly Dictionary<int, (float TiltDeg, float PivotFracX, float PivotFracY, bool HasFrontLayer)>
-            FashionMeta = new Dictionary<int, (float, float, float, bool)>();
+        internal static readonly Dictionary<int, (float TiltDeg, float PivotFracX, float PivotFracY, bool HasFrontLayer, bool HidesBackHair)>
+            FashionMeta = new Dictionary<int, (float, float, float, bool, bool)>();
 
         private static string CustomizeDir =>
             Path.Combine(Server.WwwRootPath, "assets", "customize");
@@ -223,7 +225,8 @@ namespace PlayLoRWithMe
                     float fracY = (bh > 0f)
                         ? Mathf.Clamp01(faceHairBounds.max.y / bh)
                         : 0.5f;
-                    FashionMeta[b.BookId] = (b.PivotRotDeg, fracX, fracY, b.FrontSprites.Count > 0);
+                    FashionMeta[b.BookId] = (b.PivotRotDeg, fracX, fracY, b.FrontSprites.Count > 0,
+                        !b.ReplacesHead && b.HasHood);
                 }
             }
 
@@ -335,6 +338,10 @@ namespace PlayLoRWithMe
             // Empty for replacesHead=true books (face overlay is not shown).
             public List<(SpriteSet sprSet, Vector3 worldPos)> FrontSprites
                 = new List<(SpriteSet, Vector3)>();
+            // True when the character model contains a CharacterAppearanceType.Hood sprite.
+            // The game hides all back hair when any Hood sprite is present
+            // (RefreshAppearanceByMotion forcibly deactivates backHair renderers).
+            public bool HasHood = false;
         }
 
         /// <summary>
@@ -469,6 +476,10 @@ namespace PlayLoRWithMe
                                 body.FrontSprites.Add(entry);
                             else
                                 body.Sprites.Add(entry);
+
+                            // The game hides all back hair when any Hood sprite is present.
+                            if (ss.sprType == CharacterAppearanceType.Hood)
+                                body.HasHood = true;
                         }
                     }
                     else

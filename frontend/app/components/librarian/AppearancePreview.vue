@@ -196,9 +196,11 @@ const faceRotStyle = computed(() => {
 
     <!--
       Back hair (layers[0]) rendered before the fashion body so it sits behind the body.
+      Hidden when the fashion book has a Hood sprite — the game hides all back hair
+      renderers unconditionally in that case (RefreshAppearanceByMotion).
     -->
     <div
-      v-show="showFaceHairLayers && !failedSrcs.has(layers[0].src)"
+      v-show="showFaceHairLayers && !failedSrcs.has(layers[0].src) && !fashionBook?.hidesBackHair"
       class="layer-sprite"
       :style="{
         backgroundImage: `url(${layers[0].src})`,

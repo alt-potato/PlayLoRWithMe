@@ -887,6 +887,9 @@ namespace PlayLoRWithMe
                                 // Front layer: some body sprites render in front of the face overlay.
                                 if (meta.HasFrontLayer)
                                     fb.Add("hasFrontLayer", true);
+                                // Hood present: game hides all back hair renderers in this case.
+                                if (meta.HidesBackHair)
+                                    fb.Add("hidesBackHair", true);
                             }
                         });
                     }

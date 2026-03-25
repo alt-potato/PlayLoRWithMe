@@ -447,6 +447,11 @@ export interface FashionBook {
    * render in front of the face overlay and must be composited above it.
    */
   hasFrontLayer?: boolean;
+  /**
+   * True when the character model has a Hood sprite — the game hides all back
+   * hair renderers in that case (RefreshAppearanceByMotion forcibly deactivates them).
+   */
+  hidesBackHair?: boolean;
 }
 
 export interface CustomizeOptions {
