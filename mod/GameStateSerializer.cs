@@ -871,11 +871,24 @@ namespace PlayLoRWithMe
                         if (bxi == null || bxi.canNotEquip)
                             continue;
                         arr.AddObject(fb =>
+                        {
                             fb.Add("id", bid)
                                 .Add("name", bxi.Name)
                                 .Add("rangeType", bxi.RangeType.ToString())
-                                .Add("replacesHead", bxi.skinType != "Lor")
-                        );
+                                .Add("replacesHead", bxi.skinType != "Lor");
+                            // Optional per-book appearance metadata from AppearanceCache.
+                            if (AppearanceCache.FashionMeta.TryGetValue(bid, out var meta))
+                            {
+                                // Head tilt and pivot: omitted when tilt is zero.
+                                if (Mathf.Abs(meta.TiltDeg) > 0.05f)
+                                    fb.Add("headTiltDeg", meta.TiltDeg)
+                                        .Add("pivotFracX", meta.PivotFracX)
+                                        .Add("pivotFracY", meta.PivotFracY);
+                                // Front layer: some body sprites render in front of the face overlay.
+                                if (meta.HasFrontLayer)
+                                    fb.Add("hasFrontLayer", true);
+                            }
+                        });
                     }
                 });
 

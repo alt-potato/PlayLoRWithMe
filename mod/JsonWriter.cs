@@ -84,6 +84,14 @@ namespace PlayLoRWithMe
             return this;
         }
 
+        /// <summary>Writes an unquoted JSON number, using invariant culture to avoid locale decimal separators.</summary>
+        public JsonWriter Add(string key, float value)
+        {
+            Key(key);
+            _sb.Append(value.ToString("G6", System.Globalization.CultureInfo.InvariantCulture));
+            return this;
+        }
+
         public JsonWriter AddObject(string key, Action<JsonWriter> build)
         {
             Key(key);

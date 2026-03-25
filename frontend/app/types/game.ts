@@ -432,6 +432,21 @@ export interface FashionBook {
    * when this is true.
    */
   replacesHead: boolean;
+  /**
+   * Z-axis rotation of the customPivot transform in degrees (positive = clockwise
+   * in Unity's left-hand screen space). Omitted when zero. Applied to face/hair
+   * CSS layers so the preview matches the in-game head tilt.
+   */
+  headTiltDeg?: number;
+  /** Pivot horizontal position as a fraction [0,1] of the canvas width (left=0). */
+  pivotFracX?: number;
+  /** Pivot vertical position as a fraction [0,1] of the canvas height (top=0). */
+  pivotFracY?: number;
+  /**
+   * True when fashionbodies_front/{id}.png was extracted — some body sprites
+   * render in front of the face overlay and must be composited above it.
+   */
+  hasFrontLayer?: boolean;
 }
 
 export interface CustomizeOptions {
