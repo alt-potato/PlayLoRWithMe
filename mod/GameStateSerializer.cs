@@ -389,6 +389,7 @@ namespace PlayLoRWithMe
                                                 "keyPage",
                                                 k =>
                                                     k.Add("instanceId", book.instanceId)
+                                                        .Add("bookId", book.GetBookClassInfoId().id)
                                                         .Add("name", book.Name)
                                                         .Add("speedMin", book.SpeedMin)
                                                         .Add("speedMax", book.SpeedMax)
@@ -426,6 +427,31 @@ namespace PlayLoRWithMe
                                                                     )
                                                         )
                                             );
+                                            // Fashion metadata for the equipped key page body preview.
+                                            // Written as sibling fields on the librarian object (not
+                                            // nested inside keyPage) because the keyPage object above
+                                            // is already closed.  Field names mirror fashionBooks[].
+                                            {
+                                                var kpBid = book.GetBookClassInfoId().id;
+                                                var kpBxi = book.ClassInfo;
+                                                if (kpBxi != null && !string.IsNullOrEmpty(kpBxi.GetCharacterSkin()))
+                                                {
+                                                    if (kpBxi.gender != Gender.N)
+                                                        o.Add("keyPageSkinGender", kpBxi.gender.ToString());
+                                                    o.Add("keyPageReplacesHead", kpBxi.skinType != "Lor");
+                                                    if (AppearanceCache.FashionMeta.TryGetValue(kpBid, out var kpMeta))
+                                                    {
+                                                        if (Mathf.Abs(kpMeta.TiltDeg) > 0.05f)
+                                                            o.Add("keyPageHeadTiltDeg", kpMeta.TiltDeg)
+                                                             .Add("keyPagePivotFracX", kpMeta.PivotFracX)
+                                                             .Add("keyPagePivotFracY", kpMeta.PivotFracY);
+                                                        if (kpMeta.HasFrontLayer)
+                                                            o.Add("keyPageHasFrontLayer", true);
+                                                        if (kpMeta.HidesBackHair)
+                                                            o.Add("keyPageHidesBackHair", true);
+                                                    }
+                                                }
+                                            }
 
                                             // Passives via CreatePassiveList — covers built-in key-page
                                             // passives and equipped passive books.

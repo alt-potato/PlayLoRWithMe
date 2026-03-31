@@ -177,6 +177,8 @@ export interface KeyPage {
   breakGauge?: number;
   /** BookXmlInfo.RangeType: "Melee" | "Range" | "Hybrid" — determines which card ranges can be equipped. */
   equipRangeType?: string;
+  /** BookXmlInfo integer ID — used to load the body composite PNG for the preview. */
+  bookId?: number;
 }
 
 // ── Unit shapes ───────────────────────────────────────────────────────────────
@@ -263,6 +265,18 @@ export interface LibrarianEntry {
    * Omitted when "N" (no gendered variants exist, body type toggle disabled).
    */
   skinGender?: string;
+  /** Equipped key page has a body composite in fashionbodies/ (replacesHead behavior). */
+  keyPageReplacesHead?: boolean;
+  /** Equipped key page has a front-layer composite in fashionbodies_front/. */
+  keyPageHasFrontLayer?: boolean;
+  /** Equipped key page body has a head tilt (Z-axis rotation). */
+  keyPageHeadTiltDeg?: number;
+  keyPagePivotFracX?: number;
+  keyPagePivotFracY?: number;
+  /** Equipped key page has a Hood sprite — back hair should be hidden. */
+  keyPageHidesBackHair?: boolean;
+  /** SkinGender of the equipped key page skin: "F" or "M". */
+  keyPageSkinGender?: string;
 }
 
 /** Fields shared by both ally and enemy units. */

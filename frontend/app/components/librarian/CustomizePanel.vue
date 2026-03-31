@@ -98,11 +98,27 @@ const previewAppearance = computed<AppearanceData>(() => ({
 const customizeOptions = computed(() => props.state.customizeOptions);
 
 /** The fashion book currently selected in the draft, or null if none. */
-const activeFashionBook = computed(() =>
-  draft.customBookId >= 0
-    ? (customizeOptions.value?.fashionBooks?.find((b) => b.id === draft.customBookId) ?? null)
-    : null
-);
+const activeFashionBook = computed(() => {
+  if (draft.customBookId >= 0)
+    return customizeOptions.value?.fashionBooks?.find((b) => b.id === draft.customBookId) ?? null;
+
+  // No explicit fashion selection — use the equipped key page's body as the default
+  // so the preview shows the librarian's actual appearance rather than a blank body.
+  const kp = props.lib.keyPage;
+  if (kp.bookId == null) return null;
+  return {
+    id: kp.bookId,
+    name: kp.name,
+    rangeType: kp.equipRangeType ?? "Hybrid",
+    replacesHead: props.lib.keyPageReplacesHead ?? false,
+    hasFrontLayer: props.lib.keyPageHasFrontLayer,
+    headTiltDeg: props.lib.keyPageHeadTiltDeg,
+    pivotFracX: props.lib.keyPagePivotFracX,
+    pivotFracY: props.lib.keyPagePivotFracY,
+    hidesBackHair: props.lib.keyPageHidesBackHair,
+    skinGender: props.lib.keyPageSkinGender,
+  };
+});
 
 /**
  * SkinGender of the active body source: from the selected fashion book if one
