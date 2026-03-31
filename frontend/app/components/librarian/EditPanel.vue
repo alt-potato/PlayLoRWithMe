@@ -31,6 +31,7 @@ import type {
   DeckCardPreview,
   CustomizePayload,
   ActionResult,
+  FashionBook,
 } from "~/types/game";
 
 const props = defineProps<{
@@ -104,6 +105,34 @@ async function onRemoveCard(card: DeckCardPreview) {
   await props.onRemoveCard(card);
 }
 
+/**
+ * Active fashion book for the appearance preview.  Custom book projection takes priority;
+ * when none is active, falls back to the key page's own body composite so the librarian's
+ * default in-game appearance is reflected without needing to open the customize panel.
+ */
+const activeFashionBook = computed<FashionBook | null>(() => {
+  const projId = props.lib.customBookId;
+  if (projId != null && projId >= 0) {
+    const found = (props.state.fashionBooks ?? []).find((fb) => fb.id === projId);
+    if (found) return found;
+  }
+  // Fall back to the key page's own body composite.
+  const bookId = props.lib.keyPage.bookId;
+  if (bookId == null) return null;
+  return {
+    id: bookId,
+    name: props.lib.keyPage.name,
+    rangeType: props.lib.keyPage.equipRangeType ?? "",
+    replacesHead: props.lib.keyPageReplacesHead ?? false,
+    hasFrontLayer: props.lib.keyPageHasFrontLayer,
+    headTiltDeg: props.lib.keyPageHeadTiltDeg,
+    pivotFracX: props.lib.keyPagePivotFracX,
+    pivotFracY: props.lib.keyPagePivotFracY,
+    hidesBackHair: props.lib.keyPageHidesBackHair,
+    skinGender: props.lib.keyPageSkinGender,
+  };
+});
+
 // Customize panel state
 const showCustomize = ref(false);
 
@@ -151,56 +180,85 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
           You can view but not edit.
         </div>
 
-        <!-- Tab content -->
-        <div class="tab-content">
-          <LibrarianKeyPageTab
-            v-if="activeTab === 'keypage'"
-            :lib="lib"
-            :state="state"
-            :edit-busy="editBusy || lockedByOther"
-            :on-equip-page="onEquipPage"
-          />
+        <!-- Panel body: sidebar (desktop) + tab content -->
+        <div class="panel-body">
+          <!--
+            Desktop sidebar: appearance preview pinned to the left on the Info tab only.
+            The Key Page tab renders the preview inline in its detail column, and the
+            Deck tab shows no preview.  Hidden on mobile via CSS — the Info tab inset
+            handles the narrow-viewport case.
+          -->
+          <div v-if="lib.appearance && activeTab === 'info'" class="preview-sidebar">
+            <LibrarianAppearancePreview
+              :appearance="lib.appearance"
+              :fashion-book="activeFashionBook"
+              :appearance-type="lib.appearanceType"
+            />
+          </div>
 
-          <LibrarianDeckTab
-            v-else-if="activeTab === 'deck'"
-            :lib="lib"
-            :state="state"
-            :edit-busy="editBusy || lockedByOther"
-            :on-add-card="onAddCard"
-            :on-remove-card="onRemoveCard"
-          />
+          <!-- Tab content -->
+          <div class="tab-content">
+            <LibrarianKeyPageTab
+              v-if="activeTab === 'keypage'"
+              :lib="lib"
+              :state="state"
+              :edit-busy="editBusy || lockedByOther"
+              :on-equip-page="onEquipPage"
+            />
 
-          <!-- Info tab: rename + customize button + current key page summary -->
-          <div v-else class="info-tab">
-            <div class="section-label">Name</div>
-            <div class="rename-row">
-              <input
-                v-model="editName"
-                class="rename-input"
-                maxlength="40"
-                :disabled="lockedByOther || !hasLock"
-                @keydown.enter.prevent="commitRename"
-              />
+            <LibrarianDeckTab
+              v-else-if="activeTab === 'deck'"
+              :lib="lib"
+              :state="state"
+              :edit-busy="editBusy || lockedByOther"
+              :on-add-card="onAddCard"
+              :on-remove-card="onRemoveCard"
+            />
+
+            <!-- Info tab: rename + customize button + current key page summary -->
+            <div v-else class="info-tab">
+              <!--
+                Mobile preview inset: shown at the top of the Info tab on narrow
+                viewports. Hidden above 700 px where the sidebar takes over.
+              -->
+              <div v-if="lib.appearance" class="preview-mobile">
+                <LibrarianAppearancePreview
+                  :appearance="lib.appearance"
+                  :fashion-book="activeFashionBook"
+                  :appearance-type="lib.appearanceType"
+                />
+              </div>
+
+              <div class="section-label">Name</div>
+              <div class="rename-row">
+                <input
+                  v-model="editName"
+                  class="rename-input"
+                  maxlength="40"
+                  :disabled="lockedByOther || !hasLock"
+                  @keydown.enter.prevent="commitRename"
+                />
+                <button
+                  class="rename-btn"
+                  :disabled="lockedByOther || !hasLock || renameBusy"
+                  @click="commitRename"
+                >
+                  Save
+                </button>
+              </div>
+              <div v-if="renameError" class="rename-error">{{ renameError }}</div>
+
               <button
-                class="rename-btn"
-                :disabled="lockedByOther || !hasLock || renameBusy"
-                @click="commitRename"
+                class="customize-btn"
+                :disabled="lockedByOther || !hasLock"
+                @click="showCustomize = true"
               >
-                Save
+                Customize Appearance &amp; Dialogue…
               </button>
+
+              <div class="section-label" style="margin-top: 0.75rem;">Key Page</div>
+              <LibrarianKeyPageDetail :key-page="lib.keyPage" />
             </div>
-            <div v-if="renameError" class="rename-error">{{ renameError }}</div>
-
-            <button
-              class="customize-btn"
-              :disabled="lockedByOther || !hasLock"
-              @click="showCustomize = true"
-            >
-              Customize Appearance &amp; Dialogue…
-            </button>
-
-            <div class="section-label" style="margin-top: 0.75rem;">Key Page</div>
-            <LibrarianKeyPageDetail :key-page="lib.keyPage" />
           </div>
         </div>
       </div>
@@ -334,6 +392,31 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
   flex-shrink: 0;
 }
 
+/* Flex row containing the optional sidebar and the tab content area. */
+.panel-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/*
+ * Desktop sidebar: holds the AppearancePreview on ≥700 px viewports.
+ * Hidden on mobile so the Info-tab inset handles preview instead.
+ */
+.preview-sidebar {
+  display: none;
+  flex-shrink: 0;
+  align-items: flex-start;
+  padding: 0.75rem 0.5rem 0.75rem 1rem;
+}
+
+@media (min-width: 700px) {
+  .preview-sidebar {
+    display: flex;
+  }
+}
+
 .tab-content {
   flex: 1;
   overflow: hidden;
@@ -341,6 +424,22 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/*
+ * Mobile Info-tab preview: centered above the name/customize controls.
+ * Hidden on desktop where the sidebar takes over.
+ */
+.preview-mobile {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 0.75rem;
+}
+
+@media (min-width: 700px) {
+  .preview-mobile {
+    display: none;
+  }
 }
 
 /* Info tab */
