@@ -24,11 +24,10 @@
     is identical across layers and face/body composites stay aligned.
 
   Preview box sizing:
-    AppearanceCache writes wwwroot/assets/customize/dimensions.json with the shared
-    canvas pixel dimensions { w, h }.  On mount we fetch this to compute a preview
-    height that matches the canvas aspect ratio, avoiding both an over-tall empty box
-    and a too-short clipped preview.  A sensible fallback is used until the fetch
-    resolves.
+    The preview is a fixed square (PREVIEW_W × PREVIEW_W).  Face canvas sprites are
+    square-canvas, so they fill the box without dead space.  Fashion body composites
+    show the head and upper body within the same square crop.  AppearanceCache writes
+    dimensions.json with the face canvas pixel size, used only for the head-tilt pivot.
 
   Props:
     appearance – AppearanceData with sprite IDs and color tuples (0–255 bytes).
@@ -55,25 +54,15 @@ const props = defineProps<{
 
 const BASE = "/assets/customize/";
 
-/** Preview width in CSS pixels — all calculations derive from this constant. */
+/** Preview size in CSS pixels — square so the face canvas fills without empty space. */
 const PREVIEW_W = 160;
+const PREVIEW_H = PREVIEW_W;
 
 /**
  * Canvas pixel dimensions from AppearanceCache's dimensions.json.
- * Used to compute the preview height and the rotation transform-origin.
+ * Used only for the rotation transform-origin calculation.
  */
 const dims = ref<{ w: number; h: number } | null>(null);
-
-/**
- * Preview height derived from the canvas aspect ratio.  The face canvas defines
- * the top portion; body composites extend below by roughly 1.5× the face height,
- * so we multiply by 2.5 and clamp to a sensible range.
- */
-const previewH = computed(() => {
-  if (!dims.value) return 260;
-  const scale = PREVIEW_W / dims.value.w;
-  return Math.max(180, Math.min(380, Math.ceil(dims.value.h * scale * 2.5)));
-});
 
 // Module-level cache so multiple instances share one fetch.
 let _dimsFetched = false;
@@ -193,7 +182,7 @@ const faceRotStyle = computed(() => {
   // CSS canvas height at PREVIEW_W: scale = PREVIEW_W / dims.w, height = dims.h * scale.
   const canvasCssH = dims.value
     ? PREVIEW_W * (dims.value.h / dims.value.w)
-    : previewH.value * 0.4; // rough fallback: face canvas ≈ 40% of previewH
+    : PREVIEW_H; // fallback: assume square face canvas
 
   const originX = PREVIEW_W * fracX;
   const originY = canvasCssH * fracY;
@@ -210,7 +199,7 @@ const faceRotStyle = computed(() => {
     White background required for background-blend-mode: multiply to work correctly:
     white × tint-color = tint-color.
   -->
-  <div class="preview-box" :style="{ width: `${PREVIEW_W}px`, height: `${previewH}px` }">
+  <div class="preview-box" :style="{ width: `${PREVIEW_W}px`, height: `${PREVIEW_H}px` }">
     <!--
       Hidden <img> probes: detect 404 for each sprite URL. We can't attach @error
       directly to a CSS background-image, so these invisible elements act as sentinels.
