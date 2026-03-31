@@ -45,6 +45,12 @@ const props = defineProps<{
    * the composite layers are hidden.
    */
   fashionBook?: FashionBook | null;
+  /**
+   * Active body type variant: "F", "M", or "N".  When the fashion book has
+   * gendered variants (skinGender != undefined), this selects which body PNG
+   * to display (e.g. fashionbodies/123_f.png vs 123_m.png).
+   */
+  appearanceType?: string;
 }>();
 
 const BASE = "/assets/customize/";
@@ -99,15 +105,23 @@ const layers = computed(() => {
   const hair = toRgb(a.hairColor);
   const skin = toRgb(a.skinColor);
   const eye = toRgb(a.eyeColor);
-  return [
-    { src: `${BASE}backhair_${a.backHairID}.png`, tint: hair },
-    { src: `${BASE}head_${a.headID}.png`, tint: skin },
-    { src: `${BASE}eyes_${a.eyeID}.png`, tint: eye },
-    { src: `${BASE}brows_${a.browID}.png`, tint: hair },
-    { src: `${BASE}mouths_${a.mouthID}.png`, tint: skin },
-    { src: `${BASE}fronthair_${a.frontHairID}.png`, tint: hair },
-  ];
+  return {
+    backHair: { src: `${BASE}backhair_${a.backHairID}.png`, tint: hair },
+    face: [
+      { src: `${BASE}head_0.png`, tint: skin },
+      { src: `${BASE}eyes_${a.eyeID}.png`, tint: eye },
+      { src: `${BASE}brows_${a.browID}.png`, tint: hair },
+      { src: `${BASE}mouths_${a.mouthID}.png`, tint: skin },
+      { src: `${BASE}fronthair_${a.frontHairID}.png`, tint: hair },
+    ],
+  };
 });
+
+/** All layer URLs for 404 probe images. */
+const allLayerSrcs = computed(() => [
+  layers.value.backHair,
+  ...layers.value.face,
+]);
 
 // Track which sprite URLs have failed to load so we can hide those layers entirely
 // rather than showing a solid-colored rectangle.
@@ -116,13 +130,29 @@ function markFailed(src: string) {
   failedSrcs.value = new Set([...failedSrcs.value, src]);
 }
 
+/**
+ * File suffix for gendered fashion book body PNGs.  When the fashion book has
+ * skinGender (F or M), the body PNGs are stored as {id}_f.png and {id}_m.png.
+ * The variant to display is determined by the active appearanceType.
+ */
+const fashionVariantSuffix = computed(() => {
+  if (!props.fashionBook?.skinGender) return "";
+  const at = props.appearanceType?.toLowerCase();
+  if (at === "f" || at === "m") return `_${at}`;
+  return "_f"; // default to female variant when neutral
+});
+
 /** URL of the fashion body composite PNG (behind face), or null if inactive. */
 const fashionBodyUrl = computed(() =>
-  props.fashionBook ? `/assets/fashionbodies/${props.fashionBook.id}.png` : null
+  props.fashionBook
+    ? `/assets/fashionbodies/${props.fashionBook.id}${fashionVariantSuffix.value}.png`
+    : null
 );
 
 const fashionBodyFailed = ref(false);
 watch(() => props.fashionBook?.id, () => { fashionBodyFailed.value = false; });
+// also reset when variant changes (different PNG)
+watch(fashionVariantSuffix, () => { fashionBodyFailed.value = false; });
 
 /**
  * URL of the fashion front-layer composite PNG (in front of face), or null when
@@ -130,7 +160,7 @@ watch(() => props.fashionBook?.id, () => { fashionBodyFailed.value = false; });
  */
 const fashionFrontUrl = computed(() =>
   props.fashionBook?.hasFrontLayer
-    ? `/assets/fashionbodies_front/${props.fashionBook.id}.png`
+    ? `/assets/fashionbodies_front/${props.fashionBook.id}${fashionVariantSuffix.value}.png`
     : null
 );
 
@@ -186,7 +216,7 @@ const faceRotStyle = computed(() => {
       directly to a CSS background-image, so these invisible elements act as sentinels.
     -->
     <img
-      v-for="(layer, i) in layers"
+      v-for="(layer, i) in allLayerSrcs"
       :key="`probe-${i}`"
       :src="layer.src"
       class="probe"
@@ -195,18 +225,18 @@ const faceRotStyle = computed(() => {
     />
 
     <!--
-      Back hair (layers[0]) rendered before the fashion body so it sits behind the body.
+      Back hair rendered before the fashion body so it sits behind the body.
       Hidden when the fashion book has a Hood sprite — the game hides all back hair
       renderers unconditionally in that case (RefreshAppearanceByMotion).
     -->
     <div
-      v-show="showFaceHairLayers && !failedSrcs.has(layers[0].src) && !fashionBook?.hidesBackHair"
+      v-show="showFaceHairLayers && !failedSrcs.has(layers.backHair.src) && !fashionBook?.hidesBackHair"
       class="layer-sprite"
       :style="{
-        backgroundImage: `url(${layers[0].src})`,
-        backgroundColor: layers[0].tint,
-        maskImage: `url(${layers[0].src})`,
-        WebkitMaskImage: `url(${layers[0].src})`,
+        backgroundImage: `url(${layers.backHair.src})`,
+        backgroundColor: layers.backHair.tint,
+        maskImage: `url(${layers.backHair.src})`,
+        WebkitMaskImage: `url(${layers.backHair.src})`,
         ...faceRotStyle,
       }"
     />
@@ -235,8 +265,8 @@ const faceRotStyle = computed(() => {
       of the fashion body so the librarian's face shows through the body composite.
     -->
     <div
-      v-for="(layer, i) in layers.slice(1)"
-      :key="`layer-${i + 1}`"
+      v-for="(layer, i) in layers.face"
+      :key="`face-${i}`"
       v-show="showFaceHairLayers && !failedSrcs.has(layer.src)"
       class="layer-sprite"
       :style="{

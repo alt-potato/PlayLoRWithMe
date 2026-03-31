@@ -2,18 +2,18 @@
   ProjectionTab.vue
 
   Projection (body appearance) sub-tab inside CustomizePanel.
-  Controls body type (headID), body height, and appearance projection from another key page.
+  Controls body type (appearanceType), body height, and appearance projection
+  from another key page.
+
+  Body type is a gender variant toggle (F = female, M = male) that selects
+  different body prefabs in-game.  Only enabled when the active skin (fashion
+  book or equipped key page) has SkinGender != "N".
 
   Fashion skins from other key pages are filtered by range-type compatibility:
-    Melee librarians  → Melee or Hybrid fashion books
-    Range librarians  → Range or Hybrid fashion books
-    Hybrid librarians → Hybrid fashion books only
+    Melee librarians  -> Melee or Hybrid fashion books
+    Range librarians  -> Range or Hybrid fashion books
+    Hybrid librarians -> Hybrid fashion books only
   This mirrors the EquipCustomCoreBook validation in UnitDataModel.
-
-  When a fashion book whose skinType != "Lor" is selected, the face/hair composite in
-  AppearancePreview becomes inaccurate because that skin replaces the head model entirely.
-  The parent passes replacesHead=true for those entries, and AppearancePreview dims the
-  composite accordingly.
 -->
 <script setup lang="ts">
 import type { FashionBook } from "~/types/game";
@@ -22,16 +22,18 @@ const HEIGHT_MIN = 140;
 const HEIGHT_MAX = 220;
 
 const props = defineProps<{
-  headID: number;
+  appearanceType: string;
   height: number;
   customBookId: number;
   fashionBooks: FashionBook[];
   libRangeType: string;
+  /** SkinGender of the active skin source (from librarian entry). */
+  skinGender: string | undefined;
   busy: boolean;
 }>();
 
 const emit = defineEmits<{
-  "update:headID": [value: number];
+  "update:appearanceType": [value: string];
   "update:height": [value: number];
   "update:customBookId": [value: number];
 }>();
@@ -57,6 +59,11 @@ function isCompatible(book: FashionBook): boolean {
 }
 
 const compatibleBooks = computed(() => props.fashionBooks.filter(isCompatible));
+
+/** Whether the body type toggle is available for the active skin. */
+const hasBodyTypeToggle = computed(() =>
+  props.skinGender === "F" || props.skinGender === "M"
+);
 </script>
 
 <template>
@@ -66,17 +73,17 @@ const compatibleBooks = computed(() => props.fashionBooks.filter(isCompatible));
     <div class="type-row">
       <button
         class="type-btn"
-        :class="{ active: headID === 0 }"
-        :disabled="busy"
-        @click="emit('update:headID', 0)"
+        :class="{ active: appearanceType === 'F' }"
+        :disabled="busy || !hasBodyTypeToggle"
+        @click="emit('update:appearanceType', 'F')"
       >
         Type A
       </button>
       <button
         class="type-btn"
-        :class="{ active: headID === 1 }"
-        :disabled="busy"
-        @click="emit('update:headID', 1)"
+        :class="{ active: appearanceType === 'M' }"
+        :disabled="busy || !hasBodyTypeToggle"
+        @click="emit('update:appearanceType', 'M')"
       >
         Type B
       </button>

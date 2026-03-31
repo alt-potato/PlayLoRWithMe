@@ -639,6 +639,16 @@ namespace PlayLoRWithMe
                                                     ? customBook.GetBookClassInfoId().id
                                                     : -1
                                             );
+
+                                            // Body type: the Gender enum variant controlling which
+                                            // body prefab (_F/_M/_N suffix) is used in-game.
+                                            o.Add("appearanceType", unit.appearanceType.ToString());
+
+                                            // The active skin's SkinGender determines whether the
+                                            // body type toggle should be enabled in the frontend.
+                                            var activeSkinInfo = customBook?.ClassInfo ?? book.ClassInfo;
+                                            if (activeSkinInfo.gender != Gender.N)
+                                                o.Add("skinGender", activeSkinInfo.gender.ToString());
                                         });
                                     }
                                 }
@@ -876,6 +886,11 @@ namespace PlayLoRWithMe
                                 .Add("name", bxi.Name)
                                 .Add("rangeType", bxi.RangeType.ToString())
                                 .Add("replacesHead", bxi.skinType != "Lor");
+                            // SkinGender from the key page XML: controls whether the
+                            // body type toggle is available for this fashion book.
+                            if (bxi.gender != Gender.N)
+                                fb.Add("skinGender", bxi.gender.ToString());
+
                             // Optional per-book appearance metadata from AppearanceCache.
                             if (AppearanceCache.FashionMeta.TryGetValue(bid, out var meta))
                             {

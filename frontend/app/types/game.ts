@@ -253,6 +253,16 @@ export interface LibrarianEntry {
    * Set by EquipCustomCoreBook; persisted in save data as customcorebookInstanceId.
    */
   customBookId?: number;
+  /**
+   * Active body type variant: "F" (female), "M" (male), or "N" (neutral).
+   * Controls which _F/_M/_N prefab suffix is loaded in-game.
+   */
+  appearanceType?: string;
+  /**
+   * SkinGender of the active skin source (fashion book or key page): "F" or "M".
+   * Omitted when "N" (no gendered variants exist, body type toggle disabled).
+   */
+  skinGender?: string;
 }
 
 /** Fields shared by both ally and enemy units. */
@@ -392,7 +402,8 @@ export interface AppearanceData {
   eyeID: number;
   browID: number;
   mouthID: number;
-  headID: number;
+  /** Head sprite index (front=0, side=1). Server-serialized but unused by the preview. */
+  headID?: number;
   height: number;
   hairColor: [number, number, number];
   skinColor: [number, number, number];
@@ -452,6 +463,11 @@ export interface FashionBook {
    * hair renderers in that case (RefreshAppearanceByMotion forcibly deactivates them).
    */
   hidesBackHair?: boolean;
+  /**
+   * Gender variant of the skin (from BookXmlInfo.SkinGender): "F", "M", or omitted for "N".
+   * When present, the body type toggle is enabled and body PNGs use a _f / _m suffix.
+   */
+  skinGender?: string;
 }
 
 export interface CustomizeOptions {
@@ -471,7 +487,6 @@ export interface CustomizePayload {
   eyeID: number;
   browID: number;
   mouthID: number;
-  headID: number;
   height: number;
   hairR: number;
   hairG: number;
@@ -482,15 +497,17 @@ export interface CustomizePayload {
   eyeR: number;
   eyeG: number;
   eyeB: number;
-  dlgStartBattle: string;
-  dlgVictory: string;
-  dlgDeath: string;
-  dlgColleagueDeath: string;
-  dlgKillsOpponent: string;
+  dlgStartBattle: string | null;
+  dlgVictory: string | null;
+  dlgDeath: string | null;
+  dlgColleagueDeath: string | null;
+  dlgKillsOpponent: string | null;
   prefixID: number;
   postfixID: number;
   /** -1 = unequip; any other value = BookXmlInfo ID to equip as appearance projection. */
   customBookId: number;
+  /** Body type variant: "F", "M", or "N". */
+  appearanceType: string;
 }
 
 /** Top-level SSE / GET /state payload. */

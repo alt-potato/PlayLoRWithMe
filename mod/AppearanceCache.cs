@@ -28,8 +28,8 @@ namespace PlayLoRWithMe
         /// HidesBackHair is true when the character model has a Hood sprite; the game
         /// hides all back hair renderers in that case.
         /// </summary>
-        internal static readonly Dictionary<int, (float TiltDeg, float PivotFracX, float PivotFracY, bool HasFrontLayer, bool HidesBackHair)>
-            FashionMeta = new Dictionary<int, (float, float, float, bool, bool)>();
+        internal static readonly Dictionary<int, (float TiltDeg, float PivotFracX, float PivotFracY, bool HasFrontLayer, bool HidesBackHair, string SkinGender)>
+            FashionMeta = new Dictionary<int, (float, float, float, bool, bool, string)>();
 
         private static string CustomizeDir =>
             Path.Combine(Server.WwwRootPath, "assets", "customize");
@@ -53,7 +53,7 @@ namespace PlayLoRWithMe
             try
             {
                 // Bump this whenever extraction logic changes to invalidate the on-disk cache.
-                const string CacheVersion = "21";
+                const string CacheVersion = "22";
                 var versionPath = Path.Combine(CustomizeDir, "_cache_version.txt");
 
                 bool stale =
@@ -215,18 +215,25 @@ namespace PlayLoRWithMe
                 // other non-neck attachment points.
                 FashionMeta.Clear();
                 float bw = faceHairBounds.size.x, bh = faceHairBounds.size.y;
+                // Canonical librarian pivot is at world origin (0, 0) — horizontal
+                // center of the face canvas and neck-level on the Y axis.
+                float fracX = (bw > 0f) ? Mathf.Clamp01(-faceHairBounds.min.x / bw) : 0.5f;
+                float fracY = (bh > 0f) ? Mathf.Clamp01(faceHairBounds.max.y / bh)  : 0.5f;
                 foreach (var b in fashionBodies)
                 {
-                    // Canonical librarian pivot is at world origin (0, 0) — horizontal
-                    // center of the face canvas and neck-level on the Y axis.
-                    float fracX = (bw > 0f)
-                        ? Mathf.Clamp01(-faceHairBounds.min.x / bw)
-                        : 0.5f;
-                    float fracY = (bh > 0f)
-                        ? Mathf.Clamp01(faceHairBounds.max.y / bh)
-                        : 0.5f;
-                    FashionMeta[b.BookId] = (b.PivotRotDeg, fracX, fracY, b.FrontSprites.Count > 0,
-                        !b.ReplacesHead && b.HasHood);
+                    if (FashionMeta.ContainsKey(b.BookId))
+                    {
+                        // Second variant for same book — merge HasFrontLayer flag.
+                        var existing = FashionMeta[b.BookId];
+                        if (b.FrontSprites.Count > 0 && !existing.HasFrontLayer)
+                            FashionMeta[b.BookId] = (existing.TiltDeg, existing.PivotFracX,
+                                existing.PivotFracY, true, existing.HidesBackHair, existing.SkinGender);
+                        continue;
+                    }
+                    var bxi = Singleton<BookXmlList>.Instance?.GetData(b.BookId);
+                    string skinGender = bxi?.gender.ToString() ?? "N";
+                    FashionMeta[b.BookId] = (b.PivotRotDeg, fracX, fracY,
+                        b.FrontSprites.Count > 0, !b.ReplacesHead && b.HasHood, skinGender);
                 }
             }
 
@@ -316,6 +323,11 @@ namespace PlayLoRWithMe
         private class FashionBookBody
         {
             public int BookId;
+            /// <summary>
+            /// Gender variant suffix: null for neutral/ungendered, "f" for female, "m" for male.
+            /// Used to produce distinct file names (e.g. fashionbodies/123_f.png).
+            /// </summary>
+            public string Variant = null;
             public bool ReplacesHead;
             // World position of customPivot (or Head SpriteSet renderer) within the
             // instantiated DefaultMotion prefab.  Face/hair sprites are placed at this
@@ -345,170 +357,199 @@ namespace PlayLoRWithMe
         }
 
         /// <summary>
+        /// Loads a single prefab variant and returns a populated FashionBookBody, or null
+        /// on failure. Callers add the result to the shared result list.
+        /// </summary>
+        private static FashionBookBody TryGatherOneBody(
+            int bid, BookXmlInfo bxi, string suffix, string variant,
+            AssetBundleManagerRemake abm, List<GameObject> instancesToDestroy)
+        {
+            var skinName = bxi.GetCharacterSkin();
+            var prefab = abm.LoadCharacterPrefab_DefaultMotion(skinName, suffix, out string _);
+            if (prefab == null) return null;
+
+            var go = UnityEngine.Object.Instantiate(prefab);
+            var motion = go.GetComponentInChildren<CharacterMotion>();
+            if (motion == null) { UnityEngine.Object.Destroy(go); return null; }
+
+            motion.SetSkinSprite(enable: true);
+            motion.DisableSpritesByCustomizing(isLibrarian: true);
+
+            Vector3 anchorPos;
+            if (motion.customPivot != null)
+                anchorPos = motion.customPivot.position;
+            else
+            {
+                var headSet = motion.motionSpriteSet.Find(
+                    ss => ss.sprType == CharacterAppearanceType.Head);
+                anchorPos = headSet?.sprRenderer?.transform?.position ?? Vector3.zero;
+            }
+
+            float rawZ = motion.customPivot != null
+                ? motion.customPivot.rotation.eulerAngles.z
+                : 0f;
+            float pivotRotDeg = rawZ > 180f ? rawZ - 360f : rawZ;
+
+            var body = new FashionBookBody
+            {
+                BookId       = bid,
+                Variant      = variant,
+                ReplacesHead = bxi.skinType != "Lor",
+                AnchorPos    = anchorPos,
+                WorldScale   = motion.transform.lossyScale.y,
+                PivotRotDeg  = pivotRotDeg,
+            };
+
+            // Split enabled sprites into behind-face and in-front-of-face groups.
+            int faceLayerIdx = -1, faceOrder = int.MaxValue;
+            if (!body.ReplacesHead)
+            {
+                var slayers = SortingLayer.layers;
+                var layerIdxMap = new Dictionary<int, int>(slayers.Length);
+                for (int li = 0; li < slayers.Length; li++)
+                    layerIdxMap[slayers[li].id] = li;
+
+                foreach (var ss in motion.motionSpriteSet)
+                {
+                    if (ss.sprRenderer == null
+                        || ss.sprRenderer.enabled
+                        || ss.sprRenderer.sprite == null
+                        || ss.sprType != CharacterAppearanceType.Head)
+                        continue;
+                    int idx = layerIdxMap.TryGetValue(ss.sprRenderer.sortingLayerID, out var v) ? v : 0;
+                    if (idx > faceLayerIdx || (idx == faceLayerIdx && ss.sprRenderer.sortingOrder > faceOrder))
+                    {
+                        faceLayerIdx = idx;
+                        faceOrder = ss.sprRenderer.sortingOrder;
+                    }
+                }
+
+                foreach (var ss in motion.motionSpriteSet)
+                {
+                    if (ss.sprRenderer == null
+                        || !ss.sprRenderer.enabled
+                        || ss.sprRenderer.sprite == null)
+                        continue;
+                    var entry = (ss, ss.sprRenderer.transform.position);
+                    bool inFront = false;
+                    if (faceLayerIdx >= 0)
+                    {
+                        int idx = layerIdxMap.TryGetValue(ss.sprRenderer.sortingLayerID, out var v) ? v : 0;
+                        inFront = idx > faceLayerIdx
+                            || (idx == faceLayerIdx && ss.sprRenderer.sortingOrder > faceOrder);
+                    }
+                    if (inFront)
+                        body.FrontSprites.Add(entry);
+                    else
+                        body.Sprites.Add(entry);
+
+                    if (ss.sprType == CharacterAppearanceType.Hood)
+                        body.HasHood = true;
+                }
+            }
+            else
+            {
+                foreach (var ss in motion.motionSpriteSet)
+                {
+                    if (ss.sprRenderer == null
+                        || !ss.sprRenderer.enabled
+                        || ss.sprRenderer.sprite == null)
+                        continue;
+                    body.Sprites.Add((ss, ss.sprRenderer.transform.position));
+                }
+            }
+
+            if (body.Sprites.Count + body.FrontSprites.Count > 0)
+            {
+                instancesToDestroy.Add(go);
+                return body;
+            }
+            UnityEngine.Object.Destroy(go);
+            return null;
+        }
+
+        /// <summary>
         /// Instantiates the DefaultMotion prefab for each unlocked fashion book, runs
         /// SetSkinSprite + DisableSpritesByCustomizing to isolate body-only sprites, and
         /// records all enabled SpriteRenderers alongside their world positions.
         /// Populates <paramref name="instancesToDestroy"/> with objects the caller must
         /// destroy after extraction is complete.
         /// </summary>
+        /// <summary>
+        /// Gathers body sprites for a single book ID, handling gendered variants.
+        /// </summary>
+        private static void GatherBookBody(
+            int bid, List<FashionBookBody> result,
+            List<GameObject> instancesToDestroy,
+            AssetBundleManagerRemake abm, HashSet<int> seen)
+        {
+            if (!seen.Add(bid)) return; // already gathered this book ID
+
+            var bxi = Singleton<BookXmlList>.Instance?.GetData(bid);
+            if (bxi == null) return;
+            if (string.IsNullOrEmpty(bxi.GetCharacterSkin())) return;
+
+            if (bxi.gender == Gender.N || bxi.gender == Gender.Creature || bxi.gender == Gender.EGO)
+            {
+                var body = TryGatherOneBody(bid, bxi, "_N", null, abm, instancesToDestroy);
+                if (body == null)
+                    body = TryGatherOneBody(bid, bxi, "", null, abm, instancesToDestroy);
+                if (body != null)
+                    result.Add(body);
+            }
+            else
+            {
+                var bodyF = TryGatherOneBody(bid, bxi, "_F", "f", abm, instancesToDestroy);
+                if (bodyF != null) result.Add(bodyF);
+                var bodyM = TryGatherOneBody(bid, bxi, "_M", "m", abm, instancesToDestroy);
+                if (bodyM != null) result.Add(bodyM);
+            }
+        }
+
         private static void GatherFashionBodies(
             List<FashionBookBody> result,
             List<GameObject> instancesToDestroy
         )
         {
-            var ccbm = Singleton<CustomCoreBookInventoryModel>.Instance;
-            if (ccbm == null) return;
-
             var abm = Singleton<AssetBundleManagerRemake>.Instance;
             if (abm == null) return;
 
-            var fashionIds = ccbm.GetBookIdList_CustomCoreBook(SephirahType.None, false);
-            foreach (var bid in fashionIds)
+            var seen = new HashSet<int>();
+
+            // Fashion books (custom core book projections).
+            var ccbm = Singleton<CustomCoreBookInventoryModel>.Instance;
+            if (ccbm != null)
             {
-                try
+                foreach (var bid in ccbm.GetBookIdList_CustomCoreBook(SephirahType.None, false))
                 {
-                    var bxi = Singleton<BookXmlList>.Instance?.GetData(bid);
-                    if (bxi == null) continue;
-                    var skinName = bxi.GetCharacterSkin();
-                    if (string.IsNullOrEmpty(skinName)) continue;
-
-                    // Try neutral gender suffix first, then no suffix (some skins omit it).
-                    var prefab = abm.LoadCharacterPrefab_DefaultMotion(skinName, "_N", out string _);
-                    if (prefab == null)
-                        prefab = abm.LoadCharacterPrefab_DefaultMotion(skinName, "", out string _);
-                    if (prefab == null) continue;
-
-                    var go = UnityEngine.Object.Instantiate(prefab);
-                    var motion = go.GetComponentInChildren<CharacterMotion>();
-                    if (motion == null) { UnityEngine.Object.Destroy(go); continue; }
-
-                    // Mirror the in-game setup for a librarian wearing a fashion skin:
-                    // enable skin sprites and scale sorting orders, then hide head/hair.
-                    motion.SetSkinSprite(enable: true);
-                    motion.DisableSpritesByCustomizing(isLibrarian: true);
-
-                    // The face/hair overlay is parented to customPivot in-game, so
-                    // subtracting anchorPos from body sprite positions places them in the
-                    // same coordinate frame as the face/hair canvas.
-                    Vector3 anchorPos;
-                    if (motion.customPivot != null)
+                    try { GatherBookBody(bid, result, instancesToDestroy, abm, seen); }
+                    catch (System.Exception ex)
                     {
-                        anchorPos = motion.customPivot.position;
-                    }
-                    else
-                    {
-                        // Fall back to the Head SpriteSet renderer (same as CustomizedAppearance).
-                        var headSet = motion.motionSpriteSet.Find(
-                            ss => ss.sprType == CharacterAppearanceType.Head);
-                        anchorPos = headSet?.sprRenderer?.transform?.position ?? Vector3.zero;
-                    }
-
-                    // Read the pivot's Z rotation — this is the in-game head tilt.
-                    // Normalize from Unity's [0, 360) range to (-180, 180] so the sign
-                    // conveys direction (positive = clockwise in Unity's left-hand space).
-                    float rawZ = motion.customPivot != null
-                        ? motion.customPivot.rotation.eulerAngles.z
-                        : 0f;
-                    float pivotRotDeg = rawZ > 180f ? rawZ - 360f : rawZ;
-
-                    var body = new FashionBookBody
-                    {
-                        BookId       = bid,
-                        ReplacesHead = bxi.skinType != "Lor",
-                        AnchorPos    = anchorPos,
-                        WorldScale   = motion.transform.lossyScale.y,
-                        PivotRotDeg  = pivotRotDeg,
-                    };
-
-                    // Split enabled sprites into behind-face and in-front-of-face groups.
-                    //
-                    // Reference point: the disabled HEAD sprite (CharacterAppearanceType.Head)
-                    // represents the base skin/face layer.  An enabled body sprite is "in front
-                    // of face" only if Unity's renderer would draw it on top of the HEAD —
-                    // i.e. it is on a higher sorting layer, or the same layer with a strictly
-                    // higher sortingOrder.  Using BackHair (the minimum disabled order) was too
-                    // permissive: torso/armor sprites above BackHair but below the face were
-                    // incorrectly placed in the front layer.
-                    //
-                    // For replacesHead=true books the face overlay is never shown, so all
-                    // sprites go into the back group unconditionally.
-                    int faceLayerIdx = -1, faceOrder = int.MaxValue;
-                    if (!body.ReplacesHead)
-                    {
-                        // Build a sortingLayerID → index map so different layers can be compared.
-                        var slayers = SortingLayer.layers;
-                        var layerIdxMap = new Dictionary<int, int>(slayers.Length);
-                        for (int li = 0; li < slayers.Length; li++)
-                            layerIdxMap[slayers[li].id] = li;
-
-                        foreach (var ss in motion.motionSpriteSet)
-                        {
-                            if (ss.sprRenderer == null
-                                || ss.sprRenderer.enabled
-                                || ss.sprRenderer.sprite == null
-                                || ss.sprType != CharacterAppearanceType.Head)
-                                continue;
-                            int idx = layerIdxMap.TryGetValue(ss.sprRenderer.sortingLayerID, out var v) ? v : 0;
-                            // Keep whichever HEAD renderer is drawn highest (closest to the viewer).
-                            if (idx > faceLayerIdx || (idx == faceLayerIdx && ss.sprRenderer.sortingOrder > faceOrder))
-                            {
-                                faceLayerIdx = idx;
-                                faceOrder = ss.sprRenderer.sortingOrder;
-                            }
-                        }
-
-                        // Build the map once; reuse in the classify loop below.
-                        foreach (var ss in motion.motionSpriteSet)
-                        {
-                            if (ss.sprRenderer == null
-                                || !ss.sprRenderer.enabled
-                                || ss.sprRenderer.sprite == null)
-                                continue;
-                            var entry = (ss, ss.sprRenderer.transform.position);
-                            bool inFront = false;
-                            if (faceLayerIdx >= 0) // HEAD sprite was found
-                            {
-                                int idx = layerIdxMap.TryGetValue(ss.sprRenderer.sortingLayerID, out var v) ? v : 0;
-                                inFront = idx > faceLayerIdx
-                                    || (idx == faceLayerIdx && ss.sprRenderer.sortingOrder > faceOrder);
-                            }
-                            if (inFront)
-                                body.FrontSprites.Add(entry);
-                            else
-                                body.Sprites.Add(entry);
-
-                            // The game hides all back hair when any Hood sprite is present.
-                            if (ss.sprType == CharacterAppearanceType.Hood)
-                                body.HasHood = true;
-                        }
-                    }
-                    else
-                    {
-                        foreach (var ss in motion.motionSpriteSet)
-                        {
-                            if (ss.sprRenderer == null
-                                || !ss.sprRenderer.enabled
-                                || ss.sprRenderer.sprite == null)
-                                continue;
-                            body.Sprites.Add((ss, ss.sprRenderer.transform.position));
-                        }
-                    }
-
-                    if (body.Sprites.Count + body.FrontSprites.Count > 0)
-                    {
-                        result.Add(body);
-                        instancesToDestroy.Add(go);
-                    }
-                    else
-                    {
-                        UnityEngine.Object.Destroy(go);
+                        Debug.LogWarning(
+                            $"[PlayLoRWithMe] AppearanceCache: fashion body gather {bid} failed: {ex.Message}");
                     }
                 }
-                catch (System.Exception ex)
+            }
+
+            // Equipped key pages — extract their bodies too so the preview can
+            // show the librarian's current appearance when no fashion book is selected.
+            var library = LibraryModel.Instance;
+            if (library != null)
+            {
+                foreach (var floor in library.GetOpenedFloorList())
                 {
-                    Debug.LogWarning(
-                        $"[PlayLoRWithMe] AppearanceCache: fashion body gather {bid} failed: {ex.Message}"
-                    );
+                    foreach (var unit in floor.GetUnitDataList())
+                    {
+                        var book = unit.bookItem;
+                        if (book?.ClassInfo == null) continue;
+                        int bid = book.GetBookClassInfoId().id;
+                        try { GatherBookBody(bid, result, instancesToDestroy, abm, seen); }
+                        catch (System.Exception ex)
+                        {
+                            Debug.LogWarning(
+                                $"[PlayLoRWithMe] AppearanceCache: key page body gather {bid} failed: {ex.Message}");
+                        }
+                    }
                 }
             }
         }
@@ -536,8 +577,10 @@ namespace PlayLoRWithMe
 
             foreach (var body in fashionBodies)
             {
-                var path      = Path.Combine(FashionBodyDir,      $"{body.BookId}.png");
-                var frontPath = Path.Combine(FashionBodyFrontDir, $"{body.BookId}.png");
+                // gendered variants use a suffix: fashionbodies/123_f.png, 123_m.png
+                var suffix = body.Variant != null ? $"_{body.Variant}" : "";
+                var path      = Path.Combine(FashionBodyDir,      $"{body.BookId}{suffix}.png");
+                var frontPath = Path.Combine(FashionBodyFrontDir, $"{body.BookId}{suffix}.png");
 
                 // Skip if already extracted.  The back file is the sentinel; for the rare
                 // case where all sprites are front-layer, use the front file instead.

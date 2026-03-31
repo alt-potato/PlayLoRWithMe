@@ -50,7 +50,7 @@ const saveError = ref<string | null>(null);
 const DEFAULT_APPEARANCE: AppearanceData = {
   frontHairID: 0, backHairID: 0,
   eyeID: 0, browID: 0, mouthID: 0,
-  headID: 0, height: 175,
+  height: 175,
   hairColor: [13, 13, 13],
   skinColor: [224, 188, 157],
   eyeColor: [13, 13, 13],
@@ -66,8 +66,8 @@ const draft = reactive({
   eyeID:       props.lib.appearance?.eyeID       ?? DEFAULT_APPEARANCE.eyeID,
   browID:      props.lib.appearance?.browID      ?? DEFAULT_APPEARANCE.browID,
   mouthID:     props.lib.appearance?.mouthID     ?? DEFAULT_APPEARANCE.mouthID,
-  headID:      props.lib.appearance?.headID      ?? DEFAULT_APPEARANCE.headID,
   height:      props.lib.appearance?.height      ?? DEFAULT_APPEARANCE.height,
+  appearanceType: props.lib.appearanceType ?? "N",
 
   hairColor: [...(props.lib.appearance?.hairColor ?? DEFAULT_APPEARANCE.hairColor)] as [number, number, number],
   skinColor: [...(props.lib.appearance?.skinColor ?? DEFAULT_APPEARANCE.skinColor)] as [number, number, number],
@@ -89,7 +89,6 @@ const previewAppearance = computed<AppearanceData>(() => ({
   eyeID:       draft.eyeID,
   browID:      draft.browID,
   mouthID:     draft.mouthID,
-  headID:      draft.headID,
   height:      draft.height,
   hairColor:   draft.hairColor,
   skinColor:   draft.skinColor,
@@ -103,6 +102,16 @@ const activeFashionBook = computed(() =>
   draft.customBookId >= 0
     ? (customizeOptions.value?.fashionBooks?.find((b) => b.id === draft.customBookId) ?? null)
     : null
+);
+
+/**
+ * SkinGender of the active body source: from the selected fashion book if one
+ * is equipped, otherwise from the librarian's own key page (via the server).
+ * When a fashion book is selected in the draft, its skinGender takes precedence
+ * because the toggle applies to whatever skin is currently being previewed.
+ */
+const activeSkinGender = computed(() =>
+  activeFashionBook.value?.skinGender ?? props.lib.skinGender
 );
 
 // ── Actions ────────────────────────────────────────────────────────────────
@@ -134,7 +143,6 @@ async function handleComplete(): Promise<void> {
     eyeID:       draft.eyeID,
     browID:      draft.browID,
     mouthID:     draft.mouthID,
-    headID:      draft.headID,
     height:      draft.height,
     hairR: draft.hairColor[0], hairG: draft.hairColor[1], hairB: draft.hairColor[2],
     skinR: draft.skinColor[0], skinG: draft.skinColor[1], skinB: draft.skinColor[2],
@@ -151,6 +159,7 @@ async function handleComplete(): Promise<void> {
     prefixID:     draft.prefixID,
     postfixID:    draft.postfixID,
     customBookId: draft.customBookId,
+    appearanceType: draft.appearanceType,
   };
 
   const result = await props.onSave(payload);
@@ -209,6 +218,7 @@ watch(
             <LibrarianAppearancePreview
               :appearance="previewAppearance"
               :fashion-book="activeFashionBook"
+              :appearance-type="draft.appearanceType"
             />
           </div>
 
@@ -266,11 +276,12 @@ watch(
               <!-- Projection -->
               <LibrarianCustomizeProjectionTab
                 v-else-if="activeTab === 'projection'"
-                v-model:head-i-d="draft.headID"
+                v-model:appearance-type="draft.appearanceType"
                 v-model:height="draft.height"
                 v-model:custom-book-id="draft.customBookId"
                 :fashion-books="customizeOptions?.fashionBooks ?? []"
-                :lib-range-type="lib.keyPage.equipRangeType"
+                :lib-range-type="lib.keyPage.equipRangeType ?? 'Hybrid'"
+                :skin-gender="activeSkinGender"
                 :busy="isBusy"
               />
 

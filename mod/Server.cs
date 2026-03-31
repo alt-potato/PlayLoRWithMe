@@ -822,7 +822,18 @@ namespace PlayLoRWithMe
                     cd.headID = hid;
                 if (r.TryGetInt("height", out int ht))
                     cd.height = ht;
+            }
 
+            // Body type: switches between gendered prefab variants (_F / _M / _N).
+            var at = r.GetString("appearanceType");
+            if (!string.IsNullOrEmpty(at))
+            {
+                try { unit.appearanceType = (Gender)System.Enum.Parse(typeof(Gender), at); }
+                catch { /* ignore invalid values */ }
+            }
+
+            if (cd != null)
+            {
                 if (
                     r.TryGetInt("hairR", out int hairR)
                     && r.TryGetInt("hairG", out int hairG)
