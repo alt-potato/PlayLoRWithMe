@@ -12,24 +12,6 @@ const EYE_MAX = 31;
 const BROW_MAX = 13;
 const MOUTH_MAX = 13;
 
-/** Skin tone presets (6 options matching the game's SkinColorTable). */
-const SKIN_COLORS: Array<{ label: string; color: [number, number, number] }> = [
-  { label: "Very Fair", color: [242, 218, 195] },
-  { label: "Fair",      color: [224, 188, 157] },
-  { label: "Medium",    color: [194, 150, 110] },
-  { label: "Olive",     color: [158, 117, 83] },
-  { label: "Tan",       color: [120, 83, 55] },
-  { label: "Dark",      color: [80, 50, 33] },
-];
-
-/** Eye color presets. The game has limited options; a few common variants are provided. */
-const EYE_COLORS: Array<{ label: string; color: [number, number, number] }> = [
-  { label: "Dark",  color: [13, 13, 13] },
-  { label: "Brown", color: [100, 60, 20] },
-  { label: "Blue",  color: [40, 80, 180] },
-  { label: "Green", color: [40, 130, 60] },
-];
-
 const props = defineProps<{
   eyeID: number;
   browID: number;
@@ -58,16 +40,6 @@ function step(field: StepField, delta: number): void {
   else emit("update:mouthID", next);
 }
 
-function isColorActive(
-  current: [number, number, number],
-  target: [number, number, number],
-): boolean {
-  return current[0] === target[0] && current[1] === target[1] && current[2] === target[2];
-}
-
-function swatchStyle(c: [number, number, number]) {
-  return { background: `rgb(${c[0]}, ${c[1]}, ${c[2]})` };
-}
 </script>
 
 <template>
@@ -97,32 +69,17 @@ function swatchStyle(c: [number, number, number]) {
     </div>
 
     <div class="section-label" style="margin-top: 0.75rem;">Skin Color</div>
-    <div class="swatch-row">
-      <button
-        v-for="preset in SKIN_COLORS"
-        :key="preset.label"
-        class="swatch"
-        :class="{ active: isColorActive(skinColor, preset.color) }"
-        :style="swatchStyle(preset.color)"
-        :title="preset.label"
-        :disabled="busy"
-        @click="emit('update:skinColor', preset.color)"
-      />
-    </div>
-
+    <LibrarianCustomizeHslColorPicker
+      :model-value="skinColor"
+      :disabled="busy"
+      @update:model-value="emit('update:skinColor', $event)"
+    />
     <div class="section-label" style="margin-top: 0.75rem;">Eye Color</div>
-    <div class="swatch-row">
-      <button
-        v-for="preset in EYE_COLORS"
-        :key="preset.label"
-        class="swatch"
-        :class="{ active: isColorActive(eyeColor, preset.color) }"
-        :style="swatchStyle(preset.color)"
-        :title="preset.label"
-        :disabled="busy"
-        @click="emit('update:eyeColor', preset.color)"
-      />
-    </div>
+    <LibrarianCustomizeHslColorPicker
+      :model-value="eyeColor"
+      :disabled="busy"
+      @update:model-value="emit('update:eyeColor', $event)"
+    />
   </div>
 </template>
 
@@ -179,35 +136,5 @@ function swatchStyle(c: [number, number, number]) {
 .step-range {
   font-size: 0.6rem;
   color: var(--text-3);
-}
-
-.swatch-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.swatch {
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: transform 0.1s, border-color 0.1s;
-  outline: none;
-}
-
-.swatch:hover:not(:disabled) {
-  transform: scale(1.15);
-}
-
-.swatch.active {
-  border-color: var(--gold);
-  transform: scale(1.15);
-}
-
-.swatch:disabled {
-  opacity: 0.4;
-  cursor: default;
 }
 </style>
