@@ -255,6 +255,13 @@ export interface LibrarianEntry {
    * Set by EquipCustomCoreBook; persisted in save data as customcorebookInstanceId.
    */
   customBookId?: number;
+  /** Non-empty when customBookId refers to a workshop book; omitted otherwise. */
+  customBookPackageId?: string;
+  /**
+   * contentFolderIdx of the active workshop cloth-overlay skin; omitted when none.
+   * Equipped via the CustomizingResourceLoader system (separate from fashionBook).
+   */
+  workshopSkin?: string;
   /**
    * Active body type variant: "F" (female), "M" (male), or "N" (neutral).
    * Controls which _F/_M/_N prefab suffix is loaded in-game.
@@ -448,6 +455,8 @@ export interface TitleOption {
 /** A custom core book that can be used as an appearance projection skin. */
 export interface FashionBook {
   id: number;
+  /** Non-empty for workshop (mod) books; omitted for core fashion books. */
+  packageId?: string;
   name: string;
   /** EquipRangeType string — controls compatibility with librarian's range type. */
   rangeType: string;
@@ -484,12 +493,21 @@ export interface FashionBook {
   skinGender?: string;
 }
 
+/** A workshop cloth-overlay skin from CustomizingResourceLoader. */
+export interface WorkshopSkin {
+  id: number;
+  name: string;
+  /** Unique string key used to equip/save this skin (unit.workshopSkin). */
+  contentFolderIdx: string;
+}
+
 export interface CustomizeOptions {
   suggestedNames: string[];
   prefixTitles: TitleOption[];
   suffixTitles: TitleOption[];
   dialoguePresets: Record<keyof DialogueData, string[]>;
   fashionBooks?: FashionBook[];
+  workshopSkins?: WorkshopSkin[];
 }
 
 /** Flat payload sent via setCustomization WebSocket action. */
@@ -520,6 +538,13 @@ export interface CustomizePayload {
   postfixID: number;
   /** -1 = unequip; any other value = BookXmlInfo ID to equip as appearance projection. */
   customBookId: number;
+  /** Non-empty when customBookId refers to a workshop book; omitted otherwise. */
+  customBookPackageId?: string;
+  /**
+   * contentFolderIdx of the workshop skin to equip, or "" to unequip.
+   * Omitted from payload when unchanged (key absence means "do not change").
+   */
+  workshopSkin?: string;
   /** Body type variant: "F", "M", or "N". */
   appearanceType: string;
 }

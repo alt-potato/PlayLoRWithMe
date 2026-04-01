@@ -922,6 +922,7 @@ namespace PlayLoRWithMe
 
             // Fashion projection: equip a custom core book as appearance skin, or unequip.
             // -1 means unequip; any other value is a BookXmlInfo ID to equip.
+            // Workshop books carry an additional packageId to form a full LorId.
             if (r.TryGetInt("customBookId", out int cbid))
             {
                 if (cbid < 0)
@@ -930,11 +931,24 @@ namespace PlayLoRWithMe
                 }
                 else
                 {
-                    var bxi = Singleton<BookXmlList>.Instance?.GetData(new LorId(cbid));
+                    string cbPkg = r.GetString("customBookPackageId");
+                    LorId bookLorId = string.IsNullOrEmpty(cbPkg)
+                        ? new LorId(cbid)
+                        : new LorId(cbPkg, cbid);
+                    var bxi = Singleton<BookXmlList>.Instance?.GetData(bookLorId, errNull: false);
                     if (bxi != null)
                         unit.EquipCustomCoreBook(new BookModel(bxi));
+                    // If book not found, skip silently — state is broadcast unchanged.
                 }
             }
+
+            // Workshop skin: cloth overlay from the CustomizingResourceLoader system.
+            // The value is a contentFolderIdx string ("" unequips).
+            // Only set when the key is present in the request.
+            string wsKey = "workshopSkin";
+            string wsSkin = r.GetString(wsKey);
+            if (wsSkin != null)
+                unit.workshopSkin = wsSkin;
 
             // Refresh the in-game character renderer (same pattern as HandleEquipKeyPage).
             var unitRef = unit;

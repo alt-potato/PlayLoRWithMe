@@ -79,7 +79,9 @@ const draft = reactive({
   dlgColleagueDeath: props.lib.dialogue?.colleagueDeath ?? "",
   dlgKillsOpponent:  props.lib.dialogue?.killsOpponent  ?? "",
 
-  customBookId: props.lib.customBookId ?? -1,
+  customBookId:        props.lib.customBookId        ?? -1,
+  customBookPackageId: props.lib.customBookPackageId ?? "",
+  workshopSkin:        props.lib.workshopSkin        ?? "",
 });
 
 /** Live AppearanceData fed to AppearancePreview — recomputed whenever draft changes. */
@@ -100,7 +102,9 @@ const customizeOptions = computed(() => props.state.customizeOptions);
 /** The fashion book currently selected in the draft, or null if none. */
 const activeFashionBook = computed(() => {
   if (draft.customBookId >= 0)
-    return customizeOptions.value?.fashionBooks?.find((b) => b.id === draft.customBookId) ?? null;
+    return customizeOptions.value?.fashionBooks?.find(
+      (b) => b.id === draft.customBookId && (b.packageId ?? "") === draft.customBookPackageId
+    ) ?? null;
 
   // No explicit fashion selection — use the equipped key page's body as the default
   // so the preview shows the librarian's actual appearance rather than a blank body.
@@ -175,6 +179,8 @@ async function handleComplete(): Promise<void> {
     prefixID:     draft.prefixID,
     postfixID:    draft.postfixID,
     customBookId: draft.customBookId,
+    ...(draft.customBookPackageId ? { customBookPackageId: draft.customBookPackageId } : {}),
+    workshopSkin: draft.workshopSkin,
     appearanceType: draft.appearanceType,
   };
 
@@ -211,7 +217,9 @@ watch(
     draft.dlgDeath          = lib.dialogue?.death          ?? "";
     draft.dlgColleagueDeath = lib.dialogue?.colleagueDeath ?? "";
     draft.dlgKillsOpponent  = lib.dialogue?.killsOpponent  ?? "";
-    draft.customBookId      = lib.customBookId             ?? -1;
+    draft.customBookId        = lib.customBookId             ?? -1;
+    draft.customBookPackageId = lib.customBookPackageId      ?? "";
+    draft.workshopSkin        = lib.workshopSkin             ?? "";
   },
   { immediate: true },
 );
@@ -295,7 +303,10 @@ watch(
                 v-model:appearance-type="draft.appearanceType"
                 v-model:height="draft.height"
                 v-model:custom-book-id="draft.customBookId"
+                v-model:custom-book-package-id="draft.customBookPackageId"
+                v-model:workshop-skin="draft.workshopSkin"
                 :fashion-books="customizeOptions?.fashionBooks ?? []"
+                :workshop-skins="customizeOptions?.workshopSkins ?? []"
                 :lib-range-type="lib.keyPage.equipRangeType ?? 'Hybrid'"
                 :skin-gender="activeSkinGender"
                 :busy="isBusy"

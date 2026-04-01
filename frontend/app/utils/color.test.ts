@@ -70,7 +70,7 @@ describe("round-trip", () => {
     const [h, s, l] = rgbToHsl(...original);
     const result = hslToRgb(h, s, l);
     for (let i = 0; i < 3; i++) {
-      expect(Math.abs(result[i] - original[i])).toBeLessThanOrEqual(1);
+      expect(Math.abs(result[i as 0 | 1 | 2] - original[i as 0 | 1 | 2])).toBeLessThanOrEqual(1);
     }
   });
 

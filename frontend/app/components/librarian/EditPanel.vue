@@ -113,7 +113,7 @@ async function onRemoveCard(card: DeckCardPreview) {
 const activeFashionBook = computed<FashionBook | null>(() => {
   const projId = props.lib.customBookId;
   if (projId != null && projId >= 0) {
-    const found = (props.state.fashionBooks ?? []).find((fb) => fb.id === projId);
+    const found = (props.state.customizeOptions?.fashionBooks ?? []).find((fb) => fb.id === projId);
     if (found) return found;
   }
   // Fall back to the key page's own body composite.

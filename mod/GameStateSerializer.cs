@@ -665,6 +665,19 @@ namespace PlayLoRWithMe
                                                     ? customBook.GetBookClassInfoId().id
                                                     : -1
                                             );
+                                            // Workshop books carry a packageId; include it so the
+                                            // frontend can identify them unambiguously.
+                                            if (customBook != null)
+                                            {
+                                                var cbPkg = customBook.GetBookClassInfoId().packageId;
+                                                if (!string.IsNullOrEmpty(cbPkg))
+                                                    o.Add("customBookPackageId", cbPkg);
+                                            }
+
+                                            // Workshop skin: cloth overlay equipped via the workshop
+                                            // skin system (contentFolderIdx string, "" when none).
+                                            if (!string.IsNullOrEmpty(unit.workshopSkin))
+                                                o.Add("workshopSkin", unit.workshopSkin);
 
                                             // Body type: the Gender enum variant controlling which
                                             // body prefab (_F/_M/_N suffix) is used in-game.
@@ -933,6 +946,30 @@ namespace PlayLoRWithMe
                                     fb.Add("hidesBackHair", true);
                             }
                         });
+                    }
+
+                });
+
+                // Workshop skins from CustomizingResourceLoader — cloth overlay skins that
+                // ship with workshop content folders.  Equipped via unit.workshopSkin (a
+                // contentFolderIdx string), completely separate from the fashion-book system.
+                o.AddArray("workshopSkins", ws =>
+                {
+                    var wsLoader = Singleton<CustomizingResourceLoader>.Instance;
+                    if (wsLoader == null)
+                        return;
+                    var allSkins = wsLoader.GetWorkshopSkinDataAll();
+                    if (allSkins == null)
+                        return;
+                    foreach (var skin in allSkins)
+                    {
+                        if (skin == null)
+                            continue;
+                        ws.AddObject(s =>
+                            s.Add("id", skin.id)
+                                .Add("name", skin.dataName)
+                                .Add("contentFolderIdx", skin.contentFolderIdx)
+                        );
                     }
                 });
 

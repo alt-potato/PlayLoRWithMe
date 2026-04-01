@@ -53,7 +53,7 @@ namespace PlayLoRWithMe
             try
             {
                 // Bump this whenever extraction logic changes to invalidate the on-disk cache.
-                const string CacheVersion = "22";
+                const string CacheVersion = "23";
                 var versionPath = Path.Combine(CustomizeDir, "_cache_version.txt");
 
                 bool stale =
@@ -483,9 +483,17 @@ namespace PlayLoRWithMe
             List<GameObject> instancesToDestroy,
             AssetBundleManagerRemake abm, HashSet<int> seen)
         {
+            var bxi = Singleton<BookXmlList>.Instance?.GetData(bid);
+            GatherBookBody(bid, bxi, result, instancesToDestroy, abm, seen);
+        }
+
+        private static void GatherBookBody(
+            int bid, BookXmlInfo bxi, List<FashionBookBody> result,
+            List<GameObject> instancesToDestroy,
+            AssetBundleManagerRemake abm, HashSet<int> seen)
+        {
             if (!seen.Add(bid)) return; // already gathered this book ID
 
-            var bxi = Singleton<BookXmlList>.Instance?.GetData(bid);
             if (bxi == null) return;
             if (string.IsNullOrEmpty(bxi.GetCharacterSkin())) return;
 
@@ -552,6 +560,8 @@ namespace PlayLoRWithMe
                     }
                 }
             }
+
+
         }
 
         /// <summary>

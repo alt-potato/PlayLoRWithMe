@@ -16,7 +16,7 @@
   This mirrors the EquipCustomCoreBook validation in UnitDataModel.
 -->
 <script setup lang="ts">
-import type { FashionBook } from "~/types/game";
+import type { FashionBook, WorkshopSkin } from "~/types/game";
 
 const HEIGHT_MIN = 140;
 const HEIGHT_MAX = 220;
@@ -25,7 +25,13 @@ const props = defineProps<{
   appearanceType: string;
   height: number;
   customBookId: number;
+  /** Non-empty when the active projection is a workshop book. */
+  customBookPackageId: string;
+  /** contentFolderIdx of the active workshop skin; empty string when none. */
+  workshopSkin: string;
   fashionBooks: FashionBook[];
+  /** Workshop cloth-overlay skins from CustomizingResourceLoader. */
+  workshopSkins: WorkshopSkin[];
   libRangeType: string;
   /** SkinGender of the active skin source (from librarian entry). */
   skinGender: string | undefined;
@@ -36,6 +42,8 @@ const emit = defineEmits<{
   "update:appearanceType": [value: string];
   "update:height": [value: number];
   "update:customBookId": [value: number];
+  "update:customBookPackageId": [value: string];
+  "update:workshopSkin": [value: string];
 }>();
 
 function onHeightInput(e: Event): void {
@@ -51,18 +59,23 @@ function onHeightInput(e: Event): void {
  */
 function isCompatible(book: FashionBook): boolean {
   const lib = props.libRangeType;
-  const bk  = book.rangeType;
-  if (lib === "Melee")  return bk === "Melee"  || bk === "Hybrid";
-  if (lib === "Range")  return bk === "Range"   || bk === "Hybrid";
+  const bk = book.rangeType;
+  if (lib === "Melee") return bk === "Melee" || bk === "Hybrid";
+  if (lib === "Range") return bk === "Range" || bk === "Hybrid";
   if (lib === "Hybrid") return bk === "Hybrid";
   return true; // unknown range type — allow all
 }
 
-const compatibleBooks = computed(() => props.fashionBooks.filter(isCompatible));
+const compatibleCorebooks = computed(() =>
+  props.fashionBooks.filter(isCompatible),
+);
+
+/** Controls which subset is shown in the X Page Fashion list. */
+const fashionTab = ref<"core" | "workshop">("core");
 
 /** Whether the body type toggle is available for the active skin. */
-const hasBodyTypeToggle = computed(() =>
-  props.skinGender === "F" || props.skinGender === "M"
+const hasBodyTypeToggle = computed(
+  () => props.skinGender === "F" || props.skinGender === "M",
 );
 </script>
 
@@ -90,8 +103,9 @@ const hasBodyTypeToggle = computed(() =>
     </div>
 
     <!-- Body size -->
-    <div class="section-label" style="margin-top: 0.75rem;">
-      Body Size <span class="range-hint">({{ HEIGHT_MIN }}–{{ HEIGHT_MAX }})</span>
+    <div class="section-label" style="margin-top: 0.75rem">
+      Body Size
+      <span class="range-hint">({{ HEIGHT_MIN }}–{{ HEIGHT_MAX }})</span>
     </div>
     <div class="height-row">
       <input
@@ -107,37 +121,78 @@ const hasBodyTypeToggle = computed(() =>
     </div>
 
     <!-- X Page Fashion -->
-    <div class="section-label" style="margin-top: 0.75rem;">X Page Fashion</div>
-
-    <div v-if="compatibleBooks.length === 0" class="empty-hint">
-      No compatible fashion skins unlocked.
+    <div class="section-label" style="margin-top: 0.75rem">
+      X Page Fashion
+      <button
+        class="unequip-btn"
+        :class="{ active: customBookId < 0 && workshopSkin === '' }"
+        :disabled="busy"
+        @click="emit('update:customBookId', -1); emit('update:customBookPackageId', ''); emit('update:workshopSkin', '')"
+      >Unequip</button>
     </div>
-    <div v-else class="fashion-list">
-      <!-- Unequip row -->
-      <button
-        class="fashion-item"
-        :class="{ active: customBookId < 0 }"
-        :disabled="busy"
-        @click="emit('update:customBookId', -1)"
-      >
-        <span class="fashion-name">— Own appearance —</span>
-      </button>
 
-      <!-- One row per compatible fashion book -->
+    <!-- Toggle between core fashion books and workshop skins -->
+    <div class="fashion-toggle">
       <button
-        v-for="book in compatibleBooks"
-        :key="book.id"
-        class="fashion-item"
-        :class="{ active: customBookId === book.id }"
-        :disabled="busy"
-        @click="emit('update:customBookId', book.id)"
+        class="ftoggle-btn"
+        :class="{ active: fashionTab === 'core' }"
+        @click="fashionTab = 'core'"
       >
-        <span class="fashion-name">{{ book.name }}</span>
-        <span v-if="book.replacesHead" class="replaces-head-badge" title="This skin replaces the face and hair">
-          full
-        </span>
+        Fashion
+      </button>
+      <button
+        class="ftoggle-btn"
+        :class="{ active: fashionTab === 'workshop' }"
+        @click="fashionTab = 'workshop'"
+      >
+        Workshop
       </button>
     </div>
+
+    <!-- Core fashion tab -->
+    <template v-if="fashionTab === 'core'">
+      <div v-if="compatibleCorebooks.length === 0" class="empty-hint">
+        No compatible fashion skins unlocked.
+      </div>
+      <div v-else class="fashion-list projection-list">
+        <button
+          v-for="book in compatibleCorebooks"
+          :key="book.id"
+          class="fashion-item"
+          :class="{ active: customBookId === book.id && customBookPackageId === '' }"
+          :disabled="busy"
+          @click="emit('update:customBookId', book.id); emit('update:customBookPackageId', ''); emit('update:workshopSkin', '')"
+        >
+          <span class="fashion-name">{{ book.name }}</span>
+          <span
+            v-if="book.replacesHead"
+            class="replaces-head-badge"
+            title="This skin replaces the face and hair"
+          >
+            full
+          </span>
+        </button>
+      </div>
+    </template>
+
+    <!-- Workshop skin tab -->
+    <template v-else>
+      <div v-if="workshopSkins.length === 0" class="empty-hint">
+        No workshop skins installed.
+      </div>
+      <div v-else class="fashion-list projection-list">
+        <button
+          v-for="skin in workshopSkins"
+          :key="skin.contentFolderIdx"
+          class="fashion-item"
+          :class="{ active: workshopSkin === skin.contentFolderIdx }"
+          :disabled="busy"
+          @click="emit('update:workshopSkin', skin.contentFolderIdx); emit('update:customBookId', -1); emit('update:customBookPackageId', '')"
+        >
+          <span class="fashion-name">{{ skin.name }}</span>
+        </button>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -175,7 +230,10 @@ const hasBodyTypeToggle = computed(() =>
   color: var(--text-2);
   font-size: 0.75rem;
   cursor: pointer;
-  transition: color 0.1s, border-color 0.1s, background 0.1s;
+  transition:
+    color 0.1s,
+    border-color 0.1s,
+    background 0.1s;
 }
 
 .type-btn:hover:not(:disabled) {
@@ -223,12 +281,79 @@ const hasBodyTypeToggle = computed(() =>
   padding: 0.25rem 0;
 }
 
+.unequip-btn {
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color 0.1s, border-color 0.1s;
+  vertical-align: middle;
+}
+
+.unequip-btn:hover:not(:disabled) {
+  border-color: var(--gold-dim);
+  color: var(--text-2);
+}
+
+.unequip-btn.active {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.unequip-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.fashion-toggle {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.ftoggle-btn {
+  flex: 1;
+  padding: 0.25rem 0;
+  border-radius: 4px;
+  border: 1px solid var(--border-mid);
+  background: var(--bg-card-2);
+  color: var(--text-3);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color 0.1s, border-color 0.1s, background 0.1s;
+}
+
+.ftoggle-btn:hover {
+  border-color: var(--gold-dim);
+  color: var(--text-2);
+}
+
+.ftoggle-btn.active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: rgba(201, 162, 39, 0.08);
+}
+
 .fashion-list {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
   max-height: 180px;
   overflow-y: auto;
+}
+
+/* Extra top spacing separates the list from the Fashion/Workshop toggle. */
+.projection-list {
+  margin-top: 0.2rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border);
 }
 
 .fashion-item {
@@ -243,7 +368,10 @@ const hasBodyTypeToggle = computed(() =>
   font-size: 0.72rem;
   cursor: pointer;
   text-align: left;
-  transition: color 0.1s, border-color 0.1s, background 0.1s;
+  transition:
+    color 0.1s,
+    border-color 0.1s,
+    background 0.1s;
 }
 
 .fashion-item:hover:not(:disabled) {
