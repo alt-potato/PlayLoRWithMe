@@ -1296,9 +1296,9 @@ namespace PlayLoRWithMe
                     .Add("maxStaggerGauge", unit.breakDetail.GetDefaultBreakGauge())
                     .Add("staggerThreshold", unit.breakDetail.breakLife)
                     .Add("targetable", unit.IsTargetable(null))
-                    .Add("playPoint", unit.PlayPoint)
-                    .Add("maxPlayPoint", unit.MaxPlayPoint)
-                    .Add("reservedPlayPoint", unit.cardSlotDetail?.ReservedPlayPoint ?? 0);
+                    .Add("light", unit.PlayPoint)
+                    .Add("maxLight", unit.MaxPlayPoint)
+                    .Add("reservedLight", unit.cardSlotDetail?.ReservedPlayPoint ?? 0);
 
                 if (unit.Book != null)
                     WriteKeyPage(w, unit);

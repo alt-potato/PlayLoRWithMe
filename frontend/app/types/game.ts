@@ -164,7 +164,7 @@ export interface Resistances {
 }
 
 export interface KeyPage {
-  /** BookModel.instanceId — present on librarian key pages, absent on battle unit key pages. */
+  /** Unique identifier for managed (librarian) key pages; absent on transient battle unit key pages. */
   instanceId?: number;
   name: string;
   speedDiceCount?: number;
@@ -220,8 +220,8 @@ export interface FloorEntry {
   realizationLevel: number;
   /**
    * EGO pages: full battle cards (with dice) from EmotionEgoXmlList.
-   * These are distinct from abnormality pages — they are real DiceCardXmlInfo
-   * objects, serialized identically to deckPreview cards.
+   * These are distinct from abnormality pages — they are full combat card definitions
+   * serialized identically to deckPreview cards.
    */
   egoCards: DeckCardPreview[];
   /** All abnormality pages (Awakening/Breakdown) unlocked up to the current realization level. */
@@ -316,9 +316,9 @@ export interface Unit {
 
 /** Ally-only extras: light, hand, deck, EGO. */
 export interface AllyUnit extends Unit {
-  playPoint: number;
-  maxPlayPoint: number;
-  reservedPlayPoint: number;
+  light: number;
+  maxLight: number;
+  reservedLight: number;
   /** Present when this ally is owned by the current session. */
   hand?: Card[];
   deck?: Card[];
@@ -552,9 +552,9 @@ export interface CustomizePayload {
 /** Top-level SSE / GET /state payload. */
 export interface GameState {
   scene: SceneName;
-  /** Raw C# StageController.Phase class name (e.g. "ApplyLibrarianCardPhase"). */
+  /** Active stage phase class name (e.g. "ApplyLibrarianCardPhase"). */
   phase?: string;
-  /** Raw C# StageController.State enum value (e.g. "BattleSetting"). */
+  /** Active stage state enum value (e.g. "BattleSetting"). */
   stageState?: string;
   uiPhase?: string;
   stage?: StageInfo;

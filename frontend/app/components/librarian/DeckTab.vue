@@ -39,7 +39,7 @@ const allAvailableCards = computed(() => {
   const cards = props.state.availableCards ?? [];
   const rangeType = props.lib.keyPage.equipRangeType;
   let filtered: typeof cards;
-  // Mirrors BookModel.AddCardFromInventoryToCurrentDeck range checks.
+  // Filter by equip range: Melee pages can't use Far cards; Range pages can't use Near cards.
   if (rangeType === "Melee")
     filtered = cards.filter((c) => c.range !== "Far");
   else if (rangeType === "Range")
@@ -54,7 +54,7 @@ const deckTotal = computed(() =>
   props.lib.deckPreview.reduce((s, c) => s + c.count, 0),
 );
 
-/** Per-rarity copy limit, mirroring DiceCardXmlInfo.GetCardLimit. */
+/** Maximum copies of a card allowed in a deck, by rarity. */
 function cardLimit(rarity: string): number {
   return rarity === "Unique" ? 1 : 3;
 }

@@ -151,9 +151,9 @@ const detailsLabel = computed(() => {
       <!-- row 2: light pips, emotion level -->
       <div class="unit-header-row reversible-container">
         <UnitLightDisplay
-          :current="ally.playPoint"
-          :max="ally.maxPlayPoint"
-          :reserved="ally.reservedPlayPoint"
+          :current="ally.light"
+          :max="ally.maxLight"
+          :reserved="ally.reservedLight"
         />
         <UnitEmotionDisplay
           :positive="unit.emotionCoins.positive"
