@@ -245,6 +245,7 @@ watch(
               :appearance="previewAppearance"
               :fashion-book="activeFashionBook"
               :appearance-type="draft.appearanceType"
+              :gifts="lib.gifts?.equipped"
             />
           </div>
 

@@ -34,7 +34,7 @@
     fashionBook – active FashionBook, or null/undefined if none.
 -->
 <script setup lang="ts">
-import type { AppearanceData, FashionBook } from "~/types/game";
+import type { AppearanceData, FashionBook, GiftSlot } from "~/types/game";
 
 const props = defineProps<{
   appearance: AppearanceData;
@@ -50,6 +50,8 @@ const props = defineProps<{
    * to display (e.g. fashionbodies/123_f.png vs 123_m.png).
    */
   appearanceType?: string;
+  /** Equipped gift slots — visible ones are overlaid on the head area. */
+  gifts?: (GiftSlot | null)[];
 }>();
 
 const BASE = "/assets/customize/";
@@ -191,6 +193,28 @@ const faceRotStyle = computed(() => {
     transformOrigin: `${originX}px ${originY}px`,
   };
 });
+
+/** Per-position CSS anchor for gift sprite overlays on the head area. */
+const GIFT_LAYOUT: Record<string, { left: string; top: string; size: string; z: number }> = {
+  Eye:           { left: "50%", top: "30%", size: "32px", z: 12 },
+  Nose:          { left: "50%", top: "40%", size: "28px", z: 11 },
+  Cheek:         { left: "37%", top: "38%", size: "30px", z: 11 },
+  Mouth:         { left: "50%", top: "48%", size: "30px", z: 11 },
+  Ear:           { left: "22%", top: "33%", size: "28px", z: 12 },
+  HairAccessory: { left: "55%", top: "15%", size: "40px", z: 14 },
+  Hood:          { left: "50%", top: "12%", size: "56px", z: 15 },
+  Mask:          { left: "50%", top: "32%", size: "48px", z: 13 },
+  Helmet:        { left: "50%", top: "10%", size: "56px", z: 10 },
+};
+
+/** Equipped visible gifts with their layout data, filtered to known positions. */
+const visibleGifts = computed(() => {
+  if (!props.gifts) return [];
+  return props.gifts
+    .filter((g): g is GiftSlot => g != null && g.visible)
+    .map((g) => ({ ...g, layout: GIFT_LAYOUT[g.position] }))
+    .filter((g) => g.layout != null);
+});
 </script>
 
 <template>
@@ -283,6 +307,28 @@ const faceRotStyle = computed(() => {
       alt=""
       @error="fashionFrontFailed = true"
     />
+
+    <!-- Gift sprite overlays — positioned per-slot on the head area -->
+    <div
+      v-for="gift in visibleGifts"
+      :key="`gift-${gift.id}`"
+      v-show="showFaceHairLayers"
+      class="gift-wrapper"
+      :style="{
+        left: gift.layout.left,
+        top: gift.layout.top,
+        zIndex: gift.layout.z,
+        ...faceRotStyle,
+      }"
+    >
+      <img
+        :src="`/assets/gifts/gift_${gift.id}.png`"
+        class="gift-sprite"
+        :style="{ width: gift.layout.size, height: gift.layout.size }"
+        alt=""
+        @error="($event.target as HTMLImageElement).style.display = 'none'"
+      />
+    </div>
   </div>
 </template>
 
@@ -328,5 +374,17 @@ const faceRotStyle = computed(() => {
   background-blend-mode: normal;
   mask-image: none;
   -webkit-mask-image: none;
+}
+
+/* Gift sprite overlays — individually positioned on the head area. */
+.gift-wrapper {
+  position: absolute;
+  pointer-events: none;
+}
+
+.gift-sprite {
+  transform: translate(-50%, -50%);
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
 }
 </style>

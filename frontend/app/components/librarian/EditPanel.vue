@@ -194,6 +194,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
               :appearance="lib.appearance"
               :fashion-book="activeFashionBook"
               :appearance-type="lib.appearanceType"
+              :gifts="lib.gifts?.equipped"
             />
           </div>
 
@@ -227,6 +228,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
                   :appearance="lib.appearance"
                   :fashion-book="activeFashionBook"
                   :appearance-type="lib.appearanceType"
+                  :gifts="lib.gifts?.equipped"
                 />
               </div>
 
