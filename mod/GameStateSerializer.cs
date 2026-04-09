@@ -102,8 +102,8 @@ namespace PlayLoRWithMe
             else
             {
                 WriteFloors(w);
+                // WriteLibraryInventory calls WriteCustomizeOptions internally.
                 WriteLibraryInventory(w);
-                WriteCustomizeOptions(w);
             }
 
             return w.Build();
