@@ -692,6 +692,62 @@ namespace PlayLoRWithMe
                                             var activeSkinInfo = customBook?.ClassInfo ?? book.ClassInfo;
                                             if (activeSkinInfo.gender != Gender.N)
                                                 o.Add("skinGender", activeSkinInfo.gender.ToString());
+
+                                            // Gift accessories equipped and available for equipping.
+                                            var inv = unit.giftInventory;
+                                            var equippedGifts = inv.GetEquippedList();
+                                            var unequippedGifts = inv.GetUnequippedList();
+
+                                            // Build a slot-indexed array of 9 entries (one per GiftPosition).
+                                            // Null means nothing is equipped in that slot.
+                                            var equippedBySlot = new GiftModel[9];
+                                            foreach (var g in equippedGifts)
+                                                equippedBySlot[(int)g.ClassInfo.Position] = g;
+
+                                            o.AddObject("gifts", gifts =>
+                                            {
+                                                gifts.AddArray("equipped", eqArr =>
+                                                {
+                                                    for (int si = 0; si < equippedBySlot.Length; si++)
+                                                    {
+                                                        var g = equippedBySlot[si];
+                                                        if (g == null)
+                                                        {
+                                                            eqArr.AddNull();
+                                                        }
+                                                        else
+                                                        {
+                                                            eqArr.AddObject(go =>
+                                                            {
+                                                                go.Add("id", g.GetGiftClassInfoId())
+                                                                    .Add("name", g.GetName())
+                                                                    .Add("desc", g.GiftDesc)
+                                                                    .Add("position", g.ClassInfo.Position.ToString());
+                                                                WriteGiftStat(go, g.ClassInfo.Stat);
+                                                                go.Add("visible", g.isShowEquipGift);
+                                                            });
+                                                        }
+                                                    }
+                                                });
+
+                                                gifts.AddArray("available", avArr =>
+                                                {
+                                                    foreach (var g in unequippedGifts)
+                                                    {
+                                                        // Skip gifts hidden from the appearance UI.
+                                                        if (g.ClassInfo.NoAppear)
+                                                            continue;
+                                                        avArr.AddObject(go =>
+                                                        {
+                                                            go.Add("id", g.GetGiftClassInfoId())
+                                                                .Add("name", g.GetName())
+                                                                .Add("desc", g.GiftDesc)
+                                                                .Add("position", g.ClassInfo.Position.ToString());
+                                                            WriteGiftStat(go, g.ClassInfo.Stat);
+                                                        });
+                                                    }
+                                                });
+                                            });
                                         });
                                     }
                                 }
@@ -699,6 +755,18 @@ namespace PlayLoRWithMe
                         });
                     }
                 }
+            );
+        }
+
+        /// <summary>Serializes a GiftStatEffect as a nested "stat" object.</summary>
+        private static void WriteGiftStat(JsonWriter w, GiftStatEffect stat)
+        {
+            w.AddObject("stat", s =>
+                s.Add("hp", stat.Hp)
+                    .Add("breakGauge", stat.Break)
+                    .Add("breakRecover", stat.BreakRecover)
+                    .Add("tune", stat.Tune)
+                    .Add("amp", stat.Amp)
             );
         }
 
