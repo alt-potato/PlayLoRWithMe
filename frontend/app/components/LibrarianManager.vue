@@ -97,6 +97,23 @@ async function onSetCustomization(
   });
 }
 
+/**
+ * Sends a setGifts action for the currently editing librarian.
+ * Uses the generic sendAction dispatcher, same pattern as setCustomization.
+ */
+async function onSetGifts(
+  slots: Record<string, number>,
+): Promise<ActionResult> {
+  const lib = editingLibrarian.value;
+  if (!lib) return { ok: false, error: "No librarian selected" };
+  return await props.sendAction({
+    type: "setGifts",
+    floorIndex: lib.floorIndex,
+    unitIndex: lib.unitIndex,
+    ...slots,
+  });
+}
+
 /** Accent color keyed by floorIndex (0 = Malkuth … 9 = Keter). */
 const FLOOR_COLORS: Record<number, string> = {
   0: "#be9966", // Malkuth
@@ -456,6 +473,7 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
       :on-add-card="onAddCard"
       :on-remove-card="onRemoveCard"
       :on-set-customization="onSetCustomization"
+      :on-set-gifts="onSetGifts"
     />
 
     <CardDetail

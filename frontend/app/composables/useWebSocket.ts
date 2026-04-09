@@ -216,6 +216,14 @@ export function useWebSocket() {
     return sendAction({ type: "removeCardFromDeck", floorIndex, unitIndex, cardId, packageId });
   }
 
+  function setGifts(
+    floorIndex: number,
+    unitIndex: number,
+    slots: Record<string, number>,
+  ): Promise<ActionResult> {
+    return sendAction({ type: "setGifts", floorIndex, unitIndex, ...slots });
+  }
+
   onMounted(connect);
 
   onBeforeUnmount(() => {
@@ -239,5 +247,6 @@ export function useWebSocket() {
     equipKeyPage,
     addCardToDeck,
     removeCardFromDeck,
+    setGifts,
   };
 }

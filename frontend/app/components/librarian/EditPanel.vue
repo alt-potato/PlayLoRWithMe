@@ -49,6 +49,7 @@ const props = defineProps<{
   onSetCustomization: (
     payload: Omit<CustomizePayload, "floorIndex" | "unitIndex">,
   ) => Promise<ActionResult>;
+  onSetGifts: (slots: Record<string, number>) => Promise<ActionResult>;
 }>();
 
 type Tab = "keypage" | "deck" | "info";
@@ -274,6 +275,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
     :busy="editBusy"
     :on-rename="props.onRename"
     :on-save="props.onSetCustomization"
+    :on-set-gifts="props.onSetGifts"
     :on-close="() => (showCustomize = false)"
   />
 </template>
