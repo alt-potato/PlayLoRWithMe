@@ -272,6 +272,8 @@ export interface LibrarianEntry {
    * Omitted when "N" (no gendered variants exist, body type toggle disabled).
    */
   skinGender?: string;
+  /** Equipped and available battle symbols (gifts). */
+  gifts?: GiftInventoryData;
   /** Equipped key page has a body composite in fashionbodies/ (replacesHead behavior). */
   keyPageReplacesHead?: boolean;
   /** Equipped key page has a front-layer composite in fashionbodies_front/. */
@@ -451,7 +453,46 @@ export interface TitleOption {
   text: string;
 }
 
-/** Global customization option tables sent once per library state snapshot. */
+// ── Gift / Battle Symbol types ───────────────────────────────────────────────
+
+/** Stat bonuses granted by an equipped gift. */
+export interface GiftStat {
+  hp: number;
+  breakGauge: number;
+  breakRecover: number;
+  /** Speed die min/max modifier. */
+  tune: number;
+  /** Emotion coin gain modifier. */
+  amp: number;
+}
+
+/** A gift equipped in one of the 9 positional slots. */
+export interface GiftSlot {
+  id: number;
+  name: string;
+  desc: string;
+  position: string;
+  stat: GiftStat;
+  visible: boolean;
+}
+
+/** An available (unlocked, unequipped) gift that can be placed in a slot. */
+export interface GiftOption {
+  id: number;
+  name: string;
+  desc: string;
+  position: string;
+  stat: GiftStat;
+}
+
+/** Per-librarian gift inventory: 9 equipped slots + available pool. */
+export interface GiftInventoryData {
+  equipped: (GiftSlot | null)[];
+  available: GiftOption[];
+}
+
+// ── Customization options ────────────────────────────────────────────────────
+
 /** A custom core book that can be used as an appearance projection skin. */
 export interface FashionBook {
   id: number;
