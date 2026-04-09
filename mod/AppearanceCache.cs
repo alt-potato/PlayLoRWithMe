@@ -31,6 +31,17 @@ namespace PlayLoRWithMe
         internal static readonly Dictionary<int, (float TiltDeg, float PivotFracX, float PivotFracY, bool HasFrontLayer, bool HidesBackHair, string SkinGender)>
             FashionMeta = new Dictionary<int, (float, float, float, bool, bool, string)>();
 
+        /// <summary>
+        /// Face/hair canvas bounds in world space, populated during extraction.
+        /// Used by <see cref="GiftCache"/> to convert gift prefab positions to CSS coordinates.
+        /// </summary>
+        internal static Bounds FaceHairBounds { get; private set; }
+
+        /// <summary>
+        /// Pixels-per-unit of the face/hair sprites, populated during extraction.
+        /// </summary>
+        internal static float FaceHairPpu { get; private set; }
+
         private static string CustomizeDir =>
             Path.Combine(Server.WwwRootPath, "assets", "customize");
 
@@ -203,6 +214,10 @@ namespace PlayLoRWithMe
                 File.WriteAllText(
                     Path.Combine(CustomizeDir, "dimensions.json"),
                     $"{{\"w\":{canvasW},\"h\":{canvasH}}}");
+
+                // Expose bounds and ppu so GiftCache can convert gift positions to CSS.
+                FaceHairBounds = faceHairBounds;
+                FaceHairPpu = ppu;
 
                 // Build per-book metadata for the serializer now that faceHairBounds is
                 // final (pivot fractions depend on the fully-expanded canvas extents).

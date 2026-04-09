@@ -194,26 +194,40 @@ const faceRotStyle = computed(() => {
   };
 });
 
-/** Per-position CSS anchor for gift sprite overlays on the head area. */
-const GIFT_LAYOUT: Record<string, { left: string; top: string; size: string; z: number }> = {
-  Eye:           { left: "50%", top: "30%", size: "32px", z: 12 },
-  Nose:          { left: "50%", top: "40%", size: "28px", z: 11 },
-  Cheek:         { left: "37%", top: "38%", size: "30px", z: 11 },
-  Mouth:         { left: "50%", top: "48%", size: "30px", z: 11 },
-  Ear:           { left: "22%", top: "33%", size: "28px", z: 12 },
-  HairAccessory: { left: "55%", top: "15%", size: "40px", z: 14 },
-  Hood:          { left: "50%", top: "12%", size: "56px", z: 15 },
-  Mask:          { left: "50%", top: "32%", size: "48px", z: 13 },
-  Helmet:        { left: "50%", top: "10%", size: "56px", z: 10 },
+/**
+ * Per-gift-ID layout data fetched from the server-generated manifest.
+ * Each entry has l/t (center position as canvas %) and w/h (sprite size as canvas %).
+ */
+const giftLayout = ref<Record<string, { l: number; t: number; w: number; h: number }>>({});
+
+// Module-level cache so multiple instances share one fetch.
+let _layoutPromise: Promise<Record<string, { l: number; t: number; w: number; h: number }>> | null = null;
+
+function fetchGiftLayout(): Promise<Record<string, { l: number; t: number; w: number; h: number }>> {
+  if (_layoutPromise) return _layoutPromise;
+  _layoutPromise = fetch("/assets/gifts/layout.json")
+    .then((r) => r.json() as Promise<Record<string, { l: number; t: number; w: number; h: number }>>)
+    .catch(() => ({}));
+  return _layoutPromise;
+}
+
+onMounted(async () => {
+  giftLayout.value = await fetchGiftLayout();
+});
+
+/** Z-index per position so overlapping gifts layer in a natural order. */
+const POSITION_Z: Record<string, number> = {
+  Helmet: 10, Nose: 11, Cheek: 11, Mouth: 11, Eye: 12, Ear: 12,
+  Mask: 13, HairAccessory: 14, Hood: 15,
 };
 
-/** Equipped visible gifts with their layout data, filtered to known positions. */
+/** Equipped visible gifts with their layout data from the manifest. */
 const visibleGifts = computed(() => {
   if (!props.gifts) return [];
+  const layout = giftLayout.value;
   return props.gifts
-    .filter((g): g is GiftSlot => g != null && g.visible)
-    .map((g) => ({ ...g, layout: GIFT_LAYOUT[g.position] }))
-    .filter((g) => g.layout != null);
+    .filter((g): g is GiftSlot => g != null && g.visible && !!layout[g.id])
+    .map((g) => ({ ...g, layout: layout[g.id], z: POSITION_Z[g.position] ?? 11 }));
 });
 </script>
 
@@ -308,23 +322,25 @@ const visibleGifts = computed(() => {
       @error="fashionFrontFailed = true"
     />
 
-    <!-- Gift sprite overlays — positioned per-slot on the head area -->
+    <!-- Gift sprite overlays — positioned from server-extracted layout data -->
     <div
       v-for="gift in visibleGifts"
       :key="`gift-${gift.id}`"
       v-show="showFaceHairLayers"
       class="gift-wrapper"
       :style="{
-        left: gift.layout.left,
-        top: gift.layout.top,
-        zIndex: gift.layout.z,
-        ...faceRotStyle,
+        left: `${gift.layout.l}%`,
+        top: `${gift.layout.t}%`,
+        width: `${gift.layout.w}%`,
+        height: `${gift.layout.h}%`,
+        zIndex: gift.z,
+        transform: `translate(-50%, -50%) ${faceRotStyle.transform ?? ''}`.trim(),
+        transformOrigin: faceRotStyle.transformOrigin,
       }"
     >
       <img
         :src="`/assets/gifts/gift_${gift.id}.png`"
         class="gift-sprite"
-        :style="{ width: gift.layout.size, height: gift.layout.size }"
         alt=""
         @error="($event.target as HTMLImageElement).style.display = 'none'"
       />
@@ -383,7 +399,8 @@ const visibleGifts = computed(() => {
 }
 
 .gift-sprite {
-  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
 }
