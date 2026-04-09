@@ -23,11 +23,12 @@
 
 ## 5. Gift Preview Integration
 
-- [x] 5.1 Add `GIFT_LAYOUT` constant mapping each `GiftPosition` name to `{ left, top, size, z }` anchor values and render equipped visible gifts as individually positioned overlays on the head area of `AppearancePreview.vue` (apply `faceRotStyle`, hide when `showFaceHairLayers` is false)
-- [x] 5.2 Add `.gift-wrapper` (absolute positioning) and `.gift-sprite` (centering + drop-shadow) CSS styles; remove any strip-based layout
-- [x] 5.3 Update `edit-panel-appearance-preview` spec to reflect gift overlay rendering
+- [x] 5.1 Render each gift sprite onto the shared face-canvas in `GiftCache.cs` using `AppearanceCache.SpriteToPng` with a world-space offset computed by walking the prefab transform hierarchy; handle differing `pixelsPerUnit` between gift sprites and the face canvas via RenderTexture rescaling
+- [x] 5.2 Expose `FaceHairBounds`, `FaceHairPpu`, `FaceHairCanvasW`, `FaceHairCanvasH` from `AppearanceCache` for `GiftCache` to consume; make `SpriteToPng` internal with optional `worldOffset` parameter
+- [x] 5.3 Display gift overlays in `AppearancePreview.vue` as `.layer-sprite.gift-layer` divs (same CSS stacking as face layers: `inset: 0`, `background-size: 100% auto`); apply `faceRotStyle` and hide when `showFaceHairLayers` is false
+- [x] 5.4 Update `edit-panel-appearance-preview` spec to reflect canvas-based gift rendering
 
 ## 6. Validation
 
 - [x] 6.1 Build (`cd mod && dotnet build`) and verify 0 warnings 0 errors
-- [ ] 6.2 Manual test: equip/unequip/toggle gifts, verify preview updates, verify in-game character updates
+- [x] 6.2 Manual test: equip/unequip/toggle gifts, verify preview updates, verify in-game character updates

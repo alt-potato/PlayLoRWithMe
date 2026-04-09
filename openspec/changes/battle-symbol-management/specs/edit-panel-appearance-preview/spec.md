@@ -10,8 +10,9 @@ The `AppearancePreview` rendered in the Edit Panel SHALL display the currently a
 
 #### Scenario: Equipped visible gifts shown on preview
 - **WHEN** the librarian has gifts equipped with `visible: true`
-- **THEN** the preview renders each gift sprite at a per-position anchor (`GIFT_LAYOUT`) using absolute CSS positioning with `transform: translate(-50%, -50%)` centering
-- **AND** gift wrappers apply the same `faceRotStyle` as face/hair layers for head-tilt alignment
+- **THEN** the preview renders each gift as a `.layer-sprite.gift-layer` div using the same CSS stacking as face/hair layers (`position: absolute; inset: 0; background-size: 100% auto`)
+- **AND** each gift PNG is pre-rendered onto the shared face canvas by `GiftCache` using `AppearanceCache.SpriteToPng` with the gift's prefab transform offset, so no client-side coordinate conversion is needed
+- **AND** gift layers apply the same `faceRotStyle` as face/hair layers for head-tilt alignment
 
 #### Scenario: Hidden gifts not shown on preview
 - **WHEN** an equipped gift has `visible: false`
