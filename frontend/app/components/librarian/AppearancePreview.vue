@@ -228,13 +228,36 @@ const POSITION_Z: Record<string, number> = {
 /** Fallback layout for gifts not yet in the manifest — centered, small. */
 const FALLBACK_LAYOUT: GiftLayoutEntry = { l: 50, t: 35, w: 20, h: 20 };
 
-/** Equipped visible gifts with their layout data from the manifest. */
+/**
+ * Convert canvas-relative layout percentages to CSS pixel values.
+ *
+ * Horizontal: canvas width maps to PREVIEW_W (background-size: 100% auto),
+ * so leftPx = l% * PREVIEW_W / 100.
+ *
+ * Vertical: the sprite's CSS height is PREVIEW_W * (canvasH / canvasW), NOT
+ * PREVIEW_H, so topPx = t% * PREVIEW_W * aspect / 100.
+ */
+function layoutToPx(entry: GiftLayoutEntry): { l: string; t: string; w: string; h: string } {
+  const aspect = dims.value ? dims.value.h / dims.value.w : 1;
+  return {
+    l: `${entry.l / 100 * PREVIEW_W}px`,
+    t: `${entry.t / 100 * PREVIEW_W * aspect}px`,
+    w: `${entry.w / 100 * PREVIEW_W}px`,
+    h: `${entry.h / 100 * PREVIEW_W * aspect}px`,
+  };
+}
+
+/** Equipped visible gifts with pixel-converted layout data. */
 const visibleGifts = computed(() => {
   if (!props.gifts) return [];
   const layout = giftLayout.value;
   return props.gifts
     .filter((g): g is GiftSlot => g != null && g.visible)
-    .map((g) => ({ ...g, layout: layout[g.id] ?? FALLBACK_LAYOUT, z: POSITION_Z[g.position] ?? 11 }));
+    .map((g) => ({
+      ...g,
+      px: layoutToPx(layout[g.id] ?? FALLBACK_LAYOUT),
+      z: POSITION_Z[g.position] ?? 11,
+    }));
 });
 </script>
 
@@ -336,10 +359,10 @@ const visibleGifts = computed(() => {
       v-show="showFaceHairLayers"
       class="gift-wrapper"
       :style="{
-        left: `${gift.layout.l}%`,
-        top: `${gift.layout.t}%`,
-        width: `${gift.layout.w}%`,
-        height: `${gift.layout.h}%`,
+        left: gift.px.l,
+        top: gift.px.t,
+        width: gift.px.w,
+        height: gift.px.h,
         zIndex: gift.z,
         transform: `translate(-50%, -50%) ${faceRotStyle.transform ?? ''}`.trim(),
         transformOrigin: faceRotStyle.transformOrigin,
