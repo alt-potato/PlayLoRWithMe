@@ -22,7 +22,7 @@ namespace PlayLoRWithMe
         private static readonly TimeSpan PongTimeout = TimeSpan.FromSeconds(30);
 
         public string SessionId { get; }
-        public bool IsAlive => !_closed;
+        public bool IsAlive => _closed == 0;
 
         private readonly Stream _stream;
 
@@ -33,11 +33,13 @@ namespace PlayLoRWithMe
         private readonly object _sendLock = new object();
         private readonly Timer _pingTimer;
 
-        // volatile so IsAlive reads on other threads see the current value
-        // without a full memory barrier.
-        private volatile bool _closed = false;
+        // Interlocked.CompareExchange provides an atomic check-and-set in Close(),
+        // preventing two threads from both sending close frames / disposing the stream.
+        private int _closed = 0;
 
-        private DateTime _lastPongTime = DateTime.UtcNow;
+        // DateTime is an 8-byte struct — not guaranteed atomic on 32-bit runtimes.
+        // Store as ticks (long) and use Interlocked for tear-free access.
+        private long _lastPongTicks = DateTime.UtcNow.Ticks;
 
         /// <param name="sessionId">Session ID this connection belongs to.</param>
         /// <param name="stream">Raw duplex stream from <see cref="WebSocketCodec.PerformHandshake"/>.</param>
@@ -66,7 +68,7 @@ namespace PlayLoRWithMe
         /// </summary>
         public void Send(string json)
         {
-            if (_closed)
+            if (_closed != 0)
                 return;
             try
             {
@@ -92,7 +94,7 @@ namespace PlayLoRWithMe
         {
             try
             {
-                while (!_closed)
+                while (_closed == 0)
                 {
                     var (opcode, payload) = WebSocketCodec.ReadFrame(_stream);
 
@@ -114,7 +116,7 @@ namespace PlayLoRWithMe
 
                         // Protocol-level pong: counts as activity.
                         case WebSocketCodec.Opcode.Pong:
-                            _lastPongTime = DateTime.UtcNow;
+                            Interlocked.Exchange(ref _lastPongTicks, DateTime.UtcNow.Ticks);
                             break;
 
                         case WebSocketCodec.Opcode.Close:
@@ -125,7 +127,7 @@ namespace PlayLoRWithMe
             }
             catch (Exception ex)
             {
-                if (!_closed)
+                if (_closed == 0)
                     Debug.LogWarning(
                         $"[PlayLoRWithMe] WebSocket receive error ({SessionId}): {ex.Message}"
                     );
@@ -142,11 +144,12 @@ namespace PlayLoRWithMe
 
         private void SendPing()
         {
-            if (_closed)
+            if (_closed != 0)
                 return;
 
             // If pong hasn't been heard in time, the connection is stale.
-            if (DateTime.UtcNow - _lastPongTime > PongTimeout)
+            var lastPong = new DateTime(Interlocked.Read(ref _lastPongTicks), DateTimeKind.Utc);
+            if (DateTime.UtcNow - lastPong > PongTimeout)
             {
                 Debug.Log($"[PlayLoRWithMe] WebSocket ping timeout ({SessionId}), closing.");
                 Close();
@@ -180,7 +183,7 @@ namespace PlayLoRWithMe
             // Using JsonReader keeps this consistent with the rest of the codebase.
             if (new JsonReader(json).GetString("type") == "pong")
             {
-                _lastPongTime = DateTime.UtcNow;
+                Interlocked.Exchange(ref _lastPongTicks, DateTime.UtcNow.Ticks);
                 return;
             }
 
@@ -197,9 +200,9 @@ namespace PlayLoRWithMe
         /// </summary>
         public void Close()
         {
-            if (_closed)
+            // Atomic check-and-set: only the first caller proceeds.
+            if (Interlocked.CompareExchange(ref _closed, 1, 0) != 0)
                 return;
-            _closed = true;
 
             _pingTimer?.Dispose();
 
