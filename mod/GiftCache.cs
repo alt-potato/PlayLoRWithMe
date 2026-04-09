@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using UnityEngine;
@@ -8,7 +9,7 @@ namespace PlayLoRWithMe
     /// <summary>
     /// Extracts gift preview sprites from GiftAppearance prefabs to the static
     /// asset directory so the frontend can display them without runtime access to game resources.
-    /// Also produces a layout manifest (positions.json) mapping each gift ID to its
+    /// Also produces a layout manifest (layout.json) mapping each gift ID to its
     /// CSS position/size on the face-canvas preview.
     /// </summary>
     internal static class GiftCache
@@ -36,7 +37,7 @@ namespace PlayLoRWithMe
         }
 
         // Iterates all gift XML entries and writes a PNG for each that has a visible appearance.
-        // Also collects per-gift position data and writes positions.json.
+        // Also collects per-gift position data and writes layout.json.
         private static void Extract()
         {
             var list = Singleton<GiftXmlList>.Instance?.GetAvailableList();
@@ -49,6 +50,9 @@ namespace PlayLoRWithMe
             float bw = bounds.size.x;
             float bh = bounds.size.y;
             bool haveBounds = bw > 0f && bh > 0f;
+
+            if (!haveBounds)
+                Debug.LogWarning("[PlayLoRWithMe] GiftCache: FaceHairBounds not available, layout.json will not be generated");
 
             // gift ID → { leftPct, topPct, widthPct, heightPct }
             var layouts = new Dictionary<int, (float left, float top, float w, float h)>();
@@ -134,21 +138,21 @@ namespace PlayLoRWithMe
             }
 
             // Write the layout manifest for the frontend.
-            if (layouts.Count > 0)
+            var sb = new StringBuilder();
+            sb.Append("{");
+            bool first = true;
+            foreach (var kv in layouts)
             {
-                var sb = new StringBuilder();
-                sb.Append("{");
-                bool first = true;
-                foreach (var kv in layouts)
-                {
-                    if (!first) sb.Append(",");
-                    first = false;
-                    var (l, t, w, h) = kv.Value;
-                    sb.Append($"\"{kv.Key}\":{{\"l\":{l:F2},\"t\":{t:F2},\"w\":{w:F2},\"h\":{h:F2}}}");
-                }
-                sb.Append("}");
-                File.WriteAllText(Path.Combine(GiftDir, "layout.json"), sb.ToString());
+                if (!first) sb.Append(",");
+                first = false;
+                var (l, t, w, h) = kv.Value;
+                sb.AppendFormat(CultureInfo.InvariantCulture,
+                    "\"{0}\":{{\"l\":{1:F2},\"t\":{2:F2},\"w\":{3:F2},\"h\":{4:F2}}}",
+                    kv.Key, l, t, w, h);
             }
+            sb.Append("}");
+            File.WriteAllText(Path.Combine(GiftDir, "layout.json"), sb.ToString());
+            Debug.Log($"[PlayLoRWithMe] GiftCache: wrote layout.json with {layouts.Count} entries");
         }
     }
 }

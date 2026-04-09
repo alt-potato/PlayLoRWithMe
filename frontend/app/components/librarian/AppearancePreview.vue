@@ -194,20 +194,24 @@ const faceRotStyle = computed(() => {
   };
 });
 
-/**
- * Per-gift-ID layout data fetched from the server-generated manifest.
- * Each entry has l/t (center position as canvas %) and w/h (sprite size as canvas %).
- */
-const giftLayout = ref<Record<string, { l: number; t: number; w: number; h: number }>>({});
+/** Per-gift-ID layout from the server-generated manifest (l/t center %, w/h size %). */
+type GiftLayoutEntry = { l: number; t: number; w: number; h: number };
+const giftLayout = ref<Record<string, GiftLayoutEntry>>({});
 
-// Module-level cache so multiple instances share one fetch.
-let _layoutPromise: Promise<Record<string, { l: number; t: number; w: number; h: number }>> | null = null;
+// Module-level cache — cleared on failure so a retry can pick up a newly generated file.
+let _layoutPromise: Promise<Record<string, GiftLayoutEntry>> | null = null;
 
-function fetchGiftLayout(): Promise<Record<string, { l: number; t: number; w: number; h: number }>> {
+function fetchGiftLayout(): Promise<Record<string, GiftLayoutEntry>> {
   if (_layoutPromise) return _layoutPromise;
   _layoutPromise = fetch("/assets/gifts/layout.json")
-    .then((r) => r.json() as Promise<Record<string, { l: number; t: number; w: number; h: number }>>)
-    .catch(() => ({}));
+    .then((r) => {
+      if (!r.ok) throw new Error(r.statusText);
+      return r.json() as Promise<Record<string, GiftLayoutEntry>>;
+    })
+    .catch(() => {
+      _layoutPromise = null; // allow retry on next mount
+      return {};
+    });
   return _layoutPromise;
 }
 
@@ -221,13 +225,16 @@ const POSITION_Z: Record<string, number> = {
   Mask: 13, HairAccessory: 14, Hood: 15,
 };
 
+/** Fallback layout for gifts not yet in the manifest — centered, small. */
+const FALLBACK_LAYOUT: GiftLayoutEntry = { l: 50, t: 35, w: 20, h: 20 };
+
 /** Equipped visible gifts with their layout data from the manifest. */
 const visibleGifts = computed(() => {
   if (!props.gifts) return [];
   const layout = giftLayout.value;
   return props.gifts
-    .filter((g): g is GiftSlot => g != null && g.visible && !!layout[g.id])
-    .map((g) => ({ ...g, layout: layout[g.id], z: POSITION_Z[g.position] ?? 11 }));
+    .filter((g): g is GiftSlot => g != null && g.visible)
+    .map((g) => ({ ...g, layout: layout[g.id] ?? FALLBACK_LAYOUT, z: POSITION_Z[g.position] ?? 11 }));
 });
 </script>
 
