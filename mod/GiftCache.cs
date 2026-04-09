@@ -106,7 +106,20 @@ namespace PlayLoRWithMe
                             worldOffset += prefab.transform.localPosition;
                         }
 
-                        Debug.Log($"[PlayLoRWithMe] GiftCache: gift {xml.id} ({xml.Name}) pos={xml.Position} offset=({worldOffset.x:F3},{worldOffset.y:F3})");
+                        // Log hierarchy details for debugging position issues.
+                        if (frontRenderer != null)
+                        {
+                            var sb = new System.Text.StringBuilder();
+                            sb.Append($"gift {xml.id} ({xml.Name}) pos={xml.Position} offset=({worldOffset.x:F3},{worldOffset.y:F3}) hierarchy:");
+                            var dt = frontRenderer.transform;
+                            while (dt != null)
+                            {
+                                sb.Append($" [{dt.name} lp=({dt.localPosition.x:F3},{dt.localPosition.y:F3})]");
+                                if (dt == prefab.transform) break;
+                                dt = dt.parent;
+                            }
+                            Debug.Log($"[PlayLoRWithMe] GiftCache: {sb}");
+                        }
 
                         File.WriteAllBytes(path,
                             AppearanceCache.SpriteToPng(sprite, canvasW, canvasH, bounds, ppu, worldOffset));
