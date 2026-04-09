@@ -1046,8 +1046,8 @@ namespace PlayLoRWithMe
             {
                 var giftPos = (GiftPosition)pos;
 
-                // Visibility must be applied before equip/unequip so that a swap+hide
-                // in one message applies the visibility to the gift that was equipped.
+                // visibility is processed before equip/unequip so it applies to the
+                // currently equipped gift at this position (not the incoming one).
                 if (r.TryGetInt("vis" + pos, out int vis))
                 {
                     // Find the currently equipped gift at this position, if any.
@@ -1117,13 +1117,47 @@ namespace PlayLoRWithMe
 
             if (changed)
             {
+                // Refresh the in-game character renderer (same pattern as HandleSetCustomization).
                 var unitRef = unit;
                 var unitSephirah = unit.OwnerSephirah;
                 int characterSlot = 5 + ui;
                 StateBroadcaster.RunOnMainThread(() =>
                 {
+                    var uic = UI.UIController.Instance;
+                    if (uic == null)
+                        return;
+
                     var renderer = SingletonBehavior<UI.UICharacterRenderer>.Instance;
-                    renderer?.SetCharacter(unitRef, characterSlot, forcelyReload: true);
+
+                    if (uic.CurrentSephirah == unitSephirah)
+                    {
+                        renderer?.SetCharacter(unitRef, characterSlot, forcelyReload: true);
+                        var listPanel =
+                            uic.GetUIPanel(UI.UIPanelType.CharacterList_Right)
+                            as UI.UILibrarianCharacterListPanel;
+                        listPanel?.SetLibrarianCharacterListPanel_Default(unitSephirah);
+                    }
+
+                    if (uic.CurrentUnit == unitRef)
+                    {
+                        if (uic.CurrentUIPhase == UI.UIPhase.Librarian)
+                        {
+                            var infoPanel =
+                                uic.GetUIPanel(UI.UIPanelType.LibrarianInfo)
+                                as UI.UILibrarianInfoPanel;
+                            if (infoPanel != null)
+                            {
+                                renderer?.SetCharacter(unitRef, 10, forcelyReload: true);
+                                infoPanel.UpdatePanel();
+                            }
+                        }
+                        else if (uic.CurrentUIPhase == UI.UIPhase.Librarian_CardList)
+                        {
+                            var cardPanel =
+                                uic.GetUIPanel(UI.UIPanelType.Page) as UI.UICardPanel;
+                            cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
+                        }
+                    }
                 });
 
                 Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);

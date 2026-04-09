@@ -118,24 +118,33 @@ function toggleOpen(positionName: string): void {
 async function equip(idx: number, giftId: number): Promise<void> {
   if (isBusy.value) return;
   actionBusy.value = true;
-  await props.onSetGifts({ [`gift${idx}`]: giftId });
-  actionBusy.value = false;
-  openPosition.value = null;
+  try {
+    await props.onSetGifts({ [`gift${idx}`]: giftId });
+    openPosition.value = null;
+  } finally {
+    actionBusy.value = false;
+  }
 }
 
 async function unequip(idx: number): Promise<void> {
   if (isBusy.value) return;
   actionBusy.value = true;
-  await props.onSetGifts({ [`gift${idx}`]: -1 });
-  actionBusy.value = false;
-  openPosition.value = null;
+  try {
+    await props.onSetGifts({ [`gift${idx}`]: -1 });
+    openPosition.value = null;
+  } finally {
+    actionBusy.value = false;
+  }
 }
 
 async function toggleVisibility(idx: number, currentlyVisible: boolean): Promise<void> {
   if (isBusy.value) return;
   actionBusy.value = true;
-  await props.onSetGifts({ [`vis${idx}`]: currentlyVisible ? 0 : 1 });
-  actionBusy.value = false;
+  try {
+    await props.onSetGifts({ [`vis${idx}`]: currentlyVisible ? 0 : 1 });
+  } finally {
+    actionBusy.value = false;
+  }
 }
 </script>
 
