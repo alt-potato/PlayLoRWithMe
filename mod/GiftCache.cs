@@ -106,8 +106,6 @@ namespace PlayLoRWithMe
                             worldOffset += prefab.transform.localPosition;
                         }
 
-                        Debug.Log($"[PlayLoRWithMe] GiftCache: gift {xml.id} ({xml.Name}) pos={xml.Position} offset=({worldOffset.x:F3},{worldOffset.y:F3}) ppu={sprite.pixelsPerUnit:F1} bounds=({sprite.bounds.min.x:F3},{sprite.bounds.min.y:F3})-({sprite.bounds.max.x:F3},{sprite.bounds.max.y:F3}) texRect=({sprite.textureRect.width}x{sprite.textureRect.height})");
-
                         File.WriteAllBytes(path,
                             AppearanceCache.SpriteToPng(sprite, canvasW, canvasH, bounds, ppu, worldOffset));
                     }

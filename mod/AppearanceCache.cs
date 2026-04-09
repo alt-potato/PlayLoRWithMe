@@ -922,6 +922,11 @@ namespace PlayLoRWithMe
             int cropW = crop.width;
             int cropH = crop.height;
 
+            float spritePpu = sprite.pixelsPerUnit;
+            // Scale factor when the sprite's ppu differs from the canvas ppu
+            // (e.g. a 50-ppu gift sprite on a 100-ppu canvas needs to be scaled by 2×).
+            float ppuRatio = ppu / spritePpu;
+
             // Compute where this sprite's tight crop sits on the shared canvas.
             //
             // sprite.bounds.min is the world-space bottom-left corner of the sprite's
@@ -931,7 +936,8 @@ namespace PlayLoRWithMe
             // the shared canvas origin to the logical rect's bottom-left.
             //
             // textureRectOffset is the additional sub-pixel offset from the logical rect's
-            // bottom-left to the tight crop's bottom-left, in pixels.
+            // bottom-left to the tight crop's bottom-left — in the sprite's own pixel
+            // space, so it must be scaled by ppuRatio to match the canvas pixels.
             int boundsOffsetX = Mathf.RoundToInt(
                 (sprite.bounds.min.x + worldOffset.x - totalBounds.min.x) * ppu
             );
@@ -939,29 +945,64 @@ namespace PlayLoRWithMe
                 (sprite.bounds.min.y + worldOffset.y - totalBounds.min.y) * ppu
             );
             var texRectOffset = sprite.textureRectOffset;
-            int offsetX = boundsOffsetX + Mathf.RoundToInt(texRectOffset.x);
-            int offsetY = boundsOffsetY + Mathf.RoundToInt(texRectOffset.y);
+            int offsetX = boundsOffsetX + Mathf.RoundToInt(texRectOffset.x * ppuRatio);
+            int offsetY = boundsOffsetY + Mathf.RoundToInt(texRectOffset.y * ppuRatio);
 
-            // Fast path: the crop fills the entire shared canvas with no offset.
-            if (canvasW == cropW && canvasH == cropH && offsetX == 0 && offsetY == 0)
+            // When ppu values match, blit the crop directly onto the canvas.
+            if (Mathf.Approximately(ppuRatio, 1f))
             {
-                var result = crop.EncodeToPNG();
+                // Fast path: the crop fills the entire shared canvas with no offset.
+                if (canvasW == cropW && canvasH == cropH && offsetX == 0 && offsetY == 0)
+                {
+                    var result = crop.EncodeToPNG();
+                    UnityEngine.Object.Destroy(crop);
+                    return result;
+                }
+
+                var dst = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
+                dst.SetPixels32(new Color32[canvasW * canvasH]); // transparent fill
+
+                int safeW = Mathf.Clamp(cropW, 0, canvasW - offsetX);
+                int safeH = Mathf.Clamp(cropH, 0, canvasH - offsetY);
+                if (safeW > 0 && safeH > 0)
+                    dst.SetPixels32(offsetX, offsetY, safeW, safeH, crop.GetPixels32());
+
                 UnityEngine.Object.Destroy(crop);
-                return result;
+                dst.Apply();
+                var result2 = dst.EncodeToPNG();
+                UnityEngine.Object.Destroy(dst);
+                return result2;
             }
 
-            var dst = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
-            dst.SetPixels32(new Color32[canvasW * canvasH]); // transparent fill
+            // PPU mismatch: rescale the crop via RenderTexture before blitting.
+            int scaledW = Mathf.Max(1, Mathf.RoundToInt(cropW * ppuRatio));
+            int scaledH = Mathf.Max(1, Mathf.RoundToInt(cropH * ppuRatio));
 
-            // Clamp to valid range in case of floating-point rounding edge cases.
-            int safeW = Mathf.Clamp(cropW, 0, canvasW - offsetX);
-            int safeH = Mathf.Clamp(cropH, 0, canvasH - offsetY);
-            if (safeW > 0 && safeH > 0)
-                dst.SetPixels32(offsetX, offsetY, safeW, safeH, crop.GetPixels32());
-
+            var rt = RenderTexture.GetTemporary(scaledW, scaledH, 0, RenderTextureFormat.ARGB32);
+            Graphics.Blit(crop, rt);
             UnityEngine.Object.Destroy(crop);
-            dst.Apply();
-            return dst.EncodeToPNG();
+
+            var prev = RenderTexture.active;
+            RenderTexture.active = rt;
+            var scaled = new Texture2D(scaledW, scaledH, TextureFormat.RGBA32, false);
+            scaled.ReadPixels(new Rect(0, 0, scaledW, scaledH), 0, 0);
+            scaled.Apply();
+            RenderTexture.active = prev;
+            RenderTexture.ReleaseTemporary(rt);
+
+            var canvas = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
+            canvas.SetPixels32(new Color32[canvasW * canvasH]);
+
+            int safeW2 = Mathf.Clamp(scaledW, 0, canvasW - offsetX);
+            int safeH2 = Mathf.Clamp(scaledH, 0, canvasH - offsetY);
+            if (safeW2 > 0 && safeH2 > 0)
+                canvas.SetPixels32(offsetX, offsetY, safeW2, safeH2, scaled.GetPixels32());
+
+            UnityEngine.Object.Destroy(scaled);
+            canvas.Apply();
+            var png = canvas.EncodeToPNG();
+            UnityEngine.Object.Destroy(canvas);
+            return png;
         }
     }
 }
