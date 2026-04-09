@@ -22,33 +22,33 @@ const props = defineProps<{
 // ── Position definitions ──────────────────────────────────────────────────────
 
 /**
- * Grid order (row-major, 3x3) → position name + enum index.
+ * Grid order (row-major, 3x3) matching the in-game gift UI layout.
  * The GiftPosition enum: Eye=0, Nose=1, Cheek=2, Mouth=3, Ear=4,
  * HairAccessory=5, Hood=6, Mask=7, Helmet=8
  */
 const POSITIONS: { name: string; idx: number }[] = [
-  { name: "Hood",           idx: 6 },
-  { name: "HairAccessory",  idx: 5 },
-  { name: "Helmet",         idx: 8 },
-  { name: "Ear",            idx: 4 },
   { name: "Eye",            idx: 0 },
-  { name: "Mask",           idx: 7 },
-  { name: "Cheek",          idx: 2 },
   { name: "Nose",           idx: 1 },
+  { name: "Cheek",          idx: 2 },
   { name: "Mouth",          idx: 3 },
+  { name: "Ear",            idx: 4 },
+  { name: "HairAccessory",  idx: 5 },
+  { name: "Hood",           idx: 6 },
+  { name: "Mask",           idx: 7 },
+  { name: "Helmet",         idx: 8 },
 ];
 
-/** Display-friendly labels for each position name. */
+/** Display-friendly labels matching in-game text (ui_gift_* keys). */
 const POSITION_LABELS: Record<string, string> = {
-  Hood: "Hood",
-  HairAccessory: "Hair",
-  Helmet: "Helmet",
-  Ear: "Ear",
   Eye: "Eye",
-  Mask: "Mask",
-  Cheek: "Cheek",
   Nose: "Nose",
+  Cheek: "Cheek",
   Mouth: "Mouth",
+  Ear: "Ear",
+  HairAccessory: "Headwear 1",
+  Hood: "Headwear 2",
+  Mask: "Headwear 3",
+  Helmet: "Headwear 4",
 };
 
 /** Labels for GiftStat fields shown in summary and option rows. */
