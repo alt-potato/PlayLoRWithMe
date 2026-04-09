@@ -1,16 +1,13 @@
-using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
-using System.Text;
 using UnityEngine;
 
 namespace PlayLoRWithMe
 {
     /// <summary>
     /// Extracts gift preview sprites from GiftAppearance prefabs to the static
-    /// asset directory so the frontend can display them without runtime access to game resources.
-    /// Also produces a layout manifest (layout.json) mapping each gift ID to its
-    /// CSS position/size on the face-canvas preview.
+    /// asset directory.  Each gift is rendered onto the same shared canvas as the
+    /// face/hair sprites so it layers correctly with <c>background-size: 100% auto</c>
+    /// in the browser — no separate coordinate conversion required.
     /// </summary>
     internal static class GiftCache
     {
@@ -36,8 +33,6 @@ namespace PlayLoRWithMe
             }
         }
 
-        // Iterates all gift XML entries and writes a PNG for each that has a visible appearance.
-        // Also collects per-gift position data and writes layout.json.
         private static void Extract()
         {
             var list = Singleton<GiftXmlList>.Instance?.GetAvailableList();
@@ -47,25 +42,25 @@ namespace PlayLoRWithMe
             Directory.CreateDirectory(GiftDir);
 
             var bounds = AppearanceCache.FaceHairBounds;
-            float bw = bounds.size.x;
-            float bh = bounds.size.y;
-            bool haveBounds = bw > 0f && bh > 0f;
+            float ppu = AppearanceCache.FaceHairPpu;
+            int canvasW = AppearanceCache.FaceHairCanvasW;
+            int canvasH = AppearanceCache.FaceHairCanvasH;
+            bool haveCanvas = canvasW > 0 && canvasH > 0 && ppu > 0f;
 
-            if (!haveBounds)
-                Debug.LogWarning("[PlayLoRWithMe] GiftCache: FaceHairBounds not available, layout.json will not be generated");
-
-            // gift ID → { leftPct, topPct, widthPct, heightPct }
-            var layouts = new Dictionary<int, (float left, float top, float w, float h)>();
+            if (!haveCanvas)
+                Debug.LogWarning("[PlayLoRWithMe] GiftCache: face-canvas data not available, gifts will use raw sprites");
 
             foreach (var xml in list)
             {
-                // NoAppear gifts have no visible sprite; skip them.
                 if (xml.NoAppear)
+                    continue;
+
+                var path = Path.Combine(GiftDir, $"gift_{xml.id}.png");
+                if (File.Exists(path))
                     continue;
 
                 try
                 {
-                    // Gift prefabs follow a fixed naming convention in the Resources folder.
                     var prefab = Resources.Load<GameObject>($"Prefabs/Gifts/Gifts_NeedRename/Gift_{xml.Resource}");
                     if (prefab == null)
                     {
@@ -87,17 +82,10 @@ namespace PlayLoRWithMe
                         continue;
                     }
 
-                    var path = Path.Combine(GiftDir, $"gift_{xml.id}.png");
-                    if (!File.Exists(path))
-                        File.WriteAllBytes(path, IconCache.SpriteToPng(sprite));
-
-                    // Compute CSS position for this gift on the face-canvas preview.
-                    if (haveBounds)
+                    if (haveCanvas)
                     {
-                        // The gift prefab's localPosition is where it sits relative to
-                        // the character root.  The front sprite renderer may have an
-                        // additional offset within the prefab.
-                        var giftLocalPos = prefab.transform.localPosition;
+                        // Compute the gift sprite's world offset by walking the transform
+                        // hierarchy from the sprite renderer up to the prefab root.
                         var renderers = appearance.GetSpriteRenderers();
                         SpriteRenderer frontRenderer = null;
                         foreach (var r in renderers)
@@ -105,30 +93,26 @@ namespace PlayLoRWithMe
                             if (r != null) { frontRenderer = r; break; }
                         }
 
+                        var worldOffset = Vector3.zero;
                         if (frontRenderer != null)
                         {
-                            // Total offset: gift root + renderer within the prefab.
-                            var rendererLocal = frontRenderer.transform.localPosition;
-                            float worldX = giftLocalPos.x + rendererLocal.x;
-                            float worldY = giftLocalPos.y + rendererLocal.y;
-
-                            // Sprite world-space dimensions.
-                            float sprW = sprite.bounds.size.x;
-                            float sprH = sprite.bounds.size.y;
-
-                            // Center of the sprite in world space, accounting for pivot offset.
-                            float cx = worldX + sprite.bounds.center.x;
-                            float cy = worldY + sprite.bounds.center.y;
-
-                            // Convert to CSS percentage coordinates on the face-canvas.
-                            // CSS (0%, 0%) = top-left = (bounds.min.x, bounds.max.y)
-                            float leftPct = (cx - bounds.min.x) / bw * 100f;
-                            float topPct = (bounds.max.y - cy) / bh * 100f;
-                            float widthPct = sprW / bw * 100f;
-                            float heightPct = sprH / bh * 100f;
-
-                            layouts[xml.id] = (leftPct, topPct, widthPct, heightPct);
+                            var t = frontRenderer.transform;
+                            while (t != null && t != prefab.transform)
+                            {
+                                worldOffset += t.localPosition;
+                                t = t.parent;
+                            }
+                            // Include the prefab root's own localPosition.
+                            worldOffset += prefab.transform.localPosition;
                         }
+
+                        File.WriteAllBytes(path,
+                            AppearanceCache.SpriteToPng(sprite, canvasW, canvasH, bounds, ppu, worldOffset));
+                    }
+                    else
+                    {
+                        // Fallback: raw sprite without canvas positioning.
+                        File.WriteAllBytes(path, IconCache.SpriteToPng(sprite));
                     }
                 }
                 catch (System.Exception ex)
@@ -136,23 +120,6 @@ namespace PlayLoRWithMe
                     Debug.LogWarning($"[PlayLoRWithMe] GiftCache: failed to extract gift {xml.id}: {ex.Message}");
                 }
             }
-
-            // Write the layout manifest for the frontend.
-            var sb = new StringBuilder();
-            sb.Append("{");
-            bool first = true;
-            foreach (var kv in layouts)
-            {
-                if (!first) sb.Append(",");
-                first = false;
-                var (l, t, w, h) = kv.Value;
-                sb.AppendFormat(CultureInfo.InvariantCulture,
-                    "\"{0}\":{{\"l\":{1:F2},\"t\":{2:F2},\"w\":{3:F2},\"h\":{4:F2}}}",
-                    kv.Key, l, t, w, h);
-            }
-            sb.Append("}");
-            File.WriteAllText(Path.Combine(GiftDir, "layout.json"), sb.ToString());
-            Debug.Log($"[PlayLoRWithMe] GiftCache: wrote layout.json with {layouts.Count} entries");
         }
     }
 }

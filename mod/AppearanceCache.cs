@@ -42,6 +42,12 @@ namespace PlayLoRWithMe
         /// </summary>
         internal static float FaceHairPpu { get; private set; }
 
+        /// <summary>
+        /// Canvas pixel dimensions (computed from bounds × ppu), populated during extraction.
+        /// </summary>
+        internal static int FaceHairCanvasW { get; private set; }
+        internal static int FaceHairCanvasH { get; private set; }
+
         private static string CustomizeDir =>
             Path.Combine(Server.WwwRootPath, "assets", "customize");
 
@@ -215,9 +221,11 @@ namespace PlayLoRWithMe
                     Path.Combine(CustomizeDir, "dimensions.json"),
                     $"{{\"w\":{canvasW},\"h\":{canvasH}}}");
 
-                // Expose bounds and ppu so GiftCache can convert gift positions to CSS.
+                // Expose canvas data so GiftCache can render gifts onto the same canvas.
                 FaceHairBounds = faceHairBounds;
                 FaceHairPpu = ppu;
+                FaceHairCanvasW = canvasW;
+                FaceHairCanvasH = canvasH;
 
                 // Build per-book metadata for the serializer now that faceHairBounds is
                 // final (pivot fractions depend on the fully-expanded canvas extents).
@@ -896,12 +904,18 @@ namespace PlayLoRWithMe
         // canvas whose dimensions are derived from the world-space bounding box of all
         // customization sprites. This ensures all layers composite at the correct pixel
         // offset when stacked in the browser.
-        private static byte[] SpriteToPng(
+        /// <summary>
+        /// Renders a sprite onto the shared face-canvas, optionally shifted by a
+        /// world-space offset (used by <see cref="GiftCache"/> to position gift
+        /// sprites relative to their prefab transform).
+        /// </summary>
+        internal static byte[] SpriteToPng(
             Sprite sprite,
             int canvasW,
             int canvasH,
             Bounds totalBounds,
-            float ppu
+            float ppu,
+            Vector3 worldOffset = default
         )
         {
             var crop = ReadSpriteCrop(sprite);
@@ -912,16 +926,17 @@ namespace PlayLoRWithMe
             //
             // sprite.bounds.min is the world-space bottom-left corner of the sprite's
             // LOGICAL rect (including transparent padding) relative to its pivot (0,0).
+            // Adding worldOffset accounts for transforms in the gift prefab hierarchy.
             // Subtracting totalBounds.min and scaling by ppu gives the pixel offset from
             // the shared canvas origin to the logical rect's bottom-left.
             //
             // textureRectOffset is the additional sub-pixel offset from the logical rect's
             // bottom-left to the tight crop's bottom-left, in pixels.
             int boundsOffsetX = Mathf.RoundToInt(
-                (sprite.bounds.min.x - totalBounds.min.x) * ppu
+                (sprite.bounds.min.x + worldOffset.x - totalBounds.min.x) * ppu
             );
             int boundsOffsetY = Mathf.RoundToInt(
-                (sprite.bounds.min.y - totalBounds.min.y) * ppu
+                (sprite.bounds.min.y + worldOffset.y - totalBounds.min.y) * ppu
             );
             var texRectOffset = sprite.textureRectOffset;
             int offsetX = boundsOffsetX + Mathf.RoundToInt(texRectOffset.x);

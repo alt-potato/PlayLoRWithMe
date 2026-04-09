@@ -194,70 +194,22 @@ const faceRotStyle = computed(() => {
   };
 });
 
-/** Per-gift-ID layout from the server-generated manifest (l/t center %, w/h size %). */
-type GiftLayoutEntry = { l: number; t: number; w: number; h: number };
-const giftLayout = ref<Record<string, GiftLayoutEntry>>({});
-
-// Module-level cache — cleared on failure so a retry can pick up a newly generated file.
-let _layoutPromise: Promise<Record<string, GiftLayoutEntry>> | null = null;
-
-function fetchGiftLayout(): Promise<Record<string, GiftLayoutEntry>> {
-  if (_layoutPromise) return _layoutPromise;
-  _layoutPromise = fetch("/assets/gifts/layout.json")
-    .then((r) => {
-      if (!r.ok) throw new Error(r.statusText);
-      return r.json() as Promise<Record<string, GiftLayoutEntry>>;
-    })
-    .catch(() => {
-      _layoutPromise = null; // allow retry on next mount
-      return {};
-    });
-  return _layoutPromise;
-}
-
-onMounted(async () => {
-  giftLayout.value = await fetchGiftLayout();
-});
-
 /** Z-index per position so overlapping gifts layer in a natural order. */
 const POSITION_Z: Record<string, number> = {
   Helmet: 10, Nose: 11, Cheek: 11, Mouth: 11, Eye: 12, Ear: 12,
   Mask: 13, HairAccessory: 14, Hood: 15,
 };
 
-/** Fallback layout for gifts not yet in the manifest — centered, small. */
-const FALLBACK_LAYOUT: GiftLayoutEntry = { l: 50, t: 35, w: 20, h: 20 };
-
 /**
- * Convert canvas-relative layout percentages to CSS pixel values.
- *
- * Horizontal: canvas width maps to PREVIEW_W (background-size: 100% auto),
- * so leftPx = l% * PREVIEW_W / 100.
- *
- * Vertical: the sprite's CSS height is PREVIEW_W * (canvasH / canvasW), NOT
- * PREVIEW_H, so topPx = t% * PREVIEW_W * aspect / 100.
+ * Equipped visible gifts.  Each gift PNG is rendered onto the same shared
+ * canvas as the face/hair sprites, so it layers correctly with the same
+ * background-size / background-position CSS — no coordinate conversion needed.
  */
-function layoutToPx(entry: GiftLayoutEntry): { l: string; t: string; w: string; h: string } {
-  const aspect = dims.value ? dims.value.h / dims.value.w : 1;
-  return {
-    l: `${entry.l / 100 * PREVIEW_W}px`,
-    t: `${entry.t / 100 * PREVIEW_W * aspect}px`,
-    w: `${entry.w / 100 * PREVIEW_W}px`,
-    h: `${entry.h / 100 * PREVIEW_W * aspect}px`,
-  };
-}
-
-/** Equipped visible gifts with pixel-converted layout data. */
 const visibleGifts = computed(() => {
   if (!props.gifts) return [];
-  const layout = giftLayout.value;
   return props.gifts
     .filter((g): g is GiftSlot => g != null && g.visible)
-    .map((g) => ({
-      ...g,
-      px: layoutToPx(layout[g.id] ?? FALLBACK_LAYOUT),
-      z: POSITION_Z[g.position] ?? 11,
-    }));
+    .map((g) => ({ ...g, z: POSITION_Z[g.position] ?? 11 }));
 });
 </script>
 
@@ -352,29 +304,21 @@ const visibleGifts = computed(() => {
       @error="fashionFrontFailed = true"
     />
 
-    <!-- Gift sprite overlays — positioned from server-extracted layout data -->
+    <!--
+      Gift sprite overlays — each PNG is rendered onto the same shared canvas as
+      face/hair sprites, so they use the same CSS stacking (inset: 0, 100% auto).
+    -->
     <div
       v-for="gift in visibleGifts"
       :key="`gift-${gift.id}`"
       v-show="showFaceHairLayers"
-      class="gift-wrapper"
+      class="layer-sprite gift-layer"
       :style="{
-        left: gift.px.l,
-        top: gift.px.t,
-        width: gift.px.w,
-        height: gift.px.h,
+        backgroundImage: `url(/assets/gifts/gift_${gift.id}.png)`,
         zIndex: gift.z,
-        transform: `translate(-50%, -50%) ${faceRotStyle.transform ?? ''}`.trim(),
-        transformOrigin: faceRotStyle.transformOrigin,
+        ...faceRotStyle,
       }"
-    >
-      <img
-        :src="`/assets/gifts/gift_${gift.id}.png`"
-        class="gift-sprite"
-        alt=""
-        @error="($event.target as HTMLImageElement).style.display = 'none'"
-      />
-    </div>
+    />
   </div>
 </template>
 
@@ -422,16 +366,11 @@ const visibleGifts = computed(() => {
   -webkit-mask-image: none;
 }
 
-/* Gift sprite overlays — individually positioned on the head area. */
-.gift-wrapper {
-  position: absolute;
+/* Gift overlays — same canvas-positioned PNGs as face layers, no tint. */
+.gift-layer {
+  background-blend-mode: normal;
+  mask-image: none;
+  -webkit-mask-image: none;
   pointer-events: none;
-}
-
-.gift-sprite {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
 }
 </style>
