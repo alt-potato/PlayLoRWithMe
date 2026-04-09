@@ -11,6 +11,9 @@ namespace PlayLoRWithMe
     {
         public const int Port = 8080;
 
+        /// <summary>Builds the canonical lock key for a librarian slot.</summary>
+        private static string LockKey(int floorIndex, int unitIndex) => floorIndex + ":" + unitIndex;
+
         // DLL is in <mod root>/Assemblies/; wwwroot is a sibling of Assemblies/
         private static readonly string ModRootPath = Path.GetDirectoryName(
             Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
@@ -358,7 +361,7 @@ namespace PlayLoRWithMe
                         && r.TryGetInt("unitIndex", out int lockUi)
                     )
                     {
-                        string lockKey = lockFi + ":" + lockUi;
+                        string lockKey = LockKey(lockFi, lockUi);
                         bool locked = _sessionManager.TryLockLibrarian(lockKey, client.SessionId);
                         if (locked)
                             StateBroadcaster.Broadcast();
@@ -379,7 +382,7 @@ namespace PlayLoRWithMe
                         && r.TryGetInt("unitIndex", out int ulUi)
                     )
                     {
-                        _sessionManager.UnlockLibrarian(ulFi + ":" + ulUi, client.SessionId);
+                        _sessionManager.UnlockLibrarian(LockKey(ulFi, ulUi), client.SessionId);
                         StateBroadcaster.Broadcast();
                         if (reqId != null)
                             client.Send(BuildActionResult(reqId, true, null));
@@ -468,7 +471,7 @@ namespace PlayLoRWithMe
                 return;
             }
 
-            string key = fi + ":" + ui;
+            string key = LockKey(fi, ui);
             if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
             {
                 if (reqId != null)
@@ -501,10 +504,6 @@ namespace PlayLoRWithMe
         /// Equips a key page from the book inventory to a librarian.
         /// Requires the caller to hold the edit lock for the librarian.
         /// </summary>
-        /// <summary>
-        /// Equips a key page from the book inventory to a librarian.
-        /// Requires the caller to hold the edit lock for the librarian.
-        /// </summary>
         private void HandleEquipKeyPage(WebSocketClient client, JsonReader r, string reqId)
         {
             if (!r.TryGetInt("floorIndex", out int fi) || !r.TryGetInt("unitIndex", out int ui))
@@ -517,7 +516,7 @@ namespace PlayLoRWithMe
                 return;
             }
 
-            string key = fi + ":" + ui;
+            string key = LockKey(fi, ui);
             if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
             {
                 if (reqId != null)
@@ -672,7 +671,7 @@ namespace PlayLoRWithMe
             // packageId is an empty string for vanilla cards and a workshop ID for mods.
             string packageId = r.GetString("packageId") ?? "";
 
-            string key = fi + ":" + ui;
+            string key = LockKey(fi, ui);
             if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
             {
                 if (reqId != null)
@@ -729,7 +728,7 @@ namespace PlayLoRWithMe
 
             string packageId = r.GetString("packageId") ?? "";
 
-            string key = fi + ":" + ui;
+            string key = LockKey(fi, ui);
             if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
             {
                 if (reqId != null)
@@ -787,7 +786,7 @@ namespace PlayLoRWithMe
             if (!r.TryGetInt("floorIndex", out int fi) || !r.TryGetInt("unitIndex", out int ui))
                 return;
 
-            string key = fi + ":" + ui;
+            string key = LockKey(fi, ui);
             if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
             {
                 if (reqId != null)
@@ -1023,19 +1022,7 @@ namespace PlayLoRWithMe
         /// </summary>
         internal static UnitDataModel GetLibrarianUnit(int floorIndex, int unitIndex)
         {
-            var sephirahs = new[]
-            {
-                SephirahType.Malkuth,
-                SephirahType.Yesod,
-                SephirahType.Hod,
-                SephirahType.Netzach,
-                SephirahType.Tiphereth,
-                SephirahType.Gebura,
-                SephirahType.Chesed,
-                SephirahType.Binah,
-                SephirahType.Hokma,
-                SephirahType.Keter,
-            };
+            var sephirahs = GameStateSerializer.Sephirahs;
 
             if (floorIndex < 0 || floorIndex >= sephirahs.Length)
                 return null;

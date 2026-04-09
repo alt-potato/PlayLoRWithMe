@@ -20,6 +20,8 @@ export function useWebSocket() {
 
   let ws: WebSocket | null = null;
   let lastSeq = 0;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let closing = false;
 
   // Pending action promises keyed by reqId. Each entry holds a resolve
   // callback and a safety timeout so callers never hang indefinitely.
@@ -64,7 +66,7 @@ export function useWebSocket() {
         p.resolve({ ok: false, error: "Connection lost" });
         pending.delete(id);
       }
-      setTimeout(connect, 2000);
+      if (!closing) reconnectTimer = setTimeout(connect, 2000);
     };
 
     ws.onerror = () => {
@@ -215,6 +217,12 @@ export function useWebSocket() {
   }
 
   onMounted(connect);
+
+  onBeforeUnmount(() => {
+    closing = true;
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    ws?.close();
+  });
 
   return {
     gameState,

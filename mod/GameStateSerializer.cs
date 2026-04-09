@@ -12,6 +12,23 @@ namespace PlayLoRWithMe
     public static class GameStateSerializer
     {
         /// <summary>
+        /// The 10 named Sephirah floors in canonical order; index is the floorIndex
+        /// used throughout the JSON API and WebSocket messages.
+        /// </summary>
+        internal static readonly SephirahType[] Sephirahs = new[]
+        {
+            SephirahType.Malkuth,
+            SephirahType.Yesod,
+            SephirahType.Hod,
+            SephirahType.Netzach,
+            SephirahType.Tiphereth,
+            SephirahType.Gebura,
+            SephirahType.Chesed,
+            SephirahType.Binah,
+            SephirahType.Hokma,
+            SephirahType.Keter,
+        };
+        /// <summary>
         /// Serializes the full unfiltered game state. Used by the SSE path and as the
         /// baseline for delta diffing.
         /// </summary>
@@ -187,20 +204,7 @@ namespace PlayLoRWithMe
             if (lib == null)
                 return;
 
-            // The 10 named Sephirah floors in canonical order; index becomes floorIndex.
-            var sephirahs = new[]
-            {
-                SephirahType.Malkuth,
-                SephirahType.Yesod,
-                SephirahType.Hod,
-                SephirahType.Netzach,
-                SephirahType.Tiphereth,
-                SephirahType.Gebura,
-                SephirahType.Chesed,
-                SephirahType.Binah,
-                SephirahType.Hokma,
-                SephirahType.Keter,
-            };
+            var sephirahs = Sephirahs;
 
             var abilityDescList = Singleton<BattleCardAbilityDescXmlList>.Instance;
             var emotionCardList = Singleton<EmotionCardXmlList>.Instance;

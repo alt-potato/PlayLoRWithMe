@@ -59,12 +59,18 @@ namespace PlayLoRWithMe
         {
             var pending = new PendingAction(actionJson);
             _queue.Enqueue(pending);
-            if (!pending.Done.Wait(500))
-                return (false, "Action timed out");
-            return (pending.Ok, pending.Error);
+            try
+            {
+                if (!pending.Done.Wait(500))
+                    return (false, "Action timed out");
+                return (pending.Ok, pending.Error);
+            }
+            finally
+            {
+                pending.Done.Dispose();
+            }
         }
 
-        /// <summary>Called each frame from the Unity main thread to execute queued actions.</summary>
         /// <summary>
         /// Called from the WebSocket receive thread. Non-blocking; returns immediately.
         /// <paramref name="onComplete"/> is invoked on the Unity main thread after

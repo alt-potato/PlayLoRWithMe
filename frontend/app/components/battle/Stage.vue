@@ -223,12 +223,20 @@ function moveEnemy(unitId: number, dir: -1 | 1) {
 
 const showArrows = ref(false);
 
+function onMediaChange(e: MediaQueryListEvent) {
+  showArrows.value = e.matches;
+}
+
+let arrowMq: MediaQueryList | null = null;
+
 onMounted(() => {
-  const mq = window.matchMedia("(min-width: 600px)");
-  showArrows.value = mq.matches;
-  mq.addEventListener("change", (e: MediaQueryListEvent) => {
-    showArrows.value = e.matches;
-  });
+  arrowMq = window.matchMedia("(min-width: 600px)");
+  showArrows.value = arrowMq.matches;
+  arrowMq.addEventListener("change", onMediaChange);
+});
+
+onBeforeUnmount(() => {
+  arrowMq?.removeEventListener("change", onMediaChange);
 });
 
 // ---------------------------------------------------------------------------
@@ -380,7 +388,7 @@ async function onRemoveCard(unitId: number, diceSlot: number) {
 }
 
 async function onSelectAbnormality(cardId: number, targetUnitId?: number) {
-  const body: any = { type: "selectAbnormality", cardId };
+  const body: Record<string, unknown> = { type: "selectAbnormality", cardId };
   if (targetUnitId !== undefined) body.targetUnitId = targetUnitId;
   await doSendAction(body);
 }

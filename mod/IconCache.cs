@@ -15,77 +15,34 @@ namespace PlayLoRWithMe
         private static string StageIconDir =>
             Path.Combine(Server.WwwRootPath, "assets", "stageicons");
 
-        // Returns the icon ID (sprite.name) on success, null if sprite is null.
-        internal static string EnsureIcon(Sprite sprite)
-        {
-            if (sprite == null)
-                return null;
-            var id = sprite.name;
-            if (_written.Contains(id))
-                return id;
-            try
-            {
-                Directory.CreateDirectory(BuficonDir);
-                File.WriteAllBytes(Path.Combine(BuficonDir, id + ".png"), SpriteToPng(sprite));
-                _written.Add(id);
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogWarning($"[PlayLoRWithMe] IconCache failed for '{id}': {ex.Message}");
-                return null;
-            }
-            return id;
-        }
-
-        internal static string EnsureCardIcon(Sprite sprite)
-        {
-            if (sprite == null)
-                return null;
-            var id = sprite.name;
-            if (_cardWritten.Contains(id))
-                return id;
-            try
-            {
-                Directory.CreateDirectory(CardIconDir);
-                File.WriteAllBytes(Path.Combine(CardIconDir, id + ".png"), SpriteToPng(sprite));
-                _cardWritten.Add(id);
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogWarning(
-                    $"[PlayLoRWithMe] IconCache (card) failed for '{id}': {ex.Message}"
-                );
-                return null;
-            }
-            return id;
-        }
-
         /// <summary>
-        /// Extracts and caches the story-chapter icon used on the BattleSetting screen.
+        /// Extracts a sprite to PNG and caches it in the given directory.
         /// Returns the sprite name (icon ID) on success, or null if the sprite is null.
         /// </summary>
-        internal static string EnsureStageIcon(Sprite sprite)
+        private static string EnsureSprite(Sprite sprite, string dir, HashSet<string> written, string label)
         {
             if (sprite == null)
                 return null;
             var id = sprite.name;
-            if (_stageWritten.Contains(id))
+            if (written.Contains(id))
                 return id;
             try
             {
-                Directory.CreateDirectory(StageIconDir);
-                File.WriteAllBytes(Path.Combine(StageIconDir, id + ".png"), SpriteToPng(sprite));
-                _stageWritten.Add(id);
+                Directory.CreateDirectory(dir);
+                File.WriteAllBytes(Path.Combine(dir, id + ".png"), SpriteToPng(sprite));
+                written.Add(id);
             }
             catch (System.Exception ex)
             {
-                Debug.LogWarning(
-                    $"[PlayLoRWithMe] IconCache (stage) failed for '{id}': {ex.Message}"
-                );
+                Debug.LogWarning($"[PlayLoRWithMe] IconCache ({label}) failed for '{id}': {ex.Message}");
                 return null;
             }
             return id;
         }
+
+        internal static string EnsureIcon(Sprite sprite) => EnsureSprite(sprite, BuficonDir, _written, "buff");
+        internal static string EnsureCardIcon(Sprite sprite) => EnsureSprite(sprite, CardIconDir, _cardWritten, "card");
+        internal static string EnsureStageIcon(Sprite sprite) => EnsureSprite(sprite, StageIconDir, _stageWritten, "stage");
 
         // Extracts the sprite's pixel region via RenderTexture — handles non-readable
         // textures and sprite-sheet atlases safely on the Unity main thread.
@@ -117,7 +74,9 @@ namespace PlayLoRWithMe
             RenderTexture.active = prev;
             RenderTexture.ReleaseTemporary(rtFull);
 
-            return dst.EncodeToPNG();
+            var png = dst.EncodeToPNG();
+            UnityEngine.Object.Destroy(dst);
+            return png;
         }
     }
 }

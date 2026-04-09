@@ -65,7 +65,6 @@ const PREVIEW_H = PREVIEW_W;
 const dims = ref<{ w: number; h: number } | null>(null);
 
 // Module-level cache so multiple instances share one fetch.
-let _dimsFetched = false;
 let _dimsPromise: Promise<{ w: number; h: number } | null> | null = null;
 
 function fetchDims(): Promise<{ w: number; h: number } | null> {
