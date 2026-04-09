@@ -16,6 +16,7 @@
     busy         – whether parent has an in-flight operation
     onRename     – called if the name was changed
     onSave       – called with the flat setCustomization payload
+    onSetGifts   – called immediately when gift equip/unequip/visibility changes
     onClose      – called on Complete or Cancel
 -->
 <script setup lang="ts">
@@ -35,10 +36,11 @@ const props = defineProps<{
   busy: boolean;
   onRename: (name: string) => Promise<ActionResult>;
   onSave: (payload: Omit<CustomizePayload, "floorIndex" | "unitIndex">) => Promise<ActionResult>;
+  onSetGifts: (slots: Record<string, number>) => Promise<ActionResult>;
   onClose: () => void;
 }>();
 
-type SubTab = "name" | "hairstyle" | "face" | "projection" | "dialogue";
+type SubTab = "name" | "hairstyle" | "face" | "projection" | "dialogue" | "symbols";
 const activeTab = ref<SubTab>("name");
 
 const saveBusy = ref(false);
@@ -256,6 +258,7 @@ watch(
                   ['face', 'Face'],
                   ['projection', 'Projection'],
                   ['dialogue', 'Dialogue'],
+                  ['symbols', 'Battle Symbols'],
                 ] as [SubTab, string][])"
                 :key="key"
                 class="tab-btn"
@@ -322,6 +325,14 @@ watch(
                 v-model:kills-opponent="draft.dlgKillsOpponent"
                 :options="customizeOptions ?? { prefixTitles: [], suffixTitles: [], suggestedNames: [], dialoguePresets: { startBattle: [], victory: [], death: [], colleagueDeath: [], killsOpponent: [] } }"
                 :busy="isBusy"
+              />
+
+              <!-- Battle Symbols -->
+              <LibrarianCustomizeBattleSymbolsTab
+                v-else-if="activeTab === 'symbols'"
+                :lib="lib"
+                :busy="isBusy"
+                :on-set-gifts="onSetGifts"
               />
             </div>
           </div>
