@@ -46,7 +46,7 @@ namespace PlayLoRWithMe
 
         // Extracts the sprite's pixel region via RenderTexture — handles non-readable
         // textures and sprite-sheet atlases safely on the Unity main thread.
-        private static byte[] SpriteToPng(Sprite sprite)
+        internal static byte[] SpriteToPng(Sprite sprite)
         {
             var src = sprite.texture;
             var rect = sprite.textureRect; // pixel coords within source texture (bottom-left origin)

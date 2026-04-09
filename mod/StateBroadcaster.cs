@@ -69,6 +69,7 @@ namespace PlayLoRWithMe
                 // Extract customization sprites once the main scene is loaded and
                 // CustomizingResourceLoader's singleton is available.
                 AppearanceCache.EnsureExtracted();
+                GiftCache.EnsureExtracted();
                 Broadcast();
             }
         }
