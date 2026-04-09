@@ -409,6 +409,10 @@ namespace PlayLoRWithMe
                     HandleSetCustomization(client, r, reqId);
                     break;
 
+                case "setGifts":
+                    HandleSetGifts(client, r, reqId);
+                    break;
+
                 case "resync":
                     // Client detected a missed sequence number; reset delta state and
                     // send a fresh full snapshot so the client can resync cleanly.
@@ -994,6 +998,138 @@ namespace PlayLoRWithMe
 
             Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
             StateBroadcaster.Broadcast();
+            if (reqId != null)
+                client.Send(BuildActionResult(reqId, true, null));
+        }
+
+        /// <summary>
+        /// Applies a batch gift update to a librarian: equips/unequips gifts by position index
+        /// and toggles per-gift visibility. Keys gift0–gift8 carry a gift ID (-1 to unequip);
+        /// vis0–vis8 carry a non-zero value to show or zero to hide the gift at that position.
+        /// Visibility is processed before equip/unequip so callers can swap and hide in one message.
+        /// </summary>
+        private void HandleSetGifts(WebSocketClient client, JsonReader r, string reqId)
+        {
+            if (!r.TryGetInt("floorIndex", out int fi) || !r.TryGetInt("unitIndex", out int ui))
+                return;
+
+            string key = LockKey(fi, ui);
+            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
+            {
+                if (reqId != null)
+                    client.Send(
+                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
+                    );
+                return;
+            }
+
+            var unit = GetLibrarianUnit(fi, ui);
+            if (unit == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
+                return;
+            }
+
+            var inv = unit.giftInventory;
+            if (inv == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Gift inventory not available"));
+                return;
+            }
+
+            bool changed = false;
+
+            // Process each of the 9 gift positions (GiftPosition has values 0–8).
+            for (int pos = 0; pos <= 8; pos++)
+            {
+                var giftPos = (GiftPosition)pos;
+
+                // Visibility must be applied before equip/unequip so that a swap+hide
+                // in one message applies the visibility to the gift that was equipped.
+                if (r.TryGetInt("vis" + pos, out int vis))
+                {
+                    // Find the currently equipped gift at this position, if any.
+                    GiftModel equipped = null;
+                    foreach (var g in inv.GetEquippedList())
+                    {
+                        if (g.ClassInfo.Position == giftPos)
+                        {
+                            equipped = g;
+                            break;
+                        }
+                    }
+
+                    if (equipped != null)
+                    {
+                        equipped.isShowEquipGift = (vis != 0);
+                        changed = true;
+                    }
+                }
+
+                if (r.TryGetInt("gift" + pos, out int giftId))
+                {
+                    if (giftId < 0)
+                    {
+                        // Unequip: find the currently equipped gift at this position.
+                        GiftModel toUnequip = null;
+                        foreach (var g in inv.GetEquippedList())
+                        {
+                            if (g.ClassInfo.Position == giftPos)
+                            {
+                                toUnequip = g;
+                                break;
+                            }
+                        }
+
+                        if (toUnequip != null)
+                        {
+                            inv.UnEquip(toUnequip);
+                            changed = true;
+                        }
+                    }
+                    else
+                    {
+                        // Equip: find the matching gift in the unequipped list by ID and position.
+                        GiftModel toEquip = null;
+                        foreach (var g in inv.GetUnequippedList())
+                        {
+                            if (
+                                g.GetGiftClassInfoId() == giftId
+                                && g.ClassInfo.Position == giftPos
+                            )
+                            {
+                                toEquip = g;
+                                break;
+                            }
+                        }
+
+                        if (toEquip != null)
+                        {
+                            // Equip auto-swaps if the slot is already occupied.
+                            inv.Equip(toEquip);
+                            changed = true;
+                        }
+                    }
+                }
+            }
+
+            if (changed)
+            {
+                var unitRef = unit;
+                var unitSephirah = unit.OwnerSephirah;
+                int characterSlot = 5 + ui;
+                StateBroadcaster.RunOnMainThread(() =>
+                {
+                    var renderer = SingletonBehavior<UI.UICharacterRenderer>.Instance;
+                    renderer?.SetCharacter(unitRef, characterSlot, forcelyReload: true);
+                });
+
+                Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
+                StateBroadcaster.Broadcast();
+            }
+
             if (reqId != null)
                 client.Send(BuildActionResult(reqId, true, null));
         }
