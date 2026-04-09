@@ -424,3 +424,4 @@ FodyWeavers.xsd
 /.serena
 /openspec
 *.temp.md
+/docs
