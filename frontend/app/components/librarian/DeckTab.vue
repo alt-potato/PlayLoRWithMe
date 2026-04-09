@@ -77,23 +77,6 @@ function isAtLimit(card: AvailableCard): boolean {
 
 const detailCard = ref<Card | null>(null);
 
-/**
- * Converts a DeckCardPreview to a minimal Card shape for HandCard rendering.
- * id/index are positional; HandCard does not use them for actions.
- */
-function previewToCard(p: DeckCardPreview, i: number): Card {
-  return {
-    id: { id: i, packageId: 0 },
-    index: i,
-    name: p.name,
-    cost: p.cost,
-    range: p.range,
-    rarity: p.rarity,
-    dice: p.dice,
-    abilityDesc: p.abilityDesc,
-  };
-}
-
 function availableToCard(c: AvailableCard, i: number): Card {
   return {
     id: { id: c.cardId.id, packageId: Number(c.cardId.packageId) || 0 },

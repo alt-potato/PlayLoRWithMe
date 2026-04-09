@@ -35,15 +35,7 @@ const props = defineProps<{
   renamePlayer: (name: string) => Promise<ActionResult>;
 }>();
 
-const ALLY_COLORS = ["#4fc3f7", "#81c784", "#ffb74d", "#ce93d8", "#f48fb1"];
-
-const allyColors = computed<Record<number, string>>(() => {
-  const m: Record<number, string> = {};
-  (props.state?.allies ?? []).forEach((a, i) => {
-    m[a.id] = ALLY_COLORS[i % ALLY_COLORS.length]!;
-  });
-  return m;
-});
+const allyColors = computed(() => buildAllyColors(props.state?.allies ?? []));
 
 const allies = computed(() => props.state?.allies ?? []);
 const enemies = computed(() => props.state?.enemies ?? []);

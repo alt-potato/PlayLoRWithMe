@@ -128,13 +128,6 @@ const FLOOR_COLORS: Record<number, string> = {
   9: "#dddddd", // Keter
 };
 
-/** Roman numeral labels for realization levels 1–6. */
-const ROMAN = ["I", "II", "III", "IV", "V", "VI"] as const;
-
-function toRoman(level: number): string {
-  return ROMAN[level - 1] ?? String(level);
-}
-
 function floorColor(floorIdx: number): string {
   return FLOOR_COLORS[floorIdx] ?? "#888";
 }
@@ -270,22 +263,6 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
   return { ...previewToCard(p, i), options: ["EGO"] };
 }
 
-/**
- * Converts a DeckCardPreview to a minimal Card shape for HandCard rendering.
- * id/index are set to the list position — HandCard does not use them for actions.
- */
-function previewToCard(p: DeckCardPreview, i: number): Card {
-  return {
-    id: { id: i, packageId: 0 },
-    index: i,
-    name: p.name,
-    cost: p.cost,
-    range: p.range,
-    rarity: p.rarity,
-    dice: p.dice,
-    abilityDesc: p.abilityDesc,
-  };
-}
 </script>
 
 <template>
