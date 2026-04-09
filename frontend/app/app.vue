@@ -35,8 +35,9 @@ const {
   removeCardFromDeck,
 } = useWebSocket();
 
+const isDebugOpen = ref(false);
 const rawJson = computed(() =>
-  gameState.value ? JSON.stringify(gameState.value, null, 2) : "—",
+  isDebugOpen.value && gameState.value ? JSON.stringify(gameState.value, null, 2) : "—",
 );
 </script>
 
@@ -105,7 +106,7 @@ const rawJson = computed(() =>
       </div>
     </main>
 
-    <details class="debug-info">
+    <details class="debug-info" @toggle="isDebugOpen = ($event.target as HTMLDetailsElement).open">
       <summary><span class="chevron">▸</span>debug info</summary>
       <pre>{{ rawJson }}</pre>
     </details>

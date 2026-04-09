@@ -23,6 +23,8 @@ const props = defineProps<{
   side?: "right" | "left";
 }>();
 
+const ctx = inject(BATTLE_CTX);
+if (!ctx) throw new Error("BATTLE_CTX not provided — component must be used inside Stage.vue");
 const {
   isSelectPhase,
   selectingSlot,
@@ -34,7 +36,7 @@ const {
   allyColors,
   attackMap,
   isOwnUnit,
-} = inject(BATTLE_CTX) as BattleCtx;
+} = ctx;
 
 const slots = computed(() => sortedSlots(props.unit));
 
@@ -63,7 +65,7 @@ function dieColor(sc: SlottedCardEntry | undefined): string {
   if (sc?.clash) return ARROW_COLORS.clash;
   if (props.isAlly) return ARROW_COLORS.incoming;
   if (sc?.targetUnitId != null) return ARROW_COLORS.outgoing;
-  return "#F0F"; // Instance / untargeted
+  return "var(--gold-dim)"; // Instance / untargeted — neutral color
 }
 
 // detailCard can hold a full Card (from hand) or a SlottedCardEntry (from long-press on die);

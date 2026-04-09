@@ -191,7 +191,6 @@ watch(
     const lib = floor?.librarians.find((l) => l.unitIndex === cur.unitIndex);
     if (lib) editingLibrarian.value = lib;
   },
-  { deep: true },
 );
 
 // ── EditPanel action callbacks ─────────────────────────────────────────────

@@ -139,7 +139,7 @@ function isDimmed(a: Arrow): boolean {
   return a.srcUnitId !== props.focusUnitId && a.tgtUnitId !== props.focusUnitId;
 }
 
-watch(() => [props.allies, props.enemies], recompute, { deep: true });
+watch(() => [props.allies, props.enemies], recompute);
 
 onMounted(() => {
   recompute();

@@ -102,24 +102,23 @@ const attackMap = computed(() => {
     number,
     Record<number, Array<{ name: string; color: string; range: string }>>
   > = {};
-  const allSides = [
-    ...(props.state?.allies ?? []),
-    ...(props.state?.enemies ?? []),
-  ];
-  allSides.forEach((unit, i) => {
-    if (isDead(unit)) return;
-    const color = ALLY_COLORS[i % ALLY_COLORS.length]!;
+  const ac = allyColors.value;
+  const ENEMY_COLOR = "var(--crimson)";
+
+  for (const unit of [...(props.state?.allies ?? []), ...(props.state?.enemies ?? [])]) {
+    if (isDead(unit)) continue;
+    const color = ac[unit.id] ?? ENEMY_COLOR;
     const name = unit.name ?? unit.keyPage?.name ?? `#${unit.id}`;
-    (unit.slottedCards ?? []).forEach((sc) => {
-      if (sc.targetUnitId == null) return;
+    for (const sc of unit.slottedCards ?? []) {
+      if (sc.targetUnitId == null) continue;
       const bySlot = (m[sc.targetUnitId] ??= {});
       (bySlot[sc.targetSlot ?? -1] ??= []).push({
         name,
         color,
         range: sc.range ?? "",
       });
-    });
-  });
+    }
+  }
   return m;
 });
 
@@ -223,11 +222,11 @@ function moveEnemy(unitId: number, dir: -1 | 1) {
 
 const showArrows = ref(false);
 
+let arrowMq: MediaQueryList | null = null;
+
 function onMediaChange(e: MediaQueryListEvent) {
   showArrows.value = e.matches;
 }
-
-let arrowMq: MediaQueryList | null = null;
 
 onMounted(() => {
   arrowMq = window.matchMedia("(min-width: 600px)");
@@ -237,6 +236,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   arrowMq?.removeEventListener("change", onMediaChange);
+  if (errorTimer) {
+    clearTimeout(errorTimer);
+    errorTimer = null;
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -340,7 +343,7 @@ function onSlotSelectClick(unit: Unit, diceSlot: number) {
 async function onAllyTargetClick(targetUnitId: number) {
   if (!selectingAllyTargetFor.value) return;
   const { unitId, cardIndex, isEgo, diceSlot } = selectingAllyTargetFor.value;
-  const ok = await doSendAction({
+  await doSendAction({
     type: "playCard",
     unitId,
     cardIndex,
@@ -354,7 +357,7 @@ async function onAllyTargetClick(targetUnitId: number) {
 async function onTargetDieClick(targetUnitId: number, targetDiceSlot: number) {
   if (!selectingTargetFor.value) return;
   const { unitId, cardIndex, isEgo, diceSlot } = selectingTargetFor.value;
-  const ok = await doSendAction({
+  await doSendAction({
     type: "playCard",
     unitId,
     cardIndex,

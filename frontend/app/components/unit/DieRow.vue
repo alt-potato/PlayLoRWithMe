@@ -26,6 +26,8 @@ const props = withDefaults(
   },
 );
 
+const ctx = inject(BATTLE_CTX);
+if (!ctx) throw new Error("BATTLE_CTX not provided — component must be used inside Stage.vue");
 const {
   phase,
   isSelectPhase,
@@ -36,7 +38,7 @@ const {
   onRemoveCard,
   allUnits,
   isOwnUnit,
-} = inject(BATTLE_CTX) as BattleCtx;
+} = ctx;
 
 type DieState =
   | "empty" // no card in slot
@@ -55,6 +57,13 @@ const isUnitBroken = computed(
 
 let slotLongPressed = false;
 let slotPressTimer: ReturnType<typeof setTimeout> | null = null;
+
+onBeforeUnmount(() => {
+  if (slotPressTimer) {
+    clearTimeout(slotPressTimer);
+    slotPressTimer = null;
+  }
+});
 function onSlotPressStart(sc: SlottedCardEntry | undefined) {
   if (!sc) return;
   slotLongPressed = false;
