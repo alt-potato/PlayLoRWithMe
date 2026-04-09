@@ -77,6 +77,7 @@ namespace PlayLoRWithMe
         {
             _running = false;
             _listener?.Stop();
+            _listener?.Close();
         }
 
         /// <summary>
@@ -281,9 +282,10 @@ namespace PlayLoRWithMe
             // properly per-session filtered view; _pendingBroadcast ensures it fires
             // soon even if no game event occurs.
             // Use the cached last-broadcast JSON if available (fast, main-thread-safe).
-            // Fall back to serializing immediately if the cache is cold (first ever
-            // connection before any game event has fired a broadcast).
-            string cachedJson = _lastFullJson ?? GameStateSerializer.Serialize();
+            // If no broadcast has occurred yet, send a minimal loading stub instead of
+            // calling Serialize() — that accesses Unity objects which aren't thread-safe.
+            // The _pendingBroadcast flag below ensures a real snapshot follows promptly.
+            string cachedJson = _lastFullJson ?? "{\"scene\":\"loading\"}";
             string initialMsg = _deltaEngine.BuildMessage(session.SessionId, cachedJson);
             if (initialMsg != null)
                 client.Send(initialMsg);
@@ -425,6 +427,10 @@ namespace PlayLoRWithMe
                     if (resyncMsg != null)
                         client.Send(resyncMsg);
                     break;
+
+                default:
+                    Debug.Log($"[PlayLoRWithMe] Unknown WebSocket message type: {type}");
+                    break;
             }
         }
 
@@ -510,31 +516,14 @@ namespace PlayLoRWithMe
         /// </summary>
         private void HandleEquipKeyPage(WebSocketClient client, JsonReader r, string reqId)
         {
-            if (!r.TryGetInt("floorIndex", out int fi) || !r.TryGetInt("unitIndex", out int ui))
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
+            if (unit == null)
                 return;
 
             if (!r.TryGetInt("bookInstanceId", out int bookInstanceId))
             {
                 if (reqId != null)
                     client.Send(BuildActionResult(reqId, false, "Missing bookInstanceId"));
-                return;
-            }
-
-            string key = LockKey(fi, ui);
-            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
-            {
-                if (reqId != null)
-                    client.Send(
-                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
-                    );
-                return;
-            }
-
-            var unit = GetLibrarianUnit(fi, ui);
-            if (unit == null)
-            {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
                 return;
             }
 
@@ -569,89 +558,10 @@ namespace PlayLoRWithMe
                 return;
             }
 
-            // SetCharacter/AssetBundle.Unload are native Unity APIs that crash off the main
-            // thread. Schedule the appearance reload and panel refresh for the next
-            // UIController.Update tick.
-            //
-            // Refresh strategy:
-            //   Floor overview (UIPhase.Sephirah): unit appearance lives at slot 5+unitIndex in
-            //   UICharacterRenderer. We force-reload that slot so the new key page art is picked
-            //   up, then call SetLibrarianCharacterListPanel_Default to re-render thumbnails —
-            //   same path the game uses on floor-tab switch. Only done when the displayed floor
-            //   matches the unit's floor.
-            //
-            //   Librarian detail view (UIPhase.Librarian): unit appearance lives at slot 10.
-            //   Force-reload that slot and call UpdatePanel to refresh the portrait and book info.
-            //
-            //   Without the force-reload, SetCharacterRenderer's inner SetCharacter call is a
-            //   no-op (same-unit cache hit: unitModel == unit), so the old appearance persists.
-            var unitRef = unit;
-            var unitSephirah = unit.OwnerSephirah;
-            // Slot assignment: SetCharacterRenderer(fromLeft:false) starts at index 5.
-            int characterSlot = 5 + ui;
-            StateBroadcaster.RunOnMainThread(() =>
-            {
-                var uic = UI.UIController.Instance;
-                if (uic == null)
-                    return;
-
-                var renderer = SingletonBehavior<UI.UICharacterRenderer>.Instance;
-
-                // Refresh the floor character list if the host is currently viewing
-                // the same floor as the changed unit.
-                if (uic.CurrentSephirah == unitSephirah)
-                {
-                    renderer?.SetCharacter(unitRef, characterSlot, forcelyReload: true);
-                    var listPanel =
-                        uic.GetUIPanel(UI.UIPanelType.CharacterList_Right)
-                        as UI.UILibrarianCharacterListPanel;
-                    listPanel?.SetLibrarianCharacterListPanel_Default(unitSephirah);
-                }
-
-                // Refresh the panel showing the current librarian's key page.
-                // The relevant panel differs by phase — UILibrarianInfoPanel._selectedUnit
-                // is only set via OnUpdatePhase and is null in Librarian_CardList, so we
-                // compare UIController.CurrentUnit instead.
-                if (uic.CurrentUnit == unitRef)
-                {
-                    if (uic.CurrentUIPhase == UI.UIPhase.Librarian)
-                    {
-                        // UIPhase.Librarian shows UILibrarianInfoPanel (portrait at slot 10
-                        // + book/stats info). Force-reload slot 10 so the new appearance
-                        // is picked up, then UpdatePanel to refresh book name/icon/stats.
-                        var infoPanel =
-                            uic.GetUIPanel(UI.UIPanelType.LibrarianInfo) as UI.UILibrarianInfoPanel;
-                        if (infoPanel != null)
-                        {
-                            renderer?.SetCharacter(unitRef, 10, forcelyReload: true);
-                            infoPanel.UpdatePanel();
-                        }
-                    }
-                    else if (uic.CurrentUIPhase == UI.UIPhase.Librarian_CardList)
-                    {
-                        // UIPhase.Librarian_CardList shows UICardPanel with two sub-panels:
-                        //   Left:  UILibrarianEquipDeckPanel — combat page deck and book header
-                        //   Right: UILibrarianInfoInCardPhase — key page portrait and book info
-                        //
-                        // The floor-list refresh above already reloaded slot 5+ui and updated
-                        // textureIndex, so all SetData calls pick up the new portrait.
-                        var cardPanel = uic.GetUIPanel(UI.UIPanelType.Page) as UI.UICardPanel;
-                        // Refresh right panel (key page name, icon, passives).
-                        cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
-                        // Refresh left panel header (book name, icon, rarity color).
-                        // SetData() reads UIController.CurrentUnit, which is already unitRef.
-                        cardPanel?.EquipInfoDeckPanel?.SetData();
-                        // Center panel: rebuild from inventory with the new key page applied.
-                        // UIInvenCardListScroll.SetData resets _originCardList and _unitdata,
-                        // then calls ApplyFilterAll() which re-filters by the new book's
-                        // RangeType and GetOnlyCards() list. RefreshCardSlotsByInven() alone
-                        // is insufficient — it only re-renders the stale _currentCardListForFilter.
-                        // This mirrors UICardPanel.OnUpdatePhase() exactly.
-                        cardPanel?.InvenCardList?.SetData(
-                            Singleton<InventoryModel>.Instance?.GetCardList(), unitRef);
-                    }
-                }
-            });
+            // Key page changes affect the card inventory, so do a full card panel refresh.
+            RefreshCharacterRenderer(
+                unit, unit.OwnerSephirah, FloorListSlotBase + ui,
+                refreshCardInventory: true);
 
             Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
             StateBroadcaster.Broadcast();
@@ -665,33 +575,15 @@ namespace PlayLoRWithMe
         /// </summary>
         private void HandleAddCardToDeck(WebSocketClient client, JsonReader r, string reqId)
         {
-            if (
-                !r.TryGetInt("floorIndex", out int fi)
-                || !r.TryGetInt("unitIndex", out int ui)
-                || !r.TryGetInt("cardId", out int cardId)
-            )
+            if (!r.TryGetInt("cardId", out int cardId))
+                return;
+
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
+            if (unit == null)
                 return;
 
             // packageId is an empty string for vanilla cards and a workshop ID for mods.
             string packageId = r.GetString("packageId") ?? "";
-
-            string key = LockKey(fi, ui);
-            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
-            {
-                if (reqId != null)
-                    client.Send(
-                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
-                    );
-                return;
-            }
-
-            var unit = GetLibrarianUnit(fi, ui);
-            if (unit == null)
-            {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
-                return;
-            }
 
             var deck = unit.bookItem?.GetDeckAll_nocopy()?[0];
             if (deck == null)
@@ -723,32 +615,14 @@ namespace PlayLoRWithMe
         /// </summary>
         private void HandleRemoveCardFromDeck(WebSocketClient client, JsonReader r, string reqId)
         {
-            if (
-                !r.TryGetInt("floorIndex", out int fi)
-                || !r.TryGetInt("unitIndex", out int ui)
-                || !r.TryGetInt("cardId", out int cardId)
-            )
+            if (!r.TryGetInt("cardId", out int cardId))
+                return;
+
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
+            if (unit == null)
                 return;
 
             string packageId = r.GetString("packageId") ?? "";
-
-            string key = LockKey(fi, ui);
-            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
-            {
-                if (reqId != null)
-                    client.Send(
-                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
-                    );
-                return;
-            }
-
-            var unit = GetLibrarianUnit(fi, ui);
-            if (unit == null)
-            {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
-                return;
-            }
 
             var deck = unit.bookItem?.GetDeckAll_nocopy()?[0];
             if (deck == null)
@@ -787,26 +661,9 @@ namespace PlayLoRWithMe
             string reqId
         )
         {
-            if (!r.TryGetInt("floorIndex", out int fi) || !r.TryGetInt("unitIndex", out int ui))
-                return;
-
-            string key = LockKey(fi, ui);
-            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
-            {
-                if (reqId != null)
-                    client.Send(
-                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
-                    );
-                return;
-            }
-
-            var unit = GetLibrarianUnit(fi, ui);
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
             if (unit == null)
-            {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
                 return;
-            }
 
             var cd = unit.customizeData;
             if (cd != null)
@@ -953,48 +810,7 @@ namespace PlayLoRWithMe
             if (wsSkin != null)
                 unit.workshopSkin = wsSkin;
 
-            // Refresh the in-game character renderer (same pattern as HandleEquipKeyPage).
-            var unitRef = unit;
-            var unitSephirah = unit.OwnerSephirah;
-            int characterSlot = 5 + ui;
-            StateBroadcaster.RunOnMainThread(() =>
-            {
-                var uic = UI.UIController.Instance;
-                if (uic == null)
-                    return;
-
-                var renderer = SingletonBehavior<UI.UICharacterRenderer>.Instance;
-
-                if (uic.CurrentSephirah == unitSephirah)
-                {
-                    renderer?.SetCharacter(unitRef, characterSlot, forcelyReload: true);
-                    var listPanel =
-                        uic.GetUIPanel(UI.UIPanelType.CharacterList_Right)
-                        as UI.UILibrarianCharacterListPanel;
-                    listPanel?.SetLibrarianCharacterListPanel_Default(unitSephirah);
-                }
-
-                if (uic.CurrentUnit == unitRef)
-                {
-                    if (uic.CurrentUIPhase == UI.UIPhase.Librarian)
-                    {
-                        var infoPanel =
-                            uic.GetUIPanel(UI.UIPanelType.LibrarianInfo)
-                            as UI.UILibrarianInfoPanel;
-                        if (infoPanel != null)
-                        {
-                            renderer?.SetCharacter(unitRef, 10, forcelyReload: true);
-                            infoPanel.UpdatePanel();
-                        }
-                    }
-                    else if (uic.CurrentUIPhase == UI.UIPhase.Librarian_CardList)
-                    {
-                        var cardPanel =
-                            uic.GetUIPanel(UI.UIPanelType.Page) as UI.UICardPanel;
-                        cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
-                    }
-                }
-            });
+            RefreshCharacterRenderer(unit, unit.OwnerSephirah, FloorListSlotBase + ui);
 
             Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
             StateBroadcaster.Broadcast();
@@ -1010,26 +826,9 @@ namespace PlayLoRWithMe
         /// </summary>
         private void HandleSetGifts(WebSocketClient client, JsonReader r, string reqId)
         {
-            if (!r.TryGetInt("floorIndex", out int fi) || !r.TryGetInt("unitIndex", out int ui))
-                return;
-
-            string key = LockKey(fi, ui);
-            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
-            {
-                if (reqId != null)
-                    client.Send(
-                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
-                    );
-                return;
-            }
-
-            var unit = GetLibrarianUnit(fi, ui);
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
             if (unit == null)
-            {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
                 return;
-            }
 
             var inv = unit.giftInventory;
             if (inv == null)
@@ -1117,49 +916,7 @@ namespace PlayLoRWithMe
 
             if (changed)
             {
-                // Refresh the in-game character renderer (same pattern as HandleSetCustomization).
-                var unitRef = unit;
-                var unitSephirah = unit.OwnerSephirah;
-                int characterSlot = 5 + ui;
-                StateBroadcaster.RunOnMainThread(() =>
-                {
-                    var uic = UI.UIController.Instance;
-                    if (uic == null)
-                        return;
-
-                    var renderer = SingletonBehavior<UI.UICharacterRenderer>.Instance;
-
-                    if (uic.CurrentSephirah == unitSephirah)
-                    {
-                        renderer?.SetCharacter(unitRef, characterSlot, forcelyReload: true);
-                        var listPanel =
-                            uic.GetUIPanel(UI.UIPanelType.CharacterList_Right)
-                            as UI.UILibrarianCharacterListPanel;
-                        listPanel?.SetLibrarianCharacterListPanel_Default(unitSephirah);
-                    }
-
-                    if (uic.CurrentUnit == unitRef)
-                    {
-                        if (uic.CurrentUIPhase == UI.UIPhase.Librarian)
-                        {
-                            var infoPanel =
-                                uic.GetUIPanel(UI.UIPanelType.LibrarianInfo)
-                                as UI.UILibrarianInfoPanel;
-                            if (infoPanel != null)
-                            {
-                                renderer?.SetCharacter(unitRef, 10, forcelyReload: true);
-                                infoPanel.UpdatePanel();
-                            }
-                        }
-                        else if (uic.CurrentUIPhase == UI.UIPhase.Librarian_CardList)
-                        {
-                            var cardPanel =
-                                uic.GetUIPanel(UI.UIPanelType.Page) as UI.UICardPanel;
-                            cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
-                        }
-                    }
-                });
-
+                RefreshCharacterRenderer(unit, unit.OwnerSephirah, FloorListSlotBase + ui);
                 Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
                 StateBroadcaster.Broadcast();
             }
@@ -1183,6 +940,111 @@ namespace PlayLoRWithMe
                 model.SetDialogByRandom(type); // clear custom, restore random preset
             else
                 model.SetDialogByCustom(type, val);
+        }
+
+        // UICharacterRenderer slot assignments used by SetCharacterRenderer(fromLeft:false).
+        // Floor overview shows each unit at FloorListSlotBase + unitIndex; the librarian
+        // detail view always uses LibrarianDetailSlot.
+        private const int FloorListSlotBase = 5;
+        private const int LibrarianDetailSlot = 10;
+
+        /// <summary>
+        /// Validates a librarian edit request: parses floor/unit indices, checks lock
+        /// ownership, and resolves the UnitDataModel. Returns the unit on success, or
+        /// null after sending an error reply.
+        /// </summary>
+        private UnitDataModel ValidateLibrarianEdit(
+            WebSocketClient client, JsonReader r, string reqId,
+            out int floorIndex, out int unitIndex)
+        {
+            floorIndex = -1;
+            unitIndex = -1;
+
+            if (!r.TryGetInt("floorIndex", out floorIndex) || !r.TryGetInt("unitIndex", out unitIndex))
+                return null;
+
+            string key = LockKey(floorIndex, unitIndex);
+            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
+            {
+                if (reqId != null)
+                    client.Send(
+                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
+                    );
+                return null;
+            }
+
+            var unit = GetLibrarianUnit(floorIndex, unitIndex);
+            if (unit == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
+                return null;
+            }
+
+            return unit;
+        }
+
+        /// <summary>
+        /// Schedules a character renderer refresh on the Unity main thread. Reloads
+        /// the floor list slot and detail panel slot so the new appearance is picked up.
+        /// </summary>
+        /// <param name="refreshCardInventory">
+        /// When true, the Librarian_CardList branch does a full card panel refresh
+        /// (equip panel, inventory list). When false, only the info panel is updated.
+        /// </param>
+        private void RefreshCharacterRenderer(
+            UnitDataModel unit, SephirahType sephirah, int characterSlot,
+            bool refreshCardInventory = false)
+        {
+            var unitRef = unit;
+            StateBroadcaster.RunOnMainThread(() =>
+            {
+                var uic = UI.UIController.Instance;
+                if (uic == null)
+                    return;
+
+                var renderer = SingletonBehavior<UI.UICharacterRenderer>.Instance;
+
+                if (uic.CurrentSephirah == sephirah)
+                {
+                    renderer?.SetCharacter(unitRef, characterSlot, forcelyReload: true);
+                    var listPanel =
+                        uic.GetUIPanel(UI.UIPanelType.CharacterList_Right)
+                        as UI.UILibrarianCharacterListPanel;
+                    listPanel?.SetLibrarianCharacterListPanel_Default(sephirah);
+                }
+
+                if (uic.CurrentUnit == unitRef)
+                {
+                    if (uic.CurrentUIPhase == UI.UIPhase.Librarian)
+                    {
+                        var infoPanel =
+                            uic.GetUIPanel(UI.UIPanelType.LibrarianInfo)
+                            as UI.UILibrarianInfoPanel;
+                        if (infoPanel != null)
+                        {
+                            renderer?.SetCharacter(unitRef, LibrarianDetailSlot, forcelyReload: true);
+                            infoPanel.UpdatePanel();
+                        }
+                    }
+                    else if (uic.CurrentUIPhase == UI.UIPhase.Librarian_CardList)
+                    {
+                        var cardPanel =
+                            uic.GetUIPanel(UI.UIPanelType.Page) as UI.UICardPanel;
+                        if (refreshCardInventory)
+                        {
+                            cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
+                            cardPanel?.EquipInfoDeckPanel?.SetData();
+                            cardPanel?.InvenCardList?.SetData(
+                                Singleton<InventoryModel>.Instance?.GetCardList(), unitRef);
+                        }
+                        else
+                        {
+                            cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
+                        }
+                    }
+                }
+            });
         }
 
         /// <summary>

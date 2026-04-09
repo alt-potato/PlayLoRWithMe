@@ -15,6 +15,9 @@ namespace PlayLoRWithMe
     /// </summary>
     internal static class AppearanceCache
     {
+        /// <summary>Number of head sprite variants available from the customization loader.</summary>
+        private const int HeadVariantCount = 2;
+
         private static bool _extracted = false;
 
         /// <summary>
@@ -134,8 +137,8 @@ namespace PlayLoRWithMe
                                 i => loader.GetFrontHairSprite(i));
             Gather("backhair",  loader.NumberOfCustomizingResources(CustomizingLookType.BackHair),
                                 i => loader.GetRearHairSprite(i));
-            // Heads: only 2 variants; GetHeadSprite has no bounds check so we stop on error.
-            for (int i = 0; i < 2; i++)
+            // Heads: GetHeadSprite has no bounds check so we stop on error.
+            for (int i = 0; i < HeadVariantCount; i++)
             {
                 try
                 {
@@ -751,77 +754,83 @@ namespace PlayLoRWithMe
 
             foreach (var (ss, worldPos) in sprites)
             {
-                var sprite      = ss.sprRenderer.sprite;
-                var adjustedPos = worldPos - anchorAdjust;
-
-                // Body sprites may have a different pixelsPerUnit than the canvas (which
-                // uses the face/hair sprite PPU), and the character model may be rendered
-                // at a non-unit world scale.  Both factors affect how large the sprite
-                // appears on screen: scale the crop so one world-unit of body content
-                // occupies the same number of canvas pixels as one world-unit of face/hair.
-                float ppuScale = ppu / sprite.pixelsPerUnit * worldScale;
-                var rawCrop = ReadSpriteCrop(sprite);
-                Texture2D crop;
-                int cropW, cropH;
-                if (Mathf.Abs(ppuScale - 1f) < 0.01f)
+                Texture2D crop = null;
+                try
                 {
-                    crop  = rawCrop;
-                    cropW = rawCrop.width;
-                    cropH = rawCrop.height;
-                }
-                else
-                {
-                    cropW = Mathf.Max(1, Mathf.RoundToInt(rawCrop.width  * ppuScale));
-                    cropH = Mathf.Max(1, Mathf.RoundToInt(rawCrop.height * ppuScale));
-                    crop  = ScaleTexture(rawCrop, cropW, cropH); // destroys rawCrop
-                }
+                    var sprite      = ss.sprRenderer.sprite;
+                    var adjustedPos = worldPos - anchorAdjust;
 
-                // Canvas offset: world-space bottom-left of the sprite's logical rect,
-                // mapped to pixels on the canvas.  adjustedPos is the renderer's pivot in
-                // the coordinate frame of canvasBounds; sprite.bounds.min (local space)
-                // is scaled to world space by worldScale before conversion.
-                int boundsOffX = Mathf.RoundToInt(
-                    (adjustedPos.x + sprite.bounds.min.x * worldScale - canvasBounds.min.x) * ppu);
-                int boundsOffY = Mathf.RoundToInt(
-                    (adjustedPos.y + sprite.bounds.min.y * worldScale - canvasBounds.min.y) * ppu);
-                // textureRectOffset is in native sprite pixels; scale to canvas pixels.
-                var texOff = sprite.textureRectOffset;
-                int offsetX = boundsOffX + Mathf.RoundToInt(texOff.x * ppuScale);
-                int offsetY = boundsOffY + Mathf.RoundToInt(texOff.y * ppuScale);
-
-                // Clamp for partial out-of-canvas sprites (floating-point rounding or
-                // sprites that naturally extend beyond the canvas edge).
-                int srcX0 = Mathf.Max(0, -offsetX);
-                int srcY0 = Mathf.Max(0, -offsetY);
-                int dstX0 = Mathf.Max(0, offsetX);
-                int dstY0 = Mathf.Max(0, offsetY);
-                int blitW = Mathf.Min(cropW - srcX0, canvasW - dstX0);
-                int blitH = Mathf.Min(cropH - srcY0, canvasH - dstY0);
-
-                if (blitW > 0 && blitH > 0)
-                {
-                    var srcPixels = crop.GetPixels(srcX0, srcY0, blitW, blitH);
-                    for (int y = 0; y < blitH; y++)
+                    // Body sprites may have a different pixelsPerUnit than the canvas (which
+                    // uses the face/hair sprite PPU), and the character model may be rendered
+                    // at a non-unit world scale.  Both factors affect how large the sprite
+                    // appears on screen: scale the crop so one world-unit of body content
+                    // occupies the same number of canvas pixels as one world-unit of face/hair.
+                    float ppuScale = ppu / sprite.pixelsPerUnit * worldScale;
+                    var rawCrop = ReadSpriteCrop(sprite);
+                    int cropW, cropH;
+                    if (Mathf.Abs(ppuScale - 1f) < 0.01f)
                     {
-                        for (int x = 0; x < blitW; x++)
-                        {
-                            var src = srcPixels[y * blitW + x];
-                            int dstIdx = (dstY0 + y) * canvasW + (dstX0 + x);
-                            var dst = canvas[dstIdx];
+                        crop  = rawCrop;
+                        cropW = rawCrop.width;
+                        cropH = rawCrop.height;
+                    }
+                    else
+                    {
+                        cropW = Mathf.Max(1, Mathf.RoundToInt(rawCrop.width  * ppuScale));
+                        cropH = Mathf.Max(1, Mathf.RoundToInt(rawCrop.height * ppuScale));
+                        crop  = ScaleTexture(rawCrop, cropW, cropH); // destroys rawCrop
+                    }
 
-                            // Standard src-over compositing (non-premultiplied alpha).
-                            float outA = src.a + dst.a * (1f - src.a);
-                            if (outA > 0f)
-                                canvas[dstIdx] = new Color(
-                                    (src.r * src.a + dst.r * dst.a * (1f - src.a)) / outA,
-                                    (src.g * src.a + dst.g * dst.a * (1f - src.a)) / outA,
-                                    (src.b * src.a + dst.b * dst.a * (1f - src.a)) / outA,
-                                    outA);
+                    // Canvas offset: world-space bottom-left of the sprite's logical rect,
+                    // mapped to pixels on the canvas.  adjustedPos is the renderer's pivot in
+                    // the coordinate frame of canvasBounds; sprite.bounds.min (local space)
+                    // is scaled to world space by worldScale before conversion.
+                    int boundsOffX = Mathf.RoundToInt(
+                        (adjustedPos.x + sprite.bounds.min.x * worldScale - canvasBounds.min.x) * ppu);
+                    int boundsOffY = Mathf.RoundToInt(
+                        (adjustedPos.y + sprite.bounds.min.y * worldScale - canvasBounds.min.y) * ppu);
+                    // textureRectOffset is in native sprite pixels; scale to canvas pixels.
+                    var texOff = sprite.textureRectOffset;
+                    int offsetX = boundsOffX + Mathf.RoundToInt(texOff.x * ppuScale);
+                    int offsetY = boundsOffY + Mathf.RoundToInt(texOff.y * ppuScale);
+
+                    // Clamp for partial out-of-canvas sprites (floating-point rounding or
+                    // sprites that naturally extend beyond the canvas edge).
+                    int srcX0 = Mathf.Max(0, -offsetX);
+                    int srcY0 = Mathf.Max(0, -offsetY);
+                    int dstX0 = Mathf.Max(0, offsetX);
+                    int dstY0 = Mathf.Max(0, offsetY);
+                    int blitW = Mathf.Min(cropW - srcX0, canvasW - dstX0);
+                    int blitH = Mathf.Min(cropH - srcY0, canvasH - dstY0);
+
+                    if (blitW > 0 && blitH > 0)
+                    {
+                        var srcPixels = crop.GetPixels(srcX0, srcY0, blitW, blitH);
+                        for (int y = 0; y < blitH; y++)
+                        {
+                            for (int x = 0; x < blitW; x++)
+                            {
+                                var src = srcPixels[y * blitW + x];
+                                int dstIdx = (dstY0 + y) * canvasW + (dstX0 + x);
+                                var dst = canvas[dstIdx];
+
+                                // Standard src-over compositing (non-premultiplied alpha).
+                                float outA = src.a + dst.a * (1f - src.a);
+                                if (outA > 0f)
+                                    canvas[dstIdx] = new Color(
+                                        (src.r * src.a + dst.r * dst.a * (1f - src.a)) / outA,
+                                        (src.g * src.a + dst.g * dst.a * (1f - src.a)) / outA,
+                                        (src.b * src.a + dst.b * dst.a * (1f - src.a)) / outA,
+                                        outA);
+                            }
                         }
                     }
                 }
-
-                UnityEngine.Object.Destroy(crop);
+                finally
+                {
+                    if (crop != null)
+                        UnityEngine.Object.Destroy(crop);
+                }
             }
 
             var tex = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
@@ -919,90 +928,97 @@ namespace PlayLoRWithMe
         )
         {
             var crop = ReadSpriteCrop(sprite);
-            int cropW = crop.width;
-            int cropH = crop.height;
-
-            float spritePpu = sprite.pixelsPerUnit;
-            // Scale factor when the sprite's ppu differs from the canvas ppu
-            // (e.g. a 50-ppu gift sprite on a 100-ppu canvas needs to be scaled by 2×).
-            float ppuRatio = ppu / spritePpu;
-
-            // Compute where this sprite's tight crop sits on the shared canvas.
-            //
-            // sprite.bounds.min is the world-space bottom-left corner of the sprite's
-            // LOGICAL rect (including transparent padding) relative to its pivot (0,0).
-            // Adding worldOffset accounts for transforms in the gift prefab hierarchy.
-            // Subtracting totalBounds.min and scaling by ppu gives the pixel offset from
-            // the shared canvas origin to the logical rect's bottom-left.
-            //
-            // textureRectOffset is the additional sub-pixel offset from the logical rect's
-            // bottom-left to the tight crop's bottom-left — in the sprite's own pixel
-            // space, so it must be scaled by ppuRatio to match the canvas pixels.
-            int boundsOffsetX = Mathf.RoundToInt(
-                (sprite.bounds.min.x + worldOffset.x - totalBounds.min.x) * ppu
-            );
-            int boundsOffsetY = Mathf.RoundToInt(
-                (sprite.bounds.min.y + worldOffset.y - totalBounds.min.y) * ppu
-            );
-            var texRectOffset = sprite.textureRectOffset;
-            int offsetX = boundsOffsetX + Mathf.RoundToInt(texRectOffset.x * ppuRatio);
-            int offsetY = boundsOffsetY + Mathf.RoundToInt(texRectOffset.y * ppuRatio);
-
-            // When ppu values match, blit the crop directly onto the canvas.
-            if (Mathf.Approximately(ppuRatio, 1f))
+            try
             {
-                // Fast path: the crop fills the entire shared canvas with no offset.
-                if (canvasW == cropW && canvasH == cropH && offsetX == 0 && offsetY == 0)
+                int cropW = crop.width;
+                int cropH = crop.height;
+
+                float spritePpu = sprite.pixelsPerUnit;
+                // Scale factor when the sprite's ppu differs from the canvas ppu
+                // (e.g. a 50-ppu gift sprite on a 100-ppu canvas needs to be scaled by 2×).
+                float ppuRatio = ppu / spritePpu;
+
+                // Compute where this sprite's tight crop sits on the shared canvas.
+                //
+                // sprite.bounds.min is the world-space bottom-left corner of the sprite's
+                // LOGICAL rect (including transparent padding) relative to its pivot (0,0).
+                // Adding worldOffset accounts for transforms in the gift prefab hierarchy.
+                // Subtracting totalBounds.min and scaling by ppu gives the pixel offset from
+                // the shared canvas origin to the logical rect's bottom-left.
+                //
+                // textureRectOffset is the additional sub-pixel offset from the logical rect's
+                // bottom-left to the tight crop's bottom-left — in the sprite's own pixel
+                // space, so it must be scaled by ppuRatio to match the canvas pixels.
+                int boundsOffsetX = Mathf.RoundToInt(
+                    (sprite.bounds.min.x + worldOffset.x - totalBounds.min.x) * ppu
+                );
+                int boundsOffsetY = Mathf.RoundToInt(
+                    (sprite.bounds.min.y + worldOffset.y - totalBounds.min.y) * ppu
+                );
+                var texRectOffset = sprite.textureRectOffset;
+                int offsetX = boundsOffsetX + Mathf.RoundToInt(texRectOffset.x * ppuRatio);
+                int offsetY = boundsOffsetY + Mathf.RoundToInt(texRectOffset.y * ppuRatio);
+
+                // When ppu values match, blit the crop directly onto the canvas.
+                if (Mathf.Approximately(ppuRatio, 1f))
                 {
-                    var result = crop.EncodeToPNG();
-                    UnityEngine.Object.Destroy(crop);
-                    return result;
+                    // Fast path: the crop fills the entire shared canvas with no offset.
+                    if (canvasW == cropW && canvasH == cropH && offsetX == 0 && offsetY == 0)
+                    {
+                        var result = crop.EncodeToPNG();
+                        UnityEngine.Object.Destroy(crop);
+                        crop = null; // prevent double-destroy in finally
+                        return result;
+                    }
+
+                    var dst = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
+                    dst.SetPixels32(new Color32[canvasW * canvasH]); // transparent fill
+
+                    int safeW = Mathf.Clamp(cropW, 0, canvasW - offsetX);
+                    int safeH = Mathf.Clamp(cropH, 0, canvasH - offsetY);
+                    if (safeW > 0 && safeH > 0)
+                        dst.SetPixels32(offsetX, offsetY, safeW, safeH, crop.GetPixels32());
+
+                    dst.Apply();
+                    return dst.EncodeToPNG();
                 }
 
-                var dst = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
-                dst.SetPixels32(new Color32[canvasW * canvasH]); // transparent fill
+                // PPU mismatch: rescale the crop via RenderTexture before blitting.
+                int scaledW = Mathf.Max(1, Mathf.RoundToInt(cropW * ppuRatio));
+                int scaledH = Mathf.Max(1, Mathf.RoundToInt(cropH * ppuRatio));
 
-                int safeW = Mathf.Clamp(cropW, 0, canvasW - offsetX);
-                int safeH = Mathf.Clamp(cropH, 0, canvasH - offsetY);
-                if (safeW > 0 && safeH > 0)
-                    dst.SetPixels32(offsetX, offsetY, safeW, safeH, crop.GetPixels32());
-
+                var rt = RenderTexture.GetTemporary(scaledW, scaledH, 0, RenderTextureFormat.ARGB32);
+                Graphics.Blit(crop, rt);
                 UnityEngine.Object.Destroy(crop);
-                dst.Apply();
-                var result2 = dst.EncodeToPNG();
-                UnityEngine.Object.Destroy(dst);
-                return result2;
+                crop = null; // prevent double-destroy in finally
+
+                var prev = RenderTexture.active;
+                RenderTexture.active = rt;
+                var scaled = new Texture2D(scaledW, scaledH, TextureFormat.RGBA32, false);
+                scaled.ReadPixels(new Rect(0, 0, scaledW, scaledH), 0, 0);
+                scaled.Apply();
+                RenderTexture.active = prev;
+                RenderTexture.ReleaseTemporary(rt);
+
+                var canvas = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
+                canvas.SetPixels32(new Color32[canvasW * canvasH]);
+
+                int safeW2 = Mathf.Clamp(scaledW, 0, canvasW - offsetX);
+                int safeH2 = Mathf.Clamp(scaledH, 0, canvasH - offsetY);
+                if (safeW2 > 0 && safeH2 > 0)
+                    canvas.SetPixels32(offsetX, offsetY, safeW2, safeH2, scaled.GetPixels32());
+
+                UnityEngine.Object.Destroy(scaled);
+                canvas.Apply();
+                var png = canvas.EncodeToPNG();
+                UnityEngine.Object.Destroy(canvas);
+                return png;
             }
-
-            // PPU mismatch: rescale the crop via RenderTexture before blitting.
-            int scaledW = Mathf.Max(1, Mathf.RoundToInt(cropW * ppuRatio));
-            int scaledH = Mathf.Max(1, Mathf.RoundToInt(cropH * ppuRatio));
-
-            var rt = RenderTexture.GetTemporary(scaledW, scaledH, 0, RenderTextureFormat.ARGB32);
-            Graphics.Blit(crop, rt);
-            UnityEngine.Object.Destroy(crop);
-
-            var prev = RenderTexture.active;
-            RenderTexture.active = rt;
-            var scaled = new Texture2D(scaledW, scaledH, TextureFormat.RGBA32, false);
-            scaled.ReadPixels(new Rect(0, 0, scaledW, scaledH), 0, 0);
-            scaled.Apply();
-            RenderTexture.active = prev;
-            RenderTexture.ReleaseTemporary(rt);
-
-            var canvas = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
-            canvas.SetPixels32(new Color32[canvasW * canvasH]);
-
-            int safeW2 = Mathf.Clamp(scaledW, 0, canvasW - offsetX);
-            int safeH2 = Mathf.Clamp(scaledH, 0, canvasH - offsetY);
-            if (safeW2 > 0 && safeH2 > 0)
-                canvas.SetPixels32(offsetX, offsetY, safeW2, safeH2, scaled.GetPixels32());
-
-            UnityEngine.Object.Destroy(scaled);
-            canvas.Apply();
-            var png = canvas.EncodeToPNG();
-            UnityEngine.Object.Destroy(canvas);
-            return png;
+            finally
+            {
+                if (crop != null)
+                    UnityEngine.Object.Destroy(crop);
+            }
         }
     }
 }
