@@ -98,7 +98,7 @@ const layers = computed(() => {
   return {
     backHair: { src: `${BASE}backhair_${a.backHairID}.png`, tint: hair },
     face: [
-      { src: `${BASE}head_0.png`, tint: skin },
+      { src: `${BASE}head_${a.headID ?? 0}.png`, tint: skin },
       { src: `${BASE}eyes_${a.eyeID}.png`, tint: eye },
       { src: `${BASE}brows_${a.browID}.png`, tint: hair },
       { src: `${BASE}mouths_${a.mouthID}.png`, tint: skin },
@@ -158,12 +158,68 @@ const fashionFrontFailed = ref(false);
 watch(() => props.fashionBook?.id, () => { fashionFrontFailed.value = false; });
 
 /**
- * Whether the face/hair CSS layers should be shown on top of the fashion body.
- * Hidden when the fashion skin replaces the head model (replacesHead = true)
- * because the extracted body already includes the head.
+ * URL of the fashion skin-layer composite PNG — exposed body areas (neck, collarbone)
+ * that are white silhouettes in the prefab.  Rendered as a CSS multiply-tinted layer
+ * using the librarian's skin color, behind the main body composite so body sprites
+ * (clothing) cover them naturally.
+ */
+const fashionSkinUrl = computed(() =>
+  props.fashionBook
+    ? `/assets/fashionbodies/${props.fashionBook.id}${fashionVariantSuffix.value}_skin.png`
+    : null
+);
+
+const fashionSkinFailed = ref(false);
+watch(() => props.fashionBook?.id, () => { fashionSkinFailed.value = false; });
+watch(fashionVariantSuffix, () => { fashionSkinFailed.value = false; });
+
+/**
+ * Patron librarians have two composite PNGs extracted from their
+ * SpecialCustomizedAppearance prefab:
+ *   head_special_{id}.png      — head, face, front hair (above fashion body)
+ *   head_special_{id}_rear.png — rear hair (behind fashion body)
+ */
+const patronFrontUrl = computed(() =>
+  props.appearance.patronHeadId
+    ? `${BASE}head_special_${props.appearance.patronHeadId}.png`
+    : null
+);
+const patronRearUrl = computed(() =>
+  props.appearance.patronHeadId
+    ? `${BASE}head_special_${props.appearance.patronHeadId}_rear.png`
+    : null
+);
+
+const patronFrontFailed = ref(false);
+const patronRearFailed = ref(false);
+watch(() => props.appearance.patronHeadId, () => {
+  patronFrontFailed.value = false;
+  patronRearFailed.value = false;
+});
+
+/**
+ * Whether the fashion book replaces the entire head model.
+ * When true, neither generic face/hair layers nor patron composites are shown —
+ * the fashion body already includes the head (e.g. Roland's Black Silence book).
+ */
+const fashionReplacesHead = computed(() =>
+  props.fashionBook?.replacesHead === true
+);
+
+/** True when the patron composites should be shown (not overridden by a replacesHead book). */
+const hasPatronHead = computed(() =>
+  patronFrontUrl.value != null
+  && !patronFrontFailed.value
+  && !fashionReplacesHead.value
+);
+
+/**
+ * Whether the generic face/hair CSS layers should be shown.
+ * Hidden when a patron composite replaces the face, or when the fashion skin
+ * replaces the head model (replacesHead = true).
  */
 const showFaceHairLayers = computed(() =>
-  !props.fashionBook || !props.fashionBook.replacesHead
+  !hasPatronHead.value && !fashionReplacesHead.value
 );
 
 /**
@@ -233,11 +289,13 @@ const visibleGifts = computed(() => {
     />
 
     <!--
-      Back hair rendered before the fashion body so it sits behind the body.
-      Hidden when the fashion book has a Hood sprite — the game hides all back hair
-      renderers unconditionally in that case (RefreshAppearanceByMotion).
+      Back hair — rendered before the fashion body so it sits behind the body.
+      For regular librarians: the generic back hair sprite with hair color tint.
+      For patrons: the extracted rear-hair composite (no tint — source art has colors).
+      Hidden when the fashion book has a Hood sprite (game hides all back hair).
     -->
     <div
+      v-if="!hasPatronHead"
       v-show="showFaceHairLayers && !failedSrcs.has(layers.backHair.src) && !fashionBook?.hidesBackHair"
       class="layer-sprite"
       :style="{
@@ -247,6 +305,42 @@ const visibleGifts = computed(() => {
         WebkitMaskImage: `url(${layers.backHair.src})`,
         ...faceRotStyle,
       }"
+    />
+    <div
+      v-if="hasPatronHead && patronRearUrl && !patronRearFailed && !fashionBook?.hidesBackHair"
+      class="layer-sprite body-layer"
+      :style="{ backgroundImage: `url(${patronRearUrl})`, ...faceRotStyle }"
+    />
+    <img
+      v-if="patronRearUrl"
+      :src="patronRearUrl"
+      class="probe"
+      alt=""
+      @error="patronRearFailed = true"
+    />
+
+    <!--
+      Fashion body skin layer: exposed skin areas (neck, collarbone) that are white
+      silhouettes in the character model.  Tinted with the librarian's skin color via
+      CSS multiply blend.  Rendered behind the main body composite so clothing covers
+      the skin naturally.
+    -->
+    <div
+      v-if="fashionBook && fashionSkinUrl && !fashionSkinFailed"
+      class="layer-sprite"
+      :style="{
+        backgroundImage: `url(${fashionSkinUrl})`,
+        backgroundColor: toRgb(appearance.skinColor),
+        maskImage: `url(${fashionSkinUrl})`,
+        WebkitMaskImage: `url(${fashionSkinUrl})`,
+      }"
+    />
+    <img
+      v-if="fashionSkinUrl"
+      :src="fashionSkinUrl"
+      class="probe"
+      alt=""
+      @error="fashionSkinFailed = true"
     />
 
     <!--
@@ -269,8 +363,26 @@ const visibleGifts = computed(() => {
     />
 
     <!--
+      Patron front composite: head, face, and front hair for patron librarians.
+      Rendered above the fashion body, replacing the generic face/hair layers.
+    -->
+    <div
+      v-if="hasPatronHead && patronFrontUrl"
+      class="layer-sprite body-layer"
+      :style="{ backgroundImage: `url(${patronFrontUrl})`, ...faceRotStyle }"
+    />
+    <img
+      v-if="patronFrontUrl"
+      :src="patronFrontUrl"
+      class="probe"
+      alt=""
+      @error="patronFrontFailed = true"
+    />
+
+    <!--
       Remaining face/hair layers (head, eyes, brows, mouth, fronthair) rendered on top
       of the fashion body so the librarian's face shows through the body composite.
+      Hidden when a patron head composite is active.
     -->
     <div
       v-for="(layer, i) in layers.face"

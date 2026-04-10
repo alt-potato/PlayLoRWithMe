@@ -598,7 +598,26 @@ namespace PlayLoRWithMe
                                             Color32 hair = cd != null ? (Color32)cd.hairColor : new Color32(13, 13, 13, 255);
                                             Color32 skin = cd != null ? (Color32)cd.skinColor : new Color32(224, 188, 157, 255);
                                             Color32 eyeC = cd != null ? (Color32)cd.eyeColor  : new Color32(13, 13, 13, 255);
+                                            // Patron librarians use SpecialCustomizedAppearance prefabs
+                                            // with unique head sprites.  Only emit patronHeadId for IDs
+                                            // that the game recognizes as patron heads — regular librarians
+                                            // have specialCustomIDs (11-20) that don't have prefabs.
+                                            int patronId = 0;
+                                            if (cd?.specialCustomID != null)
+                                            {
+                                                int sid = cd.specialCustomID.id;
+                                                bool isPatron =
+                                                    (cd.specialCustomID.IsBasic()
+                                                        && sid >= 1 && sid <= 10)
+                                                    || sid == 9070402
+                                                    || sid == 1309021
+                                                    || sid == 9100501;
+                                                if (isPatron)
+                                                    patronId = sid;
+                                            }
+
                                             o.AddObject("appearance", a =>
+                                            {
                                                 a.Add("frontHairID", cd?.frontHairID ?? 0)
                                                     .Add("backHairID", cd?.backHairID ?? 0)
                                                     .Add("eyeID",       cd?.eyeID      ?? 0)
@@ -611,8 +630,10 @@ namespace PlayLoRWithMe
                                                     .AddArray("skinColor", cArr =>
                                                         cArr.AddInt(skin.r).AddInt(skin.g).AddInt(skin.b))
                                                     .AddArray("eyeColor", cArr =>
-                                                        cArr.AddInt(eyeC.r).AddInt(eyeC.g).AddInt(eyeC.b))
-                                            );
+                                                        cArr.AddInt(eyeC.r).AddInt(eyeC.g).AddInt(eyeC.b));
+                                                if (patronId > 0)
+                                                    a.Add("patronHeadId", patronId);
+                                            });
 
                                             // Per-type custom battle dialogue text.
                                             // Only serialized when the librarian has a dialogue model

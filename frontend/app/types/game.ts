@@ -425,8 +425,10 @@ export interface AppearanceData {
   eyeID: number;
   browID: number;
   mouthID: number;
-  /** Head sprite index (front=0, side=1). Server-serialized but unused by the preview. */
+  /** Head sprite index (front=0, side=1). */
   headID?: number;
+  /** Patron sephirah ID — when set, the head uses head_special_{id}.png from the patron prefab. */
+  patronHeadId?: number;
   height: number;
   hairColor: [number, number, number];
   skinColor: [number, number, number];
