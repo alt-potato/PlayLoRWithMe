@@ -35,7 +35,8 @@ namespace PlayLoRWithMe
 
         // Set by claim/release handlers (listener thread) to request a filtered
         // broadcast from the Unity main thread on the next OnUpdate tick.
-        private volatile bool _pendingBroadcast = false;
+        // Uses int + Interlocked for atomic check-and-clear (0 = false, 1 = true).
+        private int _pendingBroadcast = 0;
 
         /// <summary>
         /// When false, all players may control any librarian without claiming.
@@ -238,10 +239,7 @@ namespace PlayLoRWithMe
         /// </summary>
         public bool ConsumePendingBroadcast()
         {
-            if (!_pendingBroadcast)
-                return false;
-            _pendingBroadcast = false;
-            return true;
+            return Interlocked.Exchange(ref _pendingBroadcast, 0) != 0;
         }
 
         private void HandleWebSocket(HttpListenerContext ctx)
@@ -292,7 +290,7 @@ namespace PlayLoRWithMe
 
             // Request a fresh filtered broadcast on the next Unity tick so any
             // ownership-based data is sent promptly even if no game event fires.
-            _pendingBroadcast = true;
+            Interlocked.Exchange(ref _pendingBroadcast, 1);
 
             // Blocks until the connection closes.
             client.ReceiveLoop();
@@ -325,7 +323,7 @@ namespace PlayLoRWithMe
                     {
                         bool claimed = _sessionManager.ClaimUnit(client.SessionId, claimUnitId);
                         if (claimed)
-                            _pendingBroadcast = true;
+                            Interlocked.Exchange(ref _pendingBroadcast, 1);
                         if (reqId != null)
                             client.Send(
                                 BuildActionResult(
@@ -341,7 +339,7 @@ namespace PlayLoRWithMe
                     if (r.TryGetInt("unitId", out int releaseUnitId))
                     {
                         _sessionManager.ReleaseUnit(client.SessionId, releaseUnitId);
-                        _pendingBroadcast = true;
+                        Interlocked.Exchange(ref _pendingBroadcast, 1);
                         if (reqId != null)
                             client.Send(BuildActionResult(reqId, true, null));
                     }

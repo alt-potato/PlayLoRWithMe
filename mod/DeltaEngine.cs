@@ -20,6 +20,11 @@ namespace PlayLoRWithMe
 
         private sealed class SessionState
         {
+            // Guards all mutable fields below. BuildMessage reads and writes these
+            // fields, which can be called concurrently for the same session (e.g.
+            // a resync racing with a normal broadcast).
+            public readonly object Lock = new object();
+
             // Monotonically increasing sequence number for this session's stream.
             public int Seq;
 
@@ -72,36 +77,39 @@ namespace PlayLoRWithMe
             if (!_sessions.TryGetValue(sessionId, out var state))
                 return WrapFull(1, filteredJson);
 
-            state.Seq++;
-            int seq = state.Seq;
-
-            // First message: send the full state immediately without parsing anything —
-            // there is no previous state to diff against. Store the raw JSON so the
-            // next call can parse it as the baseline for delta computation.
-            if (state.LastJson == null && state.LastFields == null)
+            lock (state.Lock)
             {
-                state.LastJson = filteredJson;
-                return WrapFull(seq, filteredJson);
+                state.Seq++;
+                int seq = state.Seq;
+
+                // First message: send the full state immediately without parsing anything —
+                // there is no previous state to diff against. Store the raw JSON so the
+                // next call can parse it as the baseline for delta computation.
+                if (state.LastJson == null && state.LastFields == null)
+                {
+                    state.LastJson = filteredJson;
+                    return WrapFull(seq, filteredJson);
+                }
+
+                // Second call onward: if we have an unparsed baseline, parse it now.
+                if (state.LastFields == null)
+                {
+                    state.LastFields = ParseTopLevelFields(state.LastJson);
+                    UpdateUnitCaches(state, state.LastFields);
+                    state.LastJson = null;
+                }
+
+                var newFields = ParseTopLevelFields(filteredJson);
+                var delta = BuildDelta(state, newFields);
+
+                state.LastFields = newFields;
+                UpdateUnitCaches(state, newFields);
+
+                if (delta == null)
+                    return null; // nothing changed — skip this broadcast
+
+                return WrapDelta(seq, delta);
             }
-
-            // Second call onward: if we have an unparsed baseline, parse it now.
-            if (state.LastFields == null)
-            {
-                state.LastFields = ParseTopLevelFields(state.LastJson);
-                UpdateUnitCaches(state, state.LastFields);
-                state.LastJson = null;
-            }
-
-            var newFields = ParseTopLevelFields(filteredJson);
-            var delta = BuildDelta(state, newFields);
-
-            state.LastFields = newFields;
-            UpdateUnitCaches(state, newFields);
-
-            if (delta == null)
-                return null; // nothing changed — skip this broadcast
-
-            return WrapDelta(seq, delta);
         }
 
         // -------------------------------------------------------------------------

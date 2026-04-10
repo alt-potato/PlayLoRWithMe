@@ -58,6 +58,21 @@ namespace PlayLoRWithMe
                         case 'n':  sb.Append('\n'); break;
                         case 't':  sb.Append('\t'); break;
                         case 'r':  sb.Append('\r'); break;
+                        case 'u':
+                            if (i + 4 < s.Length)
+                            {
+                                var hex = s.Substring(i + 1, 4);
+                                if (int.TryParse(hex, System.Globalization.NumberStyles.HexNumber, null, out int cp))
+                                {
+                                    sb.Append((char)cp);
+                                    i += 4;
+                                }
+                                else
+                                    sb.Append('\\').Append(next);
+                            }
+                            else
+                                sb.Append('\\').Append(next);
+                            break;
                         default:   sb.Append('\\').Append(next); break;
                     }
                 }

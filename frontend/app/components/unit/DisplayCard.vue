@@ -68,9 +68,21 @@ function dieColor(sc: SlottedCardEntry | undefined): string {
   return "var(--gold-dim)"; // Instance / untargeted — neutral color
 }
 
-// detailCard can hold a full Card (from hand) or a SlottedCardEntry (from long-press on die);
-// typed as Card since CardDetail only needs the overlapping fields (name, cost, range, dice, etc.)
 const detailCard = ref<Card | null>(null);
+
+/** Converts a SlottedCardEntry to a Card for display in CardDetail. */
+function slottedToCard(sc: SlottedCardEntry): Card {
+  return {
+    id: { id: sc.cardIndex, packageId: 0 },
+    index: sc.cardIndex,
+    name: sc.name,
+    cost: sc.cost,
+    range: sc.range,
+    desc: sc.desc,
+    flavorText: sc.flavorText,
+    dice: sc.dice,
+  };
+}
 const egoMode = ref(false);
 const expandedBuff = ref<string | null>(null);
 const handExpanded = ref(false);
@@ -153,6 +165,7 @@ const detailsLabel = computed(() => {
       <!-- row 2: light pips, emotion level -->
       <div class="unit-header-row reversible-container">
         <UnitLightDisplay
+          v-if="isAlly"
           :current="ally.light"
           :max="ally.maxLight"
           :reserved="ally.reservedLight"
@@ -184,7 +197,7 @@ const detailsLabel = computed(() => {
         :color="dieColor(card)"
         :isReversed="side !== 'right'"
         :isAlly="isAlly"
-        :onLongPress="() => (detailCard = card as unknown as Card)"
+        :onLongPress="() => { if (card) detailCard = slottedToCard(card); }"
       >
         <div
           v-if="!isDead(unit) && attackMap[unit.id]?.[die.slot]?.length"

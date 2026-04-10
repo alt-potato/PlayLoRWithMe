@@ -382,7 +382,7 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
           <div class="emotion-cards">
             <HandCard
               v-for="(card, i) in activeFloorData.egoCards"
-              :key="card.name"
+              :key="`ego-${i}`"
               :card="egoCardToCard(card, i)"
               readonly
               @detail="detailCard = egoCardToCard(card, i)"

@@ -86,6 +86,19 @@ const draft = reactive({
   workshopSkin:        props.lib.workshopSkin        ?? "",
 });
 
+/**
+ * Snapshot of dialogue values at panel-open time. Used as the comparison base
+ * when saving, so mid-edit server broadcasts don't shift what counts as
+ * "unchanged" and silently swallow the user's edits.
+ */
+const origDialogue = {
+  startBattle:    props.lib.dialogue?.startBattle    ?? null,
+  victory:        props.lib.dialogue?.victory        ?? null,
+  death:          props.lib.dialogue?.death          ?? null,
+  colleagueDeath: props.lib.dialogue?.colleagueDeath ?? null,
+  killsOpponent:  props.lib.dialogue?.killsOpponent  ?? null,
+} as const;
+
 /** Live AppearanceData fed to AppearancePreview — recomputed whenever draft changes. */
 const previewAppearance = computed<AppearanceData>(() => ({
   frontHairID: draft.frontHairID,
@@ -142,7 +155,9 @@ async function handleComplete(): Promise<void> {
   saveBusy.value = true;
   saveError.value = null;
 
-  // Rename if the name was edited.
+  // Rename if the name was edited. Track whether rename was sent so we can
+  // surface a clear error if the subsequent customize call fails.
+  let didRename = false;
   if (draft.name.trim() && draft.name.trim() !== props.lib.name) {
     const result = await props.onRename(draft.name.trim());
     if (!result.ok) {
@@ -150,13 +165,16 @@ async function handleComplete(): Promise<void> {
       saveBusy.value = false;
       return;
     }
+    didRename = true;
   }
 
-  const origDlg = props.lib.dialogue;
-  // Returns the draft value only if it differs from the server's effective
-  // value, otherwise null (leave unchanged on server).
-  const dlgField = (draft: string, orig: string | null | undefined) =>
-    draft !== (orig ?? "") ? draft : null;
+  // Returns the draft value only if it differs from the snapshotted original,
+  // otherwise null (leave unchanged on server). Compares against the raw
+  // original (which may be null for random presets) — so "user typed nothing"
+  // (draft "" vs orig null) correctly skips, but "user cleared existing text"
+  // (draft "" vs orig "Hello") correctly sends the empty string.
+  const dlgField = (draftVal: string, orig: string | null) =>
+    draftVal !== (orig ?? "") ? draftVal : null;
 
   // Send the full customization payload.
   const payload: Omit<CustomizePayload, "floorIndex" | "unitIndex"> = {
@@ -169,15 +187,17 @@ async function handleComplete(): Promise<void> {
     hairR: draft.hairColor[0], hairG: draft.hairColor[1], hairB: draft.hairColor[2],
     skinR: draft.skinColor[0], skinG: draft.skinColor[1], skinB: draft.skinColor[2],
     eyeR:  draft.eyeColor[0],  eyeG:  draft.eyeColor[1],  eyeB:  draft.eyeColor[2],
-    // Only send dialogue fields that were actually changed from the server's
-    // effective value. Null tells the server to leave the field unchanged,
-    // which preserves random presets rather than locking them in as custom
-    // text just because the panel was opened and closed without editing.
-    dlgStartBattle:    dlgField(draft.dlgStartBattle,    origDlg?.startBattle),
-    dlgVictory:        dlgField(draft.dlgVictory,        origDlg?.victory),
-    dlgDeath:          dlgField(draft.dlgDeath,          origDlg?.death),
-    dlgColleagueDeath: dlgField(draft.dlgColleagueDeath, origDlg?.colleagueDeath),
-    dlgKillsOpponent:  dlgField(draft.dlgKillsOpponent,  origDlg?.killsOpponent),
+    // Only send dialogue fields that were actually changed from the panel-open
+    // snapshot. Null tells the server to leave the field unchanged, which
+    // preserves random presets rather than locking them in as custom text just
+    // because the panel was opened and closed without editing. Compared against
+    // origDialogue (not live props.lib) so mid-edit broadcasts can't shift the
+    // baseline and silently discard the user's changes.
+    dlgStartBattle:    dlgField(draft.dlgStartBattle,    origDialogue.startBattle),
+    dlgVictory:        dlgField(draft.dlgVictory,        origDialogue.victory),
+    dlgDeath:          dlgField(draft.dlgDeath,          origDialogue.death),
+    dlgColleagueDeath: dlgField(draft.dlgColleagueDeath, origDialogue.colleagueDeath),
+    dlgKillsOpponent:  dlgField(draft.dlgKillsOpponent,  origDialogue.killsOpponent),
     prefixID:     draft.prefixID,
     postfixID:    draft.postfixID,
     customBookId: draft.customBookId,
@@ -189,7 +209,9 @@ async function handleComplete(): Promise<void> {
   const result = await props.onSave(payload);
   saveBusy.value = false;
   if (!result.ok) {
-    saveError.value = result.error ?? "Save failed";
+    saveError.value = didRename
+      ? `Appearance save failed (name was updated). ${result.error ?? ""}`
+      : (result.error ?? "Save failed");
     return;
   }
 
@@ -206,25 +228,10 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
 
 const isBusy = computed(() => props.busy || saveBusy.value);
 
-// Re-sync dialogue and title fields from the server state whenever props.lib
-// changes (e.g. after a setCustomization broadcast updates the parent state).
-// immediate: true ensures pre-fill is correct even on first mount.
-watch(
-  () => props.lib,
-  (lib) => {
-    draft.prefixID  = lib.titles?.prefixID  ?? 0;
-    draft.postfixID = lib.titles?.postfixID ?? 0;
-    draft.dlgStartBattle    = lib.dialogue?.startBattle    ?? "";
-    draft.dlgVictory        = lib.dialogue?.victory        ?? "";
-    draft.dlgDeath          = lib.dialogue?.death          ?? "";
-    draft.dlgColleagueDeath = lib.dialogue?.colleagueDeath ?? "";
-    draft.dlgKillsOpponent  = lib.dialogue?.killsOpponent  ?? "";
-    draft.customBookId        = lib.customBookId             ?? -1;
-    draft.customBookPackageId = lib.customBookPackageId      ?? "";
-    draft.workshopSkin        = lib.workshopSkin             ?? "";
-  },
-  { immediate: true },
-);
+// Draft is initialized from props.lib when the panel opens. Server broadcasts
+// during editing are intentionally ignored — the user's in-progress changes
+// take priority. When the user saves (or cancels and reopens), the draft will
+// be re-initialized from fresh server data.
 </script>
 
 <template>

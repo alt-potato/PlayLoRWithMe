@@ -29,7 +29,7 @@ const props = defineProps<{
   renamePlayer: (name: string) => Promise<ActionResult>;
 }>();
 
-const session = computed(() => props.session);
+const session = toRef(() => props.session);
 
 /** True when this session owns the unit (or the unit is unclaimed by anyone). */
 function isOwnUnit(unitId: number): boolean {
@@ -79,6 +79,10 @@ watch(
     selectingSlot.value = null;
     selectingTargetFor.value = null;
     selectingAllyTargetFor.value = null;
+    if (errorTimer) {
+      clearTimeout(errorTimer);
+      errorTimer = null;
+    }
     actionError.value = null;
   },
 );

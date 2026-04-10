@@ -507,17 +507,29 @@ namespace PlayLoRWithMe
                         finalH = Mathf.Max(1, Mathf.RoundToInt(cropH * ppuRatio));
                         var rt = RenderTexture.GetTemporary(
                             finalW, finalH, 0, RenderTextureFormat.ARGB32);
-                        Graphics.Blit(crop, rt);
-                        var prev = RenderTexture.active;
-                        RenderTexture.active = rt;
-                        var scaled = new Texture2D(
-                            finalW, finalH, TextureFormat.RGBA32, false);
-                        scaled.ReadPixels(new Rect(0, 0, finalW, finalH), 0, 0);
-                        scaled.Apply();
-                        RenderTexture.active = prev;
-                        RenderTexture.ReleaseTemporary(rt);
-                        srcPixels = scaled.GetPixels32();
-                        UnityEngine.Object.Destroy(scaled);
+                        try
+                        {
+                            Graphics.Blit(crop, rt);
+                            var prev = RenderTexture.active;
+                            RenderTexture.active = rt;
+                            var scaled = new Texture2D(
+                                finalW, finalH, TextureFormat.RGBA32, false);
+                            try
+                            {
+                                scaled.ReadPixels(new Rect(0, 0, finalW, finalH), 0, 0);
+                                scaled.Apply();
+                                srcPixels = scaled.GetPixels32();
+                            }
+                            finally
+                            {
+                                RenderTexture.active = prev;
+                                UnityEngine.Object.Destroy(scaled);
+                            }
+                        }
+                        finally
+                        {
+                            RenderTexture.ReleaseTemporary(rt);
+                        }
                     }
 
                     // Apply SpriteRenderer.color tint (Unity multiplies every pixel
@@ -577,8 +589,14 @@ namespace PlayLoRWithMe
             }
 
             canvas.Apply();
-            File.WriteAllBytes(outPath, canvas.EncodeToPNG());
-            UnityEngine.Object.Destroy(canvas);
+            try
+            {
+                File.WriteAllBytes(outPath, canvas.EncodeToPNG());
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(canvas);
+            }
         }
 
         /// <summary>
@@ -1139,9 +1157,16 @@ namespace PlayLoRWithMe
             }
 
             var tex = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
-            tex.SetPixels(canvas);
-            tex.Apply();
-            return tex.EncodeToPNG();
+            try
+            {
+                tex.SetPixels(canvas);
+                tex.Apply();
+                return tex.EncodeToPNG();
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(tex);
+            }
         }
 
         /// <summary>
@@ -1153,16 +1178,30 @@ namespace PlayLoRWithMe
         {
             var rt = RenderTexture.GetTemporary(targetW, targetH, 0,
                 RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-            Graphics.Blit(src, rt);
             var prev = RenderTexture.active;
-            RenderTexture.active = rt;
-            var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, false);
-            scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
-            scaled.Apply();
-            RenderTexture.active = prev;
-            RenderTexture.ReleaseTemporary(rt);
-            UnityEngine.Object.Destroy(src);
-            return scaled;
+            try
+            {
+                Graphics.Blit(src, rt);
+                RenderTexture.active = rt;
+                var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, false);
+                try
+                {
+                    scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
+                    scaled.Apply();
+                }
+                catch
+                {
+                    UnityEngine.Object.Destroy(scaled);
+                    throw;
+                }
+                return scaled;
+            }
+            finally
+            {
+                RenderTexture.active = prev;
+                RenderTexture.ReleaseTemporary(rt);
+                UnityEngine.Object.Destroy(src);
+            }
         }
 
         /// <summary>
@@ -1186,20 +1225,33 @@ namespace PlayLoRWithMe
             src.filterMode = FilterMode.Point;
             var rt = RenderTexture.GetTemporary(src.width, src.height, 0,
                 RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-            Graphics.Blit(src, rt);
-            src.filterMode = origFilter;
-
             var prev = RenderTexture.active;
-            RenderTexture.active = rt;
-            // ReadPixels uses top-left origin (DX11); textureRect uses bottom-left, so flip Y.
-            int flippedY = src.height - y1;
-            var crop = new Texture2D(cropW, cropH, TextureFormat.RGBA32, false);
-            crop.ReadPixels(new Rect(x0, flippedY, cropW, cropH), 0, 0);
-            crop.Apply();
-            RenderTexture.active = prev;
-            RenderTexture.ReleaseTemporary(rt);
+            try
+            {
+                Graphics.Blit(src, rt);
+                src.filterMode = origFilter;
 
-            return crop;
+                RenderTexture.active = rt;
+                // ReadPixels uses top-left origin (DX11); textureRect uses bottom-left, so flip Y.
+                int flippedY = src.height - y1;
+                var crop = new Texture2D(cropW, cropH, TextureFormat.RGBA32, false);
+                try
+                {
+                    crop.ReadPixels(new Rect(x0, flippedY, cropW, cropH), 0, 0);
+                    crop.Apply();
+                }
+                catch
+                {
+                    UnityEngine.Object.Destroy(crop);
+                    throw;
+                }
+                return crop;
+            }
+            finally
+            {
+                RenderTexture.active = prev;
+                RenderTexture.ReleaseTemporary(rt);
+            }
         }
 
         /// <summary>
@@ -1209,9 +1261,14 @@ namespace PlayLoRWithMe
         private static byte[] SpriteToSimplePng(Sprite sprite)
         {
             var crop = ReadSpriteCrop(sprite);
-            var result = crop.EncodeToPNG();
-            UnityEngine.Object.Destroy(crop);
-            return result;
+            try
+            {
+                return crop.EncodeToPNG();
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(crop);
+            }
         }
 
         // Mirrors IconCache.SpriteToPng, but positions the sprite crop within a shared
@@ -1277,15 +1334,22 @@ namespace PlayLoRWithMe
                     }
 
                     var dst = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
-                    dst.SetPixels32(new Color32[canvasW * canvasH]); // transparent fill
+                    try
+                    {
+                        dst.SetPixels32(new Color32[canvasW * canvasH]); // transparent fill
 
-                    int safeW = Mathf.Clamp(cropW, 0, canvasW - offsetX);
-                    int safeH = Mathf.Clamp(cropH, 0, canvasH - offsetY);
-                    if (safeW > 0 && safeH > 0)
-                        dst.SetPixels32(offsetX, offsetY, safeW, safeH, crop.GetPixels32());
+                        int safeW = Mathf.Clamp(cropW, 0, canvasW - offsetX);
+                        int safeH = Mathf.Clamp(cropH, 0, canvasH - offsetY);
+                        if (safeW > 0 && safeH > 0)
+                            dst.SetPixels32(offsetX, offsetY, safeW, safeH, crop.GetPixels32());
 
-                    dst.Apply();
-                    return dst.EncodeToPNG();
+                        dst.Apply();
+                        return dst.EncodeToPNG();
+                    }
+                    finally
+                    {
+                        UnityEngine.Object.Destroy(dst);
+                    }
                 }
 
                 // PPU mismatch: rescale the crop via RenderTexture before blitting.
@@ -1293,31 +1357,48 @@ namespace PlayLoRWithMe
                 int scaledH = Mathf.Max(1, Mathf.RoundToInt(cropH * ppuRatio));
 
                 var rt = RenderTexture.GetTemporary(scaledW, scaledH, 0, RenderTextureFormat.ARGB32);
-                Graphics.Blit(crop, rt);
-                UnityEngine.Object.Destroy(crop);
-                crop = null; // prevent double-destroy in finally
-
                 var prev = RenderTexture.active;
-                RenderTexture.active = rt;
-                var scaled = new Texture2D(scaledW, scaledH, TextureFormat.RGBA32, false);
-                scaled.ReadPixels(new Rect(0, 0, scaledW, scaledH), 0, 0);
-                scaled.Apply();
-                RenderTexture.active = prev;
-                RenderTexture.ReleaseTemporary(rt);
+                try
+                {
+                    Graphics.Blit(crop, rt);
+                    UnityEngine.Object.Destroy(crop);
+                    crop = null; // prevent double-destroy in finally
 
-                var canvas = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
-                canvas.SetPixels32(new Color32[canvasW * canvasH]);
+                    RenderTexture.active = rt;
+                    var scaled = new Texture2D(scaledW, scaledH, TextureFormat.RGBA32, false);
+                    try
+                    {
+                        scaled.ReadPixels(new Rect(0, 0, scaledW, scaledH), 0, 0);
+                        scaled.Apply();
 
-                int safeW2 = Mathf.Clamp(scaledW, 0, canvasW - offsetX);
-                int safeH2 = Mathf.Clamp(scaledH, 0, canvasH - offsetY);
-                if (safeW2 > 0 && safeH2 > 0)
-                    canvas.SetPixels32(offsetX, offsetY, safeW2, safeH2, scaled.GetPixels32());
+                        var canvas = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
+                        try
+                        {
+                            canvas.SetPixels32(new Color32[canvasW * canvasH]);
 
-                UnityEngine.Object.Destroy(scaled);
-                canvas.Apply();
-                var png = canvas.EncodeToPNG();
-                UnityEngine.Object.Destroy(canvas);
-                return png;
+                            int safeW2 = Mathf.Clamp(scaledW, 0, canvasW - offsetX);
+                            int safeH2 = Mathf.Clamp(scaledH, 0, canvasH - offsetY);
+                            if (safeW2 > 0 && safeH2 > 0)
+                                canvas.SetPixels32(offsetX, offsetY, safeW2, safeH2, scaled.GetPixels32());
+
+                            canvas.Apply();
+                            return canvas.EncodeToPNG();
+                        }
+                        finally
+                        {
+                            UnityEngine.Object.Destroy(canvas);
+                        }
+                    }
+                    finally
+                    {
+                        UnityEngine.Object.Destroy(scaled);
+                    }
+                }
+                finally
+                {
+                    RenderTexture.active = prev;
+                    RenderTexture.ReleaseTemporary(rt);
+                }
             }
             finally
             {
