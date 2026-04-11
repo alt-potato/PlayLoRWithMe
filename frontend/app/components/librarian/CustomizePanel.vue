@@ -27,6 +27,7 @@ import type {
   AppearanceData,
   CustomizePayload,
   ActionResult,
+  FashionBook,
 } from "~/types/game";
 
 const props = defineProps<{
@@ -116,6 +117,26 @@ const customizeOptions = computed(() => props.state.customizeOptions);
 
 /** The fashion book currently selected in the draft, or null if none. */
 const activeFashionBook = computed(() => {
+  // Workshop skin (cloth overlay) takes priority when active.
+  if (draft.workshopSkin) {
+    const skin = customizeOptions.value?.workshopSkins?.find(
+      (s) => s.contentFolderIdx === draft.workshopSkin
+    );
+    if (skin) {
+      return {
+        id: 0,
+        fileStem: `ws_${skin.contentFolderIdx}`,
+        name: skin.name,
+        rangeType: "Hybrid",
+        replacesHead: skin.replacesHead ?? false,
+        hasFrontLayer: skin.hasFrontLayer,
+        headTiltDeg: skin.headTiltDeg,
+        pivotFracX: skin.pivotFracX,
+        pivotFracY: skin.pivotFracY,
+      } as FashionBook;
+    }
+  }
+
   if (draft.customBookId >= 0)
     return customizeOptions.value?.fashionBooks?.find(
       (b) => b.id === draft.customBookId && (b.packageId ?? "") === draft.customBookPackageId
@@ -127,6 +148,7 @@ const activeFashionBook = computed(() => {
   if (kp.bookId == null) return null;
   return {
     id: kp.bookId,
+    packageId: kp.bookPackageId,
     name: kp.name,
     rangeType: kp.equipRangeType ?? "Hybrid",
     replacesHead: props.lib.keyPageReplacesHead ?? false,

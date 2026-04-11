@@ -179,6 +179,8 @@ export interface KeyPage {
   equipRangeType?: string;
   /** BookXmlInfo integer ID — used to load the body composite PNG for the preview. */
   bookId?: number;
+  /** Non-empty for workshop (mod) key pages; used with bookId to construct the body PNG URL. */
+  bookPackageId?: string;
 }
 
 // ── Unit shapes ───────────────────────────────────────────────────────────────
@@ -500,6 +502,8 @@ export interface FashionBook {
   id: number;
   /** Non-empty for workshop (mod) books; omitted for core fashion books. */
   packageId?: string;
+  /** Explicit file stem override for body PNG lookup (e.g. "ws_2921128635"). */
+  fileStem?: string;
   name: string;
   /** EquipRangeType string — controls compatibility with librarian's range type. */
   rangeType: string;
@@ -542,6 +546,12 @@ export interface WorkshopSkin {
   name: string;
   /** Unique string key used to equip/save this skin (unit.workshopSkin). */
   contentFolderIdx: string;
+  /** True when the skin sprite replaces the entire head (no face/hair layers). */
+  replacesHead?: boolean;
+  hasFrontLayer?: boolean;
+  headTiltDeg?: number;
+  pivotFracX?: number;
+  pivotFracY?: number;
 }
 
 export interface CustomizeOptions {

@@ -392,9 +392,13 @@ namespace PlayLoRWithMe
                                             o.AddObject(
                                                 "keyPage",
                                                 k =>
+                                                {
                                                     k.Add("instanceId", book.instanceId)
-                                                        .Add("bookId", book.GetBookClassInfoId().id)
-                                                        .Add("name", book.Name)
+                                                        .Add("bookId", book.GetBookClassInfoId().id);
+                                                    var kpPkg = book.GetBookClassInfoId().packageId;
+                                                    if (!string.IsNullOrEmpty(kpPkg))
+                                                        k.Add("bookPackageId", kpPkg);
+                                                    k.Add("name", book.Name)
                                                         .Add("speedMin", book.SpeedMin)
                                                         .Add("speedMax", book.SpeedMax)
                                                         // unit.MaxHp includes gift/bonus HP consistent
@@ -429,21 +433,23 @@ namespace PlayLoRWithMe
                                                                         "bluntBp",
                                                                         book.hBpResist.ToString()
                                                                     )
-                                                        )
-                                            );
+                                                        );
+                                                });
                                             // Fashion metadata for the equipped key page body preview.
                                             // Written as sibling fields on the librarian object (not
                                             // nested inside keyPage) because the keyPage object above
                                             // is already closed.  Field names mirror fashionBooks[].
                                             {
-                                                var kpBid = book.GetBookClassInfoId().id;
+                                                var kpLid = book.GetBookClassInfoId();
                                                 var kpBxi = book.ClassInfo;
                                                 if (kpBxi != null && !string.IsNullOrEmpty(kpBxi.GetCharacterSkin()))
                                                 {
                                                     if (kpBxi.gender != Gender.N)
                                                         o.Add("keyPageSkinGender", kpBxi.gender.ToString());
                                                     o.Add("keyPageReplacesHead", kpBxi.skinType != "Lor");
-                                                    if (AppearanceCache.FashionMeta.TryGetValue(kpBid, out var kpMeta))
+                                                    var kpStem = string.IsNullOrEmpty(kpLid.packageId)
+                                                        ? kpLid.id.ToString() : $"{kpLid.packageId}_{kpLid.id}";
+                                                    if (AppearanceCache.FashionMeta.TryGetValue(kpStem, out var kpMeta))
                                                     {
                                                         if (Mathf.Abs(kpMeta.TiltDeg) > 0.05f)
                                                             o.Add("keyPageHeadTiltDeg", kpMeta.TiltDeg)
@@ -1024,7 +1030,7 @@ namespace PlayLoRWithMe
                                 fb.Add("skinGender", bxi.gender.ToString());
 
                             // Optional per-book appearance metadata from AppearanceCache.
-                            if (AppearanceCache.FashionMeta.TryGetValue(bid, out var meta))
+                            if (AppearanceCache.FashionMeta.TryGetValue(bid.ToString(), out var meta))
                             {
                                 // Head tilt and pivot: omitted when tilt is zero.
                                 if (Mathf.Abs(meta.TiltDeg) > 0.05f)
@@ -1039,6 +1045,49 @@ namespace PlayLoRWithMe
                                     fb.Add("hidesBackHair", true);
                             }
                         });
+                    }
+
+                    // Second pass: workshop mod books that can be used as projections.
+                    // These have a non-empty packageId and are not tracked by
+                    // CustomCoreBookInventoryModel (which explicitly skips workshop books).
+                    var bookInv = Singleton<BookInventoryModel>.Instance;
+                    if (bookInv != null)
+                    {
+                        var seenWs = new HashSet<string>();
+                        foreach (var book in bookInv.GetBookListAll())
+                        {
+                            if (!book.IsWorkshop) continue;
+                            var lid = book.GetBookClassInfoId();
+                            var bxi = book.ClassInfo;
+                            if (bxi == null || bxi.canNotEquip) continue;
+                            if (string.IsNullOrEmpty(bxi.GetCharacterSkin())) continue;
+                            // Deduplicate by full LorId — same XML can appear as multiple instances.
+                            string key = $"{lid.packageId}:{lid.id}";
+                            if (!seenWs.Add(key)) continue;
+                            Debug.Log($"[PlayLoRWithMe] fashionBooks: ws book id={lid.id} pkg={lid.packageId} name={bxi.Name} range={bxi.RangeType} skinType={bxi.skinType}");
+                            arr.AddObject(fb =>
+                            {
+                                fb.Add("id", lid.id)
+                                    .Add("packageId", lid.packageId)
+                                    .Add("name", bxi.Name)
+                                    .Add("rangeType", bxi.RangeType.ToString())
+                                    .Add("replacesHead", bxi.skinType != "Lor");
+                                if (bxi.gender != Gender.N)
+                                    fb.Add("skinGender", bxi.gender.ToString());
+                                var wsStem = $"{lid.packageId}_{lid.id}";
+                                if (AppearanceCache.FashionMeta.TryGetValue(wsStem, out var meta))
+                                {
+                                    if (Mathf.Abs(meta.TiltDeg) > 0.05f)
+                                        fb.Add("headTiltDeg", meta.TiltDeg)
+                                            .Add("pivotFracX", meta.PivotFracX)
+                                            .Add("pivotFracY", meta.PivotFracY);
+                                    if (meta.HasFrontLayer)
+                                        fb.Add("hasFrontLayer", true);
+                                    if (meta.HidesBackHair)
+                                        fb.Add("hidesBackHair", true);
+                                }
+                            });
+                        }
                     }
 
                 });
@@ -1059,10 +1108,34 @@ namespace PlayLoRWithMe
                         if (skin == null)
                             continue;
                         ws.AddObject(s =>
+                        {
                             s.Add("id", skin.id)
                                 .Add("name", skin.dataName)
-                                .Add("contentFolderIdx", skin.contentFolderIdx)
-                        );
+                                .Add("contentFolderIdx", skin.contentFolderIdx);
+                            var wsStem = $"ws_{skin.contentFolderIdx}";
+                            if (AppearanceCache.FashionMeta.TryGetValue(wsStem, out var meta))
+                            {
+                                // ReplacesHead is encoded inversely in FashionMeta:
+                                // HidesBackHair is set when !ReplacesHead && HasHood,
+                                // but for workshop skins the authoritative source is
+                                // ClothCustomizeData.headEnabled (already baked into
+                                // the extracted body via FashionBookBody.ReplacesHead).
+                                // We can't recover ReplacesHead from FashionMeta alone,
+                                // so we check the skin data directly.
+                                bool headEnabled = true;
+                                if (skin.dic.TryGetValue(ActionDetail.Default, out var dc))
+                                    headEnabled = dc.headEnabled;
+                                else if (skin.dic.TryGetValue(ActionDetail.Standing, out var sc))
+                                    headEnabled = sc.headEnabled;
+                                s.Add("replacesHead", !headEnabled);
+                                if (meta.HasFrontLayer)
+                                    s.Add("hasFrontLayer", true);
+                                if (Mathf.Abs(meta.TiltDeg) > 0.05f)
+                                    s.Add("headTiltDeg", meta.TiltDeg)
+                                        .Add("pivotFracX", meta.PivotFracX)
+                                        .Add("pivotFracY", meta.PivotFracY);
+                            }
+                        });
                     }
                 });
 

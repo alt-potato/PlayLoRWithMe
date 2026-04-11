@@ -795,8 +795,15 @@ namespace PlayLoRWithMe
                         : new LorId(cbPkg, cbid);
                     var bxi = Singleton<BookXmlList>.Instance?.GetData(bookLorId, errNull: false);
                     if (bxi != null)
+                    {
                         unit.EquipCustomCoreBook(new BookModel(bxi));
-                    // If book not found, skip silently — state is broadcast unchanged.
+                        var after = unit.GetCustomBookItemData();
+                        Debug.Log($"[PlayLoRWithMe] SetCustomization: customBook cbid={cbid} pkg={cbPkg} bxi.range={bxi.RangeType} equipped.range={unit.bookItem?.ClassInfo?.RangeType} result={after?.GetBookClassInfoId()}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[PlayLoRWithMe] SetCustomization: book not found cbid={cbid} pkg={cbPkg}");
+                    }
                 }
             }
 

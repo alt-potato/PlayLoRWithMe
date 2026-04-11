@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using Workshop;
 
 namespace PlayLoRWithMe
 {
@@ -31,8 +32,8 @@ namespace PlayLoRWithMe
         /// HidesBackHair is true when the character model has a Hood sprite; the game
         /// hides all back hair renderers in that case.
         /// </summary>
-        internal static readonly Dictionary<int, (float TiltDeg, float PivotFracX, float PivotFracY, bool HasFrontLayer, bool HidesBackHair, string SkinGender)>
-            FashionMeta = new Dictionary<int, (float, float, float, bool, bool, string)>();
+        internal static readonly Dictionary<string, (float TiltDeg, float PivotFracX, float PivotFracY, bool HasFrontLayer, bool HidesBackHair, string SkinGender)>
+            FashionMeta = new Dictionary<string, (float, float, float, bool, bool, string)>();
 
         /// <summary>
         /// Face/hair canvas bounds in world space, populated during extraction.
@@ -73,7 +74,7 @@ namespace PlayLoRWithMe
             try
             {
                 // Bump this whenever extraction logic changes to invalidate the on-disk cache.
-                const string CacheVersion = "29";
+                const string CacheVersion = "33";
                 var versionPath = Path.Combine(CustomizeDir, "_cache_version.txt");
 
                 bool stale =
@@ -250,18 +251,29 @@ namespace PlayLoRWithMe
                 float fracY = (bh > 0f) ? Mathf.Clamp01(faceHairBounds.max.y / bh)  : 0.5f;
                 foreach (var b in fashionBodies)
                 {
-                    if (FashionMeta.ContainsKey(b.BookId))
+                    var stem = b.FileStem;
+                    if (FashionMeta.ContainsKey(stem))
                     {
                         // Second variant for same book — merge HasFrontLayer flag.
-                        var existing = FashionMeta[b.BookId];
+                        var existing = FashionMeta[stem];
                         if (b.FrontSprites.Count > 0 && !existing.HasFrontLayer)
-                            FashionMeta[b.BookId] = (existing.TiltDeg, existing.PivotFracX,
+                            FashionMeta[stem] = (existing.TiltDeg, existing.PivotFracX,
                                 existing.PivotFracY, true, existing.HidesBackHair, existing.SkinGender);
                         continue;
                     }
-                    var bxi = Singleton<BookXmlList>.Instance?.GetData(b.BookId);
-                    string skinGender = bxi?.gender.ToString() ?? "N";
-                    FashionMeta[b.BookId] = (b.PivotRotDeg, fracX, fracY,
+                    string skinGender;
+                    if (!string.IsNullOrEmpty(b.PackageId))
+                    {
+                        // Workshop book: look up by full LorId to get the correct gender.
+                        var wsInfo = Singleton<BookXmlList>.Instance?.GetData(new LorId(b.PackageId, b.BookId));
+                        skinGender = wsInfo?.gender.ToString() ?? "N";
+                    }
+                    else
+                    {
+                        var bxi = Singleton<BookXmlList>.Instance?.GetData(b.BookId);
+                        skinGender = bxi?.gender.ToString() ?? "N";
+                    }
+                    FashionMeta[stem] = (b.PivotRotDeg, fracX, fracY,
                         b.FrontSprites.Count > 0, !b.ReplacesHead && b.HasHood, skinGender);
                 }
             }
@@ -646,10 +658,26 @@ namespace PlayLoRWithMe
         {
             public int BookId;
             /// <summary>
+            /// Non-empty for workshop books; used to disambiguate file names and metadata
+            /// keys when multiple mods share the same integer BookId.
+            /// </summary>
+            public string PackageId = "";
+            /// <summary>
             /// Gender variant suffix: null for neutral/ungendered, "f" for female, "m" for male.
             /// Used to produce distinct file names (e.g. fashionbodies/123_f.png).
             /// </summary>
             public string Variant = null;
+            /// <summary>
+            /// Explicit file stem override. When set, takes priority over the
+            /// computed "{PackageId}_{BookId}" or "{BookId}" pattern.
+            /// </summary>
+            public string FileStemOverride = null;
+            /// <summary>
+            /// File stem for this entry: explicit override if set, else "{BookId}" for
+            /// core books, "{PackageId}_{BookId}" for workshop books.
+            /// </summary>
+            public string FileStem => FileStemOverride
+                ?? (string.IsNullOrEmpty(PackageId) ? BookId.ToString() : $"{PackageId}_{BookId}");
             public bool ReplacesHead;
             // World position of customPivot (or Head SpriteSet renderer) within the
             // instantiated DefaultMotion prefab.  Face/hair sprites are placed at this
@@ -800,12 +828,152 @@ namespace PlayLoRWithMe
         }
 
         /// <summary>
-        /// Instantiates the DefaultMotion prefab for each unlocked fashion book, runs
-        /// SetSkinSprite + DisableSpritesByCustomizing to isolate body-only sprites, and
-        /// records all enabled SpriteRenderers alongside their world positions.
-        /// Populates <paramref name="instancesToDestroy"/> with objects the caller must
-        /// destroy after extraction is complete.
+        /// Extracts body sprites for a workshop book that uses <c>skinType == "Custom"</c>.
+        /// These books don't have their own character prefab; instead the game loads
+        /// <c>[Prefab]Appearance_Custom</c> and applies cloth-overlay sprites via
+        /// <see cref="WorkshopSkinDataSetter"/>.  The cloth sprites live on child
+        /// GameObjects named <c>Customize_Renderer</c> (rear) and
+        /// <c>Customize_Renderer_Front</c> (front), not in <c>motionSpriteSet</c>.
         /// </summary>
+        /// <summary>
+        /// Resolves <see cref="WorkshopSkinData"/> for a workshop book and delegates
+        /// to <see cref="TryGatherClothBody"/>.
+        /// </summary>
+        private static FashionBookBody TryGatherWorkshopBody(
+            int bid, BookXmlInfo bxi, string packageId,
+            List<GameObject> instancesToDestroy)
+        {
+            var loader = Singleton<CustomizingBookSkinLoader>.Instance;
+            if (loader == null)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] workshop body {bid}: CustomizingBookSkinLoader is null");
+                return null;
+            }
+            var skinName = bxi.GetCharacterSkin();
+            var skinData = loader.GetWorkshopBookSkinData(packageId, skinName);
+            if (skinData == null)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] workshop body {bid}: no skin data for pkg={packageId} skin={skinName}");
+                return null;
+            }
+            return TryGatherClothBody(skinData, bid, packageId, $"book {bid}", instancesToDestroy);
+        }
+
+        /// <summary>
+        /// Extracts body sprites from a <see cref="WorkshopSkinData"/> cloth overlay.
+        /// Used for both workshop book bodies (<c>skinType == "Custom"</c>) and
+        /// workshop skins from <see cref="CustomizingResourceLoader"/>.
+        /// The cloth sprites live on child GameObjects named
+        /// <c>Customize_Renderer</c> (rear) and <c>Customize_Renderer_Front</c> (front),
+        /// not in <c>motionSpriteSet</c>.
+        /// </summary>
+        private static FashionBookBody TryGatherClothBody(
+            WorkshopSkinData skinData, int bid, string packageId, string label,
+            List<GameObject> instancesToDestroy)
+        {
+            var prefab = Resources.Load<GameObject>(
+                "Prefabs/Characters/[Prefab]Appearance_Custom");
+            if (prefab == null)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: Appearance_Custom prefab not found");
+                return null;
+            }
+
+            var go = UnityEngine.Object.Instantiate(prefab);
+            var setter = go.GetComponent<WorkshopSkinDataSetter>();
+            if (setter == null)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: no WorkshopSkinDataSetter on prefab");
+                UnityEngine.Object.Destroy(go);
+                return null;
+            }
+
+            setter.SetData(skinData);
+
+            // Get the Standing motion (same as Default for workshop skins per Init()).
+            var appearance = go.GetComponent<CharacterAppearance>();
+            if (appearance == null)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: no CharacterAppearance on prefab");
+                UnityEngine.Object.Destroy(go);
+                return null;
+            }
+
+            var motion = appearance.GetCharacterMotion(ActionDetail.Standing);
+            if (motion == null)
+                motion = appearance.GetCharacterMotion(ActionDetail.Default);
+            if (motion == null)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: no Standing/Default motion found");
+                UnityEngine.Object.Destroy(go);
+                return null;
+            }
+
+            // Find the cloth renderers and pivot on the Standing motion.
+            SpriteRenderer rearRenderer = null, frontRenderer = null;
+            Transform customPivot = null;
+            foreach (Transform child in motion.transform)
+            {
+                if (child.gameObject.name == "Customize_Renderer")
+                    rearRenderer = child.GetComponent<SpriteRenderer>();
+                else if (child.gameObject.name == "Customize_Renderer_Front")
+                    frontRenderer = child.GetComponent<SpriteRenderer>();
+                else if (child.gameObject.name == "CustomizePivot")
+                    customPivot = child;
+            }
+
+            if (rearRenderer == null || rearRenderer.sprite == null)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: rear renderer={rearRenderer != null}, sprite={rearRenderer?.sprite != null}");
+                UnityEngine.Object.Destroy(go);
+                return null;
+            }
+
+            Vector3 anchorPos = customPivot != null
+                ? customPivot.position
+                : Vector3.zero;
+
+            float rawZ = customPivot != null
+                ? customPivot.rotation.eulerAngles.z
+                : 0f;
+            float pivotRotDeg = rawZ > 180f ? rawZ - 360f : rawZ;
+
+            // headEnabled in the skin data means the head/face should be visible
+            // on top of the body sprite — i.e. the skin does NOT replace the head.
+            bool headEnabled = true;
+            if (skinData.dic.TryGetValue(ActionDetail.Default, out var defaultCloth))
+                headEnabled = defaultCloth.headEnabled;
+            else if (skinData.dic.TryGetValue(ActionDetail.Standing, out var standingCloth))
+                headEnabled = standingCloth.headEnabled;
+
+            var body = new FashionBookBody
+            {
+                BookId       = bid,
+                PackageId    = packageId,
+                Variant      = null, // workshop skins are ungendered
+                ReplacesHead = !headEnabled,
+                AnchorPos    = anchorPos,
+                WorldScale   = motion.transform.lossyScale.y,
+                PivotRotDeg  = pivotRotDeg,
+            };
+
+            // Rear cloth sprite → behind-face layer.
+            var rearSet = new SpriteSet(rearRenderer, CharacterAppearanceType.Body);
+            body.Sprites.Add((rearSet, rearRenderer.transform.position));
+
+            // Front cloth sprite → in-front-of-face layer.
+            if (frontRenderer != null && frontRenderer.sprite != null
+                && frontRenderer.gameObject.activeSelf)
+            {
+                var frontSet = new SpriteSet(frontRenderer, CharacterAppearanceType.Body);
+                body.FrontSprites.Add((frontSet, frontRenderer.transform.position));
+            }
+
+            Debug.Log($"[PlayLoRWithMe] workshop body {bid}: OK, rear sprite={rearRenderer.sprite.name}, front={frontRenderer?.sprite?.name ?? "none"}");
+            instancesToDestroy.Add(go);
+            return body;
+        }
+
         /// <summary>
         /// Gathers body sprites for a single book ID, handling gendered variants.
         /// </summary>
@@ -854,6 +1022,9 @@ namespace PlayLoRWithMe
             if (abm == null) return;
 
             var seen = new HashSet<int>();
+            // Separate dedup set for workshop books keyed by "{packageId}:{id}" to avoid
+            // collisions with core books and between mods that share the same integer id.
+            var seenWs = new HashSet<string>();
 
             // Fashion books (custom core book projections).
             var ccbm = Singleton<CustomCoreBookInventoryModel>.Instance;
@@ -870,8 +1041,10 @@ namespace PlayLoRWithMe
                 }
             }
 
-            // Equipped key pages — extract their bodies too so the preview can
-            // show the librarian's current appearance when no fashion book is selected.
+            // Equipped key pages and workshop books — extract their bodies too so
+            // the preview can show the librarian's current appearance when no
+            // fashion book is selected.  Workshop books (IsWorkshop) are included
+            // because they aren't tracked by CustomCoreBookInventoryModel.
             var library = LibraryModel.Instance;
             if (library != null)
             {
@@ -881,16 +1054,25 @@ namespace PlayLoRWithMe
                     {
                         var book = unit.bookItem;
                         if (book?.ClassInfo == null) continue;
-                        int bid = book.GetBookClassInfoId().id;
+                        var lid = book.GetBookClassInfoId();
+                        int bid = lid.id;
                         var bxi = book.ClassInfo;
-                        var cd = unit.customizeData;
-                        Debug.Log(
-                            $"[PlayLoRWithMe] AppearanceCache: unit {unit.OwnerSephirah} "
-                            + $"bookId={bid} skinType={bxi.skinType} "
-                            + $"charSkin={bxi.GetCharacterSkin()} "
-                            + $"specialCustomID={cd?.specialCustomID} "
-                            + $"UseCustomData={cd?.UseCustomData}");
-                        try { GatherBookBody(bid, bxi, result, instancesToDestroy, abm, seen); }
+                        try
+                        {
+                            if (book.IsWorkshop && bxi.skinType == "Custom")
+                            {
+                                if (seenWs.Add($"{lid.packageId}:{lid.id}"))
+                                {
+                                    var wsBody = TryGatherWorkshopBody(
+                                        bid, bxi, lid.packageId, instancesToDestroy);
+                                    if (wsBody != null) result.Add(wsBody);
+                                }
+                            }
+                            else
+                            {
+                                GatherBookBody(bid, bxi, result, instancesToDestroy, abm, seen);
+                            }
+                        }
                         catch (System.Exception ex)
                         {
                             Debug.LogWarning(
@@ -900,6 +1082,82 @@ namespace PlayLoRWithMe
                 }
             }
 
+            // Workshop mod books from the book inventory — these have standard
+            // character prefabs but are excluded from CustomCoreBookInventoryModel.
+            var bookInv = Singleton<BookInventoryModel>.Instance;
+            Debug.Log($"[PlayLoRWithMe] AppearanceCache: bookInv={bookInv != null}, count={bookInv?.GetBookListAll()?.Count ?? -1}");
+            if (bookInv != null)
+            {
+                int wsCount = 0;
+                foreach (var book in bookInv.GetBookListAll())
+                {
+                    if (!book.IsWorkshop) continue;
+                    wsCount++;
+                    var bxi = book.ClassInfo;
+                    var lid = book.GetBookClassInfoId();
+                    Debug.Log($"[PlayLoRWithMe] AppearanceCache: ws book id={lid.id} pkg={lid.packageId} skinType={bxi?.skinType} charSkin={bxi?.GetCharacterSkin()} classInfo={bxi != null}");
+                    if (bxi == null || string.IsNullOrEmpty(bxi.GetCharacterSkin())) continue;
+                    int bid = lid.id;
+                    try
+                    {
+                        if (bxi.skinType == "Custom")
+                        {
+                            // Workshop books with custom skins use cloth overlays,
+                            // not standard character prefabs.
+                            if (!seenWs.Add($"{lid.packageId}:{lid.id}")) continue;
+                            Debug.Log($"[PlayLoRWithMe] AppearanceCache: workshop Custom book {bid} pkg={lid.packageId} skin={bxi.GetCharacterSkin()}");
+                            var wsBody = TryGatherWorkshopBody(
+                                bid, bxi, lid.packageId, instancesToDestroy);
+                            if (wsBody != null)
+                                result.Add(wsBody);
+                            else
+                                Debug.LogWarning($"[PlayLoRWithMe] AppearanceCache: TryGatherWorkshopBody returned null for {bid}");
+                        }
+                        else
+                        {
+                            GatherBookBody(bid, bxi, result, instancesToDestroy, abm, seen);
+                        }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning(
+                            $"[PlayLoRWithMe] AppearanceCache: workshop body gather {bid} failed: {ex.Message}\n{ex.StackTrace}");
+                    }
+                }
+                Debug.Log($"[PlayLoRWithMe] AppearanceCache: workshop books scanned, {wsCount} workshop books found");
+            }
+
+            // Workshop skins (cloth overlays from CustomizingResourceLoader).
+            // These are separate from workshop books — they're skin-only mods
+            // with no key page, loaded by contentFolderIdx.
+            var wsLoader = Singleton<CustomizingResourceLoader>.Instance;
+            if (wsLoader != null)
+            {
+                foreach (var skin in wsLoader.GetWorkshopSkinDataAll())
+                {
+                    if (skin?.dic == null || skin.dic.Count == 0) continue;
+                    // File stem uses "ws_" prefix + contentFolderIdx to distinguish
+                    // from book-based bodies.
+                    var folderIdx = skin.contentFolderIdx;
+                    try
+                    {
+                        var stem = $"ws_{folderIdx}";
+                        var wsBody = TryGatherClothBody(
+                            skin, 0, "", $"skin {folderIdx}",
+                            instancesToDestroy);
+                        if (wsBody != null)
+                        {
+                            wsBody.FileStemOverride = stem;
+                            result.Add(wsBody);
+                        }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning(
+                            $"[PlayLoRWithMe] AppearanceCache: workshop skin {folderIdx} failed: {ex.Message}\n{ex.StackTrace}");
+                    }
+                }
+            }
 
         }
 
@@ -928,10 +1186,11 @@ namespace PlayLoRWithMe
             {
                 // gendered variants use a suffix: fashionbodies/123_f.png, 123_m.png
                 var suffix = body.Variant != null ? $"_{body.Variant}" : "";
-                var path      = Path.Combine(FashionBodyDir,      $"{body.BookId}{suffix}.png");
-                var frontPath = Path.Combine(FashionBodyFrontDir, $"{body.BookId}{suffix}.png");
+                var stem = body.FileStem;
+                var path      = Path.Combine(FashionBodyDir,      $"{stem}{suffix}.png");
+                var frontPath = Path.Combine(FashionBodyFrontDir, $"{stem}{suffix}.png");
 
-                var skinPath = Path.Combine(FashionBodyDir, $"{body.BookId}{suffix}_skin.png");
+                var skinPath = Path.Combine(FashionBodyDir, $"{stem}{suffix}_skin.png");
 
                 // Skip if already extracted.  The back file is the sentinel; for the rare
                 // case where all sprites are front-layer, use the front file instead.

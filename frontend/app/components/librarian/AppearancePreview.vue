@@ -132,15 +132,27 @@ const fashionVariantSuffix = computed(() => {
   return "_f"; // default to female variant when neutral
 });
 
+/**
+ * File stem for fashion body PNGs.  Core books use their numeric id; workshop
+ * books prefix with packageId to avoid collisions between mods that share the
+ * same integer id.  Mirrors AppearanceCache.FashionBookBody.FileStem in C#.
+ */
+const fashionFileStem = computed(() => {
+  if (!props.fashionBook) return null;
+  if (props.fashionBook.fileStem) return props.fashionBook.fileStem;
+  const pkg = props.fashionBook.packageId;
+  return pkg ? `${pkg}_${props.fashionBook.id}` : `${props.fashionBook.id}`;
+});
+
 /** URL of the fashion body composite PNG (behind face), or null if inactive. */
 const fashionBodyUrl = computed(() =>
-  props.fashionBook
-    ? `/assets/fashionbodies/${props.fashionBook.id}${fashionVariantSuffix.value}.png`
+  fashionFileStem.value
+    ? `/assets/fashionbodies/${fashionFileStem.value}${fashionVariantSuffix.value}.png`
     : null
 );
 
 const fashionBodyFailed = ref(false);
-watch(() => props.fashionBook?.id, () => { fashionBodyFailed.value = false; });
+watch(fashionFileStem, () => { fashionBodyFailed.value = false; });
 // also reset when variant changes (different PNG)
 watch(fashionVariantSuffix, () => { fashionBodyFailed.value = false; });
 
@@ -150,12 +162,12 @@ watch(fashionVariantSuffix, () => { fashionBodyFailed.value = false; });
  */
 const fashionFrontUrl = computed(() =>
   props.fashionBook?.hasFrontLayer
-    ? `/assets/fashionbodies_front/${props.fashionBook.id}${fashionVariantSuffix.value}.png`
+    ? `/assets/fashionbodies_front/${fashionFileStem.value}${fashionVariantSuffix.value}.png`
     : null
 );
 
 const fashionFrontFailed = ref(false);
-watch(() => props.fashionBook?.id, () => { fashionFrontFailed.value = false; });
+watch(fashionFileStem, () => { fashionFrontFailed.value = false; });
 
 /**
  * URL of the fashion skin-layer composite PNG — exposed body areas (neck, collarbone)
@@ -164,13 +176,13 @@ watch(() => props.fashionBook?.id, () => { fashionFrontFailed.value = false; });
  * (clothing) cover them naturally.
  */
 const fashionSkinUrl = computed(() =>
-  props.fashionBook
-    ? `/assets/fashionbodies/${props.fashionBook.id}${fashionVariantSuffix.value}_skin.png`
+  fashionFileStem.value
+    ? `/assets/fashionbodies/${fashionFileStem.value}${fashionVariantSuffix.value}_skin.png`
     : null
 );
 
 const fashionSkinFailed = ref(false);
-watch(() => props.fashionBook?.id, () => { fashionSkinFailed.value = false; });
+watch(fashionFileStem, () => { fashionSkinFailed.value = false; });
 watch(fashionVariantSuffix, () => { fashionSkinFailed.value = false; });
 
 /**

@@ -112,9 +112,33 @@ async function onRemoveCard(card: DeckCardPreview) {
  * default in-game appearance is reflected without needing to open the customize panel.
  */
 const activeFashionBook = computed<FashionBook | null>(() => {
+  // Workshop skin (cloth overlay) takes priority when active.
+  const wsId = props.lib.workshopSkin;
+  if (wsId) {
+    const skin = (props.state.customizeOptions?.workshopSkins ?? []).find(
+      (s) => s.contentFolderIdx === wsId
+    );
+    if (skin) {
+      return {
+        id: 0,
+        fileStem: `ws_${skin.contentFolderIdx}`,
+        name: skin.name,
+        rangeType: "Hybrid",
+        replacesHead: skin.replacesHead ?? false,
+        hasFrontLayer: skin.hasFrontLayer,
+        headTiltDeg: skin.headTiltDeg,
+        pivotFracX: skin.pivotFracX,
+        pivotFracY: skin.pivotFracY,
+      };
+    }
+  }
+
   const projId = props.lib.customBookId;
   if (projId != null && projId >= 0) {
-    const found = (props.state.customizeOptions?.fashionBooks ?? []).find((fb) => fb.id === projId);
+    const projPkg = props.lib.customBookPackageId ?? "";
+    const found = (props.state.customizeOptions?.fashionBooks ?? []).find(
+      (fb) => fb.id === projId && (fb.packageId ?? "") === projPkg
+    );
     if (found) return found;
   }
   // Fall back to the key page's own body composite.
@@ -122,6 +146,7 @@ const activeFashionBook = computed<FashionBook | null>(() => {
   if (bookId == null) return null;
   return {
     id: bookId,
+    packageId: props.lib.keyPage.bookPackageId,
     name: props.lib.keyPage.name,
     rangeType: props.lib.keyPage.equipRangeType ?? "",
     replacesHead: props.lib.keyPageReplacesHead ?? false,
