@@ -11,6 +11,8 @@
 <script setup lang="ts">
 import type { SlottedCardEntry, SpeedDie, Unit } from "~/types/game";
 
+const LONG_PRESS_MS = 500;
+
 const props = withDefaults(
   defineProps<{
     unit: Unit;
@@ -70,7 +72,7 @@ function onSlotPressStart(sc: SlottedCardEntry | undefined) {
   slotPressTimer = setTimeout(() => {
     slotLongPressed = true;
     props.onLongPress();
-  }, 500);
+  }, LONG_PRESS_MS);
 }
 
 const dieState: ComputedRef<DieState> = computed(() => {
@@ -191,7 +193,6 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
       slotState,
       {
         'slot-reversed': isReversed,
-        // TODO: fix logic so that all valid targets are highlighted
         'slot-target': canBeTargeted && !isAlly && !die.staggered,
       },
     ]"
@@ -209,7 +210,6 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
       :class="[
         dieState,
         {
-          // TODO: fix logic so that all valid targets are highlighted
           'hex-target': canBeTargeted && !isAlly && !die.staggered,
         },
       ]"

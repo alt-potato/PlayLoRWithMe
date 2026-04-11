@@ -211,13 +211,19 @@ namespace PlayLoRWithMe
                 lock (_sendLock)
                     WebSocketCodec.SendClose(_stream);
             }
-            catch { }
+            catch (System.Exception ex)
+            {
+                Debug.Log($"[PlayLoRWithMe] WebSocket close-frame send failed: {ex.Message}");
+            }
 
             try
             {
                 _stream.Close();
             }
-            catch { }
+            catch (System.Exception ex)
+            {
+                Debug.Log($"[PlayLoRWithMe] WebSocket stream close failed: {ex.Message}");
+            }
         }
     }
 }

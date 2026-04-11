@@ -95,15 +95,18 @@ async function commitRename() {
 const editBusy = computed(() => lockBusy.value || renameBusy.value);
 
 async function onEquipPage(kp: AvailableKeyPage) {
-  await props.onEquipPage(kp);
+  try { await props.onEquipPage(kp); }
+  catch { /* network errors handled by useWebSocket reconnect */ }
 }
 
 async function onAddCard(card: AvailableCard) {
-  await props.onAddCard(card);
+  try { await props.onAddCard(card); }
+  catch { /* network errors handled by useWebSocket reconnect */ }
 }
 
 async function onRemoveCard(card: DeckCardPreview) {
-  await props.onRemoveCard(card);
+  try { await props.onRemoveCard(card); }
+  catch { /* network errors handled by useWebSocket reconnect */ }
 }
 
 /**

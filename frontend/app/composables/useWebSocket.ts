@@ -2,6 +2,8 @@ import type { GameState, SessionState, PlayerInfo, ActionResult } from "~/types/
 import { applyDelta } from "~/utils/deltaApply";
 
 const SESSION_STORAGE_KEY = "plwm_session";
+const RECONNECT_DELAY_MS = 2000;
+const ACTION_TIMEOUT_MS = 5000;
 
 type Status = "connecting" | "connected" | "disconnected";
 
@@ -66,7 +68,7 @@ export function useWebSocket() {
         p.resolve({ ok: false, error: "Connection lost" });
         pending.delete(id);
       }
-      if (!closing) reconnectTimer = setTimeout(connect, 2000);
+      if (!closing) reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
     };
 
     ws.onerror = () => {
@@ -156,7 +158,7 @@ export function useWebSocket() {
       const timer = setTimeout(() => {
         pending.delete(reqId);
         resolve({ ok: false, error: "Action timed out" });
-      }, 5000);
+      }, ACTION_TIMEOUT_MS);
       pending.set(reqId, { resolve, timer });
       send({ ...action, reqId });
     });

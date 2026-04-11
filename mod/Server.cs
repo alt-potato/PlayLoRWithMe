@@ -176,7 +176,10 @@ namespace PlayLoRWithMe
                     ctx.Response.StatusCode = 500;
                     ctx.Response.Close();
                 }
-                catch { }
+                catch (Exception ex2)
+                {
+                    Debug.Log($"[PlayLoRWithMe] Failed to send 500 response: {ex2.Message}");
+                }
             }
         }
 
@@ -257,7 +260,10 @@ namespace PlayLoRWithMe
                     ctx.Response.StatusCode = 400;
                     ctx.Response.Close();
                 }
-                catch { }
+                catch (Exception ex2)
+                {
+                    Debug.Log($"[PlayLoRWithMe] Failed to send 400 response: {ex2.Message}");
+                }
                 return;
             }
 
