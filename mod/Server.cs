@@ -301,7 +301,7 @@ namespace PlayLoRWithMe
             // Blocks until the connection closes.
             client.ReceiveLoop();
 
-            _sessionManager.Detach(session.SessionId);
+            _sessionManager.Detach(session.SessionId, client);
             _deltaEngine.RemoveSession(session.SessionId);
             Debug.Log($"[PlayLoRWithMe] WebSocket disconnected: {session.SessionId}");
         }
@@ -507,6 +507,15 @@ namespace PlayLoRWithMe
                 return;
             }
 
+            // Sephirah (patron) librarians cannot be renamed — their names
+            // come from CharactersNameXmlList and are fixed in the base game.
+            if (unit.isSephirah)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Patron librarians cannot be renamed"));
+                return;
+            }
+
             unit.SetCustomName(newName.Trim());
             Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
             StateBroadcaster.Broadcast();
@@ -670,7 +679,11 @@ namespace PlayLoRWithMe
                 return;
 
             var cd = unit.customizeData;
-            if (cd != null)
+
+            // Face/hair/color fields: skip for sephirah (patron) units whose
+            // heads use SpecialCustomizedAppearance — the renderer ignores
+            // individual sprite IDs and colors, so applying them is a no-op.
+            if (cd != null && !unit.isSephirah)
             {
                 if (r.TryGetInt("frontHairID", out int fh))
                     cd.frontHairID = fh;
@@ -684,20 +697,7 @@ namespace PlayLoRWithMe
                     cd.mouthID = mid;
                 if (r.TryGetInt("headID", out int hid))
                     cd.headID = hid;
-                if (r.TryGetInt("height", out int ht))
-                    cd.height = ht;
-            }
 
-            // Body type: switches between gendered prefab variants (_F / _M / _N).
-            var at = r.GetString("appearanceType");
-            if (!string.IsNullOrEmpty(at))
-            {
-                try { unit.appearanceType = (Gender)System.Enum.Parse(typeof(Gender), at); }
-                catch { /* ignore invalid values */ }
-            }
-
-            if (cd != null)
-            {
                 if (
                     r.TryGetInt("hairR", out int hairR)
                     && r.TryGetInt("hairG", out int hairG)
@@ -730,10 +730,23 @@ namespace PlayLoRWithMe
                     cd.eyeColor = new Color32((byte)eyeR, (byte)eyeG, (byte)eyeB, 255);
             }
 
-            // Apply dialogue changes. An empty/null custom text restores a random preset.
+            // Height is under projection (always editable, even for sephirah).
+            if (cd != null && r.TryGetInt("height", out int ht))
+                cd.height = ht;
+
+            // Body type: switches between gendered prefab variants (_F / _M / _N).
+            var at = r.GetString("appearanceType");
+            if (!string.IsNullOrEmpty(at))
+            {
+                try { unit.appearanceType = (Gender)System.Enum.Parse(typeof(Gender), at); }
+                catch { /* ignore invalid values */ }
+            }
+
+            // Apply dialogue changes. Skip for sephirah units (no BattleDialogueModel).
+            // An empty/null custom text restores a random preset.
             var dlgXml = Singleton<BattleDialogXmlList>.Instance;
             var dlgModel = unit.battleDialogModel;
-            if (dlgModel == null && dlgXml != null)
+            if (dlgModel == null && dlgXml != null && !unit.isSephirah)
             {
                 // Initialize dialogue model for librarians that never had one set
                 // (e.g. freshly-created non-Sephirah units).

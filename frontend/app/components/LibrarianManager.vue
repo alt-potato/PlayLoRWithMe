@@ -171,7 +171,13 @@ function openEdit(lib: LibrarianEntry): void {
 }
 
 function closeEdit(): void {
+  // Capture the lib before nulling the ref. EditPanel's onBeforeUnmount
+  // hook also tries to unlock via onUnlock(), but by the time it runs
+  // editingLibrarian is already null and that path early-returns. So we
+  // must release the lock explicitly here.
+  const lib = editingLibrarian.value;
   editingLibrarian.value = null;
+  if (lib) void props.unlockLibrarian(lib.floorIndex, lib.unitIndex);
 }
 
 // Keep the editingLibrarian in sync with state updates (e.g. after a rename).
