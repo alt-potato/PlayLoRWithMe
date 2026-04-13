@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 using HarmonyLib;
 using UnityEngine;
 
@@ -14,9 +15,30 @@ namespace PlayLoRWithMe
     {
         private static bool _subscribedToUIPhase = false;
 
+        // captured the first time a known-main-thread hook (UIController.Update or
+        // StageController.OnUpdate postfix) runs. used by Broadcast() to decide
+        // whether a caller needs to be marshalled onto the main thread.
+        private static int _mainThreadId = -1;
+
+        /// <summary>
+        /// Broadcasts the current game state. Safe to call from any thread:
+        /// if invoked from a non-main thread, the broadcast is deferred to the
+        /// next main-thread tick via <see cref="RunOnMainThread"/>. This is
+        /// critical because <c>GameStateSerializer</c> enumerates Unity model
+        /// collections (e.g. <c>BookModel.CreatePassiveList</c>) that are
+        /// mutated on the main thread — enumerating them from a background
+        /// thread can throw <c>InvalidOperationException</c>.
+        /// </summary>
         public static void Broadcast()
         {
-            Server.Instance?.BroadcastFiltered();
+            if (_mainThreadId == -1 || Thread.CurrentThread.ManagedThreadId == _mainThreadId)
+            {
+                Server.Instance?.BroadcastFiltered();
+            }
+            else
+            {
+                RunOnMainThread(() => Server.Instance?.BroadcastFiltered());
+            }
         }
 
         // Subscribe to UIController.PhaseEnterEvent once the instance is available.
@@ -123,6 +145,13 @@ namespace PlayLoRWithMe
                 if (phaseChanged)
                     _lastPhase = current;
 
+                if (_mainThreadId == -1)
+                    _mainThreadId = Thread.CurrentThread.ManagedThreadId;
+
+                // drain queued background-thread actions here too, since
+                // UIController.Update does not tick during battle scenes.
+                DrainMainThreadQueue();
+
                 if (phaseChanged || Server.Instance?.ConsumePendingBroadcast() == true)
                 {
                     // Translate BattleSetting position-indices to battle unit IDs on the
@@ -185,29 +214,38 @@ namespace PlayLoRWithMe
 
         /// <summary>
         /// Schedules <paramref name="action"/> to run on the Unity main thread
-        /// on the next <c>UIController.Update</c> tick.
+        /// on the next <c>UIController.Update</c> or <c>StageController.OnUpdate</c> tick.
         /// </summary>
         public static void RunOnMainThread(Action action) => _mainThreadQueue.Enqueue(action);
 
+        private static void DrainMainThreadQueue()
+        {
+            while (_mainThreadQueue.TryDequeue(out var action))
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError(
+                        $"[PlayLoRWithMe] MainThread action failed: {ex.Message}\n{ex.StackTrace}"
+                    );
+                }
+            }
+        }
+
         // Drain the queue every frame while the main scene (UIController) is active.
+        // Patch_OnUpdate above drains it during battle scenes.
         [HarmonyPatch(typeof(UI.UIController), "Update")]
         static class Patch_UIControllerUpdate
         {
             static void Postfix()
             {
-                while (_mainThreadQueue.TryDequeue(out var action))
-                {
-                    try
-                    {
-                        action();
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError(
-                            $"[PlayLoRWithMe] MainThread action failed: {ex.Message}\n{ex.StackTrace}"
-                        );
-                    }
-                }
+                if (_mainThreadId == -1)
+                    _mainThreadId = Thread.CurrentThread.ManagedThreadId;
+
+                DrainMainThreadQueue();
             }
         }
     }

@@ -422,14 +422,21 @@ namespace PlayLoRWithMe
                 case "resync":
                     // Client detected a missed sequence number; reset delta state and
                     // send a fresh full snapshot so the client can resync cleanly.
-                    _deltaEngine.RemoveSession(client.SessionId);
-                    _deltaEngine.AddSession(client.SessionId);
-                    string resyncMsg = _deltaEngine.BuildMessage(
-                        client.SessionId,
-                        GameStateSerializer.Serialize()
-                    );
-                    if (resyncMsg != null)
-                        client.Send(resyncMsg);
+                    // Serialize() enumerates Unity model collections, so it must
+                    // run on the main thread — defer the whole rebuild.
+                    var resyncSessionId = client.SessionId;
+                    var resyncClient = client;
+                    StateBroadcaster.RunOnMainThread(() =>
+                    {
+                        _deltaEngine.RemoveSession(resyncSessionId);
+                        _deltaEngine.AddSession(resyncSessionId);
+                        string resyncMsg = _deltaEngine.BuildMessage(
+                            resyncSessionId,
+                            GameStateSerializer.Serialize()
+                        );
+                        if (resyncMsg != null)
+                            resyncClient.Send(resyncMsg);
+                    });
                     break;
 
                 default:
