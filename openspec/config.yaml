@@ -1,0 +1,32 @@
+schema: spec-driven
+
+context: |
+  Project: PlayLoRWithMe — a co-op mod for Library of Ruina (LoR) that lets multiple players
+  control a single game instance via a web UI.
+
+  Tech stack:
+  - Mod backend: C# targeting .NET 4.8, runs inside the Unity game process
+  - Frontend: Nuxt 4 / Vue 3 (TypeScript), served as a static SPA from wwwroot/
+  - Transport: WebSocket (RFC 6455, hand-rolled), port 8080
+  - No external runtime dependencies in mod (custom JSON parser, no NuGet packages)
+
+  Build: always run `dotnet build` from `mod/` — AfterBuild runs `npm run generate` automatically.
+  Expected: 0 Warning(s) 0 Error(s)
+
+  Conventions:
+  - Small, atomic, INVEST-principle commits
+  - Strong TypeScript typing throughout frontend
+  - Document "why" not "what"; sentence case for block comments, lowercase for inline
+  - No magic numbers — use const/CSS variables
+  - Unit tests for frontend logic; no automated tests exist yet for C#
+
+  Key constraints:
+  - Must run on .NET 4.8 (Unity Mono) — no modern C# features that require newer runtimes
+  - Frontend is mobile-first (touch interaction, narrow viewports)
+  - All game state mutations must happen on the Unity main thread (ActionInjector queue pattern)
+
+rules:
+  tasks:
+    - Break tasks into independently committable units (INVEST principle)
+    - Each task should be completable and buildable without depending on later tasks
+    - Include a validation step (build/typecheck) at the end of each task group
