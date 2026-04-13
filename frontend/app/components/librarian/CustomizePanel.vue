@@ -47,6 +47,19 @@ const activeTab = ref<SubTab>("name");
 const saveBusy = ref(false);
 const saveError = ref<string | null>(null);
 
+// ── Patron/sephirah restriction flags ────────────────────────────────────
+// Patron librarians use SpecialCustomizedAppearance prefabs for their
+// heads — individual hair/face sprite IDs are ignored by the renderer.
+const hasPatronHead = computed(() => !!props.lib.appearance?.patronHeadId);
+const hasDialogue = computed(() => props.lib.dialogue != null);
+const canRename = computed(() => !props.lib.isSephirah);
+const disabledTabs = computed<Set<SubTab>>(() => {
+  const s = new Set<SubTab>();
+  if (hasPatronHead.value) { s.add("hairstyle"); s.add("face"); }
+  if (!hasDialogue.value) s.add("dialogue");
+  return s;
+});
+
 // ── Draft ─────────────────────────────────────────────────────────────────
 
 /** Default appearance when the server hasn't yet serialized customization data. */
@@ -180,7 +193,7 @@ async function handleComplete(): Promise<void> {
   // Rename if the name was edited. Track whether rename was sent so we can
   // surface a clear error if the subsequent customize call fails.
   let didRename = false;
-  if (draft.name.trim() && draft.name.trim() !== props.lib.name) {
+  if (canRename.value && draft.name.trim() && draft.name.trim() !== props.lib.name) {
     const result = await props.onRename(draft.name.trim());
     if (!result.ok) {
       saveError.value = result.error ?? "Rename failed";
@@ -198,34 +211,37 @@ async function handleComplete(): Promise<void> {
   const dlgField = (draftVal: string, orig: string | null) =>
     draftVal !== (orig ?? "") ? draftVal : null;
 
-  // Send the full customization payload.
+  // Build the customization payload, omitting fields gated by restrictions.
+  // Face/hair/color are skipped for patron heads (renderer ignores them).
+  // Dialogue is skipped when the unit has no BattleDialogueModel.
   const payload: Omit<CustomizePayload, "floorIndex" | "unitIndex"> = {
-    frontHairID: draft.frontHairID,
-    backHairID:  draft.backHairID,
-    eyeID:       draft.eyeID,
-    browID:      draft.browID,
-    mouthID:     draft.mouthID,
+    // face/hair/color: only for non-patron units
+    ...(!hasPatronHead.value ? {
+      frontHairID: draft.frontHairID,
+      backHairID:  draft.backHairID,
+      eyeID:       draft.eyeID,
+      browID:      draft.browID,
+      mouthID:     draft.mouthID,
+      hairR: draft.hairColor[0], hairG: draft.hairColor[1], hairB: draft.hairColor[2],
+      skinR: draft.skinColor[0], skinG: draft.skinColor[1], skinB: draft.skinColor[2],
+      eyeR:  draft.eyeColor[0],  eyeG:  draft.eyeColor[1],  eyeB:  draft.eyeColor[2],
+    } : {}),
+    // height and body type are under projection (always editable)
     height:      draft.height,
-    hairR: draft.hairColor[0], hairG: draft.hairColor[1], hairB: draft.hairColor[2],
-    skinR: draft.skinColor[0], skinG: draft.skinColor[1], skinB: draft.skinColor[2],
-    eyeR:  draft.eyeColor[0],  eyeG:  draft.eyeColor[1],  eyeB:  draft.eyeColor[2],
-    // Only send dialogue fields that were actually changed from the panel-open
-    // snapshot. Null tells the server to leave the field unchanged, which
-    // preserves random presets rather than locking them in as custom text just
-    // because the panel was opened and closed without editing. Compared against
-    // origDialogue (not live props.lib) so mid-edit broadcasts can't shift the
-    // baseline and silently discard the user's changes.
-    dlgStartBattle:    dlgField(draft.dlgStartBattle,    origDialogue.startBattle),
-    dlgVictory:        dlgField(draft.dlgVictory,        origDialogue.victory),
-    dlgDeath:          dlgField(draft.dlgDeath,          origDialogue.death),
-    dlgColleagueDeath: dlgField(draft.dlgColleagueDeath, origDialogue.colleagueDeath),
-    dlgKillsOpponent:  dlgField(draft.dlgKillsOpponent,  origDialogue.killsOpponent),
+    appearanceType: draft.appearanceType,
+    // dialogue: only when the unit has a dialogue model
+    ...(hasDialogue.value ? {
+      dlgStartBattle:    dlgField(draft.dlgStartBattle,    origDialogue.startBattle),
+      dlgVictory:        dlgField(draft.dlgVictory,        origDialogue.victory),
+      dlgDeath:          dlgField(draft.dlgDeath,          origDialogue.death),
+      dlgColleagueDeath: dlgField(draft.dlgColleagueDeath, origDialogue.colleagueDeath),
+      dlgKillsOpponent:  dlgField(draft.dlgKillsOpponent,  origDialogue.killsOpponent),
+    } : {}),
     prefixID:     draft.prefixID,
     postfixID:    draft.postfixID,
     customBookId: draft.customBookId,
     ...(draft.customBookPackageId ? { customBookPackageId: draft.customBookPackageId } : {}),
     workshopSkin: draft.workshopSkin,
-    appearanceType: draft.appearanceType,
   };
 
   const result = await props.onSave(payload);
@@ -292,8 +308,10 @@ const isBusy = computed(() => props.busy || saveBusy.value);
                 ] as [SubTab, string][])"
                 :key="key"
                 class="tab-btn"
-                :class="{ active: activeTab === key }"
-                @click="activeTab = key"
+                :class="{ active: activeTab === key, disabled: disabledTabs.has(key) }"
+                :aria-disabled="disabledTabs.has(key) || undefined"
+                :title="disabledTabs.has(key) ? 'Not available for patron librarians' : undefined"
+                @click="!disabledTabs.has(key) && (activeTab = key)"
               >
                 {{ label }}
               </button>
@@ -308,9 +326,13 @@ const isBusy = computed(() => props.busy || saveBusy.value);
                 v-model:postfix-i-d="draft.postfixID"
                 :options="customizeOptions ?? { prefixTitles: [], suffixTitles: [], suggestedNames: [], dialoguePresets: { startBattle: [], victory: [], death: [], colleagueDeath: [], killsOpponent: [] } }"
                 :busy="isBusy"
+                :can-rename="canRename"
               />
 
               <!-- Hairstyle -->
+              <div v-else-if="activeTab === 'hairstyle' && hasPatronHead" class="tab-disabled-msg">
+                Patron librarians have a fixed appearance.
+              </div>
               <LibrarianCustomizeHairstyleTab
                 v-else-if="activeTab === 'hairstyle'"
                 v-model:front-hair-i-d="draft.frontHairID"
@@ -320,6 +342,9 @@ const isBusy = computed(() => props.busy || saveBusy.value);
               />
 
               <!-- Face -->
+              <div v-else-if="activeTab === 'face' && hasPatronHead" class="tab-disabled-msg">
+                Patron librarians have a fixed appearance.
+              </div>
               <LibrarianCustomizeFaceTab
                 v-else-if="activeTab === 'face'"
                 v-model:eye-i-d="draft.eyeID"
@@ -346,6 +371,9 @@ const isBusy = computed(() => props.busy || saveBusy.value);
               />
 
               <!-- Dialogue -->
+              <div v-else-if="activeTab === 'dialogue' && !hasDialogue" class="tab-disabled-msg">
+                Dialogue is not available for patron librarians.
+              </div>
               <LibrarianCustomizeDialogueTab
                 v-else-if="activeTab === 'dialogue'"
                 v-model:start-battle="draft.dlgStartBattle"
@@ -519,6 +547,20 @@ const isBusy = computed(() => props.busy || saveBusy.value);
 .tab-btn.active {
   color: var(--gold);
   border-bottom-color: var(--gold);
+}
+
+.tab-btn.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  cursor: default;
+}
+
+.tab-disabled-msg {
+  color: var(--text-3);
+  font-size: 0.75rem;
+  font-family: var(--font-body);
+  padding: 2rem 0;
+  text-align: center;
 }
 
 .tab-content {

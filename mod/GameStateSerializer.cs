@@ -710,6 +710,12 @@ namespace PlayLoRWithMe
                                             if (!string.IsNullOrEmpty(unit.workshopSkin))
                                                 o.Add("workshopSkin", unit.workshopSkin);
 
+                                            // Patron (sephirah) librarians have restricted
+                                            // customization: no name editing, no face/hair
+                                            // (uses SpecialCustomizedAppearance), no dialogue.
+                                            if (unit.isSephirah)
+                                                o.Add("isSephirah", true);
+
                                             // Body type: the Gender enum variant controlling which
                                             // body prefab (_F/_M/_N suffix) is used in-game.
                                             o.Add("appearanceType", unit.appearanceType.ToString());

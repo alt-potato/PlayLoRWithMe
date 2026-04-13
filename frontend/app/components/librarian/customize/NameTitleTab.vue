@@ -14,6 +14,8 @@ const props = defineProps<{
   postfixID: number;
   options: CustomizeOptions;
   busy: boolean;
+  /** False for sephirah librarians whose names are fixed. */
+  canRename?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -77,20 +79,20 @@ const previewLabel = computed(() => {
         :value="name"
         class="name-input"
         maxlength="40"
-        :disabled="busy"
+        :disabled="busy || canRename === false"
         @input="emit('update:name', ($event.target as HTMLInputElement).value)"
       />
       <button
         class="icon-btn"
         title="Shuffle suggestions"
-        :disabled="busy"
+        :disabled="busy || canRename === false"
         @click="shuffleSuggestions"
       >
         ⟳
       </button>
     </div>
 
-    <div v-if="visibleSuggestions.length" class="chips">
+    <div v-if="visibleSuggestions.length && canRename !== false" class="chips">
       <button
         v-for="s in visibleSuggestions"
         :key="s"

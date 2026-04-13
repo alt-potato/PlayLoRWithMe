@@ -246,6 +246,8 @@ export interface LibrarianEntry {
    * Presented first in the deck editor's add-cards list.
    */
   onlyCards?: AvailableCard[];
+  /** True for sephirah (patron) librarians — name editing and face/hair customization disabled. */
+  isSephirah?: boolean;
   /** Appearance customization data (present for customizable librarians). */
   appearance?: AppearanceData;
   /** Per-type custom battle dialogue text (null = using a random game preset). */
