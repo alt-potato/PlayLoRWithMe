@@ -2,45 +2,23 @@
   battle/StatusBar.vue
 
   Shared top bar used by both Stage.vue (battle) and SettingView.vue (pre-battle).
-  Displays stage metadata chips on the left, a confirm button in the center,
-  and the session/player panel on the right.
+  Displays stage metadata chips on the left and a confirm button on the right.
+  The session/player panel now lives in the global app header (app.vue).
 
   Props:
     stage          – stage info (Floor / Chapter / Wave; Round only in battle)
     phase          – phase text displayed below the chips (e.g. C# phase class name)
     confirmEnabled – whether the confirm button is interactive
     confirmLabel   – button label ("CONFIRM", "WAITING", "…" etc.)
-    players        – connected player list
-    allies         – allied units forwarded to SessionPanel
-    session        – current session identity (null if not yet connected)
-    allyColors     – unitId → hex color map forwarded to SessionPanel
-    showLibrarians – true in battle: enables the Librarians tab in SessionPanel
-    claimUnit      – claim a librarian unit
-    releaseUnit    – release a librarian unit
-    renamePlayer   – rename the current player
 -->
 <script setup lang="ts">
-import type {
-  AllyUnit,
-  PlayerInfo,
-  SessionState,
-  StageInfo,
-  ActionResult,
-} from "~/types/game";
+import type { StageInfo } from "~/types/game";
 
 defineProps<{
   stage?: StageInfo;
   phase?: string;
   confirmEnabled: boolean;
   confirmLabel: string;
-  players: PlayerInfo[];
-  allies: AllyUnit[];
-  session: SessionState | null;
-  allyColors: Record<number, string>;
-  showLibrarians: boolean;
-  claimUnit: (unitId: number) => Promise<ActionResult>;
-  releaseUnit: (unitId: number) => Promise<ActionResult>;
-  renamePlayer: (name: string) => Promise<ActionResult>;
 }>();
 
 const emit = defineEmits<{ confirm: [] }>();
@@ -85,19 +63,8 @@ const emit = defineEmits<{ confirm: [] }>();
       </button>
     </div>
 
-    <div class="bar-right">
-      <SessionPanel
-        v-if="players.length > 0"
-        :allies="allies"
-        :players="players"
-        :session="session"
-        :ally-colors="allyColors"
-        :show-librarians="showLibrarians"
-        :claim-unit="claimUnit"
-        :release-unit="releaseUnit"
-        :rename-player="renamePlayer"
-      />
-    </div>
+    <!-- Empty right cell preserves the 1fr/auto/1fr grid so the confirm button stays centered. -->
+    <div class="bar-right" />
   </div>
 </template>
 

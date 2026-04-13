@@ -223,6 +223,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
               :fashion-book="activeFashionBook"
               :appearance-type="lib.appearanceType"
               :gifts="lib.gifts?.equipped"
+              :size="260"
             />
           </div>
 
@@ -257,6 +258,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
                   :fashion-book="activeFashionBook"
                   :appearance-type="lib.appearanceType"
                   :gifts="lib.gifts?.equipped"
+                  :size="220"
                 />
               </div>
 
@@ -322,9 +324,11 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
 }
 
 .edit-panel {
-  background: var(--bg, #1a1a1a);
+  background: var(--bg-surface);
   border: 1px solid var(--border-mid);
-  border-radius: 10px 10px 0 0;
+  border-top: 2px solid var(--gold-dim);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 900px;
   height: 92dvh;
@@ -333,41 +337,46 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
   overflow: hidden;
 }
 
-/* On wide screens, center the panel as a modal */
+/*
+ * Desktop modal: at >=900px the panel becomes a centered dialog with a
+ * sticky left rail (1/3) for tab nav and the tab content (2/3) on the right.
+ */
 @media (min-width: 900px) {
   .edit-overlay {
     align-items: center;
   }
 
   .edit-panel {
-    height: 80dvh;
-    border-radius: 10px;
+    height: 90dvh;
+    max-height: 90dvh;
+    max-width: 1400px;
+    border-radius: var(--radius-lg);
   }
 }
 
 .panel-header {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.75rem 1rem;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
   border-left: 4px solid var(--gold);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
 
 .panel-title {
-  font-size: 1rem;
+  font-size: var(--fs-lg);
   font-weight: 600;
   font-family: var(--font-display);
   flex: 1;
 }
 
 .lock-badge {
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   color: var(--crimson-hi);
   background: rgba(198, 40, 40, 0.12);
-  border-radius: 4px;
-  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-md);
+  padding: var(--sp-1) var(--sp-2);
 }
 
 .lock-badge--pending {
@@ -379,17 +388,21 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
   background: transparent;
   border: none;
   color: var(--text-3);
-  font-size: 0.9rem;
+  font-size: var(--fs-md);
   cursor: pointer;
-  padding: 0.1rem 0.3rem;
-  border-radius: 4px;
-  transition: color 0.1s;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--radius-md);
+  transition: color var(--duration-fast) var(--ease-out);
 }
 
 .close-btn:hover {
   color: var(--text-1);
 }
 
+/*
+ * Tab bar — horizontal on mobile (default). At desktop sizes the rail
+ * inside .panel-body switches it to a vertical settings-style nav.
+ */
 .tab-bar {
   display: flex;
   gap: 0;
@@ -398,26 +411,29 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
 }
 
 .tab-btn {
-  padding: 0.5rem 1rem;
+  padding: var(--sp-2) var(--sp-4);
   background: transparent;
   border: none;
   color: var(--text-3);
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
   font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  transition: color 0.12s, border-color 0.12s;
+  transition: color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
 }
 
 .tab-btn.active {
-  color: var(--gold);
-  border-bottom-color: var(--gold);
+  color: var(--gold-bright);
+  border-bottom-color: var(--gold-bright);
 }
 
 .locked-banner {
-  padding: 0.4rem 1rem;
-  font-size: 0.7rem;
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-xs);
   color: var(--crimson-hi);
   background: rgba(198, 40, 40, 0.08);
   border-bottom: 1px solid var(--border);
@@ -433,14 +449,14 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
 }
 
 /*
- * Desktop sidebar: holds the AppearancePreview on ≥700 px viewports.
+ * Desktop sidebar: holds the AppearancePreview on Info tab.
  * Hidden on mobile so the Info-tab inset handles preview instead.
  */
 .preview-sidebar {
   display: none;
   flex-shrink: 0;
   align-items: flex-start;
-  padding: 0.75rem 0.5rem 0.75rem 1rem;
+  padding: var(--sp-3) var(--sp-2) var(--sp-3) var(--sp-4);
 }
 
 @media (min-width: 700px) {
@@ -452,10 +468,78 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
 .tab-content {
   flex: 1;
   overflow: hidden;
-  padding: 0.75rem 1rem;
+  padding: var(--sp-3) var(--sp-4);
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/*
+ * Desktop layout: at >=900px the tab bar moves into a compact left rail
+ * and the tab content takes the remaining width. The rail is sized to
+ * fit the tab labels only — a full 1/3 column wastes horizontal space
+ * that the content panels (deck editor, key-page grid) desperately need.
+ */
+@media (min-width: 900px) {
+  .edit-panel {
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    grid-template-columns: 170px 1fr;
+  }
+
+  .panel-header {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .locked-banner {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .tab-bar {
+    grid-column: 1;
+    grid-row: 3;
+    flex-direction: column;
+    gap: var(--sp-1);
+    border-bottom: none;
+    border-right: 1px solid var(--border);
+    padding: var(--sp-3) var(--sp-2);
+    align-items: stretch;
+    overflow-y: auto;
+  }
+
+  .tab-btn {
+    border-bottom: none;
+    border-left: 3px solid transparent;
+    margin-bottom: 0;
+    text-align: left;
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    font-size: var(--fs-sm);
+  }
+
+  .tab-btn.active {
+    border-left-color: var(--gold-bright);
+    background: var(--gold-glow);
+    box-shadow: var(--shadow-gold);
+  }
+
+  .panel-body {
+    grid-column: 2;
+    grid-row: 3;
+    border-left: none;
+    min-width: 0;
+  }
+
+  .preview-sidebar {
+    /* On the desktop grid the sidebar is no longer needed inside the body. */
+    display: none;
+  }
+
+  .tab-content {
+    padding: var(--sp-4) var(--sp-5);
+  }
 }
 
 /*
@@ -465,7 +549,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
 .preview-mobile {
   display: flex;
   justify-content: center;
-  padding-bottom: 0.75rem;
+  padding-bottom: var(--sp-3);
 }
 
 @media (min-width: 700px) {
@@ -474,51 +558,72 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
   }
 }
 
+/* The sidebar version of the preview is desktop-only and also unused
+   when the panel becomes a grid; keep the inline mobile preview visible. */
+@media (min-width: 900px) {
+  .preview-mobile {
+    display: flex;
+  }
+}
+
 /* Info tab */
 .info-tab {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--sp-2);
   overflow-y: auto;
 }
 
 .section-label {
-  font-size: 0.6rem;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-3);
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+  font-family: var(--font-display);
 }
 
 .rename-row {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--sp-2);
   align-items: center;
 }
 
 .rename-input {
   flex: 1;
-  padding: 0.35rem 0.5rem;
-  border-radius: 4px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-mid);
-  background: var(--bg, #1a1a1a);
+  background: var(--bg-card-2);
   color: var(--text-1);
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
+  transition: border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.rename-input:focus {
+  outline: none;
+  border-color: var(--gold-dim);
+  box-shadow: var(--shadow-gold);
 }
 
 .rename-btn {
-  padding: 0.3rem 0.8rem;
-  border-radius: 4px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-md);
   border: 1px solid var(--gold);
   background: transparent;
   color: var(--gold);
   cursor: pointer;
-  font-size: 0.72rem;
-  transition: background 0.1s, color 0.1s;
+  font-size: var(--fs-xs);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .rename-btn:not(:disabled):hover {
   background: var(--gold);
-  color: #000;
+  color: var(--gold-ink);
 }
 
 .rename-btn:disabled {
@@ -527,25 +632,27 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
 }
 
 .rename-error {
-  font-size: 0.65rem;
+  font-size: var(--fs-xs);
   color: var(--crimson-hi);
 }
 
 .customize-btn {
-  margin-top: 0.4rem;
-  padding: 0.35rem 0.8rem;
-  border-radius: 4px;
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-mid);
   background: transparent;
   color: var(--text-2);
   cursor: pointer;
-  font-size: 0.72rem;
+  font-size: var(--fs-sm);
+  font-family: var(--font-display);
   text-align: left;
-  transition: color 0.1s, border-color 0.1s;
+  transition: color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
 }
 
 .customize-btn:hover:not(:disabled) {
-  color: var(--gold);
+  color: var(--gold-bright);
   border-color: var(--gold-dim);
 }
 

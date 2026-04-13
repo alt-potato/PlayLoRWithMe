@@ -10,7 +10,7 @@
   Props:
     state       – full battle state (scene = 'main', uiPhase = 'BattleSetting')
     session     – current session identity (null if not yet connected)
-    players     – connected player list (from playerList WS messages)
+    players     – connected player list (used by the inline pre-battle claim board)
     sendAction  – WebSocket action dispatcher
     claimUnit   – claim a librarian unit
     releaseUnit – release a librarian unit
@@ -32,7 +32,6 @@ const props = defineProps<{
   sendAction: (action: Record<string, unknown>) => Promise<ActionResult>;
   claimUnit: (unitId: number) => Promise<ActionResult>;
   releaseUnit: (unitId: number) => Promise<ActionResult>;
-  renamePlayer: (name: string) => Promise<ActionResult>;
 }>();
 
 const allyColors = computed(() => buildAllyColors(props.state?.allies ?? []));
@@ -124,14 +123,6 @@ async function onConfirm() {
     :phase="state.uiPhase"
     :confirm-enabled="false"
     confirm-label="WAITING"
-    :players="players"
-    :allies="allies"
-    :session="session"
-    :ally-colors="allyColors"
-    :show-librarians="false"
-    :claim-unit="claimUnit"
-    :release-unit="releaseUnit"
-    :rename-player="renamePlayer"
     @confirm="onConfirm"
   />
 

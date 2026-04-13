@@ -52,12 +52,21 @@ const props = defineProps<{
   appearanceType?: string;
   /** Equipped gift slots — visible ones are overlaid on the head area. */
   gifts?: (GiftSlot | null)[];
+  /**
+   * Optional preview size in CSS pixels. Defaults to 160. Allows callers to
+   * render larger thumbnails (e.g. roster tiles) without forking the component.
+   */
+  size?: number;
 }>();
 
 const BASE = "/assets/customize/";
 
-/** Preview size in CSS pixels — square so the face canvas fills without empty space. */
-const PREVIEW_W = 160;
+/**
+ * Preview size in CSS pixels — square so the face canvas fills without empty
+ * space. Driven by the optional `size` prop so call sites can request larger
+ * thumbnails without altering the rotation/pivot math below.
+ */
+const PREVIEW_W = computed(() => props.size ?? 160);
 const PREVIEW_H = PREVIEW_W;
 
 /**
@@ -249,11 +258,12 @@ const faceRotStyle = computed(() => {
   const fracX = fb.pivotFracX ?? 0.5;
   const fracY = fb.pivotFracY ?? 0.5;
   // CSS canvas height at PREVIEW_W: scale = PREVIEW_W / dims.w, height = dims.h * scale.
+  const previewW = PREVIEW_W.value;
   const canvasCssH = dims.value
-    ? PREVIEW_W * (dims.value.h / dims.value.w)
-    : PREVIEW_H; // fallback: assume square face canvas
+    ? previewW * (dims.value.h / dims.value.w)
+    : PREVIEW_H.value; // fallback: assume square face canvas
 
-  const originX = PREVIEW_W * fracX;
+  const originX = previewW * fracX;
   const originY = canvasCssH * fracY;
 
   return {

@@ -440,14 +440,6 @@ provide(BATTLE_CTX, {
     :phase="state.phase"
     :confirm-enabled="isSelectPhase"
     :confirm-label="isSelectPhase ? 'START' : 'WAITING'"
-    :players="players"
-    :allies="state.allies ?? []"
-    :session="session"
-    :ally-colors="allyColors"
-    :show-librarians="true"
-    :claim-unit="claimUnit"
-    :release-unit="releaseUnit"
-    :rename-player="renamePlayer"
     @confirm="onConfirm"
   />
 

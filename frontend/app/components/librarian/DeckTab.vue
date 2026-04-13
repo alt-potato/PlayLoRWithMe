@@ -50,10 +50,6 @@ const allAvailableCards = computed(() => {
 });
 const filteredCards = ref<AvailableCard[]>([]);
 
-const deckTotal = computed(() =>
-  props.lib.deckPreview.reduce((s, c) => s + c.count, 0),
-);
-
 /** Maximum copies of a card allowed in a deck, by rarity. */
 function cardLimit(rarity: string): number {
   return rarity === "Unique" ? 1 : 3;
@@ -93,27 +89,7 @@ function availableToCard(c: AvailableCard, i: number): Card {
 
 <template>
   <div class="deck-tab">
-    <!-- Left: equipped deck — click a card to remove one copy -->
-    <div class="deck-col deck-col--equipped">
-      <div class="col-header">
-        Deck
-        <span class="col-count">{{ deckTotal }}</span>
-      </div>
-      <div v-if="!lib.deckPreview.length" class="col-empty">No cards equipped.</div>
-      <div v-else class="card-grid">
-        <HandCard
-          v-for="(card, i) in lib.deckPreview"
-          :key="(card.cardId?.id ?? i) + '_' + (card.cardId?.packageId ?? i)"
-          :card="previewToCard(card, i)"
-          :count="card.count"
-          :unusable="editBusy || !card.cardId"
-          @click="onRemoveCard(card)"
-          @detail="detailCard = previewToCard(card, i)"
-        />
-      </div>
-    </div>
-
-    <!-- Right: available cards — click a card to add one copy -->
+    <!-- Left: available cards — filter + click to add one copy -->
     <div class="deck-col deck-col--available">
       <div class="col-header">Add Cards</div>
       <LibrarianCardFilter :cards="allAvailableCards" @filtered="filteredCards = $event" />
@@ -131,6 +107,23 @@ function availableToCard(c: AvailableCard, i: number): Card {
       </div>
     </div>
 
+    <!-- Right: equipped deck — click a card to remove one copy -->
+    <div class="deck-col deck-col--equipped">
+      <div class="col-header">Deck</div>
+      <div v-if="!lib.deckPreview.length" class="col-empty">No cards equipped.</div>
+      <div v-else class="card-grid">
+        <HandCard
+          v-for="(card, i) in lib.deckPreview"
+          :key="(card.cardId?.id ?? i) + '_' + (card.cardId?.packageId ?? i)"
+          :card="previewToCard(card, i)"
+          :count="card.count"
+          :unusable="editBusy || !card.cardId"
+          @click="onRemoveCard(card)"
+          @detail="detailCard = previewToCard(card, i)"
+        />
+      </div>
+    </div>
+
     <CardDetail v-if="detailCard" :card="detailCard" @close="detailCard = null" />
   </div>
 </template>
@@ -138,71 +131,79 @@ function availableToCard(c: AvailableCard, i: number): Card {
 <style scoped>
 .deck-tab {
   display: flex;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: var(--sp-3);
   height: 100%;
   overflow: hidden;
   min-height: 0;
 }
 
 .deck-col {
-  flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  gap: 0.4rem;
-}
-
-.deck-col--available {
-  border-left: 1px solid var(--border);
-  padding-left: 0.75rem;
+  gap: var(--sp-2);
+  flex: 1;
+  min-height: 0;
 }
 
 .col-header {
-  font-size: 0.65rem;
+  font-size: var(--fs-md);
+  font-family: var(--font-display);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-3);
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
+  letter-spacing: 0.08em;
+  color: var(--gold-bright);
   flex-shrink: 0;
 }
 
-.col-count {
-  background: var(--border-mid);
-  border-radius: 999px;
-  padding: 0 0.4rem;
-  font-size: 0.6rem;
-  color: var(--text-2);
-}
-
 .col-empty {
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
   color: var(--text-3);
-  padding: 0.3rem 0;
+  padding: var(--sp-2) 0;
 }
 
 .card-grid {
   overflow-y: auto;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: var(--sp-2);
   align-content: flex-start;
   flex: 1;
   min-height: 0;
 }
 
-/* Mobile: stack columns */
-@media (max-width: 599px) {
+/*
+ * Side-by-side at >=700px. Layout mirrors KeyPageTab: browse on the left
+ * (filter + many tiles), details on the right (equipped deck — capped at
+ * 9 cards so it only needs a narrow strip). Hairline divider between.
+ */
+@media (min-width: 700px) {
   .deck-tab {
-    flex-direction: column;
+    flex-direction: row;
+    gap: var(--sp-3);
   }
 
   .deck-col--available {
-    border-left: none;
-    border-top: 1px solid var(--border);
-    padding-left: 0;
-    padding-top: 0.5rem;
+    flex: 1;
+  }
+
+  .deck-col--equipped {
+    flex: 0 0 35%;
+    border-left: 1px solid var(--border);
+    padding-left: var(--sp-3);
+  }
+}
+
+/* Roomier breathing space at the wide desktop breakpoint. */
+@media (min-width: 1200px) {
+  .deck-tab {
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+  }
+
+  .deck-col--equipped {
+    flex: 0 0 30%;
+    padding-left: var(--sp-4);
   }
 }
 </style>

@@ -291,6 +291,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
               :fashion-book="activeFashionBook"
               :appearance-type="draft.appearanceType"
               :gifts="lib.gifts?.equipped"
+              :size="280"
             />
           </div>
 
@@ -522,31 +523,43 @@ const isBusy = computed(() => props.busy || saveBusy.value);
 
 /* ── Sub-tab bar ───────────────────────────────────────────────────────────── */
 
+/*
+ * Tab bar wraps to as many rows as needed — no horizontal scroll. Each
+ * button owns its own bottom border so wrapped rows render a seamless
+ * divider line even when the underline drops to the next row.
+ */
 .tab-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 0;
-  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  overflow-x: auto;
 }
 
 .tab-btn {
-  padding: 0.45rem 0.75rem;
+  padding: var(--sp-2) var(--sp-4);
   background: transparent;
   border: none;
   color: var(--text-3);
   cursor: pointer;
-  font-size: 0.7rem;
+  font-size: var(--fs-sm);
   font-family: var(--font-display);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  white-space: nowrap;
-  transition: color 0.12s, border-color 0.12s;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border);
+  transition: color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.tab-btn:hover:not(.active):not(.disabled) {
+  color: var(--text-2);
+  background: var(--bg-card-2);
 }
 
 .tab-btn.active {
-  color: var(--gold);
-  border-bottom-color: var(--gold);
+  color: var(--gold-bright);
+  border-bottom: 2px solid var(--gold-bright);
+  padding-bottom: calc(var(--sp-2) - 1px);
 }
 
 .tab-btn.disabled {
