@@ -74,7 +74,7 @@ namespace PlayLoRWithMe
             try
             {
                 // Bump this whenever extraction logic changes to invalidate the on-disk cache.
-                const string CacheVersion = "33";
+                const string CacheVersion = "34";
                 var versionPath = Path.Combine(CustomizeDir, "_cache_version.txt");
 
                 bool stale =
@@ -185,16 +185,21 @@ namespace PlayLoRWithMe
             // worldScale so that rotated sprites (e.g. the tilted head on Bamboo-hatted
             // Kim's Page) contribute their full visual extent to the canvas.
             //
-            // Coordinate system: for replacesHead=false, body sprites are shifted by
-            // AnchorPos so positions are relative to the face-canvas origin.  For
-            // replacesHead=true, the prefab root is at world origin — same as face sprites.
+            // replacesHead=false bodies participate in the shared canvas because their
+            // sprites layer together with the face/hair PNGs (CSS background-size:
+            // 100% auto requires a shared pixel width so layers align).  replacesHead=true
+            // bodies are rendered alone (face/hair hidden) and get their own tight
+            // per-body canvas in ExtractFashionBodies — they must not inflate the shared
+            // canvas, which would push face/hair sprites off-center for every librarian.
             {
                 float allMinX = faceHairBounds.min.x;
                 float allMaxX = faceHairBounds.max.x;
                 float allMaxY = faceHairBounds.max.y;
                 foreach (var body in fashionBodies)
                 {
-                    var anchor = body.ReplacesHead ? Vector3.zero : body.AnchorPos;
+                    if (body.ReplacesHead)
+                        continue;
+                    var anchor = body.AnchorPos;
                     foreach (var spriteList in new[] { body.Sprites, body.SkinSprites })
                     {
                         foreach (var (ss, wpos) in spriteList)
@@ -1210,24 +1215,20 @@ namespace PlayLoRWithMe
 
                     if (body.ReplacesHead)
                     {
-                        // Canvas based on the face/hair bounds, extended upward if the body
-                        // is taller.  Keeping the same width and bottom padding as face/hair
-                        // sprites ensures the character stands at the same visual height as
-                        // the librarian customization preview, avoiding the "pressed to the
-                        // bottom" effect that a tight per-book canvas would produce.
+                        // Tight per-body canvas: the face/hair layers are hidden for
+                        // replacesHead skins, so we don't need to share dimensions with
+                        // the face canvas.  A tight canvas lets the frontend render the
+                        // body with background-size: contain so the full character fits
+                        // the preview box — otherwise the body would be constrained to
+                        // the face-canvas Y range and only the head-height-worth of the
+                        // body would survive the clip, making full-body skins look as
+                        // though only the head were extracted.
                         var bodyBounds = ComputeSpriteBounds(body.Sprites, Vector3.zero, body.WorldScale);
-                        float extMinX = faceHairBounds.min.x;
-                        float extMaxX = faceHairBounds.max.x;
-                        float extMinY = faceHairBounds.min.y; // preserve face/hair bottom padding
-                        float extMaxY = Mathf.Max(faceHairBounds.max.y, bodyBounds.max.y);
-                        var extBounds = new Bounds(
-                            new Vector3((extMinX + extMaxX) * 0.5f, (extMinY + extMaxY) * 0.5f, 0f),
-                            new Vector3(extMaxX - extMinX, extMaxY - extMinY, 0.2f));
-                        int bW = Mathf.Max(1, Mathf.RoundToInt((extMaxX - extMinX) * ppu));
-                        int bH = Mathf.Max(1, Mathf.RoundToInt((extMaxY - extMinY) * ppu));
+                        int bW = Mathf.Max(1, Mathf.RoundToInt(bodyBounds.size.x * ppu));
+                        int bH = Mathf.Max(1, Mathf.RoundToInt(bodyBounds.size.y * ppu));
                         if (!backDone)
                             File.WriteAllBytes(path,
-                                ComposeBodySprites(body.Sprites, bW, bH, extBounds, ppu, Vector3.zero, body.WorldScale));
+                                ComposeBodySprites(body.Sprites, bW, bH, bodyBounds, ppu, Vector3.zero, body.WorldScale));
                         // replacesHead=true → face overlay never shown; no front layer needed.
                     }
                     else

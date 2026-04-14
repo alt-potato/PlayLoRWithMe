@@ -161,9 +161,21 @@ const fashionBodyUrl = computed(() =>
 );
 
 const fashionBodyFailed = ref(false);
-watch(fashionFileStem, () => { fashionBodyFailed.value = false; });
+/**
+ * Natural pixel dimensions of the fashion body PNG once it finishes loading.
+ * Used to compute the feet-Y in CSS space so the height scale transform pins
+ * the character's feet instead of the preview box's bottom edge.
+ */
+const fashionBodyDims = ref<{ w: number; h: number } | null>(null);
+watch(fashionFileStem, () => {
+  fashionBodyFailed.value = false;
+  fashionBodyDims.value = null;
+});
 // also reset when variant changes (different PNG)
-watch(fashionVariantSuffix, () => { fashionBodyFailed.value = false; });
+watch(fashionVariantSuffix, () => {
+  fashionBodyFailed.value = false;
+  fashionBodyDims.value = null;
+});
 
 /**
  * URL of the fashion front-layer composite PNG (in front of face), or null when
@@ -272,6 +284,61 @@ const faceRotStyle = computed(() => {
   };
 });
 
+/**
+ * Uniform scale factor applied to all sprite layers, matching the game's own
+ * character scaling: `UICharacterRenderer` sets `unitAppearance.localScale` to
+ * `Vector2.one * customizeData.height * 0.005`, so height=200 is the 1.0
+ * reference and a 170-height librarian renders at 0.85x.
+ *
+ * The scale is anchored at each body's natural feet position (see `feetYCss`)
+ * so that resizing keeps feet planted — matching the in-game behavior where
+ * characters stand on a fixed floor and grow upward from it.  Note that feet
+ * positions differ between fashion projections because bodies have different
+ * natural aspect ratios; a cross-projection common ground would require
+ * per-book normalization, which breaks face/body canvas alignment.
+ */
+const HEIGHT_SCALE_FACTOR = 0.005;
+const heightScale = computed(
+  () => (props.appearance.height ?? 170) * HEIGHT_SCALE_FACTOR,
+);
+
+/**
+ * Y coordinate (CSS px) of the character's feet within the preview box, used
+ * as the scale transform origin so the feet stay pinned across height changes.
+ *
+ * Derivation depends on how the body PNG is rendered:
+ * - Non-replacesHead bodies share the face canvas width and are drawn with
+ *   `background-size: 100% auto; background-position: left top`, so the CSS
+ *   height of the body PNG = PREVIEW_W * (naturalH / naturalW).  The body's
+ *   feet sit at the bottom of the PNG, i.e. at that same Y (often off-screen
+ *   below the preview for full-body bodies — perfectly fine as a transform
+ *   origin since CSS allows origins outside the element).
+ * - ReplacesHead bodies use `background-size: contain; background-position:
+ *   top center`, which fits the whole body inside the PREVIEW_W x PREVIEW_H
+ *   box.  A body taller than the box (aspect h/w > 1) fills the height, so
+ *   feet land at PREVIEW_H.  A wider body fits by width, feet at
+ *   PREVIEW_W * (naturalH / naturalW).
+ * - When no body PNG is loaded (face-only librarians), fall back to the
+ *   bottom of the preview box so scaling still behaves reasonably.
+ */
+const feetYCss = computed(() => {
+  const previewW = PREVIEW_W.value;
+  const previewH = PREVIEW_H.value;
+  const bd = fashionBodyDims.value;
+  if (!bd || !props.fashionBook) return previewH;
+
+  const aspect = bd.h / bd.w;
+  if (fashionReplacesHead.value) {
+    // `contain` fits the image fully inside the box while preserving aspect.
+    const boxAspect = previewH / previewW;
+    return aspect >= boxAspect
+      ? previewH // image fills height, feet at preview bottom
+      : previewW * aspect; // image fits by width, feet at scaled bottom
+  }
+  // Non-replacesHead: width pinned to previewW, height scales with aspect.
+  return previewW * aspect;
+});
+
 /** Z-index per position so overlapping gifts layer in a natural order. */
 const POSITION_Z: Record<string, number> = {
   Helmet: 10, Nose: 11, Cheek: 11, Mouth: 11, Eye: 12, Ear: 12,
@@ -309,6 +376,19 @@ const visibleGifts = computed(() => {
       alt=""
       @error="markFailed(layer.src)"
     />
+
+    <!--
+      Height scale wrapper — fills the preview box and applies a uniform scale
+      based on the librarian's configured height.  All sprite layers are children
+      so they scale together, keeping face/body alignment intact.
+    -->
+    <div
+      class="scale-wrap"
+      :style="{
+        transform: `scale(${heightScale})`,
+        transformOrigin: `${PREVIEW_W / 2}px ${feetYCss}px`,
+      }"
+    >
 
     <!--
       Back hair — rendered before the fashion body so it sits behind the body.
@@ -374,6 +454,7 @@ const visibleGifts = computed(() => {
     <div
       v-if="fashionBook && fashionBodyUrl && !fashionBodyFailed"
       class="layer-sprite body-layer"
+      :class="{ 'body-layer--replaces-head': fashionReplacesHead }"
       :style="{ backgroundImage: `url(${fashionBodyUrl})` }"
     />
     <img
@@ -382,6 +463,10 @@ const visibleGifts = computed(() => {
       class="probe"
       alt=""
       @error="fashionBodyFailed = true"
+      @load="(e) => {
+        const el = e.target as HTMLImageElement;
+        fashionBodyDims = { w: el.naturalWidth, h: el.naturalHeight };
+      }"
     />
 
     <!--
@@ -453,6 +538,7 @@ const visibleGifts = computed(() => {
         ...faceRotStyle,
       }"
     />
+    </div>
   </div>
 </template>
 
@@ -468,6 +554,17 @@ const visibleGifts = computed(() => {
 /* Hidden sentinel images used only for 404 detection. */
 .probe {
   display: none;
+}
+
+/*
+ * Height scale wrapper — fills the preview box; its inline `transform: scale()`
+ * is driven by the librarian's height and anchored at the body's natural feet
+ * position so resizing keeps feet planted while growing the character upward,
+ * mirroring the in-game fixed-camera view.
+ */
+.scale-wrap {
+  position: absolute;
+  inset: 0;
 }
 
 .layer-sprite {
@@ -498,6 +595,18 @@ const visibleGifts = computed(() => {
   background-blend-mode: normal;
   mask-image: none;
   -webkit-mask-image: none;
+}
+
+/*
+ * replacesHead books render the body alone (no face/hair layers to align with),
+ * and the PNG is extracted at a tight aspect ratio matching the character's own
+ * bounds.  `contain` fits the full body into the square preview box — a full-body
+ * sprite taller than it is wide ends up fitting by height, centered horizontally,
+ * with the head at the top of the preview and the feet at the bottom.
+ */
+.body-layer.body-layer--replaces-head {
+  background-size: contain;
+  background-position: top center;
 }
 
 /* Gift overlays — same canvas-positioned PNGs as face layers, no tint. */
