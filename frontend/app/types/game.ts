@@ -416,6 +416,10 @@ export interface AvailableKeyPage {
   equipRangeType: string;
   resistances: Resistances;
   passives: Passive[];
+  /** False when this key page's passives are already attributed to another page. Absent = available. */
+  canGivePassive?: boolean;
+  /** Name of the librarian this key page's passives are attributed to. */
+  passiveGivenTo?: string;
 }
 
 /** A card from the shared inventory available to add to a librarian's deck. */

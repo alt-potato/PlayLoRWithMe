@@ -825,6 +825,18 @@ namespace PlayLoRWithMe
                                             .Add("bluntBp", book.hBpResist.ToString())
                                 );
                             AddLorId(o, "bookId", book.ClassInfo.id);
+
+                            // Passive-giving eligibility: if this book's passives are
+                            // already attributed to another key page, mark it unavailable.
+                            int givenToId = book.originData?.equipedPassiveBookInstanceId ?? -1;
+                            if (givenToId >= 0)
+                            {
+                                o.Add("canGivePassive", false);
+                                var targetBook = BookInventoryModel.Instance?.GetBookByInstanceId(givenToId);
+                                if (targetBook?.owner != null)
+                                    o.Add("passiveGivenTo", targetBook.owner.name);
+                            }
+
                             var inventoryPassiveList = book.CreatePassiveList();
                             o.AddArray(
                                 "passives",
