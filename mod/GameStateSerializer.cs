@@ -478,6 +478,9 @@ namespace PlayLoRWithMe
                                                                 .Add("isNegative", p.isNegative);
                                                             if (!string.IsNullOrEmpty(p.desc))
                                                                 po.Add("desc", p.desc);
+                                                            var passiveXml = Singleton<PassiveXmlList>.Instance?.GetData(p.id);
+                                                            if (passiveXml != null)
+                                                                po.Add("cost", passiveXml.cost);
                                                         });
                                                     }
                                                 }
@@ -789,6 +792,9 @@ namespace PlayLoRWithMe
                                                 .Add("isNegative", p.isNegative);
                                             if (!string.IsNullOrEmpty(p.desc))
                                                 po.Add("desc", p.desc);
+                                            var passiveXml = Singleton<PassiveXmlList>.Instance?.GetData(p.id);
+                                            if (passiveXml != null)
+                                                po.Add("cost", passiveXml.cost);
                                         });
                                     }
                                 }
@@ -1076,6 +1082,9 @@ namespace PlayLoRWithMe
                                         .Add("isNegative", p.isNegative);
                                     if (!string.IsNullOrEmpty(p.desc))
                                         po.Add("desc", p.desc);
+                                    var passiveXml = Singleton<PassiveXmlList>.Instance?.GetData(p.id);
+                                    if (passiveXml != null)
+                                        po.Add("cost", passiveXml.cost);
                                 });
                             }
                         }

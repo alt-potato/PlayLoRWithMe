@@ -132,6 +132,7 @@ export interface Passive {
   disabled?: boolean;
   isNegative?: boolean;
   rare?: string;
+  cost?: number;
 }
 
 /** An active buff/debuff on a unit. */
