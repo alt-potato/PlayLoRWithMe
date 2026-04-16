@@ -686,41 +686,6 @@ namespace PlayLoRWithMe
         }
 
         /// <summary>
-        /// Validates common librarian edit preconditions: parses floorIndex/unitIndex,
-        /// checks the edit lock, and resolves the UnitDataModel. Returns null and
-        /// sends an error response if any check fails.
-        /// </summary>
-        private UnitDataModel ValidateLibrarianEdit(
-            WebSocketClient client, JsonReader r, string reqId,
-            out int fi, out int ui)
-        {
-            fi = -1;
-            ui = -1;
-            if (!r.TryGetInt("floorIndex", out fi) || !r.TryGetInt("unitIndex", out ui))
-                return null;
-
-            string key = fi + ":" + ui;
-            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
-            {
-                if (reqId != null)
-                    client.Send(
-                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
-                    );
-                return null;
-            }
-
-            var unit = GetLibrarianUnit(fi, ui);
-            if (unit == null)
-            {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
-                return null;
-            }
-
-            return unit;
-        }
-
-        /// <summary>
         /// Returns the internal _activatedAllPassives list for a BookModel via
         /// reflection, since the field is private.
         /// </summary>
