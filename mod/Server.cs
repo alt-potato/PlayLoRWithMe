@@ -402,6 +402,22 @@ namespace PlayLoRWithMe
                     HandleRemoveCardFromDeck(client, r, reqId);
                     break;
 
+                case "equipSourceBook":
+                    HandleEquipSourceBook(client, r, reqId);
+                    break;
+
+                case "unequipSourceBook":
+                    HandleUnequipSourceBook(client, r, reqId);
+                    break;
+
+                case "attributePassive":
+                    HandleAttributePassive(client, r, reqId);
+                    break;
+
+                case "removeAttributedPassive":
+                    HandleRemoveAttributedPassive(client, r, reqId);
+                    break;
+
                 case "setCustomization":
                     HandleSetCustomization(client, r, reqId);
                     break;
@@ -770,6 +786,354 @@ namespace PlayLoRWithMe
                 client.Send(
                     BuildActionResult(reqId, removed, removed ? null : "Card not found in deck")
                 );
+        }
+
+        /// <summary>
+        /// Validates common librarian edit preconditions: parses floorIndex/unitIndex,
+        /// checks the edit lock, and resolves the UnitDataModel. Returns null and
+        /// sends an error response if any check fails.
+        /// </summary>
+        private UnitDataModel ValidateLibrarianEdit(
+            WebSocketClient client, JsonReader r, string reqId,
+            out int fi, out int ui)
+        {
+            fi = -1;
+            ui = -1;
+            if (!r.TryGetInt("floorIndex", out fi) || !r.TryGetInt("unitIndex", out ui))
+                return null;
+
+            string key = fi + ":" + ui;
+            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
+            {
+                if (reqId != null)
+                    client.Send(
+                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
+                    );
+                return null;
+            }
+
+            var unit = GetLibrarianUnit(fi, ui);
+            if (unit == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
+                return null;
+            }
+
+            return unit;
+        }
+
+        /// <summary>
+        /// Returns the internal _activatedAllPassives list for a BookModel via
+        /// reflection, since the field is private.
+        /// </summary>
+        private static System.Collections.Generic.List<PassiveModel> GetAllPassives(BookModel book)
+        {
+            return typeof(BookModel)
+                .GetField("_activatedAllPassives",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                ?.GetValue(book) as System.Collections.Generic.List<PassiveModel>;
+        }
+
+        /// <summary>
+        /// Initializes reserved data on a book and all its passives so that the
+        /// reservation/apply pattern works correctly for passive succession.
+        /// </summary>
+        private static void InitReserved(BookModel book)
+        {
+            book.InitReservedDataForPassiveSuccession();
+            var passives = GetAllPassives(book);
+            if (passives != null)
+            {
+                foreach (var p in passives)
+                    p.InitReservedData();
+            }
+        }
+
+        /// <summary>
+        /// Equips a key page as a passive source for the librarian's current key page.
+        /// The source book's passives become available for attribution to the target.
+        /// Limited to 4 source books per target key page.
+        /// </summary>
+        private void HandleEquipSourceBook(WebSocketClient client, JsonReader r, string reqId)
+        {
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
+            if (unit == null) return;
+
+            if (!r.TryGetInt("bookInstanceId", out int bookInstanceId))
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Missing bookInstanceId"));
+                return;
+            }
+
+            var targetBook = unit.bookItem;
+            if (targetBook == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Librarian has no key page equipped"));
+                return;
+            }
+
+            var sourceBook = BookInventoryModel.Instance?.GetBookList_equip()
+                ?.Find(b => b?.instanceId == bookInstanceId);
+            if (sourceBook == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Source key page not found in inventory"));
+                return;
+            }
+
+            // source must not already be attributed to a different key page
+            if (sourceBook.originData?.equipedPassiveBookInstanceId != -1
+                && sourceBook.originData.equipedPassiveBookInstanceId != targetBook.instanceId)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Source key page is already attributed elsewhere"));
+                return;
+            }
+
+            // initialize reserved data before mutating
+            InitReserved(targetBook);
+            InitReserved(sourceBook);
+
+            bool ok = targetBook.EquipGivePassiveBook(sourceBook);
+            if (!ok)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Cannot equip source — 4-book limit reached"));
+                return;
+            }
+
+            targetBook.ApplyPassiveSuccession();
+            sourceBook.ApplyPassiveSuccession();
+
+            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
+            StateBroadcaster.Broadcast();
+            if (reqId != null)
+                client.Send(BuildActionResult(reqId, true, null));
+        }
+
+        /// <summary>
+        /// Unequips a source book from the librarian's key page, releasing all
+        /// passives that were attributed from it.
+        /// </summary>
+        private void HandleUnequipSourceBook(WebSocketClient client, JsonReader r, string reqId)
+        {
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
+            if (unit == null) return;
+
+            if (!r.TryGetInt("bookInstanceId", out int bookInstanceId))
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Missing bookInstanceId"));
+                return;
+            }
+
+            var targetBook = unit.bookItem;
+            if (targetBook == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Librarian has no key page equipped"));
+                return;
+            }
+
+            var sourceBook = BookInventoryModel.Instance?.GetBookList_equip()
+                ?.Find(b => b?.instanceId == bookInstanceId);
+            if (sourceBook == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Source key page not found in inventory"));
+                return;
+            }
+
+            // verify source is actually equipped on this target
+            if (targetBook.originData?.equipedBookIdListInPassive == null
+                || !targetBook.originData.equipedBookIdListInPassive.Contains(bookInstanceId))
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Source key page is not equipped on this target"));
+                return;
+            }
+
+            InitReserved(targetBook);
+            InitReserved(sourceBook);
+
+            targetBook.UnEquipGivePassiveBook(sourceBook);
+            targetBook.ApplyPassiveSuccession();
+            sourceBook.ApplyPassiveSuccession();
+
+            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
+            StateBroadcaster.Broadcast();
+            if (reqId != null)
+                client.Send(BuildActionResult(reqId, true, null));
+        }
+
+        /// <summary>
+        /// Attributes a passive from a source book to the librarian's key page.
+        /// Finds the first available dummy slot (originpassive.id == 9999999) on the
+        /// target, validates eligibility (uniqueness, cost), and performs the change.
+        /// </summary>
+        private void HandleAttributePassive(WebSocketClient client, JsonReader r, string reqId)
+        {
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
+            if (unit == null) return;
+
+            if (!r.TryGetInt("sourceInstanceId", out int sourceInstanceId)
+                || !r.TryGetInt("passiveId", out int passiveId))
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Missing sourceInstanceId or passiveId"));
+                return;
+            }
+
+            string passivePackageId = r.GetString("passivePackageId") ?? "";
+
+            var targetBook = unit.bookItem;
+            if (targetBook == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Librarian has no key page equipped"));
+                return;
+            }
+
+            // find the source book and the passive on it
+            var sourceBook = BookInventoryModel.Instance?.GetBookList_equip()
+                ?.Find(b => b?.instanceId == sourceInstanceId);
+            if (sourceBook == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Source key page not found"));
+                return;
+            }
+
+            var passiveLorId = string.IsNullOrEmpty(passivePackageId)
+                ? new LorId(passiveId)
+                : new LorId(passivePackageId, passiveId);
+
+            var sourcePassives = GetAllPassives(sourceBook);
+            var sourcePassive = sourcePassives?.Find(
+                p => p.originpassive?.id == passiveLorId);
+            if (sourcePassive == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Passive not found on source key page"));
+                return;
+            }
+
+            // initialize reserved data before any mutations
+            InitReserved(targetBook);
+            InitReserved(sourceBook);
+
+            // find the first empty attribution slot on target (dummy slot with id 9999999
+            // that has not already received a passive)
+            var targetPassives = GetAllPassives(targetBook);
+            PassiveModel targetSlot = null;
+            if (targetPassives != null)
+            {
+                targetSlot = targetPassives.Find(
+                    p => p.originpassive?.id == 9999999 && !p.IsReceivedSuccessionPassive);
+            }
+            if (targetSlot == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "No empty passive slot available"));
+                return;
+            }
+
+            // validate: unique passive check
+            GivePassiveState state;
+            if (!targetBook.CanSuccessionPassive(sourcePassive, out state))
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Cannot attribute passive: " + state));
+                return;
+            }
+
+            // validate: cost budget
+            if (!targetBook.CanSuccessionPassiveByCost(targetSlot, sourcePassive))
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Insufficient passive cost budget"));
+                return;
+            }
+
+            targetBook.ChangePassive(targetSlot, sourcePassive);
+            targetBook.ApplyPassiveSuccession();
+            sourceBook.ApplyPassiveSuccession();
+
+            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
+            StateBroadcaster.Broadcast();
+            if (reqId != null)
+                client.Send(BuildActionResult(reqId, true, null));
+        }
+
+        /// <summary>
+        /// Removes a previously attributed passive from the librarian's key page,
+        /// restoring its dummy slot and releasing the source passive.
+        /// </summary>
+        private void HandleRemoveAttributedPassive(WebSocketClient client, JsonReader r, string reqId)
+        {
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
+            if (unit == null) return;
+
+            if (!r.TryGetInt("sourceInstanceId", out int sourceInstanceId)
+                || !r.TryGetInt("passiveId", out int passiveId))
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Missing sourceInstanceId or passiveId"));
+                return;
+            }
+
+            string passivePackageId = r.GetString("passivePackageId") ?? "";
+
+            var targetBook = unit.bookItem;
+            if (targetBook == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Librarian has no key page equipped"));
+                return;
+            }
+
+            var passiveLorId = string.IsNullOrEmpty(passivePackageId)
+                ? new LorId(passiveId)
+                : new LorId(passivePackageId, passiveId);
+
+            // initialize reserved data before mutations
+            InitReserved(targetBook);
+
+            // find the matching attributed passive on the target book
+            var targetPassives = GetAllPassives(targetBook);
+            PassiveModel toRemove = null;
+            if (targetPassives != null)
+            {
+                toRemove = targetPassives.Find(
+                    p => p.IsReceivedSuccessionPassive
+                        && p.reservedData?.currentpassive?.id == passiveLorId
+                        && p.reservedData?.receivepassivebookId == sourceInstanceId);
+            }
+            if (toRemove == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Attributed passive not found"));
+                return;
+            }
+
+            // also init reserved data on the source book so the give-side is released cleanly
+            var sourceBook = BookInventoryModel.Instance?.GetBookList_equip()
+                ?.Find(b => b?.instanceId == sourceInstanceId);
+            if (sourceBook != null)
+                InitReserved(sourceBook);
+
+            targetBook.ReleasePassive(toRemove);
+            targetBook.ApplyPassiveSuccession();
+            if (sourceBook != null)
+                sourceBook.ApplyPassiveSuccession();
+
+            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
+            StateBroadcaster.Broadcast();
+            if (reqId != null)
+                client.Send(BuildActionResult(reqId, true, null));
         }
 
         /// <summary>
