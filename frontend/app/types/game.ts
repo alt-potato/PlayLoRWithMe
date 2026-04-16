@@ -184,6 +184,13 @@ export interface KeyPage {
   bookId?: number;
 }
 
+/** A passive attributed (succession-received) from another key page. */
+export interface AttributedPassive {
+  passive: Passive;
+  sourceInstanceId: number;
+  sourceName?: string;
+}
+
 // ── Unit shapes ───────────────────────────────────────────────────────────────
 
 /** Card entry in a BattleSetting deck preview (grouped by card type with a count). */
@@ -238,6 +245,11 @@ export interface LibrarianEntry {
   name: string;
   keyPage: KeyPage;
   passives: Passive[];
+  attributedPassives?: AttributedPassive[];
+  passiveSlotCount?: number;
+  maxPassiveCost?: number;
+  currentPassiveCost?: number;
+  sourceKeyPageIds?: number[];
   deckPreview: DeckCardPreview[];
   /** Session ID of the player currently editing this librarian, or null. */
   lockedBy: string | null;

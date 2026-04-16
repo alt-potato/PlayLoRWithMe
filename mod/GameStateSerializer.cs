@@ -486,6 +486,62 @@ namespace PlayLoRWithMe
                                                 }
                                             );
 
+                                            // Passive attribution (succession) metadata — slot capacity,
+                                            // cost budget, source key pages, and attributed passive details.
+                                            o.Add("passiveSlotCount", book.ClassInfo?.SuccessionPossibleNumber ?? 0)
+                                             .Add("maxPassiveCost", book.GetMaxPassiveCost())
+                                             .Add("currentPassiveCost", book.GetCurrentPassiveCost());
+
+                                            var sourceIds = book.originData?.equipedBookIdListInPassive;
+                                            if (sourceIds != null && sourceIds.Count > 0)
+                                            {
+                                                o.AddArray("sourceKeyPageIds", sArr =>
+                                                {
+                                                    foreach (var sid in sourceIds)
+                                                        sArr.AddInt(sid);
+                                                });
+                                            }
+
+                                            // Attributed (succession-received) passives — passives whose
+                                            // source book differs from this book's own instance.
+                                            var allPassives = typeof(BookModel)
+                                                .GetField("_activatedAllPassives", BindingFlags.NonPublic | BindingFlags.Instance)
+                                                ?.GetValue(book) as List<PassiveModel>;
+                                            if (allPassives != null)
+                                            {
+                                                var attributed = allPassives.FindAll(pm => pm.IsReceivedSuccessionPassive);
+                                                if (attributed.Count > 0)
+                                                {
+                                                    o.AddArray("attributedPassives", apArr =>
+                                                    {
+                                                        foreach (var pm in attributed)
+                                                        {
+                                                            var pmData = pm.reservedData ?? pm.originData;
+                                                            if (pmData?.currentpassive == null)
+                                                                continue;
+                                                            var pxml = pmData.currentpassive;
+                                                            apArr.AddObject(ap =>
+                                                            {
+                                                                ap.AddObject("passive", pp =>
+                                                                {
+                                                                    AddLorId(pp, "id", pxml.id);
+                                                                    pp.Add("name", pxml.name)
+                                                                      .Add("rare", pxml.rare.ToString())
+                                                                      .Add("isNegative", pxml.isNegative);
+                                                                    if (!string.IsNullOrEmpty(pxml.desc))
+                                                                        pp.Add("desc", pxml.desc);
+                                                                    pp.Add("cost", pxml.cost);
+                                                                });
+                                                                ap.Add("sourceInstanceId", pmData.receivepassivebookId);
+                                                                var srcBook = BookInventoryModel.Instance?.GetBookByInstanceId(pmData.receivepassivebookId);
+                                                                if (srcBook != null)
+                                                                    ap.Add("sourceName", srcBook.Name);
+                                                            });
+                                                        }
+                                                    });
+                                                }
+                                            }
+
                                             // Deck preview — collapse duplicate copies into one entry
                                             // with a count field.  GetCardListFromCurrentDeck returns one
                                             // entry per copy, so we aggregate here.
