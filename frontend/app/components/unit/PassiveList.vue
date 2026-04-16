@@ -1,18 +1,26 @@
 <!--
   PassiveList.vue
 
-  Shared passive-entry list used in both the battle view (DisplayCard) and the
-  pre-battle detail panel (SettingDetailPanel). Renders each passive as a
-  left-border tile coloured by rarity. Entries with a description are
-  expandable via a native <details> element; entries without are plain divs.
+  Shared passive-entry list used in battle (DisplayCard), pre-battle detail
+  (SettingDetailPanel / KeyPageDetail), and the passives tab. Each passive is a
+  left-border tile coloured by rarity with a cost digit. Entries with a
+  description are expandable via a native <details> element.
 
   Props:
     passives – array of Passive objects (may be empty)
+
+  Slots:
+    #action({ passive }) – optional; rendered on the right side of each row
+                           for context-specific buttons (Attribute, Remove, etc.)
 -->
 <script setup lang="ts">
 import type { Passive } from "~/types/game";
 
 defineProps<{ passives: Passive[] }>();
+
+defineSlots<{
+  action?(props: { passive: Passive }): unknown;
+}>();
 
 function passiveClass(p: Passive) {
   const cls: Record<string, boolean> = {
@@ -28,11 +36,24 @@ function passiveClass(p: Passive) {
   <div class="passive-list">
     <template v-for="p in passives" :key="p.id.id + p.id.packageId">
       <details v-if="p.desc" class="passive-entry" :class="passiveClass(p)">
-        <summary class="passive-name"><span class="chevron">▸</span>{{ p.name }}</summary>
+        <summary class="passive-header">
+          <span class="chevron">▸</span>
+          <span v-if="p.cost != null" class="passive-cost">{{ p.cost }}</span>
+          <span class="passive-name">{{ p.name }}</span>
+          <span class="passive-action">
+            <slot name="action" :passive="p" />
+          </span>
+        </summary>
         <p class="passive-desc">{{ p.desc }}</p>
       </details>
       <div v-else class="passive-entry" :class="passiveClass(p)">
-        <span class="passive-name">{{ p.name }}</span>
+        <span class="passive-header">
+          <span v-if="p.cost != null" class="passive-cost">{{ p.cost }}</span>
+          <span class="passive-name">{{ p.name }}</span>
+          <span class="passive-action">
+            <slot name="action" :passive="p" />
+          </span>
+        </span>
       </div>
     </template>
   </div>
@@ -47,9 +68,9 @@ function passiveClass(p: Passive) {
 
 .passive-entry {
   border-left: 2px solid var(--border-mid);
-  padding-left: 0.4rem;
-  padding-top: 0.15rem;
-  padding-bottom: 0.15rem;
+  padding-left: 0;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .passive-entry + .passive-entry {
@@ -76,25 +97,26 @@ function passiveClass(p: Passive) {
   opacity: 0.42;
 }
 
-.passive-name {
+.passive-header {
   font-size: 0.7rem;
   color: var(--text-1);
   list-style: none;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.3rem;
   cursor: default;
   user-select: none;
   line-height: 1.4;
   text-align: left;
+  padding: 0.15rem 0.4rem;
 }
 
-.passive-name::marker,
-.passive-name::-webkit-details-marker {
+.passive-header::marker,
+.passive-header::-webkit-details-marker {
   display: none;
 }
 
-details.passive-entry > .passive-name {
+details.passive-entry > .passive-header {
   cursor: pointer;
 }
 
@@ -103,15 +125,37 @@ details.passive-entry > .passive-name {
   color: var(--text-3);
   flex-shrink: 0;
   display: inline-block;
-  margin-right: 0.25em;
   transition: transform 0.18s ease;
 }
 
-details[open].passive-entry > .passive-name .chevron {
+details[open].passive-entry > .passive-header .chevron {
   transform: rotate(90deg);
 }
 
-.passive-negative > .passive-name {
+.passive-cost {
+  font-size: 0.65rem;
+  color: var(--text-3);
+  flex-shrink: 0;
+  width: 1rem;
+  text-align: center;
+  font-family: var(--font-display);
+}
+
+.passive-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.passive-action {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.passive-negative > .passive-header .passive-name {
   color: var(--crimson-hi);
 }
 
@@ -120,5 +164,6 @@ details[open].passive-entry > .passive-name .chevron {
   color: var(--text-2);
   line-height: 1.45;
   margin: 0.2rem 0 0.05rem;
+  padding-left: 0.4rem;
 }
 </style>
