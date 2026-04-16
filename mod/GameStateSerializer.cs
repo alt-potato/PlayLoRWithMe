@@ -560,14 +560,16 @@ namespace PlayLoRWithMe
                                             if (allPassives != null)
                                             {
                                                 var attributed = allPassives.FindAll(pm =>
-                                                    pm.reservedData != null && pm.IsReceivedSuccessionPassive);
+                                                    pm.originData != null
+                                                    && pm.originData.currentpassive?.id != 9999999
+                                                    && pm.originData.receivepassivebookId != pm.BookInstanceId);
                                                 if (attributed.Count > 0)
                                                 {
                                                     o.AddArray("attributedPassives", apArr =>
                                                     {
                                                         foreach (var pm in attributed)
                                                         {
-                                                            var pmData = pm.reservedData ?? pm.originData;
+                                                            var pmData = pm.originData;
                                                             if (pmData?.currentpassive == null)
                                                                 continue;
                                                             var pxml = pmData.currentpassive;

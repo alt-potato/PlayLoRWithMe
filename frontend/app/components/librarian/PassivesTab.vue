@@ -46,7 +46,21 @@ const props = defineProps<{
 const availableKeyPages = computed(() => props.state.availableKeyPages ?? []);
 const sourceKeyPageIds = computed(() => new Set(props.lib.sourceKeyPageIds ?? []));
 const attributedPassives = computed(() => props.lib.attributedPassives ?? []);
-const innatePassives = computed(() => props.lib.passives ?? []);
+const innatePassives = computed(() => {
+  const all = props.lib.passives ?? [];
+  const attr = props.lib.attributedPassives ?? [];
+  if (!attr.length) return all;
+  // Remove one matching passive per attributed entry (handles duplicates)
+  const remaining = [...all];
+  for (const ap of attr) {
+    const key = `${ap.passive.id.id}:${ap.passive.id.packageId}`;
+    const idx = remaining.findIndex(
+      (p) => `${p.id.id}:${p.id.packageId}` === key,
+    );
+    if (idx >= 0) remaining.splice(idx, 1);
+  }
+  return remaining;
+});
 const passiveSlotCount = computed(() => props.lib.passiveSlotCount ?? 0);
 const maxPassiveCost = computed(() => props.lib.maxPassiveCost ?? 0);
 const currentPassiveCost = computed(() => props.lib.currentPassiveCost ?? 0);
@@ -248,10 +262,10 @@ function hasEmptySlots(): boolean {
                 'source-tile--ineligible': isIneligible(kp),
               }"
             >
-              <button
+              <div
                 class="source-tile-header"
-                :disabled="isIneligible(kp)"
-                @click="isSource(kp) ? toggleSourceExpansion(kp) : equipSource(kp)"
+                :class="{ disabled: isIneligible(kp) }"
+                @click="isIneligible(kp) ? undefined : isSource(kp) ? toggleSourceExpansion(kp) : equipSource(kp)"
               >
                 <span class="source-tile-name">{{ kp.name }}</span>
                 <span v-if="isIneligible(kp)" class="source-tile-status">
@@ -268,7 +282,7 @@ function hasEmptySlots(): boolean {
                 >
                   Unequip
                 </button>
-              </button>
+              </div>
               <!-- Expanded passives -->
               <div v-if="isSource(kp) && isExpanded(kp)" class="source-passives">
                 <UnitPassiveList :passives="kp.passives">

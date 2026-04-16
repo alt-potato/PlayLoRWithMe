@@ -37,9 +37,9 @@ function passiveClass(p: Passive) {
     <template v-for="p in passives" :key="p.id.id + p.id.packageId">
       <details v-if="p.desc" class="passive-entry" :class="passiveClass(p)">
         <summary class="passive-header">
-          <span class="chevron">▸</span>
           <span v-if="p.cost != null" class="passive-cost">{{ p.cost }}</span>
           <span class="passive-name">{{ p.name }}</span>
+          <span class="chevron">▸</span>
           <span class="passive-action">
             <slot name="action" :passive="p" />
           </span>
