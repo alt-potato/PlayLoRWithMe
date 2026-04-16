@@ -25,6 +25,13 @@ namespace PlayLoRWithMe
         internal static bool IsReady => _extracted;
 
         /// <summary>
+        /// When non-null, <see cref="ReadSpriteCrop"/> caches blitted RenderTextures
+        /// per source atlas so repeated reads from the same atlas skip the GPU blit.
+        /// Populated at the start of <see cref="Extract"/> and released at the end.
+        /// </summary>
+        private static Dictionary<Texture2D, RenderTexture> _atlasRtCache;
+
+        /// <summary>
         /// Per-book metadata populated during extraction and read by
         /// <see cref="GameStateSerializer"/> when serializing fashion books.
         /// TiltDeg is the Z-axis rotation of customPivot (positive = counter-clockwise on
@@ -114,6 +121,25 @@ namespace PlayLoRWithMe
 
             // Ensure the loader's sprite arrays are populated before querying them.
             loader.LoadData();
+
+            // Enable atlas blit caching for the duration of extraction. Multiple
+            // face/hair sprites share a small number of atlas textures; caching the
+            // blitted RenderTexture avoids redundant full-atlas GPU copies.
+            _atlasRtCache = new Dictionary<Texture2D, RenderTexture>();
+            try
+            {
+                ExtractInner(loader);
+            }
+            finally
+            {
+                foreach (var rt in _atlasRtCache.Values)
+                    RenderTexture.ReleaseTemporary(rt);
+                _atlasRtCache = null;
+            }
+        }
+
+        private static void ExtractInner(CustomizingResourceLoader loader)
+        {
 
             // --- Pass 1: gather all face/hair sprites ---
             // Collect every customization sprite so we can compute a shared world-space
@@ -485,8 +511,10 @@ namespace PlayLoRWithMe
             List<SpriteRenderer> renderers,
             int cw, int ch, Bounds bounds, float ppu, string outPath)
         {
-            var canvas = new Texture2D(cw, ch, TextureFormat.RGBA32, false);
-            canvas.SetPixels32(new Color32[cw * ch]);
+            // Hoist the pixel buffer outside the loop so we composite directly
+            // into it, avoiding a full-canvas GetPixels32/SetPixels32 round-trip
+            // per sprite (two O(cw*ch) copies per iteration).
+            var dstPixels = new Color32[cw * ch];
 
             foreach (var sr in renderers)
             {
@@ -559,7 +587,6 @@ namespace PlayLoRWithMe
                         || tint.b != 255 || tint.a != 255;
 
                     // Alpha-composite onto the canvas (back-to-front).
-                    var dstPixels = canvas.GetPixels32();
                     for (int sy = 0; sy < finalH; sy++)
                     {
                         int dy = offsetY + sy;
@@ -600,7 +627,6 @@ namespace PlayLoRWithMe
                             }
                         }
                     }
-                    canvas.SetPixels32(dstPixels);
                 }
                 finally
                 {
@@ -608,9 +634,11 @@ namespace PlayLoRWithMe
                 }
             }
 
-            canvas.Apply();
+            var canvas = new Texture2D(cw, ch, TextureFormat.RGBA32, false);
             try
             {
+                canvas.SetPixels32(dstPixels);
+                canvas.Apply();
                 File.WriteAllBytes(outPath, canvas.EncodeToPNG());
             }
             finally
@@ -1532,6 +1560,10 @@ namespace PlayLoRWithMe
         /// <summary>
         /// Reads the sprite's atlas sub-region into a new Texture2D via RenderTexture
         /// readback.  Caller is responsible for destroying the returned texture.
+        ///
+        /// When <see cref="_atlasRtCache"/> is active (non-null), the full-atlas blit
+        /// result is cached per source texture so that multiple sprites sharing the
+        /// same atlas skip the redundant GPU copy.
         /// </summary>
         private static Texture2D ReadSpriteCrop(Sprite sprite)
         {
@@ -1546,16 +1578,31 @@ namespace PlayLoRWithMe
             int cropW = Mathf.Max(1, x1 - x0);
             int cropH = Mathf.Max(1, y1 - y0);
 
-            var origFilter = src.filterMode;
-            src.filterMode = FilterMode.Point;
-            var rt = RenderTexture.GetTemporary(src.width, src.height, 0,
-                RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-            var prev = RenderTexture.active;
-            try
+            bool useCache = _atlasRtCache != null;
+            RenderTexture cachedRt = null;
+            bool cacheHit = useCache && _atlasRtCache.TryGetValue(src, out cachedRt);
+
+            RenderTexture rt;
+            if (cacheHit)
             {
+                rt = cachedRt;
+            }
+            else
+            {
+                var origFilter = src.filterMode;
+                src.filterMode = FilterMode.Point;
+                rt = RenderTexture.GetTemporary(src.width, src.height, 0,
+                    RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
                 Graphics.Blit(src, rt);
                 src.filterMode = origFilter;
 
+                if (useCache)
+                    _atlasRtCache[src] = rt;
+            }
+
+            var prev = RenderTexture.active;
+            try
+            {
                 RenderTexture.active = rt;
                 // ReadPixels uses top-left origin (DX11); textureRect uses bottom-left, so flip Y.
                 int flippedY = src.height - y1;
@@ -1575,7 +1622,10 @@ namespace PlayLoRWithMe
             finally
             {
                 RenderTexture.active = prev;
-                RenderTexture.ReleaseTemporary(rt);
+                // only release when not cached — the cache owns the RT and releases
+                // all entries at the end of Extract().
+                if (!useCache)
+                    RenderTexture.ReleaseTemporary(rt);
             }
         }
 
