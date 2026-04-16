@@ -897,6 +897,7 @@ namespace PlayLoRWithMe
                                 .Add("speedMax", book.SpeedMax)
                                 .Add("chapter", book.ClassInfo.Chapter)
                                 .Add("bookIcon", bookGroupKey)
+                                .Add("bookGroupName", GetBookGroupName(book, bookGroupKey))
                                 .Add("hp", book.HP)
                                 .Add("breakGauge", book.Break)
                                 .Add("equipRangeType", book.ClassInfo.RangeType.ToString())
@@ -2041,6 +2042,104 @@ namespace PlayLoRWithMe
             if (System.Enum.IsDefined(typeof(UI.UIStoryLine), book.ClassInfo.BookIcon))
                 return (int)System.Enum.Parse(typeof(UI.UIStoryLine), book.ClassInfo.BookIcon);
             return 0;
+        }
+
+        /// <summary>
+        /// Resolves the display name for a book's group header, mirroring the logic in
+        /// <c>UISettingInvenEquipPageListSlot.SetBooksData</c>. Falls back to the raw
+        /// <paramref name="bookGroupKey"/> if no localized name can be resolved.
+        /// </summary>
+        private static string GetBookGroupName(BookModel book, string bookGroupKey)
+        {
+            if (book.IsWorkshop)
+                return "workshop " + book.ClassInfo.workshopID;
+
+            if (!System.Enum.IsDefined(typeof(UI.UIStoryLine), book.ClassInfo.BookIcon))
+                return bookGroupKey;
+
+            var storyLine = (UI.UIStoryLine)System.Enum.Parse(
+                typeof(UI.UIStoryLine), book.ClassInfo.BookIcon
+            );
+
+            // Mirrors the exact switch in UISettingInvenEquipPageListSlot.SetBooksData.
+            // "Normal story" books use either chapter-header text keys or hardcoded
+            // stage IDs from StageNameXmlList — there is no generic lookup path.
+            switch (storyLine)
+            {
+                // chapter headers
+                case UI.UIStoryLine.Chapter1:
+                    return TextDataModel.GetText("ui_maintitle_citystate_1") ?? bookGroupKey;
+                case UI.UIStoryLine.Chapter2:
+                    return TextDataModel.GetText("ui_maintitle_citystate_2") ?? bookGroupKey;
+                case UI.UIStoryLine.Chapter3:
+                    return TextDataModel.GetText("ui_maintitle_citystate_3") ?? bookGroupKey;
+                case UI.UIStoryLine.Chapter4:
+                    return TextDataModel.GetText("ui_maintitle_citystate_4") ?? bookGroupKey;
+                case UI.UIStoryLine.Chapter5:
+                    return TextDataModel.GetText("ui_maintitle_citystate_5") ?? bookGroupKey;
+                case UI.UIStoryLine.Chapter6:
+                    return TextDataModel.GetText("ui_maintitle_citystate_6") ?? bookGroupKey;
+                case UI.UIStoryLine.Chapter7:
+                    return TextDataModel.GetText("ui_maintitle_citystate_7") ?? bookGroupKey;
+                // normal-story books with hardcoded stage IDs
+                case UI.UIStoryLine.HookOfficeRemnant:
+                    return StageName(100002) ?? bookGroupKey;
+                case UI.UIStoryLine.AxeGang:
+                    return StageName(100008) ?? bookGroupKey;
+                case UI.UIStoryLine.Grade7Fixers:
+                    return StageName(100005) ?? bookGroupKey;
+                case UI.UIStoryLine.Grade8Fixers:
+                    return StageName(100004) ?? bookGroupKey;
+                case UI.UIStoryLine.RustyChainGroup:
+                    return StageName(100009) ?? bookGroupKey;
+                case UI.UIStoryLine.WorkshopFixer:
+                    return StageName(100010) ?? bookGroupKey;
+                case UI.UIStoryLine.SevenAssociation:
+                    return StageName(100011) ?? bookGroupKey;
+                case UI.UIStoryLine.Sword:
+                    return StageName(100012) ?? bookGroupKey;
+                case UI.UIStoryLine.ClassOneFixer:
+                    return StageName(100013) ?? bookGroupKey;
+                case UI.UIStoryLine.Jeong:
+                    return StageName(100014) ?? bookGroupKey;
+                case UI.UIStoryLine.AwlOfNight:
+                    return StageName(100015) ?? bookGroupKey;
+                case UI.UIStoryLine.Usett:
+                    return StageName(100016) ?? bookGroupKey;
+                case UI.UIStoryLine.Mirae:
+                    return StageName(100017) ?? bookGroupKey;
+                case UI.UIStoryLine.Workshop:
+                    return StageName(100018) ?? bookGroupKey;
+                case UI.UIStoryLine.Bayyard:
+                    return StageName(100019) ?? bookGroupKey;
+            }
+
+            // Reception-based books — look up via StageClassInfoList
+            var allStages = Singleton<StageClassInfoList>.Instance?.GetAllDataList();
+            if (allStages != null)
+            {
+                var stageInfo = allStages.Find(
+                    x => x.storyType == storyLine.ToString()
+                );
+                if (stageInfo != null)
+                {
+                    string name = Singleton<StageNameXmlList>.Instance?.GetName(stageInfo);
+                    if (!string.IsNullOrEmpty(name) && name != "Unknown")
+                        return name;
+                }
+            }
+
+            return bookGroupKey;
+        }
+
+        /// <summary>
+        /// Shorthand for <c>StageNameXmlList.GetName(id)</c>, returning null when
+        /// the singleton is unavailable or the result is the default "Unknown".
+        /// </summary>
+        private static string StageName(int id)
+        {
+            string name = Singleton<StageNameXmlList>.Instance?.GetName(id);
+            return !string.IsNullOrEmpty(name) && name != "Unknown" ? name : null;
         }
     }
 }

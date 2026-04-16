@@ -401,6 +401,8 @@ export interface AvailableKeyPage {
    * equip screen does.
    */
   bookIcon: string;
+  /** Resolved display name for the book group header (e.g. "The Stray Dogs"). */
+  bookGroupName: string;
   hp: number;
   breakGauge: number;
   /** BookXmlInfo.RangeType: "Melee" | "Range" | "Hybrid" — determines which card ranges can be equipped. */

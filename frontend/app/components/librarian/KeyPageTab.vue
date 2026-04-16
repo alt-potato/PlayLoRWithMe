@@ -53,6 +53,38 @@ const filteredPages = computed(() => {
   return availableKeyPages.value.filter((kp) => kp.chapter === ch);
 });
 
+interface BookGroup {
+  bookIcon: string;
+  name: string;
+  pages: AvailableKeyPage[];
+}
+
+/** Key pages grouped by book, preserving backend sort order. Empty groups omitted. */
+const groupedPages = computed((): BookGroup[] => {
+  const groups: BookGroup[] = [];
+  const seen = new Map<string, BookGroup>();
+  for (const kp of filteredPages.value) {
+    let group = seen.get(kp.bookIcon);
+    if (!group) {
+      group = { bookIcon: kp.bookIcon, name: kp.bookGroupName, pages: [] };
+      seen.set(kp.bookIcon, group);
+      groups.push(group);
+    }
+    group.pages.push(kp);
+  }
+  return groups;
+});
+
+/** Tracks which book groups are collapsed by bookIcon. */
+const collapsedGroups = ref(new Set<string>());
+
+function toggleGroup(bookIcon: string) {
+  const next = new Set(collapsedGroups.value);
+  if (next.has(bookIcon)) next.delete(bookIcon);
+  else next.add(bookIcon);
+  collapsedGroups.value = next;
+}
+
 /** Selected key page for the detail view. Default = current equipped page from inventory. */
 const selectedInstanceId = ref<number | null>(null);
 
@@ -114,23 +146,35 @@ const selectedIsAvailable = computed(
         </button>
       </div>
       <div class="kp-grid">
-        <div v-if="!filteredPages.length" class="col-empty">No key pages available.</div>
-        <button
-          v-for="kp in filteredPages"
-          :key="kp.instanceId"
-          class="kp-tile"
-          :class="{
-            'kp-tile--selected': selectedInstanceId === kp.instanceId,
-            'kp-tile--equipped': kp.instanceId === lib.keyPage.instanceId,
-          }"
-          @click="selectPage(kp)"
-        >
-          <span class="kp-tile-name">{{ kp.name }}</span>
-          <span v-if="equippedByMap.get(kp.instanceId)" class="kp-tile-equipped-by">
-            {{ equippedByMap.get(kp.instanceId) }}
-          </span>
-          <span class="kp-tile-speed">{{ kp.speedMin }}–{{ kp.speedMax }}</span>
-        </button>
+        <div v-if="!groupedPages.length" class="col-empty">No key pages available.</div>
+        <template v-for="group in groupedPages" :key="group.bookIcon">
+          <button
+            class="book-group-header"
+            :class="{ 'book-group-header--collapsed': collapsedGroups.has(group.bookIcon) }"
+            @click="toggleGroup(group.bookIcon)"
+          >
+            <span class="book-group-chevron">{{ collapsedGroups.has(group.bookIcon) ? "▸" : "▾" }}</span>
+            <span class="book-group-name">{{ group.name }}</span>
+          </button>
+          <template v-if="!collapsedGroups.has(group.bookIcon)">
+            <button
+              v-for="kp in group.pages"
+              :key="kp.instanceId"
+              class="kp-tile"
+              :class="{
+                'kp-tile--selected': selectedInstanceId === kp.instanceId,
+                'kp-tile--equipped': kp.instanceId === lib.keyPage.instanceId,
+              }"
+              @click="selectPage(kp)"
+            >
+              <span class="kp-tile-name">{{ kp.name }}</span>
+              <span v-if="equippedByMap.get(kp.instanceId)" class="kp-tile-equipped-by">
+                {{ equippedByMap.get(kp.instanceId) }}
+              </span>
+              <span class="kp-tile-speed">{{ kp.speedMin }}–{{ kp.speedMax }}</span>
+            </button>
+          </template>
+        </template>
       </div>
     </div>
 
@@ -262,6 +306,38 @@ const selectedIsAvailable = computed(
     flex: 0 0 30%;
     padding-left: var(--sp-4);
   }
+}
+
+.book-group-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: var(--fs-xs);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.book-group-header:hover {
+  color: var(--gold-bright);
+}
+
+.book-group-chevron {
+  font-size: var(--fs-2xs);
+  flex-shrink: 0;
+  width: 0.8em;
+}
+
+.book-group-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .kp-tile {
