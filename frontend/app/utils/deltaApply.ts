@@ -12,6 +12,9 @@ import type { GameState, AllyUnit, Unit } from "~/types/game";
  *   - New units (id not in base) are appended in the order they appear in the delta.
  */
 export function applyDelta(base: GameState, delta: Record<string, unknown>): GameState {
+  // Shallow copy: unchanged nested objects (e.g. individual units) are shared
+  // by reference with the previous state. This is safe because nothing mutates
+  // units in-place — Vue replaces gameState.value atomically on each delta.
   const result: Record<string, unknown> = { ...base };
 
   for (const [key, val] of Object.entries(delta)) {
@@ -39,6 +42,9 @@ export function applyDelta(base: GameState, delta: Record<string, unknown>): Gam
     );
   }
 
+  // Double cast required: Record<string, unknown> doesn't structurally overlap
+  // with GameState, but we know the result is valid because it was built from
+  // a valid GameState base with only targeted field replacements.
   return result as unknown as GameState;
 }
 

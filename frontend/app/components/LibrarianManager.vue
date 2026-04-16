@@ -18,10 +18,13 @@
     state       – full game state (scene = 'main', floors array present)
     session     – current session identity
     players     – connected player list
-    sendAction  – WebSocket action dispatcher
     claimUnit   – claim a librarian unit
     releaseUnit – release a librarian unit
     renamePlayer – rename the current player
+
+  Injected (LIBRARIAN_ACTIONS):
+    sendAction, lockLibrarian, unlockLibrarian, renameLibrarian,
+    equipKeyPage, addCardToDeck, removeCardFromDeck
 -->
 <script setup lang="ts">
 import type {
@@ -35,61 +38,34 @@ import type {
   Card,
   DeckCardPreview,
   CustomizePayload,
+  FashionBook,
 } from "~/types/game";
+import { LIBRARIAN_ACTIONS, floorColor } from "~/composables/useLibrarianActions";
 
 const props = defineProps<{
   state: GameState;
   session: SessionState | null;
   players: PlayerInfo[];
-  sendAction: (action: Record<string, unknown>) => Promise<ActionResult>;
   claimUnit: (unitId: number) => Promise<ActionResult>;
   releaseUnit: (unitId: number) => Promise<ActionResult>;
   renamePlayer: (name: string) => Promise<ActionResult>;
-  lockLibrarian: (
-    floorIndex: number,
-    unitIndex: number,
-  ) => Promise<ActionResult>;
-  unlockLibrarian: (
-    floorIndex: number,
-    unitIndex: number,
-  ) => Promise<ActionResult>;
-  renameLibrarian: (
-    floorIndex: number,
-    unitIndex: number,
-    name: string,
-  ) => Promise<ActionResult>;
-  equipKeyPage: (
-    floorIndex: number,
-    unitIndex: number,
-    bookInstanceId: number,
-  ) => Promise<ActionResult>;
-  addCardToDeck: (
-    floorIndex: number,
-    unitIndex: number,
-    cardId: number,
-    packageId: string,
-  ) => Promise<ActionResult>;
-  removeCardFromDeck: (
-    floorIndex: number,
-    unitIndex: number,
-    cardId: number,
-    packageId: string,
-  ) => Promise<ActionResult>;
 }>();
+
+const actions = inject(LIBRARIAN_ACTIONS)!;
 
 // ── setCustomization callback ──────────────────────────────────────────────
 
 /**
  * Sends a setCustomization action for the currently editing librarian.
  * Uses the generic sendAction dispatcher since this action is not a common
- * enough operation to warrant a dedicated prop on app.vue.
+ * enough operation to warrant a dedicated composable method.
  */
 async function onSetCustomization(
   payload: Omit<CustomizePayload, "floorIndex" | "unitIndex">,
 ): Promise<ActionResult> {
   const lib = editingLibrarian.value;
   if (!lib) return { ok: false, error: "No librarian selected" };
-  return await props.sendAction({
+  return await actions.sendAction({
     type: "setCustomization",
     floorIndex: lib.floorIndex,
     unitIndex: lib.unitIndex,
@@ -97,29 +73,21 @@ async function onSetCustomization(
   });
 }
 
-/** Accent color keyed by floorIndex (0 = Malkuth … 9 = Keter). */
-const FLOOR_COLORS: Record<number, string> = {
-  0: "#be9966", // Malkuth
-  1: "#6968c4", // Yesod
-  2: "#e5881b", // Hod
-  3: "#4ed564", // Netzach
-  4: "#ffe527", // Tiphereth
-  5: "#ff3326", // Gebura
-  6: "#5ccaf6", // Chesed
-  7: "#957704", // Binah
-  8: "#7c7b7c", // Hokma
-  9: "#dddddd", // Keter
-};
-
-/** Roman numeral labels for realization levels 1–6. */
-const ROMAN = ["I", "II", "III", "IV", "V", "VI"] as const;
-
-function toRoman(level: number): string {
-  return ROMAN[level - 1] ?? String(level);
-}
-
-function floorColor(floorIdx: number): string {
-  return FLOOR_COLORS[floorIdx] ?? "#888";
+/**
+ * Sends a setGifts action for the currently editing librarian.
+ * Uses the generic sendAction dispatcher, same pattern as setCustomization.
+ */
+async function onSetGifts(
+  slots: Record<string, number>,
+): Promise<ActionResult> {
+  const lib = editingLibrarian.value;
+  if (!lib) return { ok: false, error: "No librarian selected" };
+  return await actions.sendAction({
+    type: "setGifts",
+    floorIndex: lib.floorIndex,
+    unitIndex: lib.unitIndex,
+    ...slots,
+  });
 }
 
 function floorIconUrl(floorIdx: number): string {
@@ -129,9 +97,56 @@ function floorIconUrl(floorIdx: number): string {
 
 const floors = computed(() => props.state.floors ?? []);
 
-const totalLibrarians = computed(() =>
-  floors.value.reduce((s, f) => s + f.librarians.length, 0),
-);
+/**
+ * Resolves the active fashion book (workshop skin > custom projection > key
+ * page default) for a librarian, mirroring EditPanel's `activeFashionBook`
+ * logic so the roster thumbnail matches the in-game appearance without the
+ * user opening the customize panel.
+ */
+function fashionBookFor(lib: LibrarianEntry): FashionBook | null {
+  const wsId = lib.workshopSkin;
+  if (wsId) {
+    const skin = (props.state.customizeOptions?.workshopSkins ?? []).find(
+      (s) => s.contentFolderIdx === wsId,
+    );
+    if (skin) {
+      return {
+        id: 0,
+        fileStem: `ws_${skin.contentFolderIdx}`,
+        name: skin.name,
+        rangeType: "Hybrid",
+        replacesHead: skin.replacesHead ?? false,
+        hasFrontLayer: skin.hasFrontLayer,
+        headTiltDeg: skin.headTiltDeg,
+        pivotFracX: skin.pivotFracX,
+        pivotFracY: skin.pivotFracY,
+      };
+    }
+  }
+  const projId = lib.customBookId;
+  if (projId != null && projId >= 0) {
+    const projPkg = lib.customBookPackageId ?? "";
+    const found = (props.state.customizeOptions?.fashionBooks ?? []).find(
+      (fb) => fb.id === projId && (fb.packageId ?? "") === projPkg,
+    );
+    if (found) return found;
+  }
+  const bookId = lib.keyPage.bookId;
+  if (bookId == null) return null;
+  return {
+    id: bookId,
+    packageId: lib.keyPage.bookPackageId,
+    name: lib.keyPage.name,
+    rangeType: lib.keyPage.equipRangeType ?? "",
+    replacesHead: lib.keyPageReplacesHead ?? false,
+    hasFrontLayer: lib.keyPageHasFrontLayer,
+    headTiltDeg: lib.keyPageHeadTiltDeg,
+    pivotFracX: lib.keyPagePivotFracX,
+    pivotFracY: lib.keyPagePivotFracY,
+    hidesBackHair: lib.keyPageHidesBackHair,
+    skinGender: lib.keyPageSkinGender,
+  };
+}
 
 /** Currently selected floor index. Defaults to the first available floor. */
 const activeFloor = ref<number | null>(null);
@@ -161,7 +176,13 @@ function openEdit(lib: LibrarianEntry): void {
 }
 
 function closeEdit(): void {
+  // Capture the lib before nulling the ref. EditPanel's onBeforeUnmount
+  // hook also tries to unlock via onUnlock(), but by the time it runs
+  // editingLibrarian is already null and that path early-returns. So we
+  // must release the lock explicitly here.
+  const lib = editingLibrarian.value;
   editingLibrarian.value = null;
+  if (lib) void actions.unlockLibrarian(lib.floorIndex, lib.unitIndex);
 }
 
 // Keep the editingLibrarian in sync with state updates (e.g. after a rename).
@@ -174,7 +195,6 @@ watch(
     const lib = floor?.librarians.find((l) => l.unitIndex === cur.unitIndex);
     if (lib) editingLibrarian.value = lib;
   },
-  { deep: true },
 );
 
 // ── EditPanel action callbacks ─────────────────────────────────────────────
@@ -182,37 +202,37 @@ watch(
 async function onLock(): Promise<ActionResult> {
   const lib = editingLibrarian.value;
   if (!lib) return { ok: false, error: "No librarian selected" };
-  return props.lockLibrarian(lib.floorIndex, lib.unitIndex);
+  return actions.lockLibrarian(lib.floorIndex, lib.unitIndex);
 }
 
 async function onUnlock(): Promise<ActionResult> {
   const lib = editingLibrarian.value;
   if (!lib) return { ok: false, error: "No librarian selected" };
-  return props.unlockLibrarian(lib.floorIndex, lib.unitIndex);
+  return actions.unlockLibrarian(lib.floorIndex, lib.unitIndex);
 }
 
 async function onRename(name: string): Promise<ActionResult> {
   const lib = editingLibrarian.value;
   if (!lib) return { ok: false, error: "No librarian selected" };
-  return props.renameLibrarian(lib.floorIndex, lib.unitIndex, name);
+  return actions.renameLibrarian(lib.floorIndex, lib.unitIndex, name);
 }
 
 async function onEquipPage(kp: AvailableKeyPage): Promise<void> {
   const lib = editingLibrarian.value;
   if (!lib) return;
-  await props.equipKeyPage(lib.floorIndex, lib.unitIndex, kp.instanceId);
+  await actions.equipKeyPage(lib.floorIndex, lib.unitIndex, kp.instanceId);
 }
 
 async function onAddCard(card: AvailableCard): Promise<void> {
   const lib = editingLibrarian.value;
   if (!lib) return;
-  await props.addCardToDeck(lib.floorIndex, lib.unitIndex, card.cardId.id, card.cardId.packageId);
+  await actions.addCardToDeck(lib.floorIndex, lib.unitIndex, card.cardId.id, card.cardId.packageId);
 }
 
 async function onRemoveCard(card: DeckCardPreview): Promise<void> {
   const lib = editingLibrarian.value;
   if (!lib || !card.cardId) return;
-  await props.removeCardFromDeck(
+  await actions.removeCardFromDeck(
     lib.floorIndex,
     lib.unitIndex,
     card.cardId.id,
@@ -254,33 +274,12 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
   return { ...previewToCard(p, i), options: ["EGO"] };
 }
 
-/**
- * Converts a DeckCardPreview to a minimal Card shape for HandCard rendering.
- * id/index are set to the list position — HandCard does not use them for actions.
- */
-function previewToCard(p: DeckCardPreview, i: number): Card {
-  return {
-    id: { id: i, packageId: 0 },
-    index: i,
-    name: p.name,
-    cost: p.cost,
-    range: p.range,
-    rarity: p.rarity,
-    dice: p.dice,
-    abilityDesc: p.abilityDesc,
-  };
-}
 </script>
 
 <template>
   <div class="lib-manager">
     <div class="lib-header">
       <span class="lib-title">Library</span>
-      <span class="lib-sub"
-        >{{ totalLibrarians }} librarian{{
-          totalLibrarians === 1 ? "" : "s"
-        }}</span
-      >
     </div>
 
     <div v-if="floors.length === 0" class="lib-empty">
@@ -331,43 +330,54 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
         <!-- Emotion cards (collapsed toggle) -->
         <div
           v-if="activeFloorData.emotionCards.length"
-          class="section-toggle"
-          @click="emotionCardsOpen = !emotionCardsOpen"
+          class="section-block"
+          :class="{ open: emotionCardsOpen }"
         >
-          <span class="section-toggle-label">Abnormality Pages</span>
-          <span class="section-toggle-count">{{
-            activeFloorData.emotionCards.length
-          }}</span>
-          <span class="chevron" :class="{ open: emotionCardsOpen }">▸</span>
-        </div>
-
-        <div v-if="emotionCardsOpen" class="emotion-groups">
           <div
-            v-for="group in groupedEmotionCards"
-            :key="group.level"
-            class="emotion-group"
+            class="section-toggle"
+            role="button"
+            tabindex="0"
+            aria-label="Toggle Abnormality Pages"
+            :aria-expanded="emotionCardsOpen"
+            @click="emotionCardsOpen = !emotionCardsOpen"
+            @keydown.enter="emotionCardsOpen = !emotionCardsOpen"
+            @keydown.space.prevent="emotionCardsOpen = !emotionCardsOpen"
           >
-            <div class="emotion-group-label">
-              {{ toRoman(group.level) }}
-              <span
-                v-if="group.cards[0]?.abnormalityName"
-                class="emotion-group-name"
-              >
-                — {{ group.cards[0].abnormalityName }}
-              </span>
-            </div>
-            <div class="em-cards">
-              <AbnormalityPageCard
-                v-for="ec in group.cards"
-                :key="ec.name"
-                :name="ec.name"
-                :state="ec.state"
-                :emotion-level="ec.emotionLevel"
-                :target-type="ec.targetType"
-                :desc="ec.desc"
-                :flavor-text="ec.flavorText"
-                readonly
-              />
+            <span class="section-toggle-label">Abnormality Pages</span>
+            <span class="section-toggle-count">{{
+              activeFloorData.emotionCards.length
+            }}</span>
+            <span class="chevron" :class="{ open: emotionCardsOpen }">▸</span>
+          </div>
+
+          <div v-if="emotionCardsOpen" class="emotion-groups">
+            <div
+              v-for="group in groupedEmotionCards"
+              :key="group.level"
+              class="emotion-group"
+            >
+              <div class="emotion-group-label">
+                {{ toRoman(group.level) }}
+                <span
+                  v-if="group.cards[0]?.abnormalityName"
+                  class="emotion-group-name"
+                >
+                  — {{ group.cards[0].abnormalityName }}
+                </span>
+              </div>
+              <div class="em-cards">
+                <AbnormalityPageCard
+                  v-for="ec in group.cards"
+                  :key="ec.name"
+                  :name="ec.name"
+                  :state="ec.state"
+                  :emotion-level="ec.emotionLevel"
+                  :target-type="ec.targetType"
+                  :desc="ec.desc"
+                  :flavor-text="ec.flavorText"
+                  readonly
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -375,67 +385,158 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
         <!-- EGO pages section (full battle cards, separate from abnormality pages) -->
         <div
           v-if="activeFloorData.egoCards.length"
-          class="section-toggle"
-          @click="egoCardsOpen = !egoCardsOpen"
+          class="section-block"
+          :class="{ open: egoCardsOpen }"
         >
-          <span class="section-toggle-label">EGO Pages</span>
-          <span class="section-toggle-count">{{
-            activeFloorData.egoCards.length
-          }}</span>
-          <span class="chevron" :class="{ open: egoCardsOpen }">▸</span>
-        </div>
+          <div
+            class="section-toggle"
+            role="button"
+            tabindex="0"
+            aria-label="Toggle EGO Pages"
+            :aria-expanded="egoCardsOpen"
+            @click="egoCardsOpen = !egoCardsOpen"
+            @keydown.enter="egoCardsOpen = !egoCardsOpen"
+            @keydown.space.prevent="egoCardsOpen = !egoCardsOpen"
+          >
+            <span class="section-toggle-label">EGO Pages</span>
+            <span class="section-toggle-count">{{
+              activeFloorData.egoCards.length
+            }}</span>
+            <span class="chevron" :class="{ open: egoCardsOpen }">▸</span>
+          </div>
 
-        <div v-if="egoCardsOpen" class="emotion-groups">
-          <div class="emotion-cards">
-            <HandCard
-              v-for="(card, i) in activeFloorData.egoCards"
-              :key="card.name"
-              :card="egoCardToCard(card, i)"
-              readonly
-              @detail="detailCard = egoCardToCard(card, i)"
-            />
+          <div v-if="egoCardsOpen" class="emotion-groups">
+            <div class="emotion-cards">
+              <HandCard
+                v-for="(card, i) in activeFloorData.egoCards"
+                :key="`ego-${i}`"
+                :card="egoCardToCard(card, i)"
+                readonly
+                @detail="detailCard = egoCardToCard(card, i)"
+              />
+            </div>
           </div>
         </div>
 
-        <!-- Compact librarian tiles -->
-        <div
-          v-for="lib in activeFloorData.librarians"
-          :key="`${lib.floorIndex}:${lib.unitIndex}`"
-          class="lib-tile"
-        >
-          <div class="tile-main">
-            <div class="tile-info">
-              <span class="tile-name-text">{{ lib.name }}</span>
-              <span class="tile-page-name">{{ lib.keyPage.name }}</span>
+        <!--
+          Librarian roster list.
+
+          Rows instead of tiles: the previous grid (auto-fill minmax 280px
+          with a 240px portrait) couldn't leave enough horizontal room for
+          the text at narrow widths, so librarian names clipped. A
+          full-width row puts the portrait on the left and gives the body
+          the rest of the row, so the name only clips on genuinely tiny
+          viewports.
+        -->
+        <div class="lib-list">
+          <div
+            v-for="lib in activeFloorData.librarians"
+            :key="`${lib.floorIndex}:${lib.unitIndex}`"
+            class="lib-row"
+            @click="openEdit(lib)"
+          >
+            <div v-if="lib.appearance" class="row-portrait">
+              <LibrarianAppearancePreview
+                :appearance="lib.appearance"
+                :fashion-book="fashionBookFor(lib)"
+                :appearance-type="lib.appearanceType"
+                :gifts="lib.gifts?.equipped"
+                :size="120"
+              />
             </div>
-            <div class="tile-meta">
-              <span class="meta-chip">
-                {{ lib.keyPage.speedMin }}–{{ lib.keyPage.speedMax }}
-              </span>
-              <span
-                v-if="lib.passives.length"
-                class="meta-chip meta-chip--passive"
-              >
-                {{ lib.passives.length }}P
-              </span>
-              <span
-                v-if="lib.deckPreview.length"
-                class="meta-chip meta-chip--deck"
-              >
-                {{ lib.deckPreview.reduce((s, c) => s + c.count, 0) }}
-              </span>
-              <!-- Lock badge -->
-              <span
-                v-if="lib.lockedBy"
-                class="meta-chip meta-chip--locked"
-                :title="`Being edited by ${lib.lockedBy}`"
-              >
-                ✎ {{ lib.lockedBy }}
-              </span>
-              <button class="edit-btn" title="Edit librarian" @click="openEdit(lib)">
-                Edit
-              </button>
+            <div class="row-body">
+              <span class="row-name" :title="lib.name">{{ lib.name }}</span>
+              <span class="row-page" :title="lib.keyPage.name">{{ lib.keyPage.name }}</span>
             </div>
+
+            <!--
+              Stat strip (HP / stagger gauge / speed). Lives on the right
+              next to the resistances grid and hides at the same narrow
+              breakpoint so compact viewports show just name + lock status.
+            -->
+            <div class="row-stats">
+              <span v-if="lib.keyPage.hp != null" class="stat">
+                <img src="/assets/stats/health.png" class="stat-icon" alt="HP" />
+                <span class="stat-value">{{ lib.keyPage.hp }}</span>
+              </span>
+              <span v-if="lib.keyPage.breakGauge != null" class="stat">
+                <img src="/assets/stats/stagger.png" class="stat-icon" alt="Stagger" />
+                <span class="stat-value">{{ lib.keyPage.breakGauge }}</span>
+              </span>
+              <span
+                v-if="lib.keyPage.speedMin != null && lib.keyPage.speedMax != null"
+                class="stat"
+              >
+                <img src="/assets/stats/speed.png" class="stat-icon" alt="Speed" />
+                <span class="stat-value">
+                  {{ lib.keyPage.speedMin }}–{{ lib.keyPage.speedMax }}
+                </span>
+              </span>
+            </div>
+
+            <!--
+              Compact resistances strip: 3 damage types × 2 defenses (HP, BP).
+              Cells inherit their color from resistColor() so weaknesses and
+              immunities are visible at a glance without labels.
+            -->
+            <div v-if="lib.keyPage.resistances" class="row-resists">
+              <div class="resist-col">
+                <span
+                  class="resist-cell"
+                  :style="{ color: resistColor(lib.keyPage.resistances.slashHp) }"
+                >
+                  <img src="/assets/stats/sHpResist.png" class="resist-icon" alt="Slash HP" />
+                  {{ lib.keyPage.resistances.slashHp }}
+                </span>
+                <span
+                  class="resist-cell"
+                  :style="{ color: resistColor(lib.keyPage.resistances.slashBp) }"
+                >
+                  <img src="/assets/stats/sBpResist.png" class="resist-icon" alt="Slash BP" />
+                  {{ lib.keyPage.resistances.slashBp }}
+                </span>
+              </div>
+              <div class="resist-col">
+                <span
+                  class="resist-cell"
+                  :style="{ color: resistColor(lib.keyPage.resistances.pierceHp) }"
+                >
+                  <img src="/assets/stats/pHpResist.png" class="resist-icon" alt="Pierce HP" />
+                  {{ lib.keyPage.resistances.pierceHp }}
+                </span>
+                <span
+                  class="resist-cell"
+                  :style="{ color: resistColor(lib.keyPage.resistances.pierceBp) }"
+                >
+                  <img src="/assets/stats/pBpResist.png" class="resist-icon" alt="Pierce BP" />
+                  {{ lib.keyPage.resistances.pierceBp }}
+                </span>
+              </div>
+              <div class="resist-col">
+                <span
+                  class="resist-cell"
+                  :style="{ color: resistColor(lib.keyPage.resistances.bluntHp) }"
+                >
+                  <img src="/assets/stats/bHpResist.png" class="resist-icon" alt="Blunt HP" />
+                  {{ lib.keyPage.resistances.bluntHp }}
+                </span>
+                <span
+                  class="resist-cell"
+                  :style="{ color: resistColor(lib.keyPage.resistances.bluntBp) }"
+                >
+                  <img src="/assets/stats/bBpResist.png" class="resist-icon" alt="Blunt BP" />
+                  {{ lib.keyPage.resistances.bluntBp }}
+                </span>
+              </div>
+            </div>
+
+            <span
+              v-if="lib.lockedBy"
+              class="row-lock"
+              :title="`Being edited by ${lib.lockedBy}`"
+            >
+              ✎ {{ lib.lockedBy }}
+            </span>
           </div>
         </div>
       </div>
@@ -456,6 +557,7 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
       :on-add-card="onAddCard"
       :on-remove-card="onRemoveCard"
       :on-set-customization="onSetCustomization"
+      :on-set-gifts="onSetGifts"
     />
 
     <CardDetail
@@ -470,34 +572,37 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
 .lib-manager {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  padding: 0.5rem 0;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
 }
 
 .lib-header {
   display: flex;
   align-items: baseline;
-  gap: 0.75rem;
+  gap: var(--sp-3);
 }
 
 .lib-title {
   font-family: var(--font-display);
-  font-size: 1.1rem;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   color: var(--gold);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
+  text-shadow: 0 0 24px var(--gold-glow);
 }
 
-.lib-sub {
-  font-size: 0.68rem;
-  color: var(--text-2);
+@media (min-width: 700px) {
+  .lib-title {
+    font-size: var(--fs-3xl);
+    letter-spacing: 0.22em;
+  }
 }
 
 .lib-empty {
   color: var(--text-2);
-  font-size: 0.8rem;
-  padding: 2rem 0;
+  font-size: var(--fs-sm);
+  padding: var(--sp-5) 0;
   text-align: center;
 }
 
@@ -509,25 +614,25 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
 .floor-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  gap: var(--sp-2);
 }
 
 .floor-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
-  padding: 0.3rem 0.5rem 0.25rem;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
   background: var(--bg-card);
   border: 1px solid var(--border);
   margin-top: 1px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition:
     border-top-color 0.15s,
     background 0.12s,
     opacity 0.15s;
-  min-width: 3rem;
+  min-width: 4.5rem;
 }
 
 .floor-tile:hover {
@@ -542,11 +647,18 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
 }
 
 .tile-icon {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
   opacity: 0.7;
   transition: opacity 0.15s;
+}
+
+@media (min-width: 700px) {
+  .tile-icon {
+    width: 28px;
+    height: 28px;
+  }
 }
 
 .floor-tile.active .tile-icon,
@@ -556,11 +668,17 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
 
 .tile-name {
   font-family: var(--font-display);
-  font-size: 0.52rem;
+  font-size: var(--fs-sm);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-2);
   white-space: nowrap;
+}
+
+@media (min-width: 700px) {
+  .tile-name {
+    font-size: var(--fs-md);
+  }
 }
 
 .floor-tile.active .tile-name {
@@ -569,14 +687,14 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
 
 .tile-level {
   font-family: var(--font-display);
-  font-size: 0.48rem;
+  font-size: var(--fs-xs);
   color: var(--text-3);
   letter-spacing: 0.05em;
 }
 
 .floor-tile.active .tile-level {
   color: var(--floor-color);
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 /* ── Active floor content ──────────────────────────────────────────────────── */
@@ -589,92 +707,123 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
 /* ── Floor banner ──────────────────────────────────────────────────────────── */
 .floor-banner {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.5rem;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
   border-left: 3px solid var(--border);
   background: var(--bg-card);
-  border-radius: 0 3px 3px 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
 
 .banner-name {
   font-family: var(--font-display);
-  font-size: 0.72rem;
+  font-size: var(--fs-xl);
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+  color: var(--text-1);
 }
 
 .banner-level {
   font-family: var(--font-display);
-  font-size: 0.62rem;
-  opacity: 0.7;
-  margin-left: -0.25rem;
+  font-size: var(--fs-md);
+  color: var(--text-2);
+  letter-spacing: 0.1em;
 }
 
-/* ── Abnormality page cards ─────────────────────────────────────────────────── */
+/* ── Abnormality / EGO collapsible sections ────────────────────────────────── */
+/*
+ * .section-block wraps the toggle banner and its expanded content so they
+ * render as one continuous block (shared border + background). The toggle
+ * gets a hairline divider above the content only when .open is applied.
+ */
+.section-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: border-color var(--duration-base) var(--ease-out);
+}
+
+.section-block:hover {
+  border-color: var(--border-mid);
+}
+
+.section-block.open {
+  border-color: var(--border-mid);
+}
+
 .section-toggle {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.25rem 0.5rem;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
   cursor: pointer;
   user-select: none;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 3px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
 .section-toggle:hover {
-  border-color: var(--border-mid);
+  background: var(--bg-card-2);
+}
+
+.section-block.open .section-toggle {
+  border-bottom: 1px solid var(--border);
 }
 
 .section-toggle-label {
   font-family: var(--font-display);
-  font-size: 0.55rem;
+  font-size: var(--fs-lg);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-2);
+  letter-spacing: 0.14em;
+  color: var(--text-1);
 }
 
 .section-toggle-count {
-  font-size: 0.55rem;
-  color: var(--text-3);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  color: var(--gold);
   background: var(--bg-card-2);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 0 0.25rem;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--sp-2);
+  line-height: 1.6;
 }
 
 .chevron {
-  font-size: 0.65rem;
-  color: var(--text-3);
+  font-size: var(--fs-md);
+  color: var(--text-2);
   display: inline-block;
-  transition: transform 0.18s ease;
+  transition: transform var(--duration-base) var(--ease-out);
   margin-left: auto;
 }
 
 .chevron.open {
   transform: rotate(90deg);
+  color: var(--gold);
 }
 
 .emotion-groups {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.3rem 0.5rem;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-3);
   background: var(--bg-card-2);
-  border: 1px solid var(--border);
-  border-radius: 3px;
+  border: none;
+  border-radius: 0;
 }
 
 .emotion-group-label {
   font-family: var(--font-display);
-  font-size: 0.48rem;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--text-3);
-  margin-bottom: 0.1rem;
+  letter-spacing: 0.14em;
+  color: var(--text-2);
+  margin-bottom: var(--sp-1);
 }
 
 .emotion-group-name {
@@ -701,94 +850,182 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
   gap: 0.35rem;
 }
 
-/* ── Compact librarian tile ─────────────────────────────────────────────────── */
-.lib-tile {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-  transition: border-color 0.15s;
-}
-
-.lib-tile:hover {
-  border-color: var(--border-mid);
-}
-
-.tile-main {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.45rem 0.6rem;
-}
-
-.tile-info {
+/* ── Librarian roster list ─────────────────────────────────────────────────── */
+/*
+ * Full-width rows. The entire row is clickable (opens EditPanel), and the
+ * explicit Edit button on the right stays as a keyboard/affordance anchor
+ * with @click.stop so it doesn't fire openEdit twice.
+ */
+.lib-list {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.lib-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold-dim);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.lib-row:hover {
+  background: var(--bg-card-2);
+  border-color: var(--gold-dim);
+  border-left-color: var(--gold-bright);
+}
+
+@media (min-width: 700px) {
+  .lib-row {
+    padding: var(--sp-3) var(--sp-4);
+    gap: var(--sp-4);
+  }
+}
+
+/*
+ * Portrait column. Fixed width matching the AppearancePreview `size` prop
+ * so the row reserves space even before the composite loads.
+ */
+.row-portrait {
+  flex: 0 0 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.row-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--sp-1);
   min-width: 0;
 }
 
-.tile-name-text {
+.row-name {
   font-family: var(--font-display);
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: var(--fs-lg);
+  font-weight: 700;
   color: var(--text-1);
+  letter-spacing: 0.04em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.tile-page-name {
-  font-size: 0.62rem;
+@media (min-width: 700px) {
+  .row-name {
+    font-size: var(--fs-xl);
+  }
+}
+
+.row-page {
+  font-size: var(--fs-sm);
   color: var(--text-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
-.tile-meta {
-  display: flex;
+/*
+ * Stat strip: HP / stagger gauge / speed, each icon paired with its
+ * numeric value. Icons match the assets KeyPageDetail uses so the roster
+ * reads consistently with the detail panel. Hidden at narrow widths along
+ * with the resistance grid — compact viewports show just name + lock.
+ */
+.row-stats {
+  flex: 0 0 auto;
+  display: none;
   align-items: center;
-  gap: 0.3rem;
-  flex-shrink: 0;
+  gap: var(--sp-3);
 }
 
-.meta-chip {
-  font-size: 0.6rem;
+@media (min-width: 700px) {
+  .row-stats {
+    display: flex;
+  }
+}
+
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-family: var(--font-display);
+}
+
+.stat-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  object-fit: contain;
+  opacity: 0.9;
+}
+
+.stat-value {
+  font-size: var(--fs-md);
+  color: var(--text-1);
+}
+
+/*
+ * Compact resistances column. Three sub-columns (slash / pierce / blunt),
+ * each with HP on top and BP on the bottom. Cells inherit their text
+ * color from resistColor() so weaknesses (red) and immunities (green) are
+ * immediately legible.
+ */
+.row-resists {
+  flex: 0 0 auto;
+  display: none;
+  gap: var(--sp-2);
+  align-items: center;
+  padding: var(--sp-1) var(--sp-2);
+  border-left: 1px solid var(--border);
+}
+
+@media (min-width: 700px) {
+  .row-resists {
+    display: flex;
+  }
+}
+
+.resist-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resist-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--fs-2xs);
   font-family: var(--font-body);
-  color: var(--text-2);
-  background: var(--bg-card-2);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 0.1rem 0.3rem;
-  white-space: nowrap;
+  font-weight: 700;
+  line-height: 1.1;
 }
 
-.meta-chip--passive {
-  color: var(--rarity-rare);
-  border-color: #2a3a6a;
+.resist-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  object-fit: contain;
+  opacity: 0.9;
 }
 
-.meta-chip--locked {
+/*
+ * Lock indicator. The entire row is already clickable — no separate Edit
+ * button — so the lock chip stands alone as the right-side status.
+ */
+.row-lock {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
   color: var(--gold);
-  border-color: var(--gold-dim);
-}
-
-.edit-btn {
-  padding: 0.2rem 0.55rem;
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  color: var(--text-2);
-  font-size: 0.62rem;
-  cursor: pointer;
-  transition: color 0.12s, border-color 0.12s;
+  letter-spacing: 0.04em;
   white-space: nowrap;
-}
-
-.edit-btn:hover {
-  color: var(--gold);
-  border-color: var(--gold-dim);
 }
 </style>

@@ -23,6 +23,8 @@ const props = defineProps<{
   side?: "right" | "left";
 }>();
 
+const ctx = inject(BATTLE_CTX);
+if (!ctx) throw new Error("BATTLE_CTX not provided — component must be used inside Stage.vue");
 const {
   isSelectPhase,
   selectingSlot,
@@ -34,7 +36,7 @@ const {
   allyColors,
   attackMap,
   isOwnUnit,
-} = inject(BATTLE_CTX) as BattleCtx;
+} = ctx;
 
 const slots = computed(() => sortedSlots(props.unit));
 
@@ -63,12 +65,24 @@ function dieColor(sc: SlottedCardEntry | undefined): string {
   if (sc?.clash) return ARROW_COLORS.clash;
   if (props.isAlly) return ARROW_COLORS.incoming;
   if (sc?.targetUnitId != null) return ARROW_COLORS.outgoing;
-  return "#F0F"; // Instance / untargeted
+  return "var(--gold-dim)"; // Instance / untargeted — neutral color
 }
 
-// detailCard can hold a full Card (from hand) or a SlottedCardEntry (from long-press on die);
-// typed as Card since CardDetail only needs the overlapping fields (name, cost, range, dice, etc.)
 const detailCard = ref<Card | null>(null);
+
+/** Converts a SlottedCardEntry to a Card for display in CardDetail. */
+function slottedToCard(sc: SlottedCardEntry): Card {
+  return {
+    id: { id: sc.cardIndex, packageId: 0 },
+    index: sc.cardIndex,
+    name: sc.name,
+    cost: sc.cost,
+    range: sc.range,
+    desc: sc.desc,
+    flavorText: sc.flavorText,
+    dice: sc.dice,
+  };
+}
 const egoMode = ref(false);
 const expandedBuff = ref<string | null>(null);
 const handExpanded = ref(false);
@@ -93,6 +107,25 @@ function toggleBuff(type: string) {
 }
 
 const hasEgo = computed(() => (ally.value.ego?.length ?? 0) > 0);
+
+/**
+ * Whether a hand card at the given index should appear dimmed.
+ * A card is dimmed when the unit is unowned, when a slot for a different
+ * unit is selected, or when the player is targeting from this unit but
+ * with a different card.
+ */
+function isCardDimmed(cardIndex: number, isEgo: boolean): boolean {
+  if (!isOwnUnit(props.unit.id)) return true;
+  if (selectingSlot.value !== null && selectingSlot.value.unitId !== props.unit.id) return true;
+  if (
+    selectingTargetFor.value !== null &&
+    selectingTargetFor.value.unitId === props.unit.id &&
+    !(selectingTargetFor.value.cardIndex === cardIndex && selectingTargetFor.value.isEgo === isEgo)
+  ) {
+    return true;
+  }
+  return false;
+}
 
 watch(hasEgo, (val) => {
   if (!val) egoMode.value = false;
@@ -151,9 +184,10 @@ const detailsLabel = computed(() => {
       <!-- row 2: light pips, emotion level -->
       <div class="unit-header-row reversible-container">
         <UnitLightDisplay
-          :current="ally.playPoint"
-          :max="ally.maxPlayPoint"
-          :reserved="ally.reservedPlayPoint"
+          v-if="isAlly"
+          :current="ally.light"
+          :max="ally.maxLight"
+          :reserved="ally.reservedLight"
         />
         <UnitEmotionDisplay
           :positive="unit.emotionCoins.positive"
@@ -182,7 +216,7 @@ const detailsLabel = computed(() => {
         :color="dieColor(card)"
         :isReversed="side !== 'right'"
         :isAlly="isAlly"
-        :onLongPress="() => (detailCard = card as unknown as Card)"
+        :onLongPress="() => { if (card) detailCard = slottedToCard(card); }"
       >
         <div
           v-if="!isDead(unit) && attackMap[unit.id]?.[die.slot]?.length"
@@ -257,17 +291,7 @@ const detailsLabel = computed(() => {
                   selectingTargetFor?.cardIndex === i &&
                   selectingTargetFor?.isEgo === true
                 "
-                :dimmed="
-                  !isOwnUnit(unit.id) ||
-                  (selectingSlot !== null &&
-                    selectingSlot.unitId !== unit.id) ||
-                  (selectingTargetFor !== null &&
-                    selectingTargetFor.unitId === unit.id &&
-                    !(
-                      selectingTargetFor.cardIndex === i &&
-                      selectingTargetFor.isEgo === true
-                    ))
-                "
+                :dimmed="isCardDimmed(Number(i), true)"
                 :unusable="!isOwnUnit(unit.id) || c.canUse === false"
                 @click="onCardClick(unit.id, Number(i), true)"
                 @detail="detailCard = c"
@@ -283,17 +307,7 @@ const detailsLabel = computed(() => {
                   selectingTargetFor?.cardIndex === i &&
                   !selectingTargetFor?.isEgo
                 "
-                :dimmed="
-                  !isOwnUnit(unit.id) ||
-                  (selectingSlot !== null &&
-                    selectingSlot.unitId !== unit.id) ||
-                  (selectingTargetFor !== null &&
-                    selectingTargetFor.unitId === unit.id &&
-                    !(
-                      selectingTargetFor.cardIndex === i &&
-                      !selectingTargetFor.isEgo
-                    ))
-                "
+                :dimmed="isCardDimmed(Number(i), false)"
                 :unusable="!isOwnUnit(unit.id) || c.canUse === false"
                 @click="onCardClick(unit.id, Number(i))"
                 @detail="detailCard = c"

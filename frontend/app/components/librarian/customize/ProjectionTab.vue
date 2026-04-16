@@ -157,11 +157,11 @@ const hasBodyTypeToggle = computed(
       <div v-else class="fashion-list projection-list">
         <button
           v-for="book in compatibleCorebooks"
-          :key="book.id"
+          :key="`${book.id}-${book.packageId ?? ''}`"
           class="fashion-item"
-          :class="{ active: customBookId === book.id && customBookPackageId === '' }"
+          :class="{ active: customBookId === book.id && customBookPackageId === (book.packageId ?? '') }"
           :disabled="busy"
-          @click="emit('update:customBookId', book.id); emit('update:customBookPackageId', ''); emit('update:workshopSkin', '')"
+          @click="emit('update:customBookId', book.id); emit('update:customBookPackageId', book.packageId ?? ''); emit('update:workshopSkin', '')"
         >
           <span class="fashion-name">{{ book.name }}</span>
           <span

@@ -12,6 +12,31 @@ namespace PlayLoRWithMe
     public static class GameStateSerializer
     {
         /// <summary>
+        /// Cached reflection lookup for the private <c>LibrariansNameXmlList._dictionary</c>
+        /// field, used to read the suggested-name pool without a public API.
+        /// </summary>
+        private static readonly FieldInfo _libNameDictField =
+            typeof(LibrariansNameXmlList).GetField("_dictionary",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+
+        /// <summary>
+        /// The 10 named Sephirah floors in canonical order; index is the floorIndex
+        /// used throughout the JSON API and WebSocket messages.
+        /// </summary>
+        internal static readonly SephirahType[] Sephirahs = new[]
+        {
+            SephirahType.Malkuth,
+            SephirahType.Yesod,
+            SephirahType.Hod,
+            SephirahType.Netzach,
+            SephirahType.Tiphereth,
+            SephirahType.Gebura,
+            SephirahType.Chesed,
+            SephirahType.Binah,
+            SephirahType.Hokma,
+            SephirahType.Keter,
+        };
+        /// <summary>
         /// Serializes the full unfiltered game state. Used by the SSE path and as the
         /// baseline for delta diffing.
         /// </summary>
@@ -53,29 +78,47 @@ namespace PlayLoRWithMe
             if (gsm == null)
                 return new JsonWriter().Add("scene", "loading").Build();
 
+            var w = new JsonWriter();
+            w.Add("assetsReady", AppearanceCache.IsReady && GiftCache.IsReady);
+
             if (gsm.battleScene != null && gsm.battleScene.gameObject.activeSelf)
-                return BuildBattleJson(ownedUnitIds);
+            {
+                w.Add("scene", "battle");
+                WriteBattleScene(w, ownedUnitIds);
+            }
+            else if (gsm.uIController != null && gsm.uIController.gameObject.activeSelf)
+            {
+                w.Add("scene", "main");
+                WriteMainScene(w, ownedUnitIds);
+            }
+            else if (gsm.storyRoot != null && gsm.storyRoot.gameObject.activeSelf)
+            {
+                w.Add("scene", "story");
+                WriteStoryScene(w);
+            }
+            else if (gsm.titleScene != null && gsm.titleScene.gameObject.activeSelf)
+            {
+                w.Add("scene", "title");
+                WriteTitleScene(w);
+            }
+            else
+            {
+                w.Add("scene", "transition");
+            }
 
-            if (gsm.uIController != null && gsm.uIController.gameObject.activeSelf)
-                return BuildMainJson();
-
-            if (gsm.storyRoot != null && gsm.storyRoot.gameObject.activeSelf)
-                return new JsonWriter().Add("scene", "story").Build();
-
-            if (gsm.titleScene != null && gsm.titleScene.gameObject.activeSelf)
-                return new JsonWriter().Add("scene", "title").Build();
-
-            return new JsonWriter().Add("scene", "transition").Build();
+            return w.Build();
         }
 
         /// <summary>
-        /// Builds a JSON representing the current main menu page.
+        /// Serializes the main library/floor/librarian management scene.
         /// During <c>BattleSetting</c> phase also emits pre-battle ally/enemy
         /// previews so the frontend can render the formation screen.
         /// </summary>
-        private static string BuildMainJson()
+        private static void WriteMainScene(
+            JsonWriter w,
+            System.Collections.Generic.HashSet<int> ownedUnitIds
+        )
         {
-            var w = new JsonWriter().Add("scene", "main");
             var uic = UI.UIController.Instance;
             if (uic != null)
                 w.Add("uiPhase", uic.CurrentUIPhase.ToString());
@@ -85,11 +128,25 @@ namespace PlayLoRWithMe
             else
             {
                 WriteFloors(w);
+                // WriteLibraryInventory calls WriteCustomizeOptions internally.
                 WriteLibraryInventory(w);
-                WriteCustomizeOptions(w);
             }
+        }
 
-            return w.Build();
+        /// <summary>
+        /// Serializes the title screen. Currently a no-op placeholder; the scene
+        /// tag is already written by the dispatcher.
+        /// </summary>
+        private static void WriteTitleScene(JsonWriter w)
+        {
+        }
+
+        /// <summary>
+        /// Serializes the story/cutscene scene. Currently a no-op placeholder;
+        /// the scene tag is already written by the dispatcher.
+        /// </summary>
+        private static void WriteStoryScene(JsonWriter w)
+        {
         }
 
         /// <summary>
@@ -187,20 +244,7 @@ namespace PlayLoRWithMe
             if (lib == null)
                 return;
 
-            // The 10 named Sephirah floors in canonical order; index becomes floorIndex.
-            var sephirahs = new[]
-            {
-                SephirahType.Malkuth,
-                SephirahType.Yesod,
-                SephirahType.Hod,
-                SephirahType.Netzach,
-                SephirahType.Tiphereth,
-                SephirahType.Gebura,
-                SephirahType.Chesed,
-                SephirahType.Binah,
-                SephirahType.Hokma,
-                SephirahType.Keter,
-            };
+            var sephirahs = Sephirahs;
 
             var abilityDescList = Singleton<BattleCardAbilityDescXmlList>.Instance;
             var emotionCardList = Singleton<EmotionCardXmlList>.Instance;
@@ -388,9 +432,13 @@ namespace PlayLoRWithMe
                                             o.AddObject(
                                                 "keyPage",
                                                 k =>
+                                                {
                                                     k.Add("instanceId", book.instanceId)
-                                                        .Add("bookId", book.GetBookClassInfoId().id)
-                                                        .Add("name", book.Name)
+                                                        .Add("bookId", book.GetBookClassInfoId().id);
+                                                    var kpPkg = book.GetBookClassInfoId().packageId;
+                                                    if (!string.IsNullOrEmpty(kpPkg))
+                                                        k.Add("bookPackageId", kpPkg);
+                                                    k.Add("name", book.Name)
                                                         .Add("speedMin", book.SpeedMin)
                                                         .Add("speedMax", book.SpeedMax)
                                                         // unit.MaxHp includes gift/bonus HP consistent
@@ -425,21 +473,23 @@ namespace PlayLoRWithMe
                                                                         "bluntBp",
                                                                         book.hBpResist.ToString()
                                                                     )
-                                                        )
-                                            );
+                                                        );
+                                                });
                                             // Fashion metadata for the equipped key page body preview.
                                             // Written as sibling fields on the librarian object (not
                                             // nested inside keyPage) because the keyPage object above
                                             // is already closed.  Field names mirror fashionBooks[].
                                             {
-                                                var kpBid = book.GetBookClassInfoId().id;
+                                                var kpLid = book.GetBookClassInfoId();
                                                 var kpBxi = book.ClassInfo;
                                                 if (kpBxi != null && !string.IsNullOrEmpty(kpBxi.GetCharacterSkin()))
                                                 {
                                                     if (kpBxi.gender != Gender.N)
                                                         o.Add("keyPageSkinGender", kpBxi.gender.ToString());
                                                     o.Add("keyPageReplacesHead", kpBxi.skinType != "Lor");
-                                                    if (AppearanceCache.FashionMeta.TryGetValue(kpBid, out var kpMeta))
+                                                    var kpStem = string.IsNullOrEmpty(kpLid.packageId)
+                                                        ? kpLid.id.ToString() : $"{kpLid.packageId}_{kpLid.id}";
+                                                    if (AppearanceCache.FashionMeta.TryGetValue(kpStem, out var kpMeta))
                                                     {
                                                         if (Mathf.Abs(kpMeta.TiltDeg) > 0.05f)
                                                             o.Add("keyPageHeadTiltDeg", kpMeta.TiltDeg)
@@ -653,7 +703,26 @@ namespace PlayLoRWithMe
                                             Color32 hair = cd != null ? (Color32)cd.hairColor : new Color32(13, 13, 13, 255);
                                             Color32 skin = cd != null ? (Color32)cd.skinColor : new Color32(224, 188, 157, 255);
                                             Color32 eyeC = cd != null ? (Color32)cd.eyeColor  : new Color32(13, 13, 13, 255);
+                                            // Patron librarians use SpecialCustomizedAppearance prefabs
+                                            // with unique head sprites.  Only emit patronHeadId for IDs
+                                            // that the game recognizes as patron heads — regular librarians
+                                            // have specialCustomIDs (11-20) that don't have prefabs.
+                                            int patronId = 0;
+                                            if (cd?.specialCustomID != null)
+                                            {
+                                                int sid = cd.specialCustomID.id;
+                                                bool isPatron =
+                                                    (cd.specialCustomID.IsBasic()
+                                                        && sid >= 1 && sid <= 10)
+                                                    || sid == 9070402
+                                                    || sid == 1309021
+                                                    || sid == 9100501;
+                                                if (isPatron)
+                                                    patronId = sid;
+                                            }
+
                                             o.AddObject("appearance", a =>
+                                            {
                                                 a.Add("frontHairID", cd?.frontHairID ?? 0)
                                                     .Add("backHairID", cd?.backHairID ?? 0)
                                                     .Add("eyeID",       cd?.eyeID      ?? 0)
@@ -666,8 +735,10 @@ namespace PlayLoRWithMe
                                                     .AddArray("skinColor", cArr =>
                                                         cArr.AddInt(skin.r).AddInt(skin.g).AddInt(skin.b))
                                                     .AddArray("eyeColor", cArr =>
-                                                        cArr.AddInt(eyeC.r).AddInt(eyeC.g).AddInt(eyeC.b))
-                                            );
+                                                        cArr.AddInt(eyeC.r).AddInt(eyeC.g).AddInt(eyeC.b));
+                                                if (patronId > 0)
+                                                    a.Add("patronHeadId", patronId);
+                                            });
 
                                             // Per-type custom battle dialogue text.
                                             // Only serialized when the librarian has a dialogue model
@@ -738,6 +809,12 @@ namespace PlayLoRWithMe
                                             if (!string.IsNullOrEmpty(unit.workshopSkin))
                                                 o.Add("workshopSkin", unit.workshopSkin);
 
+                                            // Patron (sephirah) librarians have restricted
+                                            // customization: no name editing, no face/hair
+                                            // (uses SpecialCustomizedAppearance), no dialogue.
+                                            if (unit.isSephirah)
+                                                o.Add("isSephirah", true);
+
                                             // Body type: the Gender enum variant controlling which
                                             // body prefab (_F/_M/_N suffix) is used in-game.
                                             o.Add("appearanceType", unit.appearanceType.ToString());
@@ -747,6 +824,62 @@ namespace PlayLoRWithMe
                                             var activeSkinInfo = customBook?.ClassInfo ?? book.ClassInfo;
                                             if (activeSkinInfo.gender != Gender.N)
                                                 o.Add("skinGender", activeSkinInfo.gender.ToString());
+
+                                            // Gift accessories equipped and available for equipping.
+                                            var inv = unit.giftInventory;
+                                            var equippedGifts = inv.GetEquippedList();
+                                            var unequippedGifts = inv.GetUnequippedList();
+
+                                            // Build a slot-indexed array of 9 entries (one per GiftPosition).
+                                            // Null means nothing is equipped in that slot.
+                                            var equippedBySlot = new GiftModel[9];
+                                            foreach (var g in equippedGifts)
+                                                equippedBySlot[(int)g.ClassInfo.Position] = g;
+
+                                            o.AddObject("gifts", gifts =>
+                                            {
+                                                gifts.AddArray("equipped", eqArr =>
+                                                {
+                                                    for (int si = 0; si < equippedBySlot.Length; si++)
+                                                    {
+                                                        var g = equippedBySlot[si];
+                                                        if (g == null)
+                                                        {
+                                                            eqArr.AddNull();
+                                                        }
+                                                        else
+                                                        {
+                                                            eqArr.AddObject(go =>
+                                                            {
+                                                                go.Add("id", g.GetGiftClassInfoId())
+                                                                    .Add("name", g.GetName())
+                                                                    .Add("desc", g.GiftDesc)
+                                                                    .Add("position", g.ClassInfo.Position.ToString());
+                                                                WriteGiftStat(go, g.ClassInfo.Stat);
+                                                                go.Add("visible", g.isShowEquipGift);
+                                                            });
+                                                        }
+                                                    }
+                                                });
+
+                                                gifts.AddArray("available", avArr =>
+                                                {
+                                                    foreach (var g in unequippedGifts)
+                                                    {
+                                                        // Skip gifts hidden from the appearance UI.
+                                                        if (g.ClassInfo.NoAppear)
+                                                            continue;
+                                                        avArr.AddObject(go =>
+                                                        {
+                                                            go.Add("id", g.GetGiftClassInfoId())
+                                                                .Add("name", g.GetName())
+                                                                .Add("desc", g.GiftDesc)
+                                                                .Add("position", g.ClassInfo.Position.ToString());
+                                                            WriteGiftStat(go, g.ClassInfo.Stat);
+                                                        });
+                                                    }
+                                                });
+                                            });
                                         });
                                     }
                                 }
@@ -754,6 +887,18 @@ namespace PlayLoRWithMe
                         });
                     }
                 }
+            );
+        }
+
+        /// <summary>Serializes a GiftStatEffect as a nested "stat" object.</summary>
+        private static void WriteGiftStat(JsonWriter w, GiftStatEffect stat)
+        {
+            w.AddObject("stat", s =>
+                s.Add("hp", stat.Hp)
+                    .Add("breakGauge", stat.Break)
+                    .Add("breakRecover", stat.BreakRecover)
+                    .Add("tune", stat.Tune)
+                    .Add("amp", stat.Amp)
             );
         }
 
@@ -811,6 +956,7 @@ namespace PlayLoRWithMe
                                 .Add("speedMax", book.SpeedMax)
                                 .Add("chapter", book.ClassInfo.Chapter)
                                 .Add("bookIcon", bookGroupKey)
+                                .Add("bookGroupName", GetBookGroupName(book, bookGroupKey))
                                 .Add("hp", book.HP)
                                 .Add("breakGauge", book.Break)
                                 .Add("equipRangeType", book.ClassInfo.RangeType.ToString())
@@ -925,15 +1071,7 @@ namespace PlayLoRWithMe
             {
                 // Suggested name pool via reflection (LibrariansNameXmlList._dictionary is private).
                 var nameXml = Singleton<LibrariansNameXmlList>.Instance;
-                var nameDict =
-                    typeof(LibrariansNameXmlList)
-                        .GetField(
-                            "_dictionary",
-                            System.Reflection.BindingFlags.NonPublic
-                                | System.Reflection.BindingFlags.Instance
-                        )
-                        ?.GetValue(nameXml)
-                    as Dictionary<int, string>;
+                var nameDict = _libNameDictField?.GetValue(nameXml) as Dictionary<int, string>;
 
                 o.AddArray("suggestedNames", arr =>
                 {
@@ -1007,7 +1145,7 @@ namespace PlayLoRWithMe
                                 fb.Add("skinGender", bxi.gender.ToString());
 
                             // Optional per-book appearance metadata from AppearanceCache.
-                            if (AppearanceCache.FashionMeta.TryGetValue(bid, out var meta))
+                            if (AppearanceCache.FashionMeta.TryGetValue(bid.ToString(), out var meta))
                             {
                                 // Head tilt and pivot: omitted when tilt is zero.
                                 if (Mathf.Abs(meta.TiltDeg) > 0.05f)
@@ -1022,6 +1160,50 @@ namespace PlayLoRWithMe
                                     fb.Add("hidesBackHair", true);
                             }
                         });
+                    }
+
+                    // Second pass: workshop mod books that can be used as projections.
+                    // These have a non-empty packageId and are not tracked by
+                    // CustomCoreBookInventoryModel (which explicitly skips workshop books).
+                    var bookInv = Singleton<BookInventoryModel>.Instance;
+                    var allBooks = bookInv?.GetBookListAll();
+                    if (allBooks != null)
+                    {
+                        var seenWs = new HashSet<string>();
+                        foreach (var book in allBooks)
+                        {
+                            if (!book.IsWorkshop) continue;
+                            var lid = book.GetBookClassInfoId();
+                            var bxi = book.ClassInfo;
+                            if (bxi == null || bxi.canNotEquip) continue;
+                            if (string.IsNullOrEmpty(bxi.GetCharacterSkin())) continue;
+                            // Deduplicate by full LorId — same XML can appear as multiple instances.
+                            string key = $"{lid.packageId}:{lid.id}";
+                            if (!seenWs.Add(key)) continue;
+                            Debug.Log($"[PlayLoRWithMe] fashionBooks: ws book id={lid.id} pkg={lid.packageId} name={bxi.Name} range={bxi.RangeType} skinType={bxi.skinType}");
+                            arr.AddObject(fb =>
+                            {
+                                fb.Add("id", lid.id)
+                                    .Add("packageId", lid.packageId)
+                                    .Add("name", bxi.Name)
+                                    .Add("rangeType", bxi.RangeType.ToString())
+                                    .Add("replacesHead", bxi.skinType != "Lor");
+                                if (bxi.gender != Gender.N)
+                                    fb.Add("skinGender", bxi.gender.ToString());
+                                var wsStem = $"{lid.packageId}_{lid.id}";
+                                if (AppearanceCache.FashionMeta.TryGetValue(wsStem, out var meta))
+                                {
+                                    if (Mathf.Abs(meta.TiltDeg) > 0.05f)
+                                        fb.Add("headTiltDeg", meta.TiltDeg)
+                                            .Add("pivotFracX", meta.PivotFracX)
+                                            .Add("pivotFracY", meta.PivotFracY);
+                                    if (meta.HasFrontLayer)
+                                        fb.Add("hasFrontLayer", true);
+                                    if (meta.HidesBackHair)
+                                        fb.Add("hidesBackHair", true);
+                                }
+                            });
+                        }
                     }
 
                 });
@@ -1042,10 +1224,34 @@ namespace PlayLoRWithMe
                         if (skin == null)
                             continue;
                         ws.AddObject(s =>
+                        {
                             s.Add("id", skin.id)
                                 .Add("name", skin.dataName)
-                                .Add("contentFolderIdx", skin.contentFolderIdx)
-                        );
+                                .Add("contentFolderIdx", skin.contentFolderIdx);
+                            var wsStem = $"ws_{skin.contentFolderIdx}";
+                            if (AppearanceCache.FashionMeta.TryGetValue(wsStem, out var meta))
+                            {
+                                // ReplacesHead is encoded inversely in FashionMeta:
+                                // HidesBackHair is set when !ReplacesHead && HasHood,
+                                // but for workshop skins the authoritative source is
+                                // ClothCustomizeData.headEnabled (already baked into
+                                // the extracted body via FashionBookBody.ReplacesHead).
+                                // We can't recover ReplacesHead from FashionMeta alone,
+                                // so we check the skin data directly.
+                                bool headEnabled = true;
+                                if (skin.dic.TryGetValue(ActionDetail.Default, out var dc))
+                                    headEnabled = dc.headEnabled;
+                                else if (skin.dic.TryGetValue(ActionDetail.Standing, out var sc))
+                                    headEnabled = sc.headEnabled;
+                                s.Add("replacesHead", !headEnabled);
+                                if (meta.HasFrontLayer)
+                                    s.Add("hasFrontLayer", true);
+                                if (Mathf.Abs(meta.TiltDeg) > 0.05f)
+                                    s.Add("headTiltDeg", meta.TiltDeg)
+                                        .Add("pivotFracX", meta.PivotFracX)
+                                        .Add("pivotFracY", meta.PivotFracY);
+                            }
+                        });
                     }
                 });
 
@@ -1229,12 +1435,14 @@ namespace PlayLoRWithMe
         // -------------------------------------------------------------------------
 
         /// <summary>
-        /// Builds a JSON representing the current battle state.
+        /// Serializes the full battle state including units, slotted cards,
+        /// and abnormality selection.
         /// </summary>
-        private static string BuildBattleJson(System.Collections.Generic.HashSet<int> ownedUnitIds)
+        private static void WriteBattleScene(
+            JsonWriter w,
+            System.Collections.Generic.HashSet<int> ownedUnitIds
+        )
         {
-            var w = new JsonWriter().Add("scene", "battle");
-
             var sc = Singleton<StageController>.Instance;
             if (sc != null)
             {
@@ -1348,7 +1556,6 @@ namespace PlayLoRWithMe
                 );
             }
 
-            return w.Build();
         }
 
         /// <summary>
@@ -1375,9 +1582,9 @@ namespace PlayLoRWithMe
                     .Add("maxStaggerGauge", unit.breakDetail.GetDefaultBreakGauge())
                     .Add("staggerThreshold", unit.breakDetail.breakLife)
                     .Add("targetable", unit.IsTargetable(null))
-                    .Add("playPoint", unit.PlayPoint)
-                    .Add("maxPlayPoint", unit.MaxPlayPoint)
-                    .Add("reservedPlayPoint", unit.cardSlotDetail?.ReservedPlayPoint ?? 0);
+                    .Add("light", unit.PlayPoint)
+                    .Add("maxLight", unit.MaxPlayPoint)
+                    .Add("reservedLight", unit.cardSlotDetail?.ReservedPlayPoint ?? 0);
 
                 if (unit.Book != null)
                     WriteKeyPage(w, unit);
@@ -1914,6 +2121,104 @@ namespace PlayLoRWithMe
             if (System.Enum.IsDefined(typeof(UI.UIStoryLine), book.ClassInfo.BookIcon))
                 return (int)System.Enum.Parse(typeof(UI.UIStoryLine), book.ClassInfo.BookIcon);
             return 0;
+        }
+
+        /// <summary>
+        /// Resolves the display name for a book's group header, mirroring the logic in
+        /// <c>UISettingInvenEquipPageListSlot.SetBooksData</c>. Falls back to the raw
+        /// <paramref name="bookGroupKey"/> if no localized name can be resolved.
+        /// </summary>
+        private static string GetBookGroupName(BookModel book, string bookGroupKey)
+        {
+            if (book.IsWorkshop)
+                return "workshop " + book.ClassInfo.workshopID;
+
+            if (!System.Enum.IsDefined(typeof(UI.UIStoryLine), book.ClassInfo.BookIcon))
+                return bookGroupKey;
+
+            var storyLine = (UI.UIStoryLine)System.Enum.Parse(
+                typeof(UI.UIStoryLine), book.ClassInfo.BookIcon
+            );
+
+            // Mirrors the exact switch in UISettingInvenEquipPageListSlot.SetBooksData.
+            // "Normal story" books use either chapter-header text keys or hardcoded
+            // stage IDs from StageNameXmlList — there is no generic lookup path.
+            switch (storyLine)
+            {
+                // chapter headers
+                case UI.UIStoryLine.Chapter1:
+                    return TextDataModel.GetText("ui_maintitle_citystate_1") ?? bookGroupKey;
+                case UI.UIStoryLine.Chapter2:
+                    return TextDataModel.GetText("ui_maintitle_citystate_2") ?? bookGroupKey;
+                case UI.UIStoryLine.Chapter3:
+                    return TextDataModel.GetText("ui_maintitle_citystate_3") ?? bookGroupKey;
+                case UI.UIStoryLine.Chapter4:
+                    return TextDataModel.GetText("ui_maintitle_citystate_4") ?? bookGroupKey;
+                case UI.UIStoryLine.Chapter5:
+                    return TextDataModel.GetText("ui_maintitle_citystate_5") ?? bookGroupKey;
+                case UI.UIStoryLine.Chapter6:
+                    return TextDataModel.GetText("ui_maintitle_citystate_6") ?? bookGroupKey;
+                case UI.UIStoryLine.Chapter7:
+                    return TextDataModel.GetText("ui_maintitle_citystate_7") ?? bookGroupKey;
+                // normal-story books with hardcoded stage IDs
+                case UI.UIStoryLine.HookOfficeRemnant:
+                    return StageName(100002) ?? bookGroupKey;
+                case UI.UIStoryLine.AxeGang:
+                    return StageName(100008) ?? bookGroupKey;
+                case UI.UIStoryLine.Grade7Fixers:
+                    return StageName(100005) ?? bookGroupKey;
+                case UI.UIStoryLine.Grade8Fixers:
+                    return StageName(100004) ?? bookGroupKey;
+                case UI.UIStoryLine.RustyChainGroup:
+                    return StageName(100009) ?? bookGroupKey;
+                case UI.UIStoryLine.WorkshopFixer:
+                    return StageName(100010) ?? bookGroupKey;
+                case UI.UIStoryLine.SevenAssociation:
+                    return StageName(100011) ?? bookGroupKey;
+                case UI.UIStoryLine.Sword:
+                    return StageName(100012) ?? bookGroupKey;
+                case UI.UIStoryLine.ClassOneFixer:
+                    return StageName(100013) ?? bookGroupKey;
+                case UI.UIStoryLine.Jeong:
+                    return StageName(100014) ?? bookGroupKey;
+                case UI.UIStoryLine.AwlOfNight:
+                    return StageName(100015) ?? bookGroupKey;
+                case UI.UIStoryLine.Usett:
+                    return StageName(100016) ?? bookGroupKey;
+                case UI.UIStoryLine.Mirae:
+                    return StageName(100017) ?? bookGroupKey;
+                case UI.UIStoryLine.Workshop:
+                    return StageName(100018) ?? bookGroupKey;
+                case UI.UIStoryLine.Bayyard:
+                    return StageName(100019) ?? bookGroupKey;
+            }
+
+            // Reception-based books — look up via StageClassInfoList
+            var allStages = Singleton<StageClassInfoList>.Instance?.GetAllDataList();
+            if (allStages != null)
+            {
+                var stageInfo = allStages.Find(
+                    x => x.storyType == storyLine.ToString()
+                );
+                if (stageInfo != null)
+                {
+                    string name = Singleton<StageNameXmlList>.Instance?.GetName(stageInfo);
+                    if (!string.IsNullOrEmpty(name) && name != "Unknown")
+                        return name;
+                }
+            }
+
+            return bookGroupKey;
+        }
+
+        /// <summary>
+        /// Shorthand for <c>StageNameXmlList.GetName(id)</c>, returning null when
+        /// the singleton is unavailable or the result is the default "Unknown".
+        /// </summary>
+        private static string StageName(int id)
+        {
+            string name = Singleton<StageNameXmlList>.Instance?.GetName(id);
+            return !string.IsNullOrEmpty(name) && name != "Unknown" ? name : null;
         }
     }
 }

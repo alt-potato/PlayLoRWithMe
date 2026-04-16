@@ -52,19 +52,31 @@ namespace PlayLoRWithMe
             new ConcurrentQueue<PendingAction>();
 
         /// <summary>
+        /// Max milliseconds the HTTP thread waits for the Unity main thread to
+        /// process an action before returning a timeout error.
+        /// </summary>
+        public static int TimeoutMs = 500;
+
+        /// <summary>
         /// Called from the HTTP server background thread. Blocks until the Unity main
-        /// thread executes the action (or 500 ms timeout). Returns (ok, error).
+        /// thread executes the action (or <see cref="TimeoutMs"/> timeout). Returns (ok, error).
         /// </summary>
         public static (bool ok, string error) EnqueueAndWait(string actionJson)
         {
             var pending = new PendingAction(actionJson);
             _queue.Enqueue(pending);
-            if (!pending.Done.Wait(500))
-                return (false, "Action timed out");
-            return (pending.Ok, pending.Error);
+            try
+            {
+                if (!pending.Done.Wait(TimeoutMs))
+                    return (false, "Action timed out");
+                return (pending.Ok, pending.Error);
+            }
+            finally
+            {
+                pending.Done.Dispose();
+            }
         }
 
-        /// <summary>Called each frame from the Unity main thread to execute queued actions.</summary>
         /// <summary>
         /// Called from the WebSocket receive thread. Non-blocking; returns immediately.
         /// <paramref name="onComplete"/> is invoked on the Unity main thread after

@@ -1,8 +1,8 @@
 <!--
-  AbnormalityPicker.vue
+  EmotionUpgradePicker.vue
 
-  Full-viewport overlay shown when the game prompts players to choose an
-  abnormality page (emotion card) after an act. Mirrors the in-game LevelUpUI.
+  Full-viewport overlay shown when the game prompts players to choose a
+  key page or abnormality card at an emotion level-up. Mirrors the in-game LevelUpUI.
 
   Props:
     choices    – array of { id, name, emotionLevel, targetType, state, desc?, flavorText? }

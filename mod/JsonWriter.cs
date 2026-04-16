@@ -155,6 +155,13 @@ namespace PlayLoRWithMe
             return this;
         }
 
+        public JsonArrayWriter AddNull()
+        {
+            Comma();
+            _sb.Append("null");
+            return this;
+        }
+
         public string Build() => _sb.ToString() + ']';
     }
 }

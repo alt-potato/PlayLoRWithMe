@@ -10,10 +10,9 @@
 <script setup lang="ts">
 import type { BattleCtx } from "~/composables/useBattleContext";
 import type {
-  AllyUnit,
+  ClientAction,
   GameState,
   PlayerInfo,
-  Unit,
   SessionState,
   ActionResult,
 } from "~/types/game";
@@ -23,13 +22,13 @@ const props = defineProps<{
   state: GameState;
   session: SessionState | null;
   players: PlayerInfo[];
-  sendAction: (action: Record<string, unknown>) => Promise<ActionResult>;
+  sendAction: (action: ClientAction) => Promise<ActionResult>;
   claimUnit: (unitId: number) => Promise<ActionResult>;
   releaseUnit: (unitId: number) => Promise<ActionResult>;
   renamePlayer: (name: string) => Promise<ActionResult>;
 }>();
 
-const session = computed(() => props.session);
+const session = toRef(() => props.session);
 
 /** True when this session owns the unit (or the unit is unclaimed by anyone). */
 function isOwnUnit(unitId: number): boolean {
@@ -70,56 +69,34 @@ const selectingAllyTargetFor = ref<{
   cardName: string;
 } | null>(null);
 
-const actionError = ref<string | null>(null);
-let errorTimer: ReturnType<typeof setTimeout> | null = null;
-
-watch(
-  () => props.state?.phase,
-  () => {
-    selectingSlot.value = null;
-    selectingTargetFor.value = null;
-    selectingAllyTargetFor.value = null;
-    actionError.value = null;
-  },
-);
-
 // ---------------------------------------------------------------------------
 // Derived display data
 // ---------------------------------------------------------------------------
 
-const ALLY_COLORS = ["#4fc3f7", "#81c784", "#ffb74d", "#ce93d8", "#f48fb1"];
-
-const allyColors = computed<Record<number, string>>(() => {
-  const m: Record<number, string> = {};
-  (props.state?.allies ?? []).forEach((a, i) => {
-    m[a.id] = ALLY_COLORS[i % ALLY_COLORS.length]!;
-  });
-  return m;
-});
+const allyColors = computed(() => buildAllyColors(props.state?.allies ?? []));
 
 const attackMap = computed(() => {
   const m: Record<
     number,
     Record<number, Array<{ name: string; color: string; range: string }>>
   > = {};
-  const allSides = [
-    ...(props.state?.allies ?? []),
-    ...(props.state?.enemies ?? []),
-  ];
-  allSides.forEach((unit, i) => {
-    if (isDead(unit)) return;
-    const color = ALLY_COLORS[i % ALLY_COLORS.length]!;
+  const ac = allyColors.value;
+  const ENEMY_COLOR = "var(--crimson)";
+
+  for (const unit of [...(props.state?.allies ?? []), ...(props.state?.enemies ?? [])]) {
+    if (isDead(unit)) continue;
+    const color = ac[unit.id] ?? ENEMY_COLOR;
     const name = unit.name ?? unit.keyPage?.name ?? `#${unit.id}`;
-    (unit.slottedCards ?? []).forEach((sc) => {
-      if (sc.targetUnitId == null) return;
+    for (const sc of unit.slottedCards ?? []) {
+      if (sc.targetUnitId == null) continue;
       const bySlot = (m[sc.targetUnitId] ??= {});
       (bySlot[sc.targetSlot ?? -1] ??= []).push({
         name,
         color,
         range: sc.range ?? "",
       });
-    });
-  });
+    }
+  }
   return m;
 });
 
@@ -132,90 +109,37 @@ const allUnits = computed(() => [
 // Unit display order (manual reordering + dead-to-bottom)
 // ---------------------------------------------------------------------------
 
-const allyOrder = ref<number[]>([]);
-const enemyOrder = ref<number[]>([]);
+const { sortedAllies, sortedEnemies, moveAlly, moveEnemy, canMoveUp, canMoveDown } =
+  useBattleOrdering({
+    allies: computed(() => props.state?.allies ?? []),
+    enemies: computed(() => props.state?.enemies ?? []),
+  });
 
-function syncOrder(
-  order: Ref<number[]>,
-  units: (Unit | AllyUnit)[] | undefined,
-) {
-  if (!units) return;
-  const ids = units.map((u) => u.id);
-  order.value = [
-    ...order.value.filter((id) => ids.includes(id)),
-    ...ids.filter((id) => !order.value.includes(id)),
-  ];
-}
+// ---------------------------------------------------------------------------
+// Action dispatch + interaction handlers
+// ---------------------------------------------------------------------------
 
-watch(
-  () => props.state?.allies,
-  (u) => syncOrder(allyOrder, u),
-  { immediate: true },
-);
-watch(
-  () => props.state?.enemies,
-  (u) => syncOrder(enemyOrder, u),
-  { immediate: true },
-);
+const stateRef = toRef(() => props.state);
 
-function makeSorted(units: Ref<(Unit | AllyUnit)[]>, order: Ref<number[]>) {
-  return computed(() =>
-    [...units.value].sort((a, b) => {
-      const ad = isDead(a) ? 1 : 0,
-        bd = isDead(b) ? 1 : 0;
-      if (ad !== bd) return ad - bd;
-      return order.value.indexOf(a.id) - order.value.indexOf(b.id);
-    }),
-  );
-}
-
-const sortedAllies = makeSorted(
-  computed(() => props.state?.allies ?? []),
-  allyOrder,
-);
-const sortedEnemies = makeSorted(
-  computed(() => props.state?.enemies ?? []),
-  enemyOrder,
-);
-
-function moveUnit(
-  order: Ref<number[]>,
-  sorted: (Unit | AllyUnit)[],
-  unitId: number,
-  dir: -1 | 1,
-) {
-  const living = sorted.filter((u) => !isDead(u));
-  const di = living.findIndex((u) => u.id === unitId);
-  const ni = di + dir;
-  if (ni < 0 || ni >= living.length) return;
-  const arr = [...order.value];
-  const ia = arr.indexOf(unitId),
-    ib = arr.indexOf(living[ni]!.id);
-  if (ia < 0 || ib < 0) return;
-  [arr[ia], arr[ib]] = [arr[ib]!, arr[ia]!];
-  order.value = arr;
-}
-
-function canMoveUp(sorted: (Unit | AllyUnit)[], unit: Unit | AllyUnit) {
-  if (isDead(unit)) return false;
-  return (
-    sorted.filter((u) => !isDead(u)).findIndex((u) => u.id === unit.id) > 0
-  );
-}
-
-function canMoveDown(sorted: (Unit | AllyUnit)[], unit: Unit | AllyUnit) {
-  if (isDead(unit)) return false;
-  const living = sorted.filter((u) => !isDead(u));
-  const i = living.findIndex((u) => u.id === unit.id);
-  return i >= 0 && i < living.length - 1;
-}
-
-function moveAlly(unitId: number, dir: -1 | 1) {
-  moveUnit(allyOrder, sortedAllies.value, unitId, dir);
-}
-function moveEnemy(unitId: number, dir: -1 | 1) {
-  moveUnit(enemyOrder, sortedEnemies.value, unitId, dir);
-}
+const {
+  actionError,
+  onCardClick,
+  onSlotSelectClick,
+  onTargetDieClick,
+  onAllyTargetClick,
+  onRemoveCard,
+  onSelectAbnormality,
+  onConfirm,
+  cancelTargeting,
+  cleanupErrorTimer,
+} = useBattleActions({
+  sendAction: props.sendAction,
+  selectingSlot,
+  selectingTargetFor,
+  selectingAllyTargetFor,
+  isOwnUnit,
+  state: stateRef,
+});
 
 // ---------------------------------------------------------------------------
 // Screen width — only show arrow overlay on wide screens
@@ -223,173 +147,22 @@ function moveEnemy(unitId: number, dir: -1 | 1) {
 
 const showArrows = ref(false);
 
+let arrowMq: MediaQueryList | null = null;
+
+function onMediaChange(e: MediaQueryListEvent) {
+  showArrows.value = e.matches;
+}
+
 onMounted(() => {
-  const mq = window.matchMedia("(min-width: 600px)");
-  showArrows.value = mq.matches;
-  mq.addEventListener("change", (e: MediaQueryListEvent) => {
-    showArrows.value = e.matches;
-  });
+  arrowMq = window.matchMedia("(min-width: 600px)");
+  showArrows.value = arrowMq.matches;
+  arrowMq.addEventListener("change", onMediaChange);
 });
 
-// ---------------------------------------------------------------------------
-// Action senders
-// ---------------------------------------------------------------------------
-
-async function doSendAction(action: Record<string, unknown>): Promise<boolean> {
-  if (errorTimer) {
-    clearTimeout(errorTimer);
-    errorTimer = null;
-  }
-  actionError.value = null;
-  const { ok, error } = await props.sendAction(action);
-  if (!ok) {
-    actionError.value = error ?? "Action failed";
-    errorTimer = setTimeout(() => {
-      actionError.value = null;
-      errorTimer = null;
-    }, 3000);
-  }
-  return ok;
-}
-
-// ---------------------------------------------------------------------------
-// Interaction handlers
-// ---------------------------------------------------------------------------
-
-function onCardClick(unitId: number, cardIndex: number, isEgo = false) {
-  if (!isOwnUnit(unitId)) return;
-  // Step 2 re-route: already in targeting for this unit → switch card
-  if (selectingTargetFor.value?.unitId === unitId) {
-    const diceSlot = selectingTargetFor.value.diceSlot;
-    selectingTargetFor.value = null;
-    routeCard(unitId, cardIndex, isEgo, diceSlot);
-    return;
-  }
-  // Step 1 → 2: a slot for this unit must be selected first
-  if (!selectingSlot.value || selectingSlot.value.unitId !== unitId) return;
-  const diceSlot = selectingSlot.value.diceSlot;
-  selectingSlot.value = null;
-  routeCard(unitId, cardIndex, isEgo, diceSlot);
-}
-
-function routeCard(
-  unitId: number,
-  cardIndex: number,
-  isEgo: boolean,
-  diceSlot: number,
-) {
-  const unit = props.state?.allies?.find((u) => u.id === unitId);
-  if (!unit) return;
-  const cardList = isEgo ? (unit.ego ?? []) : (unit.hand ?? []);
-  const card = cardList[cardIndex];
-  if (card?.range === "Instance") {
-    if (card?.allyTarget) {
-      selectingAllyTargetFor.value = {
-        unitId,
-        cardIndex,
-        isEgo,
-        diceSlot,
-        cardName: card?.name ?? "?",
-      };
-    } else {
-      doSendAction({
-        type: "playCard",
-        unitId,
-        cardIndex,
-        diceSlot,
-        ...(isEgo ? { isEgo: 1 } : {}),
-      });
-    }
-  } else {
-    selectingTargetFor.value = {
-      unitId,
-      cardIndex,
-      isEgo,
-      diceSlot,
-      cardName: card?.name ?? "?",
-      cardRange: card?.range ?? "",
-    };
-  }
-}
-
-function onSlotSelectClick(unit: Unit, diceSlot: number) {
-  // In step 2, any slot click cancels
-  if (selectingTargetFor.value || selectingAllyTargetFor.value) {
-    cancelTargeting();
-    return;
-  }
-  // Toggle: same slot deselects
-  if (
-    selectingSlot.value?.unitId === unit.id &&
-    selectingSlot.value?.diceSlot === diceSlot
-  ) {
-    selectingSlot.value = null;
-  } else {
-    selectingSlot.value = { unitId: unit.id, diceSlot };
-  }
-}
-
-async function onAllyTargetClick(targetUnitId: number) {
-  if (!selectingAllyTargetFor.value) return;
-  const { unitId, cardIndex, isEgo, diceSlot } = selectingAllyTargetFor.value;
-  const ok = await doSendAction({
-    type: "playCard",
-    unitId,
-    cardIndex,
-    diceSlot,
-    targetUnitId,
-    ...(isEgo ? { isEgo: 1 } : {}),
-  });
-  selectingAllyTargetFor.value = null;
-}
-
-async function onTargetDieClick(targetUnitId: number, targetDiceSlot: number) {
-  if (!selectingTargetFor.value) return;
-  const { unitId, cardIndex, isEgo, diceSlot } = selectingTargetFor.value;
-  const ok = await doSendAction({
-    type: "playCard",
-    unitId,
-    cardIndex,
-    diceSlot,
-    targetUnitId,
-    targetDiceSlot,
-    ...(isEgo ? { isEgo: 1 } : {}),
-  });
-  selectingTargetFor.value = null;
-}
-
-function cancelTargeting() {
-  selectingSlot.value = null;
-  selectingTargetFor.value = null;
-  selectingAllyTargetFor.value = null;
-}
-
-async function onRemoveCard(unitId: number, diceSlot: number) {
-  await doSendAction({ type: "removeCard", unitId, diceSlot });
-  if (
-    selectingTargetFor.value?.unitId === unitId &&
-    selectingTargetFor.value?.diceSlot === diceSlot
-  )
-    selectingTargetFor.value = null;
-  if (
-    selectingAllyTargetFor.value?.unitId === unitId &&
-    selectingAllyTargetFor.value?.diceSlot === diceSlot
-  )
-    selectingAllyTargetFor.value = null;
-  if (selectingSlot.value?.unitId === unitId) selectingSlot.value = null;
-}
-
-async function onSelectAbnormality(cardId: number, targetUnitId?: number) {
-  const body: any = { type: "selectAbnormality", cardId };
-  if (targetUnitId !== undefined) body.targetUnitId = targetUnitId;
-  await doSendAction(body);
-}
-
-async function onConfirm() {
-  await doSendAction({ type: "confirm" });
-  selectingSlot.value = null;
-  selectingTargetFor.value = null;
-}
+onBeforeUnmount(() => {
+  arrowMq?.removeEventListener("change", onMediaChange);
+  cleanupErrorTimer();
+});
 
 // ---------------------------------------------------------------------------
 // Arrow overlay toggles
@@ -433,19 +206,11 @@ provide(BATTLE_CTX, {
     :phase="state.phase"
     :confirm-enabled="isSelectPhase"
     :confirm-label="isSelectPhase ? 'START' : 'WAITING'"
-    :players="players"
-    :allies="state.allies ?? []"
-    :session="session"
-    :ally-colors="allyColors"
-    :show-librarians="true"
-    :claim-unit="claimUnit"
-    :release-unit="releaseUnit"
-    :rename-player="renamePlayer"
     @confirm="onConfirm"
   />
 
   <!-- Error banner -->
-  <div v-if="actionError" class="banner-error">{{ actionError }}</div>
+  <div v-if="actionError" class="banner-error" role="alert">{{ actionError }}</div>
 
   <!-- Stage (battlefield) -->
   <!-- 
@@ -466,6 +231,7 @@ provide(BATTLE_CTX, {
           <button
             class="reorder-btn"
             :disabled="!canMoveUp(sortedEnemies, unit)"
+            aria-label="Move unit up"
             @click.stop="moveEnemy(unit.id, -1)"
           >
             ▲
@@ -473,6 +239,7 @@ provide(BATTLE_CTX, {
           <button
             class="reorder-btn"
             :disabled="!canMoveDown(sortedEnemies, unit)"
+            aria-label="Move unit down"
             @click.stop="moveEnemy(unit.id, 1)"
           >
             ▼
@@ -492,6 +259,8 @@ provide(BATTLE_CTX, {
           :class="{ active: showIncoming }"
           :style="showIncoming ? { '--tc': '#c62828' } : {}"
           title="Incoming one-sided attacks"
+          aria-label="Toggle incoming one-sided attacks"
+          :aria-pressed="showIncoming"
           @click="showIncoming = !showIncoming"
         >
           →
@@ -501,6 +270,8 @@ provide(BATTLE_CTX, {
           :class="{ active: showClash }"
           :style="showClash ? { '--tc': '#c9a227' } : {}"
           title="Clashes"
+          aria-label="Toggle clashes"
+          :aria-pressed="showClash"
           @click="showClash = !showClash"
         >
           ⚔
@@ -510,6 +281,8 @@ provide(BATTLE_CTX, {
           :class="{ active: showOutgoing }"
           :style="showOutgoing ? { '--tc': '#4fc3f7' } : {}"
           title="Outgoing one-sided attacks"
+          aria-label="Toggle outgoing one-sided attacks"
+          :aria-pressed="showOutgoing"
           @click="showOutgoing = !showOutgoing"
         >
           ←
@@ -530,6 +303,7 @@ provide(BATTLE_CTX, {
           <button
             class="reorder-btn"
             :disabled="!canMoveUp(sortedAllies, unit)"
+            aria-label="Move unit up"
             @click.stop="moveAlly(unit.id, -1)"
           >
             ▲
@@ -537,6 +311,7 @@ provide(BATTLE_CTX, {
           <button
             class="reorder-btn"
             :disabled="!canMoveDown(sortedAllies, unit)"
+            aria-label="Move unit down"
             @click.stop="moveAlly(unit.id, 1)"
           >
             ▼
@@ -562,8 +337,8 @@ provide(BATTLE_CTX, {
     "
   />
 
-  <!-- Abnormality page selection overlay -->
-  <AbnormalityPicker
+  <!-- Emotion level-up selection overlay (key page or abnormality card) -->
+  <EmotionUpgradePicker
     v-if="state?.abnormalitySelection"
     :choices="state.abnormalitySelection.choices"
     :allies="state?.allies ?? []"
@@ -591,7 +366,7 @@ provide(BATTLE_CTX, {
       >
       <span class="targeting-sep">·</span>
       <span class="targeting-hint">select a Librarian</span>
-      <button class="targeting-cancel" @click="cancelTargeting">cancel</button>
+      <button class="targeting-cancel" aria-label="Cancel ally targeting" @click="cancelTargeting">cancel</button>
     </div>
   </Transition>
 
@@ -603,7 +378,7 @@ provide(BATTLE_CTX, {
       <span class="targeting-slot">slot {{ selectingTargetFor.diceSlot }}</span>
       <span class="targeting-sep">·</span>
       <span class="targeting-hint">select a target</span>
-      <button class="targeting-cancel" @click="cancelTargeting">cancel</button>
+      <button class="targeting-cancel" aria-label="Cancel targeting" @click="cancelTargeting">cancel</button>
     </div>
   </Transition>
 </template>

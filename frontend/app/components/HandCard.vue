@@ -18,6 +18,8 @@
 <script setup lang="ts">
 import type { Card } from "~/types/game";
 
+const LONG_PRESS_MS = 500;
+
 const props = defineProps<{
   card: Card;
   selected?: boolean;
@@ -40,7 +42,7 @@ function onPressStart() {
   pressTimer = setTimeout(() => {
     longPressed = true;
     emit("detail");
-  }, 500);
+  }, LONG_PRESS_MS);
 }
 
 function onPressEnd() {

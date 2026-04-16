@@ -11,6 +11,8 @@
 <script setup lang="ts">
 import type { SlottedCardEntry, SpeedDie, Unit } from "~/types/game";
 
+const LONG_PRESS_MS = 500;
+
 const props = withDefaults(
   defineProps<{
     unit: Unit;
@@ -26,6 +28,8 @@ const props = withDefaults(
   },
 );
 
+const ctx = inject(BATTLE_CTX);
+if (!ctx) throw new Error("BATTLE_CTX not provided — component must be used inside Stage.vue");
 const {
   phase,
   isSelectPhase,
@@ -36,7 +40,7 @@ const {
   onRemoveCard,
   allUnits,
   isOwnUnit,
-} = inject(BATTLE_CTX) as BattleCtx;
+} = ctx;
 
 type DieState =
   | "empty" // no card in slot
@@ -55,13 +59,20 @@ const isUnitBroken = computed(
 
 let slotLongPressed = false;
 let slotPressTimer: ReturnType<typeof setTimeout> | null = null;
+
+onBeforeUnmount(() => {
+  if (slotPressTimer) {
+    clearTimeout(slotPressTimer);
+    slotPressTimer = null;
+  }
+});
 function onSlotPressStart(sc: SlottedCardEntry | undefined) {
   if (!sc) return;
   slotLongPressed = false;
   slotPressTimer = setTimeout(() => {
     slotLongPressed = true;
     props.onLongPress();
-  }, 500);
+  }, LONG_PRESS_MS);
 }
 
 const dieState: ComputedRef<DieState> = computed(() => {
@@ -182,7 +193,6 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
       slotState,
       {
         'slot-reversed': isReversed,
-        // TODO: fix logic so that all valid targets are highlighted
         'slot-target': canBeTargeted && !isAlly && !die.staggered,
       },
     ]"
@@ -200,7 +210,6 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
       :class="[
         dieState,
         {
-          // TODO: fix logic so that all valid targets are highlighted
           'hex-target': canBeTargeted && !isAlly && !die.staggered,
         },
       ]"
@@ -228,6 +237,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
           v-if="isAlly && isSelectPhase && card != null && isOwnUnit(unit.id)"
           class="remove-btn"
           title="Return to hand"
+          aria-label="Remove card from slot"
           @click="onRemoveCard(unit.id, card.slot)"
         >
           ✕

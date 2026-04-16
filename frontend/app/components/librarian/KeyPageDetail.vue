@@ -62,47 +62,48 @@ const hasSpeed = computed(() => kp.value.speedMin != null && kp.value.speedMax !
 .kp-detail {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.4rem 0;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
 }
 
 .kp-name {
-  font-size: 0.85rem;
+  font-size: var(--fs-lg);
   font-weight: 600;
-  color: var(--text-1);
+  color: var(--gold-bright);
   font-family: var(--font-display);
 }
 
 .kp-stats {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--sp-3);
   flex-wrap: wrap;
 }
 
 .stat-row {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: var(--sp-1);
 }
 
 .stat-icon {
-  width: 1rem;
-  height: 1rem;
+  width: 1.1rem;
+  height: 1.1rem;
   object-fit: contain;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .stat-value {
-  font-size: 0.72rem;
+  font-size: var(--fs-md);
   color: var(--text-1);
   font-family: var(--font-display);
 }
 
 .section-label {
-  font-size: 0.6rem;
+  font-size: var(--fs-xs);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-3);
-  margin-top: 0.2rem;
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+  font-family: var(--font-display);
+  margin-top: var(--sp-1);
 }
 </style>

@@ -11,6 +11,9 @@ namespace PlayLoRWithMe
     {
         public const int Port = 8080;
 
+        /// <summary>Builds the canonical lock key for a librarian slot.</summary>
+        private static string LockKey(int floorIndex, int unitIndex) => floorIndex + ":" + unitIndex;
+
         // DLL is in <mod root>/Assemblies/; wwwroot is a sibling of Assemblies/
         private static readonly string ModRootPath = Path.GetDirectoryName(
             Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)
@@ -32,7 +35,8 @@ namespace PlayLoRWithMe
 
         // Set by claim/release handlers (listener thread) to request a filtered
         // broadcast from the Unity main thread on the next OnUpdate tick.
-        private volatile bool _pendingBroadcast = false;
+        // Uses int + Interlocked for atomic check-and-clear (0 = false, 1 = true).
+        private int _pendingBroadcast = 0;
 
         /// <summary>
         /// When false, all players may control any librarian without claiming.
@@ -74,6 +78,7 @@ namespace PlayLoRWithMe
         {
             _running = false;
             _listener?.Stop();
+            _listener?.Close();
         }
 
         /// <summary>
@@ -129,7 +134,7 @@ namespace PlayLoRWithMe
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[PlayLoRWithMe] Accept error: {ex}");
+                    Debug.LogWarning($"[PlayLoRWithMe] Accept error: {ex}");
                 }
             }
         }
@@ -165,13 +170,16 @@ namespace PlayLoRWithMe
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[PlayLoRWithMe] Handler error: {ex}");
+                Debug.LogWarning($"[PlayLoRWithMe] Handler error: {ex}");
                 try
                 {
                     ctx.Response.StatusCode = 500;
                     ctx.Response.Close();
                 }
-                catch { }
+                catch (Exception ex2)
+                {
+                    Debug.LogWarning($"[PlayLoRWithMe] Failed to send 500 response: {ex2.Message}");
+                }
             }
         }
 
@@ -234,10 +242,7 @@ namespace PlayLoRWithMe
         /// </summary>
         public bool ConsumePendingBroadcast()
         {
-            if (!_pendingBroadcast)
-                return false;
-            _pendingBroadcast = false;
-            return true;
+            return Interlocked.Exchange(ref _pendingBroadcast, 0) != 0;
         }
 
         private void HandleWebSocket(HttpListenerContext ctx)
@@ -255,7 +260,10 @@ namespace PlayLoRWithMe
                     ctx.Response.StatusCode = 400;
                     ctx.Response.Close();
                 }
-                catch { }
+                catch (Exception ex2)
+                {
+                    Debug.LogWarning($"[PlayLoRWithMe] Failed to send 400 response: {ex2.Message}");
+                }
                 return;
             }
 
@@ -278,21 +286,22 @@ namespace PlayLoRWithMe
             // properly per-session filtered view; _pendingBroadcast ensures it fires
             // soon even if no game event occurs.
             // Use the cached last-broadcast JSON if available (fast, main-thread-safe).
-            // Fall back to serializing immediately if the cache is cold (first ever
-            // connection before any game event has fired a broadcast).
-            string cachedJson = _lastFullJson ?? GameStateSerializer.Serialize();
+            // If no broadcast has occurred yet, send a minimal loading stub instead of
+            // calling Serialize() — that accesses Unity objects which aren't thread-safe.
+            // The _pendingBroadcast flag below ensures a real snapshot follows promptly.
+            string cachedJson = _lastFullJson ?? "{\"scene\":\"loading\"}";
             string initialMsg = _deltaEngine.BuildMessage(session.SessionId, cachedJson);
             if (initialMsg != null)
                 client.Send(initialMsg);
 
             // Request a fresh filtered broadcast on the next Unity tick so any
             // ownership-based data is sent promptly even if no game event fires.
-            _pendingBroadcast = true;
+            Interlocked.Exchange(ref _pendingBroadcast, 1);
 
             // Blocks until the connection closes.
             client.ReceiveLoop();
 
-            _sessionManager.Detach(session.SessionId);
+            _sessionManager.Detach(session.SessionId, client);
             _deltaEngine.RemoveSession(session.SessionId);
             Debug.Log($"[PlayLoRWithMe] WebSocket disconnected: {session.SessionId}");
         }
@@ -320,7 +329,7 @@ namespace PlayLoRWithMe
                     {
                         bool claimed = _sessionManager.ClaimUnit(client.SessionId, claimUnitId);
                         if (claimed)
-                            _pendingBroadcast = true;
+                            Interlocked.Exchange(ref _pendingBroadcast, 1);
                         if (reqId != null)
                             client.Send(
                                 BuildActionResult(
@@ -336,7 +345,7 @@ namespace PlayLoRWithMe
                     if (r.TryGetInt("unitId", out int releaseUnitId))
                     {
                         _sessionManager.ReleaseUnit(client.SessionId, releaseUnitId);
-                        _pendingBroadcast = true;
+                        Interlocked.Exchange(ref _pendingBroadcast, 1);
                         if (reqId != null)
                             client.Send(BuildActionResult(reqId, true, null));
                     }
@@ -358,7 +367,7 @@ namespace PlayLoRWithMe
                         && r.TryGetInt("unitIndex", out int lockUi)
                     )
                     {
-                        string lockKey = lockFi + ":" + lockUi;
+                        string lockKey = LockKey(lockFi, lockUi);
                         bool locked = _sessionManager.TryLockLibrarian(lockKey, client.SessionId);
                         if (locked)
                             StateBroadcaster.Broadcast();
@@ -379,7 +388,7 @@ namespace PlayLoRWithMe
                         && r.TryGetInt("unitIndex", out int ulUi)
                     )
                     {
-                        _sessionManager.UnlockLibrarian(ulFi + ":" + ulUi, client.SessionId);
+                        _sessionManager.UnlockLibrarian(LockKey(ulFi, ulUi), client.SessionId);
                         StateBroadcaster.Broadcast();
                         if (reqId != null)
                             client.Send(BuildActionResult(reqId, true, null));
@@ -422,17 +431,32 @@ namespace PlayLoRWithMe
                     HandleSetCustomization(client, r, reqId);
                     break;
 
+                case "setGifts":
+                    HandleSetGifts(client, r, reqId);
+                    break;
+
                 case "resync":
                     // Client detected a missed sequence number; reset delta state and
                     // send a fresh full snapshot so the client can resync cleanly.
-                    _deltaEngine.RemoveSession(client.SessionId);
-                    _deltaEngine.AddSession(client.SessionId);
-                    string resyncMsg = _deltaEngine.BuildMessage(
-                        client.SessionId,
-                        GameStateSerializer.Serialize()
-                    );
-                    if (resyncMsg != null)
-                        client.Send(resyncMsg);
+                    // Serialize() enumerates Unity model collections, so it must
+                    // run on the main thread — defer the whole rebuild.
+                    var resyncSessionId = client.SessionId;
+                    var resyncClient = client;
+                    StateBroadcaster.RunOnMainThread(() =>
+                    {
+                        _deltaEngine.RemoveSession(resyncSessionId);
+                        _deltaEngine.AddSession(resyncSessionId);
+                        string resyncMsg = _deltaEngine.BuildMessage(
+                            resyncSessionId,
+                            GameStateSerializer.Serialize()
+                        );
+                        if (resyncMsg != null)
+                            resyncClient.Send(resyncMsg);
+                    });
+                    break;
+
+                default:
+                    Debug.Log($"[PlayLoRWithMe] Unknown WebSocket message type: {type}");
                     break;
             }
         }
@@ -484,7 +508,7 @@ namespace PlayLoRWithMe
                 return;
             }
 
-            string key = fi + ":" + ui;
+            string key = LockKey(fi, ui);
             if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
             {
                 if (reqId != null)
@@ -506,6 +530,15 @@ namespace PlayLoRWithMe
                 return;
             }
 
+            // Sephirah (patron) librarians cannot be renamed — their names
+            // come from CharactersNameXmlList and are fixed in the base game.
+            if (unit.isSephirah)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Patron librarians cannot be renamed"));
+                return;
+            }
+
             unit.SetCustomName(newName.Trim());
             Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
             StateBroadcaster.Broadcast();
@@ -517,37 +550,16 @@ namespace PlayLoRWithMe
         /// Equips a key page from the book inventory to a librarian.
         /// Requires the caller to hold the edit lock for the librarian.
         /// </summary>
-        /// <summary>
-        /// Equips a key page from the book inventory to a librarian.
-        /// Requires the caller to hold the edit lock for the librarian.
-        /// </summary>
         private void HandleEquipKeyPage(WebSocketClient client, JsonReader r, string reqId)
         {
-            if (!r.TryGetInt("floorIndex", out int fi) || !r.TryGetInt("unitIndex", out int ui))
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
+            if (unit == null)
                 return;
 
             if (!r.TryGetInt("bookInstanceId", out int bookInstanceId))
             {
                 if (reqId != null)
                     client.Send(BuildActionResult(reqId, false, "Missing bookInstanceId"));
-                return;
-            }
-
-            string key = fi + ":" + ui;
-            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
-            {
-                if (reqId != null)
-                    client.Send(
-                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
-                    );
-                return;
-            }
-
-            var unit = GetLibrarianUnit(fi, ui);
-            if (unit == null)
-            {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
                 return;
             }
 
@@ -582,89 +594,10 @@ namespace PlayLoRWithMe
                 return;
             }
 
-            // SetCharacter/AssetBundle.Unload are native Unity APIs that crash off the main
-            // thread. Schedule the appearance reload and panel refresh for the next
-            // UIController.Update tick.
-            //
-            // Refresh strategy:
-            //   Floor overview (UIPhase.Sephirah): unit appearance lives at slot 5+unitIndex in
-            //   UICharacterRenderer. We force-reload that slot so the new key page art is picked
-            //   up, then call SetLibrarianCharacterListPanel_Default to re-render thumbnails —
-            //   same path the game uses on floor-tab switch. Only done when the displayed floor
-            //   matches the unit's floor.
-            //
-            //   Librarian detail view (UIPhase.Librarian): unit appearance lives at slot 10.
-            //   Force-reload that slot and call UpdatePanel to refresh the portrait and book info.
-            //
-            //   Without the force-reload, SetCharacterRenderer's inner SetCharacter call is a
-            //   no-op (same-unit cache hit: unitModel == unit), so the old appearance persists.
-            var unitRef = unit;
-            var unitSephirah = unit.OwnerSephirah;
-            // Slot assignment: SetCharacterRenderer(fromLeft:false) starts at index 5.
-            int characterSlot = 5 + ui;
-            StateBroadcaster.RunOnMainThread(() =>
-            {
-                var uic = UI.UIController.Instance;
-                if (uic == null)
-                    return;
-
-                var renderer = SingletonBehavior<UI.UICharacterRenderer>.Instance;
-
-                // Refresh the floor character list if the host is currently viewing
-                // the same floor as the changed unit.
-                if (uic.CurrentSephirah == unitSephirah)
-                {
-                    renderer?.SetCharacter(unitRef, characterSlot, forcelyReload: true);
-                    var listPanel =
-                        uic.GetUIPanel(UI.UIPanelType.CharacterList_Right)
-                        as UI.UILibrarianCharacterListPanel;
-                    listPanel?.SetLibrarianCharacterListPanel_Default(unitSephirah);
-                }
-
-                // Refresh the panel showing the current librarian's key page.
-                // The relevant panel differs by phase — UILibrarianInfoPanel._selectedUnit
-                // is only set via OnUpdatePhase and is null in Librarian_CardList, so we
-                // compare UIController.CurrentUnit instead.
-                if (uic.CurrentUnit == unitRef)
-                {
-                    if (uic.CurrentUIPhase == UI.UIPhase.Librarian)
-                    {
-                        // UIPhase.Librarian shows UILibrarianInfoPanel (portrait at slot 10
-                        // + book/stats info). Force-reload slot 10 so the new appearance
-                        // is picked up, then UpdatePanel to refresh book name/icon/stats.
-                        var infoPanel =
-                            uic.GetUIPanel(UI.UIPanelType.LibrarianInfo) as UI.UILibrarianInfoPanel;
-                        if (infoPanel != null)
-                        {
-                            renderer?.SetCharacter(unitRef, 10, forcelyReload: true);
-                            infoPanel.UpdatePanel();
-                        }
-                    }
-                    else if (uic.CurrentUIPhase == UI.UIPhase.Librarian_CardList)
-                    {
-                        // UIPhase.Librarian_CardList shows UICardPanel with two sub-panels:
-                        //   Left:  UILibrarianEquipDeckPanel — combat page deck and book header
-                        //   Right: UILibrarianInfoInCardPhase — key page portrait and book info
-                        //
-                        // The floor-list refresh above already reloaded slot 5+ui and updated
-                        // textureIndex, so all SetData calls pick up the new portrait.
-                        var cardPanel = uic.GetUIPanel(UI.UIPanelType.Page) as UI.UICardPanel;
-                        // Refresh right panel (key page name, icon, passives).
-                        cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
-                        // Refresh left panel header (book name, icon, rarity color).
-                        // SetData() reads UIController.CurrentUnit, which is already unitRef.
-                        cardPanel?.EquipInfoDeckPanel?.SetData();
-                        // Center panel: rebuild from inventory with the new key page applied.
-                        // UIInvenCardListScroll.SetData resets _originCardList and _unitdata,
-                        // then calls ApplyFilterAll() which re-filters by the new book's
-                        // RangeType and GetOnlyCards() list. RefreshCardSlotsByInven() alone
-                        // is insufficient — it only re-renders the stale _currentCardListForFilter.
-                        // This mirrors UICardPanel.OnUpdatePhase() exactly.
-                        cardPanel?.InvenCardList?.SetData(
-                            Singleton<InventoryModel>.Instance?.GetCardList(), unitRef);
-                    }
-                }
-            });
+            // Key page changes affect the card inventory, so do a full card panel refresh.
+            RefreshCharacterRenderer(
+                unit, unit.OwnerSephirah, FloorListSlotBase + ui,
+                refreshCardInventory: true);
 
             Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
             StateBroadcaster.Broadcast();
@@ -678,33 +611,15 @@ namespace PlayLoRWithMe
         /// </summary>
         private void HandleAddCardToDeck(WebSocketClient client, JsonReader r, string reqId)
         {
-            if (
-                !r.TryGetInt("floorIndex", out int fi)
-                || !r.TryGetInt("unitIndex", out int ui)
-                || !r.TryGetInt("cardId", out int cardId)
-            )
+            if (!r.TryGetInt("cardId", out int cardId))
+                return;
+
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
+            if (unit == null)
                 return;
 
             // packageId is an empty string for vanilla cards and a workshop ID for mods.
             string packageId = r.GetString("packageId") ?? "";
-
-            string key = fi + ":" + ui;
-            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
-            {
-                if (reqId != null)
-                    client.Send(
-                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
-                    );
-                return;
-            }
-
-            var unit = GetLibrarianUnit(fi, ui);
-            if (unit == null)
-            {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
-                return;
-            }
 
             var deck = unit.bookItem?.GetDeckAll_nocopy()?[0];
             if (deck == null)
@@ -736,32 +651,14 @@ namespace PlayLoRWithMe
         /// </summary>
         private void HandleRemoveCardFromDeck(WebSocketClient client, JsonReader r, string reqId)
         {
-            if (
-                !r.TryGetInt("floorIndex", out int fi)
-                || !r.TryGetInt("unitIndex", out int ui)
-                || !r.TryGetInt("cardId", out int cardId)
-            )
+            if (!r.TryGetInt("cardId", out int cardId))
+                return;
+
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
+            if (unit == null)
                 return;
 
             string packageId = r.GetString("packageId") ?? "";
-
-            string key = fi + ":" + ui;
-            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
-            {
-                if (reqId != null)
-                    client.Send(
-                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
-                    );
-                return;
-            }
-
-            var unit = GetLibrarianUnit(fi, ui);
-            if (unit == null)
-            {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
-                return;
-            }
 
             var deck = unit.bookItem?.GetDeckAll_nocopy()?[0];
             if (deck == null)
@@ -1148,29 +1045,16 @@ namespace PlayLoRWithMe
             string reqId
         )
         {
-            if (!r.TryGetInt("floorIndex", out int fi) || !r.TryGetInt("unitIndex", out int ui))
-                return;
-
-            string key = fi + ":" + ui;
-            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
-            {
-                if (reqId != null)
-                    client.Send(
-                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
-                    );
-                return;
-            }
-
-            var unit = GetLibrarianUnit(fi, ui);
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
             if (unit == null)
-            {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
                 return;
-            }
 
             var cd = unit.customizeData;
-            if (cd != null)
+
+            // Face/hair/color fields: skip for sephirah (patron) units whose
+            // heads use SpecialCustomizedAppearance — the renderer ignores
+            // individual sprite IDs and colors, so applying them is a no-op.
+            if (cd != null && !unit.isSephirah)
             {
                 if (r.TryGetInt("frontHairID", out int fh))
                     cd.frontHairID = fh;
@@ -1184,20 +1068,7 @@ namespace PlayLoRWithMe
                     cd.mouthID = mid;
                 if (r.TryGetInt("headID", out int hid))
                     cd.headID = hid;
-                if (r.TryGetInt("height", out int ht))
-                    cd.height = ht;
-            }
 
-            // Body type: switches between gendered prefab variants (_F / _M / _N).
-            var at = r.GetString("appearanceType");
-            if (!string.IsNullOrEmpty(at))
-            {
-                try { unit.appearanceType = (Gender)System.Enum.Parse(typeof(Gender), at); }
-                catch { /* ignore invalid values */ }
-            }
-
-            if (cd != null)
-            {
                 if (
                     r.TryGetInt("hairR", out int hairR)
                     && r.TryGetInt("hairG", out int hairG)
@@ -1230,10 +1101,23 @@ namespace PlayLoRWithMe
                     cd.eyeColor = new Color32((byte)eyeR, (byte)eyeG, (byte)eyeB, 255);
             }
 
-            // Apply dialogue changes. An empty/null custom text restores a random preset.
+            // Height is under projection (always editable, even for sephirah).
+            if (cd != null && r.TryGetInt("height", out int ht))
+                cd.height = ht;
+
+            // Body type: switches between gendered prefab variants (_F / _M / _N).
+            var at = r.GetString("appearanceType");
+            if (!string.IsNullOrEmpty(at))
+            {
+                try { unit.appearanceType = (Gender)System.Enum.Parse(typeof(Gender), at); }
+                catch { /* ignore invalid values */ }
+            }
+
+            // Apply dialogue changes. Skip for sephirah units (no BattleDialogueModel).
+            // An empty/null custom text restores a random preset.
             var dlgXml = Singleton<BattleDialogXmlList>.Instance;
             var dlgModel = unit.battleDialogModel;
-            if (dlgModel == null && dlgXml != null)
+            if (dlgModel == null && dlgXml != null && !unit.isSephirah)
             {
                 // Initialize dialogue model for librarians that never had one set
                 // (e.g. freshly-created non-Sephirah units).
@@ -1301,8 +1185,15 @@ namespace PlayLoRWithMe
                         : new LorId(cbPkg, cbid);
                     var bxi = Singleton<BookXmlList>.Instance?.GetData(bookLorId, errNull: false);
                     if (bxi != null)
+                    {
                         unit.EquipCustomCoreBook(new BookModel(bxi));
-                    // If book not found, skip silently — state is broadcast unchanged.
+                        var after = unit.GetCustomBookItemData();
+                        Debug.Log($"[PlayLoRWithMe] SetCustomization: customBook cbid={cbid} pkg={cbPkg} bxi.range={bxi.RangeType} equipped.range={unit.bookItem?.ClassInfo?.RangeType} result={after?.GetBookClassInfoId()}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[PlayLoRWithMe] SetCustomization: book not found cbid={cbid} pkg={cbPkg}");
+                    }
                 }
             }
 
@@ -1314,51 +1205,117 @@ namespace PlayLoRWithMe
             if (wsSkin != null)
                 unit.workshopSkin = wsSkin;
 
-            // Refresh the in-game character renderer (same pattern as HandleEquipKeyPage).
-            var unitRef = unit;
-            var unitSephirah = unit.OwnerSephirah;
-            int characterSlot = 5 + ui;
-            StateBroadcaster.RunOnMainThread(() =>
-            {
-                var uic = UI.UIController.Instance;
-                if (uic == null)
-                    return;
-
-                var renderer = SingletonBehavior<UI.UICharacterRenderer>.Instance;
-
-                if (uic.CurrentSephirah == unitSephirah)
-                {
-                    renderer?.SetCharacter(unitRef, characterSlot, forcelyReload: true);
-                    var listPanel =
-                        uic.GetUIPanel(UI.UIPanelType.CharacterList_Right)
-                        as UI.UILibrarianCharacterListPanel;
-                    listPanel?.SetLibrarianCharacterListPanel_Default(unitSephirah);
-                }
-
-                if (uic.CurrentUnit == unitRef)
-                {
-                    if (uic.CurrentUIPhase == UI.UIPhase.Librarian)
-                    {
-                        var infoPanel =
-                            uic.GetUIPanel(UI.UIPanelType.LibrarianInfo)
-                            as UI.UILibrarianInfoPanel;
-                        if (infoPanel != null)
-                        {
-                            renderer?.SetCharacter(unitRef, 10, forcelyReload: true);
-                            infoPanel.UpdatePanel();
-                        }
-                    }
-                    else if (uic.CurrentUIPhase == UI.UIPhase.Librarian_CardList)
-                    {
-                        var cardPanel =
-                            uic.GetUIPanel(UI.UIPanelType.Page) as UI.UICardPanel;
-                        cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
-                    }
-                }
-            });
+            RefreshCharacterRenderer(unit, unit.OwnerSephirah, FloorListSlotBase + ui);
 
             Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
             StateBroadcaster.Broadcast();
+            if (reqId != null)
+                client.Send(BuildActionResult(reqId, true, null));
+        }
+
+        /// <summary>
+        /// Applies a batch gift update to a librarian: equips/unequips gifts by position index
+        /// and toggles per-gift visibility. Keys gift0–gift8 carry a gift ID (-1 to unequip);
+        /// vis0–vis8 carry a non-zero value to show or zero to hide the gift at that position.
+        /// Visibility is processed before equip/unequip so callers can swap and hide in one message.
+        /// </summary>
+        private void HandleSetGifts(WebSocketClient client, JsonReader r, string reqId)
+        {
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
+            if (unit == null)
+                return;
+
+            var inv = unit.giftInventory;
+            if (inv == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Gift inventory not available"));
+                return;
+            }
+
+            bool changed = false;
+
+            // Process each of the 9 gift positions (GiftPosition has values 0–8).
+            for (int pos = 0; pos <= 8; pos++)
+            {
+                var giftPos = (GiftPosition)pos;
+
+                // visibility is processed before equip/unequip so it applies to the
+                // currently equipped gift at this position (not the incoming one).
+                if (r.TryGetInt("vis" + pos, out int vis))
+                {
+                    // Find the currently equipped gift at this position, if any.
+                    GiftModel equipped = null;
+                    foreach (var g in inv.GetEquippedList())
+                    {
+                        if (g.ClassInfo.Position == giftPos)
+                        {
+                            equipped = g;
+                            break;
+                        }
+                    }
+
+                    if (equipped != null)
+                    {
+                        equipped.isShowEquipGift = (vis != 0);
+                        changed = true;
+                    }
+                }
+
+                if (r.TryGetInt("gift" + pos, out int giftId))
+                {
+                    if (giftId < 0)
+                    {
+                        // Unequip: find the currently equipped gift at this position.
+                        GiftModel toUnequip = null;
+                        foreach (var g in inv.GetEquippedList())
+                        {
+                            if (g.ClassInfo.Position == giftPos)
+                            {
+                                toUnequip = g;
+                                break;
+                            }
+                        }
+
+                        if (toUnequip != null)
+                        {
+                            inv.UnEquip(toUnequip);
+                            changed = true;
+                        }
+                    }
+                    else
+                    {
+                        // Equip: find the matching gift in the unequipped list by ID and position.
+                        GiftModel toEquip = null;
+                        foreach (var g in inv.GetUnequippedList())
+                        {
+                            if (
+                                g.GetGiftClassInfoId() == giftId
+                                && g.ClassInfo.Position == giftPos
+                            )
+                            {
+                                toEquip = g;
+                                break;
+                            }
+                        }
+
+                        if (toEquip != null)
+                        {
+                            // Equip auto-swaps if the slot is already occupied.
+                            inv.Equip(toEquip);
+                            changed = true;
+                        }
+                    }
+                }
+            }
+
+            if (changed)
+            {
+                RefreshCharacterRenderer(unit, unit.OwnerSephirah, FloorListSlotBase + ui);
+                Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
+                StateBroadcaster.Broadcast();
+            }
+
             if (reqId != null)
                 client.Send(BuildActionResult(reqId, true, null));
         }
@@ -1380,6 +1337,111 @@ namespace PlayLoRWithMe
                 model.SetDialogByCustom(type, val);
         }
 
+        // UICharacterRenderer slot assignments used by SetCharacterRenderer(fromLeft:false).
+        // Floor overview shows each unit at FloorListSlotBase + unitIndex; the librarian
+        // detail view always uses LibrarianDetailSlot.
+        private const int FloorListSlotBase = 5;
+        private const int LibrarianDetailSlot = 10;
+
+        /// <summary>
+        /// Validates a librarian edit request: parses floor/unit indices, checks lock
+        /// ownership, and resolves the UnitDataModel. Returns the unit on success, or
+        /// null after sending an error reply.
+        /// </summary>
+        private UnitDataModel ValidateLibrarianEdit(
+            WebSocketClient client, JsonReader r, string reqId,
+            out int floorIndex, out int unitIndex)
+        {
+            floorIndex = -1;
+            unitIndex = -1;
+
+            if (!r.TryGetInt("floorIndex", out floorIndex) || !r.TryGetInt("unitIndex", out unitIndex))
+                return null;
+
+            string key = LockKey(floorIndex, unitIndex);
+            if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
+            {
+                if (reqId != null)
+                    client.Send(
+                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
+                    );
+                return null;
+            }
+
+            var unit = GetLibrarianUnit(floorIndex, unitIndex);
+            if (unit == null)
+            {
+                if (reqId != null)
+                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
+                return null;
+            }
+
+            return unit;
+        }
+
+        /// <summary>
+        /// Schedules a character renderer refresh on the Unity main thread. Reloads
+        /// the floor list slot and detail panel slot so the new appearance is picked up.
+        /// </summary>
+        /// <param name="refreshCardInventory">
+        /// When true, the Librarian_CardList branch does a full card panel refresh
+        /// (equip panel, inventory list). When false, only the info panel is updated.
+        /// </param>
+        private void RefreshCharacterRenderer(
+            UnitDataModel unit, SephirahType sephirah, int characterSlot,
+            bool refreshCardInventory = false)
+        {
+            var unitRef = unit;
+            StateBroadcaster.RunOnMainThread(() =>
+            {
+                var uic = UI.UIController.Instance;
+                if (uic == null)
+                    return;
+
+                var renderer = SingletonBehavior<UI.UICharacterRenderer>.Instance;
+
+                if (uic.CurrentSephirah == sephirah)
+                {
+                    renderer?.SetCharacter(unitRef, characterSlot, forcelyReload: true);
+                    var listPanel =
+                        uic.GetUIPanel(UI.UIPanelType.CharacterList_Right)
+                        as UI.UILibrarianCharacterListPanel;
+                    listPanel?.SetLibrarianCharacterListPanel_Default(sephirah);
+                }
+
+                if (uic.CurrentUnit == unitRef)
+                {
+                    if (uic.CurrentUIPhase == UI.UIPhase.Librarian)
+                    {
+                        var infoPanel =
+                            uic.GetUIPanel(UI.UIPanelType.LibrarianInfo)
+                            as UI.UILibrarianInfoPanel;
+                        if (infoPanel != null)
+                        {
+                            renderer?.SetCharacter(unitRef, LibrarianDetailSlot, forcelyReload: true);
+                            infoPanel.UpdatePanel();
+                        }
+                    }
+                    else if (uic.CurrentUIPhase == UI.UIPhase.Librarian_CardList)
+                    {
+                        var cardPanel =
+                            uic.GetUIPanel(UI.UIPanelType.Page) as UI.UICardPanel;
+                        if (refreshCardInventory)
+                        {
+                            cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
+                            cardPanel?.EquipInfoDeckPanel?.SetData();
+                            cardPanel?.InvenCardList?.SetData(
+                                Singleton<InventoryModel>.Instance?.GetCardList(), unitRef);
+                        }
+                        else
+                        {
+                            cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
+                        }
+                    }
+                }
+            });
+        }
+
         /// <summary>
         /// Resolves a floor/unit index pair to the corresponding UnitDataModel,
         /// or null if the floor is not open or the index is out of range.
@@ -1387,19 +1449,7 @@ namespace PlayLoRWithMe
         /// </summary>
         internal static UnitDataModel GetLibrarianUnit(int floorIndex, int unitIndex)
         {
-            var sephirahs = new[]
-            {
-                SephirahType.Malkuth,
-                SephirahType.Yesod,
-                SephirahType.Hod,
-                SephirahType.Netzach,
-                SephirahType.Tiphereth,
-                SephirahType.Gebura,
-                SephirahType.Chesed,
-                SephirahType.Binah,
-                SephirahType.Hokma,
-                SephirahType.Keter,
-            };
+            var sephirahs = GameStateSerializer.Sephirahs;
 
             if (floorIndex < 0 || floorIndex >= sephirahs.Length)
                 return null;

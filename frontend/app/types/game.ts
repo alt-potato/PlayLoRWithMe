@@ -167,7 +167,7 @@ export interface Resistances {
 }
 
 export interface KeyPage {
-  /** BookModel.instanceId — present on librarian key pages, absent on battle unit key pages. */
+  /** Unique identifier for managed (librarian) key pages; absent on transient battle unit key pages. */
   instanceId?: number;
   name: string;
   speedDiceCount?: number;
@@ -182,6 +182,8 @@ export interface KeyPage {
   equipRangeType?: string;
   /** BookXmlInfo integer ID — used to load the body composite PNG for the preview. */
   bookId?: number;
+  /** Non-empty for workshop (mod) key pages; used with bookId to construct the body PNG URL. */
+  bookPackageId?: string;
 }
 
 /** A passive attributed (succession-received) from another key page. */
@@ -230,8 +232,8 @@ export interface FloorEntry {
   realizationLevel: number;
   /**
    * EGO pages: full battle cards (with dice) from EmotionEgoXmlList.
-   * These are distinct from abnormality pages — they are real DiceCardXmlInfo
-   * objects, serialized identically to deckPreview cards.
+   * These are distinct from abnormality pages — they are full combat card definitions
+   * serialized identically to deckPreview cards.
    */
   egoCards: DeckCardPreview[];
   /** All abnormality pages (Awakening/Breakdown) unlocked up to the current realization level. */
@@ -259,6 +261,8 @@ export interface LibrarianEntry {
    * Presented first in the deck editor's add-cards list.
    */
   onlyCards?: AvailableCard[];
+  /** True for sephirah (patron) librarians — name editing and face/hair customization disabled. */
+  isSephirah?: boolean;
   /** Appearance customization data (present for customizable librarians). */
   appearance?: AppearanceData;
   /** Per-type custom battle dialogue text (null = using a random game preset). */
@@ -287,6 +291,8 @@ export interface LibrarianEntry {
    * Omitted when "N" (no gendered variants exist, body type toggle disabled).
    */
   skinGender?: string;
+  /** Equipped and available battle symbols (gifts). */
+  gifts?: GiftInventoryData;
   /** Equipped key page has a body composite in fashionbodies/ (replacesHead behavior). */
   keyPageReplacesHead?: boolean;
   /** Equipped key page has a front-layer composite in fashionbodies_front/. */
@@ -331,9 +337,9 @@ export interface Unit {
 
 /** Ally-only extras: light, hand, deck, EGO. */
 export interface AllyUnit extends Unit {
-  playPoint: number;
-  maxPlayPoint: number;
-  reservedPlayPoint: number;
+  light: number;
+  maxLight: number;
+  reservedLight: number;
   /** Present when this ally is owned by the current session. */
   hand?: Card[];
   deck?: Card[];
@@ -410,6 +416,8 @@ export interface AvailableKeyPage {
    * equip screen does.
    */
   bookIcon: string;
+  /** Resolved display name for the book group header (e.g. "The Stray Dogs"). */
+  bookGroupName: string;
   hp: number;
   breakGauge: number;
   /** BookXmlInfo.RangeType: "Melee" | "Range" | "Hybrid" — determines which card ranges can be equipped. */
@@ -442,8 +450,10 @@ export interface AppearanceData {
   eyeID: number;
   browID: number;
   mouthID: number;
-  /** Head sprite index (front=0, side=1). Server-serialized but unused by the preview. */
+  /** Head sprite index (front=0, side=1). */
   headID?: number;
+  /** Patron sephirah ID — when set, the head uses head_special_{id}.png from the patron prefab. */
+  patronHeadId?: number;
   height: number;
   hairColor: [number, number, number];
   skinColor: [number, number, number];
@@ -470,12 +480,53 @@ export interface TitleOption {
   text: string;
 }
 
-/** Global customization option tables sent once per library state snapshot. */
+// ── Gift / Battle Symbol types ───────────────────────────────────────────────
+
+/** Stat bonuses granted by an equipped gift. */
+export interface GiftStat {
+  hp: number;
+  breakGauge: number;
+  breakRecover: number;
+  /** Speed die min/max modifier. */
+  tune: number;
+  /** Emotion coin gain modifier. */
+  amp: number;
+}
+
+/** A gift equipped in one of the 9 positional slots. */
+export interface GiftSlot {
+  id: number;
+  name: string;
+  desc: string;
+  position: string;
+  stat: GiftStat;
+  visible: boolean;
+}
+
+/** An available (unlocked, unequipped) gift that can be placed in a slot. */
+export interface GiftOption {
+  id: number;
+  name: string;
+  desc: string;
+  position: string;
+  stat: GiftStat;
+}
+
+/** Per-librarian gift inventory: 9 equipped slots + available pool. */
+export interface GiftInventoryData {
+  equipped: (GiftSlot | null)[];
+  available: GiftOption[];
+}
+
+// ── Customization options ────────────────────────────────────────────────────
+
 /** A custom core book that can be used as an appearance projection skin. */
 export interface FashionBook {
   id: number;
   /** Non-empty for workshop (mod) books; omitted for core fashion books. */
   packageId?: string;
+  /** Explicit file stem override for body PNG lookup (e.g. "ws_2921128635"). */
+  fileStem?: string;
   name: string;
   /** EquipRangeType string — controls compatibility with librarian's range type. */
   rangeType: string;
@@ -518,6 +569,12 @@ export interface WorkshopSkin {
   name: string;
   /** Unique string key used to equip/save this skin (unit.workshopSkin). */
   contentFolderIdx: string;
+  /** True when the skin sprite replaces the entire head (no face/hair layers). */
+  replacesHead?: boolean;
+  hasFrontLayer?: boolean;
+  headTiltDeg?: number;
+  pivotFracX?: number;
+  pivotFracY?: number;
 }
 
 export interface CustomizeOptions {
@@ -568,12 +625,31 @@ export interface CustomizePayload {
   appearanceType: string;
 }
 
+/** Server → client WebSocket message types. */
+export type ServerMessage =
+  | { type: "hello"; sessionId: string; assignedUnits: number[]; claimsEnabled: boolean }
+  | { type: "state"; seq: number; data: GameState }
+  | { type: "delta"; seq: number; data: Record<string, unknown> }
+  | { type: "sessionUpdate"; assignedUnits: number[] }
+  | { type: "playerList"; players: PlayerInfo[] }
+  | { type: "actionResult"; reqId: string; ok: boolean; error?: string }
+  | { type: "ping" };
+
+/** Client → server action payloads. */
+export type ClientAction =
+  | { type: "playCard"; unitId: number; cardIndex: number; diceSlot: number; targetUnitId?: number; targetDiceSlot?: number; isEgo?: 1 }
+  | { type: "removeCard"; unitId: number; diceSlot: number }
+  | { type: "confirm" }
+  | { type: "selectAbnormality"; cardId: number; targetUnitId?: number };
+
 /** Top-level SSE / GET /state payload. */
 export interface GameState {
   scene: SceneName;
-  /** Raw C# StageController.Phase class name (e.g. "ApplyLibrarianCardPhase"). */
+  /** Whether the server has finished extracting appearance/gift sprite assets. */
+  assetsReady?: boolean;
+  /** Active stage phase class name (e.g. "ApplyLibrarianCardPhase"). */
   phase?: string;
-  /** Raw C# StageController.State enum value (e.g. "BattleSetting"). */
+  /** Active stage state enum value (e.g. "BattleSetting"). */
   stageState?: string;
   uiPhase?: string;
   stage?: StageInfo;

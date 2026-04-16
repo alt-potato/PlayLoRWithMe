@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using Workshop;
 
 namespace PlayLoRWithMe
 {
@@ -15,7 +16,20 @@ namespace PlayLoRWithMe
     /// </summary>
     internal static class AppearanceCache
     {
+        /// <summary>Number of head sprite variants available from the customization loader.</summary>
+        private const int HeadVariantCount = 2;
+
         private static bool _extracted = false;
+
+        /// <summary>Whether sprite extraction has completed successfully.</summary>
+        internal static bool IsReady => _extracted;
+
+        /// <summary>
+        /// When non-null, <see cref="ReadSpriteCrop"/> caches blitted RenderTextures
+        /// per source atlas so repeated reads from the same atlas skip the GPU blit.
+        /// Populated at the start of <see cref="Extract"/> and released at the end.
+        /// </summary>
+        private static Dictionary<Texture2D, RenderTexture> _atlasRtCache;
 
         /// <summary>
         /// Per-book metadata populated during extraction and read by
@@ -28,8 +42,25 @@ namespace PlayLoRWithMe
         /// HidesBackHair is true when the character model has a Hood sprite; the game
         /// hides all back hair renderers in that case.
         /// </summary>
-        internal static readonly Dictionary<int, (float TiltDeg, float PivotFracX, float PivotFracY, bool HasFrontLayer, bool HidesBackHair, string SkinGender)>
-            FashionMeta = new Dictionary<int, (float, float, float, bool, bool, string)>();
+        internal static readonly Dictionary<string, (float TiltDeg, float PivotFracX, float PivotFracY, bool HasFrontLayer, bool HidesBackHair, string SkinGender)>
+            FashionMeta = new Dictionary<string, (float, float, float, bool, bool, string)>();
+
+        /// <summary>
+        /// Face/hair canvas bounds in world space, populated during extraction.
+        /// Used by <see cref="GiftCache"/> to convert gift prefab positions to CSS coordinates.
+        /// </summary>
+        internal static Bounds FaceHairBounds { get; private set; }
+
+        /// <summary>
+        /// Pixels-per-unit of the face/hair sprites, populated during extraction.
+        /// </summary>
+        internal static float FaceHairPpu { get; private set; }
+
+        /// <summary>
+        /// Canvas pixel dimensions (computed from bounds × ppu), populated during extraction.
+        /// </summary>
+        internal static int FaceHairCanvasW { get; private set; }
+        internal static int FaceHairCanvasH { get; private set; }
 
         private static string CustomizeDir =>
             Path.Combine(Server.WwwRootPath, "assets", "customize");
@@ -53,7 +84,7 @@ namespace PlayLoRWithMe
             try
             {
                 // Bump this whenever extraction logic changes to invalidate the on-disk cache.
-                const string CacheVersion = "23";
+                const string CacheVersion = "35";
                 var versionPath = Path.Combine(CustomizeDir, "_cache_version.txt");
 
                 bool stale =
@@ -91,6 +122,25 @@ namespace PlayLoRWithMe
             // Ensure the loader's sprite arrays are populated before querying them.
             loader.LoadData();
 
+            // Enable atlas blit caching for the duration of extraction. Multiple
+            // face/hair sprites share a small number of atlas textures; caching the
+            // blitted RenderTexture avoids redundant full-atlas GPU copies.
+            _atlasRtCache = new Dictionary<Texture2D, RenderTexture>();
+            try
+            {
+                ExtractInner(loader);
+            }
+            finally
+            {
+                foreach (var rt in _atlasRtCache.Values)
+                    RenderTexture.ReleaseTemporary(rt);
+                _atlasRtCache = null;
+            }
+        }
+
+        private static void ExtractInner(CustomizingResourceLoader loader)
+        {
+
             // --- Pass 1: gather all face/hair sprites ---
             // Collect every customization sprite so we can compute a shared world-space
             // bounding box before writing any files.
@@ -117,8 +167,8 @@ namespace PlayLoRWithMe
                                 i => loader.GetFrontHairSprite(i));
             Gather("backhair",  loader.NumberOfCustomizingResources(CustomizingLookType.BackHair),
                                 i => loader.GetRearHairSprite(i));
-            // Heads: only 2 variants; GetHeadSprite has no bounds check so we stop on error.
-            for (int i = 0; i < 2; i++)
+            // Heads: GetHeadSprite has no bounds check so we stop on error.
+            for (int i = 0; i < HeadVariantCount; i++)
             {
                 try
                 {
@@ -164,25 +214,33 @@ namespace PlayLoRWithMe
             // worldScale so that rotated sprites (e.g. the tilted head on Bamboo-hatted
             // Kim's Page) contribute their full visual extent to the canvas.
             //
-            // Coordinate system: for replacesHead=false, body sprites are shifted by
-            // AnchorPos so positions are relative to the face-canvas origin.  For
-            // replacesHead=true, the prefab root is at world origin — same as face sprites.
+            // replacesHead=false bodies participate in the shared canvas because their
+            // sprites layer together with the face/hair PNGs (CSS background-size:
+            // 100% auto requires a shared pixel width so layers align).  replacesHead=true
+            // bodies are rendered alone (face/hair hidden) and get their own tight
+            // per-body canvas in ExtractFashionBodies — they must not inflate the shared
+            // canvas, which would push face/hair sprites off-center for every librarian.
             {
                 float allMinX = faceHairBounds.min.x;
                 float allMaxX = faceHairBounds.max.x;
                 float allMaxY = faceHairBounds.max.y;
                 foreach (var body in fashionBodies)
                 {
-                    var anchor = body.ReplacesHead ? Vector3.zero : body.AnchorPos;
-                    foreach (var (ss, wpos) in body.Sprites)
+                    if (body.ReplacesHead)
+                        continue;
+                    var anchor = body.AnchorPos;
+                    foreach (var spriteList in new[] { body.Sprites, body.SkinSprites })
                     {
-                        // World-space AABB from the renderer — accounts for any transform
-                        // rotation applied to the sprite at runtime.
-                        var rb = ss.sprRenderer.bounds;
-                        float relCx = rb.center.x - anchor.x;
-                        allMinX = Mathf.Min(allMinX, relCx - rb.extents.x);
-                        allMaxX = Mathf.Max(allMaxX, relCx + rb.extents.x);
-                        allMaxY = Mathf.Max(allMaxY, rb.max.y - anchor.y);
+                        foreach (var (ss, wpos) in spriteList)
+                        {
+                            // World-space AABB from the renderer — accounts for any transform
+                            // rotation applied to the sprite at runtime.
+                            var rb = ss.sprRenderer.bounds;
+                            float relCx = rb.center.x - anchor.x;
+                            allMinX = Mathf.Min(allMinX, relCx - rb.extents.x);
+                            allMaxX = Mathf.Max(allMaxX, relCx + rb.extents.x);
+                            allMaxY = Mathf.Max(allMaxY, rb.max.y - anchor.y);
+                        }
                     }
                 }
                 bool needsUpdate =
@@ -204,6 +262,12 @@ namespace PlayLoRWithMe
                     Path.Combine(CustomizeDir, "dimensions.json"),
                     $"{{\"w\":{canvasW},\"h\":{canvasH}}}");
 
+                // Expose canvas data so GiftCache can render gifts onto the same canvas.
+                FaceHairBounds = faceHairBounds;
+                FaceHairPpu = ppu;
+                FaceHairCanvasW = canvasW;
+                FaceHairCanvasH = canvasH;
+
                 // Build per-book metadata for the serializer now that faceHairBounds is
                 // final (pivot fractions depend on the fully-expanded canvas extents).
                 //
@@ -221,18 +285,29 @@ namespace PlayLoRWithMe
                 float fracY = (bh > 0f) ? Mathf.Clamp01(faceHairBounds.max.y / bh)  : 0.5f;
                 foreach (var b in fashionBodies)
                 {
-                    if (FashionMeta.ContainsKey(b.BookId))
+                    var stem = b.FileStem;
+                    if (FashionMeta.ContainsKey(stem))
                     {
                         // Second variant for same book — merge HasFrontLayer flag.
-                        var existing = FashionMeta[b.BookId];
+                        var existing = FashionMeta[stem];
                         if (b.FrontSprites.Count > 0 && !existing.HasFrontLayer)
-                            FashionMeta[b.BookId] = (existing.TiltDeg, existing.PivotFracX,
+                            FashionMeta[stem] = (existing.TiltDeg, existing.PivotFracX,
                                 existing.PivotFracY, true, existing.HidesBackHair, existing.SkinGender);
                         continue;
                     }
-                    var bxi = Singleton<BookXmlList>.Instance?.GetData(b.BookId);
-                    string skinGender = bxi?.gender.ToString() ?? "N";
-                    FashionMeta[b.BookId] = (b.PivotRotDeg, fracX, fracY,
+                    string skinGender;
+                    if (!string.IsNullOrEmpty(b.PackageId))
+                    {
+                        // Workshop book: look up by full LorId to get the correct gender.
+                        var wsInfo = Singleton<BookXmlList>.Instance?.GetData(new LorId(b.PackageId, b.BookId));
+                        skinGender = wsInfo?.gender.ToString() ?? "N";
+                    }
+                    else
+                    {
+                        var bxi = Singleton<BookXmlList>.Instance?.GetData(b.BookId);
+                        skinGender = bxi?.gender.ToString() ?? "N";
+                    }
+                    FashionMeta[stem] = (b.PivotRotDeg, fracX, fracY,
                         b.FrontSprites.Count > 0, !b.ReplacesHead && b.HasHood, skinGender);
                 }
             }
@@ -251,6 +326,12 @@ namespace PlayLoRWithMe
                     );
                 }
             }
+
+            // --- Pass 3b: extract patron (special custom) head sprites ---
+            // Patron librarians (sephirah IDs 1-10 etc.) use SpecialCustomizedAppearance
+            // prefabs with unique head sprites, rather than the shared generic heads.
+            // We pick the front-facing standing head from each prefab's SpecialCustomHead list.
+            ExtractPatronHeads(canvasW, canvasH, faceHairBounds, ppu);
 
             // --- Pass 4: composite body sprites per fashion book ---
             ExtractFashionBodies(fashionBodies, faceHairBounds, canvasW, canvasH, ppu);
@@ -275,6 +356,295 @@ namespace PlayLoRWithMe
             if (File.Exists(path))
                 return; // idempotent — skip already-extracted sprites
             File.WriteAllBytes(path, SpriteToPng(sprite, canvasW, canvasH, totalBounds, ppu));
+        }
+
+        /// <summary>
+        /// Extracts composite head sprites from patron (SpecialCustomizedAppearance) prefabs.
+        /// Patron librarians replace the entire face (head, eyes, brows, mouth, hair) with
+        /// their own integrated sprites.  Two PNGs per patron:
+        ///   head_special_{id}.png       — head, face, front hair (renders above fashion body)
+        ///   head_special_{id}_rear.png  — rear hair (renders behind fashion body)
+        /// </summary>
+        private static void ExtractPatronHeads(
+            int canvasW, int canvasH, Bounds totalBounds, float ppu)
+        {
+            var loader = Singleton<CustomizingResourceLoader>.Instance;
+            if (loader == null)
+                return;
+
+            var field = typeof(CustomizingResourceLoader).GetField(
+                "_specialCustomPrefabDic",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (field == null)
+                return;
+            var dic = field.GetValue(loader)
+                as Dictionary<int, SpecialCustomizedAppearance>;
+            if (dic == null)
+                return;
+
+            foreach (var kvp in dic)
+            {
+                int sephirahId = kvp.Key;
+                var prefab = kvp.Value;
+                if (prefab?.list == null || prefab.list.Count == 0)
+                    continue;
+
+                var frontPath = Path.Combine(CustomizeDir, $"head_special_{sephirahId}.png");
+                var rearPath  = Path.Combine(CustomizeDir, $"head_special_{sephirahId}_rear.png");
+                if (File.Exists(frontPath) && File.Exists(rearPath))
+                    continue;
+
+                // Instantiate the prefab so transforms and sprite positions are resolved.
+                // Reset transform to identity — the prefab may carry a non-zero rotation
+                // from the Unity editor, causing an unwanted tilt.
+                var go = UnityEngine.Object.Instantiate(prefab.gameObject);
+                go.transform.position = Vector3.zero;
+                go.transform.rotation = Quaternion.identity;
+                go.transform.localScale = Vector3.one;
+
+                try
+                {
+                    var inst = go.GetComponent<SpecialCustomizedAppearance>();
+                    if (inst?.list == null || inst.list.Count == 0)
+                        continue;
+
+                    // Mirror the game's selection logic in RefreshAppearanceByMotion:
+                    // 1) find head matching ActionDetail.Standing
+                    // 2) fall back to front-facing direction
+                    // 3) fall back to first available
+                    var head = inst.list.Find(
+                            h => h.detail == ActionDetail.Standing)
+                        ?? inst.list.Find(
+                            h => h.motionDirection == CharacterMotion.MotionDirection.FrontView)
+                        ?? inst.list[0];
+
+                    // Activate this variant so its renderers are live; deactivate others.
+                    foreach (var h in inst.list)
+                        h.rootObject?.SetActive(h == head);
+
+                    // Reset the head's local transform — the game does this in
+                    // RefreshAppearanceByMotion after parenting to the Head sprite set.
+                    if (head.rootObject != null)
+                    {
+                        head.rootObject.transform.localPosition = Vector3.zero;
+                        head.rootObject.transform.localRotation = Quaternion.identity;
+                    }
+
+                    // Partition renderers into rear (behind body) and front (above body).
+                    // Rear hair renders behind the fashion body; everything else renders
+                    // in front, matching the normal face/hair layer ordering.
+                    var rearRenderers  = new List<SpriteRenderer>();
+                    var frontRenderers = new List<SpriteRenderer>();
+
+                    void AddTo(List<SpriteRenderer> list, SpriteRenderer sr)
+                    {
+                        if (sr != null && sr.sprite != null)
+                            list.Add(sr);
+                    }
+                    AddTo(frontRenderers, head.headRenderer);
+                    AddTo(frontRenderers, head.faceRenderer);
+                    AddTo(frontRenderers, head.frontHairRenderer);
+                    AddTo(rearRenderers,  head.rearHairRenderer);
+                    if (head.additionalFace != null)
+                        foreach (var sr in head.additionalFace) AddTo(frontRenderers, sr);
+                    if (head.additionalFrontHair != null)
+                        foreach (var sr in head.additionalFrontHair) AddTo(frontRenderers, sr);
+                    if (head.additionalRearHair != null)
+                        foreach (var sr in head.additionalRearHair) AddTo(rearRenderers, sr);
+
+                    if (frontRenderers.Count == 0 && rearRenderers.Count == 0)
+                        continue;
+
+                    // Sort each group by layer/order (back to front).
+                    var slayers = SortingLayer.layers;
+                    var layerIdxMap = new Dictionary<int, int>(slayers.Length);
+                    for (int li = 0; li < slayers.Length; li++)
+                        layerIdxMap[slayers[li].id] = li;
+                    System.Comparison<SpriteRenderer> cmp = (a, b) =>
+                    {
+                        int la = layerIdxMap.TryGetValue(a.sortingLayerID, out var va) ? va : 0;
+                        int lb = layerIdxMap.TryGetValue(b.sortingLayerID, out var vb) ? vb : 0;
+                        if (la != lb) return la.CompareTo(lb);
+                        return a.sortingOrder.CompareTo(b.sortingOrder);
+                    };
+                    frontRenderers.Sort(cmp);
+                    rearRenderers.Sort(cmp);
+
+                    // Compute a unified bounding box from ALL renderers (front + rear) so
+                    // both PNGs share the same canvas and align when CSS-stacked.
+                    Bounds patronBounds = totalBounds;
+                    foreach (var sr in frontRenderers)
+                        patronBounds.Encapsulate(sr.bounds);
+                    foreach (var sr in rearRenderers)
+                        patronBounds.Encapsulate(sr.bounds);
+
+                    int patronCanvasW = Mathf.Max(canvasW,
+                        Mathf.RoundToInt(patronBounds.size.x * ppu));
+                    int patronCanvasH = Mathf.Max(canvasH,
+                        Mathf.RoundToInt(patronBounds.size.y * ppu));
+
+                    if (!File.Exists(frontPath) && frontRenderers.Count > 0)
+                        CompositeAndSave(frontRenderers, patronCanvasW, patronCanvasH,
+                            patronBounds, ppu, frontPath);
+
+                    if (!File.Exists(rearPath) && rearRenderers.Count > 0)
+                        CompositeAndSave(rearRenderers, patronCanvasW, patronCanvasH,
+                            patronBounds, ppu, rearPath);
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning(
+                        $"[PlayLoRWithMe] AppearanceCache: patron head [{sephirahId}] failed: {ex.Message}");
+                }
+                finally
+                {
+                    UnityEngine.Object.Destroy(go);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Composites a sorted list of SpriteRenderers (back-to-front) onto a canvas
+        /// and saves the result as a PNG.
+        /// </summary>
+        private static void CompositeAndSave(
+            List<SpriteRenderer> renderers,
+            int cw, int ch, Bounds bounds, float ppu, string outPath)
+        {
+            // Hoist the pixel buffer outside the loop so we composite directly
+            // into it, avoiding a full-canvas GetPixels32/SetPixels32 round-trip
+            // per sprite (two O(cw*ch) copies per iteration).
+            var dstPixels = new Color32[cw * ch];
+
+            foreach (var sr in renderers)
+            {
+                Texture2D crop = null;
+                try
+                {
+                    crop = ReadSpriteCrop(sr.sprite);
+                    int cropW = crop.width;
+                    int cropH = crop.height;
+
+                    float spritePpu = sr.sprite.pixelsPerUnit;
+                    float ppuRatio = ppu / spritePpu;
+
+                    var wb = sr.bounds;
+                    int boundsOffsetX = Mathf.RoundToInt(
+                        (wb.min.x - bounds.min.x) * ppu);
+                    int boundsOffsetY = Mathf.RoundToInt(
+                        (wb.min.y - bounds.min.y) * ppu);
+
+                    var texRectOffset = sr.sprite.textureRectOffset;
+                    int offsetX = boundsOffsetX
+                        + Mathf.RoundToInt(texRectOffset.x * ppuRatio);
+                    int offsetY = boundsOffsetY
+                        + Mathf.RoundToInt(texRectOffset.y * ppuRatio);
+
+                    int finalW, finalH;
+                    Color32[] srcPixels;
+
+                    if (Mathf.Approximately(ppuRatio, 1f))
+                    {
+                        finalW = cropW;
+                        finalH = cropH;
+                        srcPixels = crop.GetPixels32();
+                    }
+                    else
+                    {
+                        finalW = Mathf.Max(1, Mathf.RoundToInt(cropW * ppuRatio));
+                        finalH = Mathf.Max(1, Mathf.RoundToInt(cropH * ppuRatio));
+                        var rt = RenderTexture.GetTemporary(
+                            finalW, finalH, 0, RenderTextureFormat.ARGB32);
+                        try
+                        {
+                            Graphics.Blit(crop, rt);
+                            var prev = RenderTexture.active;
+                            RenderTexture.active = rt;
+                            var scaled = new Texture2D(
+                                finalW, finalH, TextureFormat.RGBA32, false);
+                            try
+                            {
+                                scaled.ReadPixels(new Rect(0, 0, finalW, finalH), 0, 0);
+                                scaled.Apply();
+                                srcPixels = scaled.GetPixels32();
+                            }
+                            finally
+                            {
+                                RenderTexture.active = prev;
+                                UnityEngine.Object.Destroy(scaled);
+                            }
+                        }
+                        finally
+                        {
+                            RenderTexture.ReleaseTemporary(rt);
+                        }
+                    }
+
+                    // Apply SpriteRenderer.color tint (Unity multiplies every pixel
+                    // by this color — e.g. a white head sprite × skin color = skin).
+                    Color32 tint = sr.color;
+                    bool hasTint = tint.r != 255 || tint.g != 255
+                        || tint.b != 255 || tint.a != 255;
+
+                    // Alpha-composite onto the canvas (back-to-front).
+                    for (int sy = 0; sy < finalH; sy++)
+                    {
+                        int dy = offsetY + sy;
+                        if (dy < 0 || dy >= ch) continue;
+                        for (int sx = 0; sx < finalW; sx++)
+                        {
+                            int dx = offsetX + sx;
+                            if (dx < 0 || dx >= cw) continue;
+                            int si = sy * finalW + sx;
+                            int di = dy * cw + dx;
+                            var src = srcPixels[si];
+                            if (src.a == 0) continue;
+                            if (hasTint)
+                            {
+                                src = new Color32(
+                                    (byte)(src.r * tint.r / 255),
+                                    (byte)(src.g * tint.g / 255),
+                                    (byte)(src.b * tint.b / 255),
+                                    (byte)(src.a * tint.a / 255));
+                                if (src.a == 0) continue;
+                            }
+                            if (src.a == 255)
+                            {
+                                dstPixels[di] = src;
+                                continue;
+                            }
+                            var dst = dstPixels[di];
+                            float sa = src.a / 255f;
+                            float da = dst.a / 255f;
+                            float oa = sa + da * (1f - sa);
+                            if (oa > 0f)
+                            {
+                                dstPixels[di] = new Color32(
+                                    (byte)((src.r * sa + dst.r * da * (1f - sa)) / oa),
+                                    (byte)((src.g * sa + dst.g * da * (1f - sa)) / oa),
+                                    (byte)((src.b * sa + dst.b * da * (1f - sa)) / oa),
+                                    (byte)(oa * 255f));
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    if (crop != null) UnityEngine.Object.Destroy(crop);
+                }
+            }
+
+            var canvas = new Texture2D(cw, ch, TextureFormat.RGBA32, false);
+            try
+            {
+                canvas.SetPixels32(dstPixels);
+                canvas.Apply();
+                File.WriteAllBytes(outPath, canvas.EncodeToPNG());
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(canvas);
+            }
         }
 
         /// <summary>
@@ -324,10 +694,26 @@ namespace PlayLoRWithMe
         {
             public int BookId;
             /// <summary>
+            /// Non-empty for workshop books; used to disambiguate file names and metadata
+            /// keys when multiple mods share the same integer BookId.
+            /// </summary>
+            public string PackageId = "";
+            /// <summary>
             /// Gender variant suffix: null for neutral/ungendered, "f" for female, "m" for male.
             /// Used to produce distinct file names (e.g. fashionbodies/123_f.png).
             /// </summary>
             public string Variant = null;
+            /// <summary>
+            /// Explicit file stem override. When set, takes priority over the
+            /// computed "{PackageId}_{BookId}" or "{BookId}" pattern.
+            /// </summary>
+            public string FileStemOverride = null;
+            /// <summary>
+            /// File stem for this entry: explicit override if set, else "{BookId}" for
+            /// core books, "{PackageId}_{BookId}" for workshop books.
+            /// </summary>
+            public string FileStem => FileStemOverride
+                ?? (string.IsNullOrEmpty(PackageId) ? BookId.ToString() : $"{PackageId}_{BookId}");
             public bool ReplacesHead;
             // World position of customPivot (or Head SpriteSet renderer) within the
             // instantiated DefaultMotion prefab.  Face/hair sprites are placed at this
@@ -349,6 +735,12 @@ namespace PlayLoRWithMe
             // Sprites in front of the face overlay (sortingOrder >= face threshold).
             // Empty for replacesHead=true books (face overlay is not shown).
             public List<(SpriteSet sprSet, Vector3 worldPos)> FrontSprites
+                = new List<(SpriteSet, Vector3)>();
+            // Skin-type sprites (neck, collarbone) — extracted separately so the
+            // frontend can tint them with the librarian's individual skin color via
+            // CSS multiply blending.  In-game, these are white silhouettes tinted at
+            // runtime by CharacterMotion.CustomizeSkinColor().
+            public List<(SpriteSet sprSet, Vector3 worldPos)> SkinSprites
                 = new List<(SpriteSet, Vector3)>();
             // True when the character model contains a CharacterAppearanceType.Hood sprite.
             // The game hides all back hair when any Hood sprite is present
@@ -438,7 +830,9 @@ namespace PlayLoRWithMe
                         inFront = idx > faceLayerIdx
                             || (idx == faceLayerIdx && ss.sprRenderer.sortingOrder > faceOrder);
                     }
-                    if (inFront)
+                    if (ss.sprType == CharacterAppearanceType.Skin)
+                        body.SkinSprites.Add(entry);
+                    else if (inFront)
                         body.FrontSprites.Add(entry);
                     else
                         body.Sprites.Add(entry);
@@ -446,6 +840,7 @@ namespace PlayLoRWithMe
                     if (ss.sprType == CharacterAppearanceType.Hood)
                         body.HasHood = true;
                 }
+
             }
             else
             {
@@ -469,12 +864,152 @@ namespace PlayLoRWithMe
         }
 
         /// <summary>
-        /// Instantiates the DefaultMotion prefab for each unlocked fashion book, runs
-        /// SetSkinSprite + DisableSpritesByCustomizing to isolate body-only sprites, and
-        /// records all enabled SpriteRenderers alongside their world positions.
-        /// Populates <paramref name="instancesToDestroy"/> with objects the caller must
-        /// destroy after extraction is complete.
+        /// Extracts body sprites for a workshop book that uses <c>skinType == "Custom"</c>.
+        /// These books don't have their own character prefab; instead the game loads
+        /// <c>[Prefab]Appearance_Custom</c> and applies cloth-overlay sprites via
+        /// <see cref="WorkshopSkinDataSetter"/>.  The cloth sprites live on child
+        /// GameObjects named <c>Customize_Renderer</c> (rear) and
+        /// <c>Customize_Renderer_Front</c> (front), not in <c>motionSpriteSet</c>.
         /// </summary>
+        /// <summary>
+        /// Resolves <see cref="WorkshopSkinData"/> for a workshop book and delegates
+        /// to <see cref="TryGatherClothBody"/>.
+        /// </summary>
+        private static FashionBookBody TryGatherWorkshopBody(
+            int bid, BookXmlInfo bxi, string packageId,
+            List<GameObject> instancesToDestroy)
+        {
+            var loader = Singleton<CustomizingBookSkinLoader>.Instance;
+            if (loader == null)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] workshop body {bid}: CustomizingBookSkinLoader is null");
+                return null;
+            }
+            var skinName = bxi.GetCharacterSkin();
+            var skinData = loader.GetWorkshopBookSkinData(packageId, skinName);
+            if (skinData == null)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] workshop body {bid}: no skin data for pkg={packageId} skin={skinName}");
+                return null;
+            }
+            return TryGatherClothBody(skinData, bid, packageId, $"book {bid}", instancesToDestroy);
+        }
+
+        /// <summary>
+        /// Extracts body sprites from a <see cref="WorkshopSkinData"/> cloth overlay.
+        /// Used for both workshop book bodies (<c>skinType == "Custom"</c>) and
+        /// workshop skins from <see cref="CustomizingResourceLoader"/>.
+        /// The cloth sprites live on child GameObjects named
+        /// <c>Customize_Renderer</c> (rear) and <c>Customize_Renderer_Front</c> (front),
+        /// not in <c>motionSpriteSet</c>.
+        /// </summary>
+        private static FashionBookBody TryGatherClothBody(
+            WorkshopSkinData skinData, int bid, string packageId, string label,
+            List<GameObject> instancesToDestroy)
+        {
+            var prefab = Resources.Load<GameObject>(
+                "Prefabs/Characters/[Prefab]Appearance_Custom");
+            if (prefab == null)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: Appearance_Custom prefab not found");
+                return null;
+            }
+
+            var go = UnityEngine.Object.Instantiate(prefab);
+            var setter = go.GetComponent<WorkshopSkinDataSetter>();
+            if (setter == null)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: no WorkshopSkinDataSetter on prefab");
+                UnityEngine.Object.Destroy(go);
+                return null;
+            }
+
+            setter.SetData(skinData);
+
+            // Get the Standing motion (same as Default for workshop skins per Init()).
+            var appearance = go.GetComponent<CharacterAppearance>();
+            if (appearance == null)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: no CharacterAppearance on prefab");
+                UnityEngine.Object.Destroy(go);
+                return null;
+            }
+
+            var motion = appearance.GetCharacterMotion(ActionDetail.Standing);
+            if (motion == null)
+                motion = appearance.GetCharacterMotion(ActionDetail.Default);
+            if (motion == null)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: no Standing/Default motion found");
+                UnityEngine.Object.Destroy(go);
+                return null;
+            }
+
+            // Find the cloth renderers and pivot on the Standing motion.
+            SpriteRenderer rearRenderer = null, frontRenderer = null;
+            Transform customPivot = null;
+            foreach (Transform child in motion.transform)
+            {
+                if (child.gameObject.name == "Customize_Renderer")
+                    rearRenderer = child.GetComponent<SpriteRenderer>();
+                else if (child.gameObject.name == "Customize_Renderer_Front")
+                    frontRenderer = child.GetComponent<SpriteRenderer>();
+                else if (child.gameObject.name == "CustomizePivot")
+                    customPivot = child;
+            }
+
+            if (rearRenderer == null || rearRenderer.sprite == null)
+            {
+                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: rear renderer={rearRenderer != null}, sprite={rearRenderer?.sprite != null}");
+                UnityEngine.Object.Destroy(go);
+                return null;
+            }
+
+            Vector3 anchorPos = customPivot != null
+                ? customPivot.position
+                : Vector3.zero;
+
+            float rawZ = customPivot != null
+                ? customPivot.rotation.eulerAngles.z
+                : 0f;
+            float pivotRotDeg = rawZ > 180f ? rawZ - 360f : rawZ;
+
+            // headEnabled in the skin data means the head/face should be visible
+            // on top of the body sprite — i.e. the skin does NOT replace the head.
+            bool headEnabled = true;
+            if (skinData.dic.TryGetValue(ActionDetail.Default, out var defaultCloth))
+                headEnabled = defaultCloth.headEnabled;
+            else if (skinData.dic.TryGetValue(ActionDetail.Standing, out var standingCloth))
+                headEnabled = standingCloth.headEnabled;
+
+            var body = new FashionBookBody
+            {
+                BookId       = bid,
+                PackageId    = packageId,
+                Variant      = null, // workshop skins are ungendered
+                ReplacesHead = !headEnabled,
+                AnchorPos    = anchorPos,
+                WorldScale   = motion.transform.lossyScale.y,
+                PivotRotDeg  = pivotRotDeg,
+            };
+
+            // Rear cloth sprite → behind-face layer.
+            var rearSet = new SpriteSet(rearRenderer, CharacterAppearanceType.Body);
+            body.Sprites.Add((rearSet, rearRenderer.transform.position));
+
+            // Front cloth sprite → in-front-of-face layer.
+            if (frontRenderer != null && frontRenderer.sprite != null
+                && frontRenderer.gameObject.activeSelf)
+            {
+                var frontSet = new SpriteSet(frontRenderer, CharacterAppearanceType.Body);
+                body.FrontSprites.Add((frontSet, frontRenderer.transform.position));
+            }
+
+            Debug.Log($"[PlayLoRWithMe] workshop body {bid}: OK, rear sprite={rearRenderer.sprite.name}, front={frontRenderer?.sprite?.name ?? "none"}");
+            instancesToDestroy.Add(go);
+            return body;
+        }
+
         /// <summary>
         /// Gathers body sprites for a single book ID, handling gendered variants.
         /// </summary>
@@ -523,6 +1058,9 @@ namespace PlayLoRWithMe
             if (abm == null) return;
 
             var seen = new HashSet<int>();
+            // Separate dedup set for workshop books keyed by "{packageId}:{id}" to avoid
+            // collisions with core books and between mods that share the same integer id.
+            var seenWs = new HashSet<string>();
 
             // Fashion books (custom core book projections).
             var ccbm = Singleton<CustomCoreBookInventoryModel>.Instance;
@@ -539,8 +1077,10 @@ namespace PlayLoRWithMe
                 }
             }
 
-            // Equipped key pages — extract their bodies too so the preview can
-            // show the librarian's current appearance when no fashion book is selected.
+            // Equipped key pages and workshop books — extract their bodies too so
+            // the preview can show the librarian's current appearance when no
+            // fashion book is selected.  Workshop books (IsWorkshop) are included
+            // because they aren't tracked by CustomCoreBookInventoryModel.
             var library = LibraryModel.Instance;
             if (library != null)
             {
@@ -550,8 +1090,25 @@ namespace PlayLoRWithMe
                     {
                         var book = unit.bookItem;
                         if (book?.ClassInfo == null) continue;
-                        int bid = book.GetBookClassInfoId().id;
-                        try { GatherBookBody(bid, result, instancesToDestroy, abm, seen); }
+                        var lid = book.GetBookClassInfoId();
+                        int bid = lid.id;
+                        var bxi = book.ClassInfo;
+                        try
+                        {
+                            if (book.IsWorkshop && bxi.skinType == "Custom")
+                            {
+                                if (seenWs.Add($"{lid.packageId}:{lid.id}"))
+                                {
+                                    var wsBody = TryGatherWorkshopBody(
+                                        bid, bxi, lid.packageId, instancesToDestroy);
+                                    if (wsBody != null) result.Add(wsBody);
+                                }
+                            }
+                            else
+                            {
+                                GatherBookBody(bid, bxi, result, instancesToDestroy, abm, seen);
+                            }
+                        }
                         catch (System.Exception ex)
                         {
                             Debug.LogWarning(
@@ -561,6 +1118,82 @@ namespace PlayLoRWithMe
                 }
             }
 
+            // Workshop mod books from the book inventory — these have standard
+            // character prefabs but are excluded from CustomCoreBookInventoryModel.
+            var bookInv = Singleton<BookInventoryModel>.Instance;
+            Debug.Log($"[PlayLoRWithMe] AppearanceCache: bookInv={bookInv != null}, count={bookInv?.GetBookListAll()?.Count ?? -1}");
+            if (bookInv != null)
+            {
+                int wsCount = 0;
+                foreach (var book in bookInv.GetBookListAll())
+                {
+                    if (!book.IsWorkshop) continue;
+                    wsCount++;
+                    var bxi = book.ClassInfo;
+                    var lid = book.GetBookClassInfoId();
+                    Debug.Log($"[PlayLoRWithMe] AppearanceCache: ws book id={lid.id} pkg={lid.packageId} skinType={bxi?.skinType} charSkin={bxi?.GetCharacterSkin()} classInfo={bxi != null}");
+                    if (bxi == null || string.IsNullOrEmpty(bxi.GetCharacterSkin())) continue;
+                    int bid = lid.id;
+                    try
+                    {
+                        if (bxi.skinType == "Custom")
+                        {
+                            // Workshop books with custom skins use cloth overlays,
+                            // not standard character prefabs.
+                            if (!seenWs.Add($"{lid.packageId}:{lid.id}")) continue;
+                            Debug.Log($"[PlayLoRWithMe] AppearanceCache: workshop Custom book {bid} pkg={lid.packageId} skin={bxi.GetCharacterSkin()}");
+                            var wsBody = TryGatherWorkshopBody(
+                                bid, bxi, lid.packageId, instancesToDestroy);
+                            if (wsBody != null)
+                                result.Add(wsBody);
+                            else
+                                Debug.LogWarning($"[PlayLoRWithMe] AppearanceCache: TryGatherWorkshopBody returned null for {bid}");
+                        }
+                        else
+                        {
+                            GatherBookBody(bid, bxi, result, instancesToDestroy, abm, seen);
+                        }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning(
+                            $"[PlayLoRWithMe] AppearanceCache: workshop body gather {bid} failed: {ex.Message}\n{ex.StackTrace}");
+                    }
+                }
+                Debug.Log($"[PlayLoRWithMe] AppearanceCache: workshop books scanned, {wsCount} workshop books found");
+            }
+
+            // Workshop skins (cloth overlays from CustomizingResourceLoader).
+            // These are separate from workshop books — they're skin-only mods
+            // with no key page, loaded by contentFolderIdx.
+            var wsLoader = Singleton<CustomizingResourceLoader>.Instance;
+            if (wsLoader != null)
+            {
+                foreach (var skin in wsLoader.GetWorkshopSkinDataAll())
+                {
+                    if (skin?.dic == null || skin.dic.Count == 0) continue;
+                    // File stem uses "ws_" prefix + contentFolderIdx to distinguish
+                    // from book-based bodies.
+                    var folderIdx = skin.contentFolderIdx;
+                    try
+                    {
+                        var stem = $"ws_{folderIdx}";
+                        var wsBody = TryGatherClothBody(
+                            skin, 0, "", $"skin {folderIdx}",
+                            instancesToDestroy);
+                        if (wsBody != null)
+                        {
+                            wsBody.FileStemOverride = stem;
+                            result.Add(wsBody);
+                        }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning(
+                            $"[PlayLoRWithMe] AppearanceCache: workshop skin {folderIdx} failed: {ex.Message}\n{ex.StackTrace}");
+                    }
+                }
+            }
 
         }
 
@@ -589,44 +1222,80 @@ namespace PlayLoRWithMe
             {
                 // gendered variants use a suffix: fashionbodies/123_f.png, 123_m.png
                 var suffix = body.Variant != null ? $"_{body.Variant}" : "";
-                var path      = Path.Combine(FashionBodyDir,      $"{body.BookId}{suffix}.png");
-                var frontPath = Path.Combine(FashionBodyFrontDir, $"{body.BookId}{suffix}.png");
+                var stem = body.FileStem;
+                var path      = Path.Combine(FashionBodyDir,      $"{stem}{suffix}.png");
+                var frontPath = Path.Combine(FashionBodyFrontDir, $"{stem}{suffix}.png");
+
+                var skinPath = Path.Combine(FashionBodyDir, $"{stem}{suffix}_skin.png");
 
                 // Skip if already extracted.  The back file is the sentinel; for the rare
                 // case where all sprites are front-layer, use the front file instead.
                 bool backDone  = body.Sprites.Count      == 0 || File.Exists(path);
                 bool frontDone = body.FrontSprites.Count == 0 || File.Exists(frontPath);
-                if (backDone && frontDone) continue;
+                bool skinDone  = body.SkinSprites.Count  == 0 || File.Exists(skinPath);
+                if (backDone && frontDone && skinDone) continue;
 
                 try
                 {
-                    // Sort both lists back-to-front (painter's algorithm).
-                    body.Sprites.Sort((a, b) =>
-                        a.sprSet.sprRenderer.sortingOrder.CompareTo(b.sprSet.sprRenderer.sortingOrder));
-                    body.FrontSprites.Sort((a, b) =>
-                        a.sprSet.sprRenderer.sortingOrder.CompareTo(b.sprSet.sprRenderer.sortingOrder));
+                    // Sort all lists back-to-front (painter's algorithm).
+                    System.Comparison<(SpriteSet sprSet, Vector3 worldPos)> bodySortCmp =
+                        (a, b) => a.sprSet.sprRenderer.sortingOrder.CompareTo(b.sprSet.sprRenderer.sortingOrder);
+                    body.Sprites.Sort(bodySortCmp);
+                    body.FrontSprites.Sort(bodySortCmp);
+                    body.SkinSprites.Sort(bodySortCmp);
 
                     if (body.ReplacesHead)
                     {
-                        // Canvas based on the face/hair bounds, extended upward if the body
-                        // is taller.  Keeping the same width and bottom padding as face/hair
-                        // sprites ensures the character stands at the same visual height as
-                        // the librarian customization preview, avoiding the "pressed to the
-                        // bottom" effect that a tight per-book canvas would produce.
-                        var bodyBounds = ComputeSpriteBounds(body.Sprites, Vector3.zero, body.WorldScale);
-                        float extMinX = faceHairBounds.min.x;
-                        float extMaxX = faceHairBounds.max.x;
-                        float extMinY = faceHairBounds.min.y; // preserve face/hair bottom padding
-                        float extMaxY = Mathf.Max(faceHairBounds.max.y, bodyBounds.max.y);
-                        var extBounds = new Bounds(
-                            new Vector3((extMinX + extMaxX) * 0.5f, (extMinY + extMaxY) * 0.5f, 0f),
-                            new Vector3(extMaxX - extMinX, extMaxY - extMinY, 0.2f));
-                        int bW = Mathf.Max(1, Mathf.RoundToInt((extMaxX - extMinX) * ppu));
-                        int bH = Mathf.Max(1, Mathf.RoundToInt((extMaxY - extMinY) * ppu));
+                        // Tight per-body canvas: the face/hair layers are hidden for
+                        // replacesHead skins, so we don't need to share dimensions with
+                        // the face canvas.  A tight canvas lets the frontend render the
+                        // body with background-size: contain so the full character fits
+                        // the preview box.
+                        //
+                        // We composite back + front + skin sprites into a single PNG.
+                        // Core LoR replacesHead books dump everything into body.Sprites,
+                        // but workshop cloth bodies also populate body.FrontSprites with
+                        // the Customize_Renderer_Front layer (front-facing accessories
+                        // like ribbons, collars, hats) — these must be included or large
+                        // accessories get dropped entirely.
+                        //
+                        // Workshop cloth sprites are loaded via SpriteUtil.LoadLargePivotSprite
+                        // which forces every sprite to a 512x512 FullRect sprite — so
+                        // sprite.rect, sprite.textureRect, and the logical bounds are all
+                        // identical regardless of where the opaque pixels actually sit.
+                        // Sizing the canvas by those bounds bakes large asymmetric
+                        // transparent padding into the PNG.  We fix horizontal centering
+                        // by symmetrizing the canvas X-bounds around AnchorPos.x (the
+                        // head attach point from customPivot.position) — see below.
+                        var allReplaceSprites = new List<(SpriteSet sprSet, Vector3 worldPos)>(
+                            body.Sprites.Count + body.FrontSprites.Count + body.SkinSprites.Count);
+                        allReplaceSprites.AddRange(body.SkinSprites);
+                        allReplaceSprites.AddRange(body.Sprites);
+                        allReplaceSprites.AddRange(body.FrontSprites);
+                        if (allReplaceSprites.Count == 0) continue;
+
+                        var bodyBounds = ComputeSpriteBounds(allReplaceSprites, Vector3.zero, body.WorldScale);
+
+                        // Symmetrize X around the head attach point so the head
+                        // lands at the horizontal center of the PNG.  In-game,
+                        // AnchorPos (customPivot.position) is where the face is
+                        // placed on the body; using it as the X-center mirrors
+                        // the game's own character alignment.  Expand the canvas
+                        // to the larger of the two sides so no content is clipped.
+                        float headX = body.AnchorPos.x;
+                        float leftExtent  = headX - bodyBounds.min.x;
+                        float rightExtent = bodyBounds.max.x - headX;
+                        float halfW = Mathf.Max(leftExtent, rightExtent);
+                        bodyBounds.SetMinMax(
+                            new Vector3(headX - halfW, bodyBounds.min.y, bodyBounds.min.z),
+                            new Vector3(headX + halfW, bodyBounds.max.y, bodyBounds.max.z));
+
+                        int bW = Mathf.Max(1, Mathf.RoundToInt(bodyBounds.size.x * ppu));
+                        int bH = Mathf.Max(1, Mathf.RoundToInt(bodyBounds.size.y * ppu));
                         if (!backDone)
                             File.WriteAllBytes(path,
-                                ComposeBodySprites(body.Sprites, bW, bH, extBounds, ppu, Vector3.zero, body.WorldScale));
-                        // replacesHead=true → face overlay never shown; no front layer needed.
+                                ComposeBodySprites(allReplaceSprites, bW, bH, bodyBounds, ppu, Vector3.zero, body.WorldScale));
+                        // replacesHead=true → face overlay never shown; front PNG unused.
                     }
                     else
                     {
@@ -636,13 +1305,13 @@ namespace PlayLoRWithMe
                         // books regardless of world scale — no per-book correction is needed.
                         var anchor = body.AnchorPos;
 
-                        // Extend canvas downward to cover all sprites (back + front).  Use the
-                        // visible sprite bottom rather than the logical rect to avoid inflating
-                        // extH with transparent padding.
+                        // Extend canvas downward to cover all sprites (back + front + skin).
+                        // Use the visible sprite bottom rather than the logical rect to avoid
+                        // inflating extH with transparent padding.
                         float extMaxY = faceHairBounds.max.y; // must match face/hair for alignment
                         float visMinYFace = faceHairBounds.min.y;
                         foreach (var spriteList in new[]
-                            { body.Sprites, body.FrontSprites })
+                            { body.Sprites, body.FrontSprites, body.SkinSprites })
                         {
                             foreach (var (ss, wpos) in spriteList)
                             {
@@ -670,6 +1339,12 @@ namespace PlayLoRWithMe
                             File.WriteAllBytes(frontPath,
                                 ComposeBodySprites(body.FrontSprites, faceHairW, extH, extBounds, ppu, anchor, body.WorldScale));
                         }
+
+                        // Skin-type sprites (neck, collarbone) — saved separately so the
+                        // frontend can tint them per-librarian with CSS multiply blending.
+                        if (!skinDone)
+                            File.WriteAllBytes(skinPath,
+                                ComposeBodySprites(body.SkinSprites, faceHairW, extH, extBounds, ppu, anchor, body.WorldScale));
                     }
                 }
                 catch (System.Exception ex)
@@ -723,88 +1398,128 @@ namespace PlayLoRWithMe
             float worldScale = 1f
         )
         {
+            var canvas = BuildBodyCanvas(sprites, canvasW, canvasH, canvasBounds, ppu, anchorAdjust, worldScale);
+            return EncodeCanvasToPng(canvas, canvasW, canvasH);
+        }
+
+        /// <summary>
+        /// Builds a composited Color[] canvas from a sorted list of body sprites.
+        /// Factored out of <see cref="ComposeBodySprites"/> so the compositing step
+        /// can be reused independently of PNG encoding.
+        /// </summary>
+        private static Color[] BuildBodyCanvas(
+            List<(SpriteSet sprSet, Vector3 worldPos)> sprites,
+            int canvasW,
+            int canvasH,
+            Bounds canvasBounds,
+            float ppu,
+            Vector3 anchorAdjust,
+            float worldScale = 1f
+        )
+        {
             // Float Color for accurate src-over alpha compositing.
             var canvas = new Color[canvasW * canvasH]; // transparent black
 
             foreach (var (ss, worldPos) in sprites)
             {
-                var sprite      = ss.sprRenderer.sprite;
-                var adjustedPos = worldPos - anchorAdjust;
-
-                // Body sprites may have a different pixelsPerUnit than the canvas (which
-                // uses the face/hair sprite PPU), and the character model may be rendered
-                // at a non-unit world scale.  Both factors affect how large the sprite
-                // appears on screen: scale the crop so one world-unit of body content
-                // occupies the same number of canvas pixels as one world-unit of face/hair.
-                float ppuScale = ppu / sprite.pixelsPerUnit * worldScale;
-                var rawCrop = ReadSpriteCrop(sprite);
-                Texture2D crop;
-                int cropW, cropH;
-                if (Mathf.Abs(ppuScale - 1f) < 0.01f)
+                Texture2D crop = null;
+                try
                 {
-                    crop  = rawCrop;
-                    cropW = rawCrop.width;
-                    cropH = rawCrop.height;
-                }
-                else
-                {
-                    cropW = Mathf.Max(1, Mathf.RoundToInt(rawCrop.width  * ppuScale));
-                    cropH = Mathf.Max(1, Mathf.RoundToInt(rawCrop.height * ppuScale));
-                    crop  = ScaleTexture(rawCrop, cropW, cropH); // destroys rawCrop
-                }
+                    var sprite      = ss.sprRenderer.sprite;
+                    var adjustedPos = worldPos - anchorAdjust;
 
-                // Canvas offset: world-space bottom-left of the sprite's logical rect,
-                // mapped to pixels on the canvas.  adjustedPos is the renderer's pivot in
-                // the coordinate frame of canvasBounds; sprite.bounds.min (local space)
-                // is scaled to world space by worldScale before conversion.
-                int boundsOffX = Mathf.RoundToInt(
-                    (adjustedPos.x + sprite.bounds.min.x * worldScale - canvasBounds.min.x) * ppu);
-                int boundsOffY = Mathf.RoundToInt(
-                    (adjustedPos.y + sprite.bounds.min.y * worldScale - canvasBounds.min.y) * ppu);
-                // textureRectOffset is in native sprite pixels; scale to canvas pixels.
-                var texOff = sprite.textureRectOffset;
-                int offsetX = boundsOffX + Mathf.RoundToInt(texOff.x * ppuScale);
-                int offsetY = boundsOffY + Mathf.RoundToInt(texOff.y * ppuScale);
-
-                // Clamp for partial out-of-canvas sprites (floating-point rounding or
-                // sprites that naturally extend beyond the canvas edge).
-                int srcX0 = Mathf.Max(0, -offsetX);
-                int srcY0 = Mathf.Max(0, -offsetY);
-                int dstX0 = Mathf.Max(0, offsetX);
-                int dstY0 = Mathf.Max(0, offsetY);
-                int blitW = Mathf.Min(cropW - srcX0, canvasW - dstX0);
-                int blitH = Mathf.Min(cropH - srcY0, canvasH - dstY0);
-
-                if (blitW > 0 && blitH > 0)
-                {
-                    var srcPixels = crop.GetPixels(srcX0, srcY0, blitW, blitH);
-                    for (int y = 0; y < blitH; y++)
+                    // Body sprites may have a different pixelsPerUnit than the canvas (which
+                    // uses the face/hair sprite PPU), and the character model may be rendered
+                    // at a non-unit world scale.  Both factors affect how large the sprite
+                    // appears on screen: scale the crop so one world-unit of body content
+                    // occupies the same number of canvas pixels as one world-unit of face/hair.
+                    float ppuScale = ppu / sprite.pixelsPerUnit * worldScale;
+                    var rawCrop = ReadSpriteCrop(sprite);
+                    int cropW, cropH;
+                    if (Mathf.Abs(ppuScale - 1f) < 0.01f)
                     {
-                        for (int x = 0; x < blitW; x++)
-                        {
-                            var src = srcPixels[y * blitW + x];
-                            int dstIdx = (dstY0 + y) * canvasW + (dstX0 + x);
-                            var dst = canvas[dstIdx];
+                        crop  = rawCrop;
+                        cropW = rawCrop.width;
+                        cropH = rawCrop.height;
+                    }
+                    else
+                    {
+                        cropW = Mathf.Max(1, Mathf.RoundToInt(rawCrop.width  * ppuScale));
+                        cropH = Mathf.Max(1, Mathf.RoundToInt(rawCrop.height * ppuScale));
+                        crop  = ScaleTexture(rawCrop, cropW, cropH); // destroys rawCrop
+                    }
 
-                            // Standard src-over compositing (non-premultiplied alpha).
-                            float outA = src.a + dst.a * (1f - src.a);
-                            if (outA > 0f)
-                                canvas[dstIdx] = new Color(
-                                    (src.r * src.a + dst.r * dst.a * (1f - src.a)) / outA,
-                                    (src.g * src.a + dst.g * dst.a * (1f - src.a)) / outA,
-                                    (src.b * src.a + dst.b * dst.a * (1f - src.a)) / outA,
-                                    outA);
+                    // Canvas offset: world-space bottom-left of the sprite's logical rect,
+                    // mapped to pixels on the canvas.  adjustedPos is the renderer's pivot in
+                    // the coordinate frame of canvasBounds; sprite.bounds.min (local space)
+                    // is scaled to world space by worldScale before conversion.
+                    int boundsOffX = Mathf.RoundToInt(
+                        (adjustedPos.x + sprite.bounds.min.x * worldScale - canvasBounds.min.x) * ppu);
+                    int boundsOffY = Mathf.RoundToInt(
+                        (adjustedPos.y + sprite.bounds.min.y * worldScale - canvasBounds.min.y) * ppu);
+                    // textureRectOffset is in native sprite pixels; scale to canvas pixels.
+                    var texOff = sprite.textureRectOffset;
+                    int offsetX = boundsOffX + Mathf.RoundToInt(texOff.x * ppuScale);
+                    int offsetY = boundsOffY + Mathf.RoundToInt(texOff.y * ppuScale);
+
+                    // Clamp for partial out-of-canvas sprites (floating-point rounding or
+                    // sprites that naturally extend beyond the canvas edge).
+                    int srcX0 = Mathf.Max(0, -offsetX);
+                    int srcY0 = Mathf.Max(0, -offsetY);
+                    int dstX0 = Mathf.Max(0, offsetX);
+                    int dstY0 = Mathf.Max(0, offsetY);
+                    int blitW = Mathf.Min(cropW - srcX0, canvasW - dstX0);
+                    int blitH = Mathf.Min(cropH - srcY0, canvasH - dstY0);
+
+                    if (blitW > 0 && blitH > 0)
+                    {
+                        var srcPixels = crop.GetPixels(srcX0, srcY0, blitW, blitH);
+                        for (int y = 0; y < blitH; y++)
+                        {
+                            for (int x = 0; x < blitW; x++)
+                            {
+                                var src = srcPixels[y * blitW + x];
+                                int dstIdx = (dstY0 + y) * canvasW + (dstX0 + x);
+                                var dst = canvas[dstIdx];
+
+                                // Standard src-over compositing (non-premultiplied alpha).
+                                float outA = src.a + dst.a * (1f - src.a);
+                                if (outA > 0f)
+                                    canvas[dstIdx] = new Color(
+                                        (src.r * src.a + dst.r * dst.a * (1f - src.a)) / outA,
+                                        (src.g * src.a + dst.g * dst.a * (1f - src.a)) / outA,
+                                        (src.b * src.a + dst.b * dst.a * (1f - src.a)) / outA,
+                                        outA);
+                            }
                         }
                     }
                 }
-
-                UnityEngine.Object.Destroy(crop);
+                finally
+                {
+                    if (crop != null)
+                        UnityEngine.Object.Destroy(crop);
+                }
             }
 
+            return canvas;
+        }
+
+        /// <summary>
+        /// Encodes a Color[] canvas of the given dimensions to a PNG byte array.
+        /// </summary>
+        private static byte[] EncodeCanvasToPng(Color[] canvas, int canvasW, int canvasH)
+        {
             var tex = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
-            tex.SetPixels(canvas);
-            tex.Apply();
-            return tex.EncodeToPNG();
+            try
+            {
+                tex.SetPixels(canvas);
+                tex.Apply();
+                return tex.EncodeToPNG();
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(tex);
+            }
         }
 
         /// <summary>
@@ -816,21 +1531,39 @@ namespace PlayLoRWithMe
         {
             var rt = RenderTexture.GetTemporary(targetW, targetH, 0,
                 RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-            Graphics.Blit(src, rt);
             var prev = RenderTexture.active;
-            RenderTexture.active = rt;
-            var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, false);
-            scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
-            scaled.Apply();
-            RenderTexture.active = prev;
-            RenderTexture.ReleaseTemporary(rt);
-            UnityEngine.Object.Destroy(src);
-            return scaled;
+            try
+            {
+                Graphics.Blit(src, rt);
+                RenderTexture.active = rt;
+                var scaled = new Texture2D(targetW, targetH, TextureFormat.RGBA32, false);
+                try
+                {
+                    scaled.ReadPixels(new Rect(0, 0, targetW, targetH), 0, 0);
+                    scaled.Apply();
+                }
+                catch
+                {
+                    UnityEngine.Object.Destroy(scaled);
+                    throw;
+                }
+                return scaled;
+            }
+            finally
+            {
+                RenderTexture.active = prev;
+                RenderTexture.ReleaseTemporary(rt);
+                UnityEngine.Object.Destroy(src);
+            }
         }
 
         /// <summary>
         /// Reads the sprite's atlas sub-region into a new Texture2D via RenderTexture
         /// readback.  Caller is responsible for destroying the returned texture.
+        ///
+        /// When <see cref="_atlasRtCache"/> is active (non-null), the full-atlas blit
+        /// result is cached per source texture so that multiple sprites sharing the
+        /// same atlas skip the redundant GPU copy.
         /// </summary>
         private static Texture2D ReadSpriteCrop(Sprite sprite)
         {
@@ -845,24 +1578,55 @@ namespace PlayLoRWithMe
             int cropW = Mathf.Max(1, x1 - x0);
             int cropH = Mathf.Max(1, y1 - y0);
 
-            var origFilter = src.filterMode;
-            src.filterMode = FilterMode.Point;
-            var rt = RenderTexture.GetTemporary(src.width, src.height, 0,
-                RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-            Graphics.Blit(src, rt);
-            src.filterMode = origFilter;
+            bool useCache = _atlasRtCache != null;
+            RenderTexture cachedRt = null;
+            bool cacheHit = useCache && _atlasRtCache.TryGetValue(src, out cachedRt);
+
+            RenderTexture rt;
+            if (cacheHit)
+            {
+                rt = cachedRt;
+            }
+            else
+            {
+                var origFilter = src.filterMode;
+                src.filterMode = FilterMode.Point;
+                rt = RenderTexture.GetTemporary(src.width, src.height, 0,
+                    RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+                Graphics.Blit(src, rt);
+                src.filterMode = origFilter;
+
+                if (useCache)
+                    _atlasRtCache[src] = rt;
+            }
 
             var prev = RenderTexture.active;
-            RenderTexture.active = rt;
-            // ReadPixels uses top-left origin (DX11); textureRect uses bottom-left, so flip Y.
-            int flippedY = src.height - y1;
-            var crop = new Texture2D(cropW, cropH, TextureFormat.RGBA32, false);
-            crop.ReadPixels(new Rect(x0, flippedY, cropW, cropH), 0, 0);
-            crop.Apply();
-            RenderTexture.active = prev;
-            RenderTexture.ReleaseTemporary(rt);
-
-            return crop;
+            try
+            {
+                RenderTexture.active = rt;
+                // ReadPixels uses top-left origin (DX11); textureRect uses bottom-left, so flip Y.
+                int flippedY = src.height - y1;
+                var crop = new Texture2D(cropW, cropH, TextureFormat.RGBA32, false);
+                try
+                {
+                    crop.ReadPixels(new Rect(x0, flippedY, cropW, cropH), 0, 0);
+                    crop.Apply();
+                }
+                catch
+                {
+                    UnityEngine.Object.Destroy(crop);
+                    throw;
+                }
+                return crop;
+            }
+            finally
+            {
+                RenderTexture.active = prev;
+                // only release when not cached — the cache owns the RT and releases
+                // all entries at the end of Extract().
+                if (!useCache)
+                    RenderTexture.ReleaseTemporary(rt);
+            }
         }
 
         /// <summary>
@@ -872,66 +1636,150 @@ namespace PlayLoRWithMe
         private static byte[] SpriteToSimplePng(Sprite sprite)
         {
             var crop = ReadSpriteCrop(sprite);
-            var result = crop.EncodeToPNG();
-            UnityEngine.Object.Destroy(crop);
-            return result;
+            try
+            {
+                return crop.EncodeToPNG();
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(crop);
+            }
         }
 
         // Mirrors IconCache.SpriteToPng, but positions the sprite crop within a shared
         // canvas whose dimensions are derived from the world-space bounding box of all
         // customization sprites. This ensures all layers composite at the correct pixel
         // offset when stacked in the browser.
-        private static byte[] SpriteToPng(
+        /// <summary>
+        /// Renders a sprite onto the shared face-canvas, optionally shifted by a
+        /// world-space offset (used by <see cref="GiftCache"/> to position gift
+        /// sprites relative to their prefab transform).
+        /// </summary>
+        internal static byte[] SpriteToPng(
             Sprite sprite,
             int canvasW,
             int canvasH,
             Bounds totalBounds,
-            float ppu
+            float ppu,
+            Vector3 worldOffset = default
         )
         {
             var crop = ReadSpriteCrop(sprite);
-            int cropW = crop.width;
-            int cropH = crop.height;
-
-            // Compute where this sprite's tight crop sits on the shared canvas.
-            //
-            // sprite.bounds.min is the world-space bottom-left corner of the sprite's
-            // LOGICAL rect (including transparent padding) relative to its pivot (0,0).
-            // Subtracting totalBounds.min and scaling by ppu gives the pixel offset from
-            // the shared canvas origin to the logical rect's bottom-left.
-            //
-            // textureRectOffset is the additional sub-pixel offset from the logical rect's
-            // bottom-left to the tight crop's bottom-left, in pixels.
-            int boundsOffsetX = Mathf.RoundToInt(
-                (sprite.bounds.min.x - totalBounds.min.x) * ppu
-            );
-            int boundsOffsetY = Mathf.RoundToInt(
-                (sprite.bounds.min.y - totalBounds.min.y) * ppu
-            );
-            var texRectOffset = sprite.textureRectOffset;
-            int offsetX = boundsOffsetX + Mathf.RoundToInt(texRectOffset.x);
-            int offsetY = boundsOffsetY + Mathf.RoundToInt(texRectOffset.y);
-
-            // Fast path: the crop fills the entire shared canvas with no offset.
-            if (canvasW == cropW && canvasH == cropH && offsetX == 0 && offsetY == 0)
+            try
             {
-                var result = crop.EncodeToPNG();
-                UnityEngine.Object.Destroy(crop);
-                return result;
+                int cropW = crop.width;
+                int cropH = crop.height;
+
+                float spritePpu = sprite.pixelsPerUnit;
+                // Scale factor when the sprite's ppu differs from the canvas ppu
+                // (e.g. a 50-ppu gift sprite on a 100-ppu canvas needs to be scaled by 2×).
+                float ppuRatio = ppu / spritePpu;
+
+                // Compute where this sprite's tight crop sits on the shared canvas.
+                //
+                // sprite.bounds.min is the world-space bottom-left corner of the sprite's
+                // LOGICAL rect (including transparent padding) relative to its pivot (0,0).
+                // Adding worldOffset accounts for transforms in the gift prefab hierarchy.
+                // Subtracting totalBounds.min and scaling by ppu gives the pixel offset from
+                // the shared canvas origin to the logical rect's bottom-left.
+                //
+                // textureRectOffset is the additional sub-pixel offset from the logical rect's
+                // bottom-left to the tight crop's bottom-left — in the sprite's own pixel
+                // space, so it must be scaled by ppuRatio to match the canvas pixels.
+                int boundsOffsetX = Mathf.RoundToInt(
+                    (sprite.bounds.min.x + worldOffset.x - totalBounds.min.x) * ppu
+                );
+                int boundsOffsetY = Mathf.RoundToInt(
+                    (sprite.bounds.min.y + worldOffset.y - totalBounds.min.y) * ppu
+                );
+                var texRectOffset = sprite.textureRectOffset;
+                int offsetX = boundsOffsetX + Mathf.RoundToInt(texRectOffset.x * ppuRatio);
+                int offsetY = boundsOffsetY + Mathf.RoundToInt(texRectOffset.y * ppuRatio);
+
+                // When ppu values match, blit the crop directly onto the canvas.
+                if (Mathf.Approximately(ppuRatio, 1f))
+                {
+                    // Fast path: the crop fills the entire shared canvas with no offset.
+                    if (canvasW == cropW && canvasH == cropH && offsetX == 0 && offsetY == 0)
+                    {
+                        var result = crop.EncodeToPNG();
+                        UnityEngine.Object.Destroy(crop);
+                        crop = null; // prevent double-destroy in finally
+                        return result;
+                    }
+
+                    var dst = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
+                    try
+                    {
+                        dst.SetPixels32(new Color32[canvasW * canvasH]); // transparent fill
+
+                        int safeW = Mathf.Clamp(cropW, 0, canvasW - offsetX);
+                        int safeH = Mathf.Clamp(cropH, 0, canvasH - offsetY);
+                        if (safeW > 0 && safeH > 0)
+                            dst.SetPixels32(offsetX, offsetY, safeW, safeH, crop.GetPixels32());
+
+                        dst.Apply();
+                        return dst.EncodeToPNG();
+                    }
+                    finally
+                    {
+                        UnityEngine.Object.Destroy(dst);
+                    }
+                }
+
+                // PPU mismatch: rescale the crop via RenderTexture before blitting.
+                int scaledW = Mathf.Max(1, Mathf.RoundToInt(cropW * ppuRatio));
+                int scaledH = Mathf.Max(1, Mathf.RoundToInt(cropH * ppuRatio));
+
+                var rt = RenderTexture.GetTemporary(scaledW, scaledH, 0, RenderTextureFormat.ARGB32);
+                var prev = RenderTexture.active;
+                try
+                {
+                    Graphics.Blit(crop, rt);
+                    UnityEngine.Object.Destroy(crop);
+                    crop = null; // prevent double-destroy in finally
+
+                    RenderTexture.active = rt;
+                    var scaled = new Texture2D(scaledW, scaledH, TextureFormat.RGBA32, false);
+                    try
+                    {
+                        scaled.ReadPixels(new Rect(0, 0, scaledW, scaledH), 0, 0);
+                        scaled.Apply();
+
+                        var canvas = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
+                        try
+                        {
+                            canvas.SetPixels32(new Color32[canvasW * canvasH]);
+
+                            int safeW2 = Mathf.Clamp(scaledW, 0, canvasW - offsetX);
+                            int safeH2 = Mathf.Clamp(scaledH, 0, canvasH - offsetY);
+                            if (safeW2 > 0 && safeH2 > 0)
+                                canvas.SetPixels32(offsetX, offsetY, safeW2, safeH2, scaled.GetPixels32());
+
+                            canvas.Apply();
+                            return canvas.EncodeToPNG();
+                        }
+                        finally
+                        {
+                            UnityEngine.Object.Destroy(canvas);
+                        }
+                    }
+                    finally
+                    {
+                        UnityEngine.Object.Destroy(scaled);
+                    }
+                }
+                finally
+                {
+                    RenderTexture.active = prev;
+                    RenderTexture.ReleaseTemporary(rt);
+                }
             }
-
-            var dst = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
-            dst.SetPixels32(new Color32[canvasW * canvasH]); // transparent fill
-
-            // Clamp to valid range in case of floating-point rounding edge cases.
-            int safeW = Mathf.Clamp(cropW, 0, canvasW - offsetX);
-            int safeH = Mathf.Clamp(cropH, 0, canvasH - offsetY);
-            if (safeW > 0 && safeH > 0)
-                dst.SetPixels32(offsetX, offsetY, safeW, safeH, crop.GetPixels32());
-
-            UnityEngine.Object.Destroy(crop);
-            dst.Apply();
-            return dst.EncodeToPNG();
+            finally
+            {
+                if (crop != null)
+                    UnityEngine.Object.Destroy(crop);
+            }
         }
     }
 }

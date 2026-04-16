@@ -10,7 +10,7 @@
   Props:
     state       – full battle state (scene = 'main', uiPhase = 'BattleSetting')
     session     – current session identity (null if not yet connected)
-    players     – connected player list (from playerList WS messages)
+    players     – connected player list (used by the inline pre-battle claim board)
     sendAction  – WebSocket action dispatcher
     claimUnit   – claim a librarian unit
     releaseUnit – release a librarian unit
@@ -18,6 +18,7 @@
 <script setup lang="ts">
 import type {
   AllyUnit,
+  ClientAction,
   GameState,
   PlayerInfo,
   SessionState,
@@ -29,21 +30,12 @@ const props = defineProps<{
   state: GameState;
   session: SessionState | null;
   players: PlayerInfo[];
-  sendAction: (action: Record<string, unknown>) => Promise<ActionResult>;
+  sendAction: (action: ClientAction) => Promise<ActionResult>;
   claimUnit: (unitId: number) => Promise<ActionResult>;
   releaseUnit: (unitId: number) => Promise<ActionResult>;
-  renamePlayer: (name: string) => Promise<ActionResult>;
 }>();
 
-const ALLY_COLORS = ["#4fc3f7", "#81c784", "#ffb74d", "#ce93d8", "#f48fb1"];
-
-const allyColors = computed<Record<number, string>>(() => {
-  const m: Record<number, string> = {};
-  (props.state?.allies ?? []).forEach((a, i) => {
-    m[a.id] = ALLY_COLORS[i % ALLY_COLORS.length]!;
-  });
-  return m;
-});
+const allyColors = computed(() => buildAllyColors(props.state?.allies ?? []));
 
 const allies = computed(() => props.state?.allies ?? []);
 const enemies = computed(() => props.state?.enemies ?? []);
@@ -132,14 +124,6 @@ async function onConfirm() {
     :phase="state.uiPhase"
     :confirm-enabled="false"
     confirm-label="WAITING"
-    :players="players"
-    :allies="allies"
-    :session="session"
-    :ally-colors="allyColors"
-    :show-librarians="false"
-    :claim-unit="claimUnit"
-    :release-unit="releaseUnit"
-    :rename-player="renamePlayer"
     @confirm="onConfirm"
   />
 

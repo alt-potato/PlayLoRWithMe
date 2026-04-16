@@ -34,7 +34,9 @@
     fashionBook – active FashionBook, or null/undefined if none.
 -->
 <script setup lang="ts">
-import type { AppearanceData, FashionBook } from "~/types/game";
+import type { Ref } from "vue";
+import type { AppearanceData, FashionBook, GiftSlot } from "~/types/game";
+import { ASSETS_READY } from "~/composables/useAssetsReady";
 
 const props = defineProps<{
   appearance: AppearanceData;
@@ -50,12 +52,30 @@ const props = defineProps<{
    * to display (e.g. fashionbodies/123_f.png vs 123_m.png).
    */
   appearanceType?: string;
+  /** Equipped gift slots — visible ones are overlaid on the head area. */
+  gifts?: (GiftSlot | null)[];
+  /**
+   * Optional preview size in CSS pixels. Defaults to 160. Allows callers to
+   * render larger thumbnails (e.g. roster tiles) without forking the component.
+   */
+  size?: number;
 }>();
+
+/**
+ * Cache-bust suffix appended to all sprite URLs. Empty initially; set to a
+ * timestamp query when assetsReady transitions to true, forcing the browser to
+ * re-request images that previously returned 404.
+ */
+const cacheBust = ref("");
 
 const BASE = "/assets/customize/";
 
-/** Preview size in CSS pixels — square so the face canvas fills without empty space. */
-const PREVIEW_W = 160;
+/**
+ * Preview size in CSS pixels — square so the face canvas fills without empty
+ * space. Driven by the optional `size` prop so call sites can request larger
+ * thumbnails without altering the rotation/pivot math below.
+ */
+const PREVIEW_W = computed(() => props.size ?? 160);
 const PREVIEW_H = PREVIEW_W;
 
 /**
@@ -65,12 +85,11 @@ const PREVIEW_H = PREVIEW_W;
 const dims = ref<{ w: number; h: number } | null>(null);
 
 // Module-level cache so multiple instances share one fetch.
-let _dimsFetched = false;
 let _dimsPromise: Promise<{ w: number; h: number } | null> | null = null;
 
 function fetchDims(): Promise<{ w: number; h: number } | null> {
   if (_dimsPromise) return _dimsPromise;
-  _dimsPromise = fetch("/assets/customize/dimensions.json")
+  _dimsPromise = fetch(`/assets/customize/dimensions.json${cacheBust.value}`)
     .then((r) => r.json() as Promise<{ w: number; h: number }>)
     .catch(() => null);
   return _dimsPromise;
@@ -78,6 +97,25 @@ function fetchDims(): Promise<{ w: number; h: number } | null> {
 
 onMounted(async () => {
   dims.value = await fetchDims();
+});
+
+// When the server finishes extracting assets, clear cached 404s and bust the
+// browser cache so previously-failed sprite layers re-request and appear
+// without requiring a page reload.
+const assetsReady = inject<Ref<boolean>>(ASSETS_READY, ref(true));
+watch(assetsReady, (ready) => {
+  if (!ready) return;
+  // cache-bust query forces the browser to re-request previously-404'd URLs
+  cacheBust.value = `?_=${Date.now()}`;
+  failedSrcs.value = new Set();
+  fashionBodyFailed.value = false;
+  fashionFrontFailed.value = false;
+  fashionSkinFailed.value = false;
+  patronFrontFailed.value = false;
+  patronRearFailed.value = false;
+  // invalidate module-level dimensions cache and re-fetch
+  _dimsPromise = null;
+  fetchDims().then((d) => { dims.value = d; });
 });
 
 /** Convert a [r, g, b] byte tuple (0–255) to a CSS rgb() string. */
@@ -94,14 +132,15 @@ const layers = computed(() => {
   const hair = toRgb(a.hairColor);
   const skin = toRgb(a.skinColor);
   const eye = toRgb(a.eyeColor);
+  const cb = cacheBust.value;
   return {
-    backHair: { src: `${BASE}backhair_${a.backHairID}.png`, tint: hair },
+    backHair: { src: `${BASE}backhair_${a.backHairID}.png${cb}`, tint: hair },
     face: [
-      { src: `${BASE}head_0.png`, tint: skin },
-      { src: `${BASE}eyes_${a.eyeID}.png`, tint: eye },
-      { src: `${BASE}brows_${a.browID}.png`, tint: hair },
-      { src: `${BASE}mouths_${a.mouthID}.png`, tint: skin },
-      { src: `${BASE}fronthair_${a.frontHairID}.png`, tint: hair },
+      { src: `${BASE}head_${a.headID ?? 0}.png${cb}`, tint: skin },
+      { src: `${BASE}eyes_${a.eyeID}.png${cb}`, tint: eye },
+      { src: `${BASE}brows_${a.browID}.png${cb}`, tint: hair },
+      { src: `${BASE}mouths_${a.mouthID}.png${cb}`, tint: skin },
+      { src: `${BASE}fronthair_${a.frontHairID}.png${cb}`, tint: hair },
     ],
   };
 });
@@ -131,17 +170,41 @@ const fashionVariantSuffix = computed(() => {
   return "_f"; // default to female variant when neutral
 });
 
+/**
+ * File stem for fashion body PNGs.  Core books use their numeric id; workshop
+ * books prefix with packageId to avoid collisions between mods that share the
+ * same integer id.  Mirrors AppearanceCache.FashionBookBody.FileStem in C#.
+ */
+const fashionFileStem = computed(() => {
+  if (!props.fashionBook) return null;
+  if (props.fashionBook.fileStem) return props.fashionBook.fileStem;
+  const pkg = props.fashionBook.packageId;
+  return pkg ? `${pkg}_${props.fashionBook.id}` : `${props.fashionBook.id}`;
+});
+
 /** URL of the fashion body composite PNG (behind face), or null if inactive. */
 const fashionBodyUrl = computed(() =>
-  props.fashionBook
-    ? `/assets/fashionbodies/${props.fashionBook.id}${fashionVariantSuffix.value}.png`
+  fashionFileStem.value
+    ? `/assets/fashionbodies/${fashionFileStem.value}${fashionVariantSuffix.value}.png${cacheBust.value}`
     : null
 );
 
 const fashionBodyFailed = ref(false);
-watch(() => props.fashionBook?.id, () => { fashionBodyFailed.value = false; });
+/**
+ * Natural pixel dimensions of the fashion body PNG once it finishes loading.
+ * Used to compute the feet-Y in CSS space so the height scale transform pins
+ * the character's feet instead of the preview box's bottom edge.
+ */
+const fashionBodyDims = ref<{ w: number; h: number } | null>(null);
+watch(fashionFileStem, () => {
+  fashionBodyFailed.value = false;
+  fashionBodyDims.value = null;
+});
 // also reset when variant changes (different PNG)
-watch(fashionVariantSuffix, () => { fashionBodyFailed.value = false; });
+watch(fashionVariantSuffix, () => {
+  fashionBodyFailed.value = false;
+  fashionBodyDims.value = null;
+});
 
 /**
  * URL of the fashion front-layer composite PNG (in front of face), or null when
@@ -149,20 +212,76 @@ watch(fashionVariantSuffix, () => { fashionBodyFailed.value = false; });
  */
 const fashionFrontUrl = computed(() =>
   props.fashionBook?.hasFrontLayer
-    ? `/assets/fashionbodies_front/${props.fashionBook.id}${fashionVariantSuffix.value}.png`
+    ? `/assets/fashionbodies_front/${fashionFileStem.value}${fashionVariantSuffix.value}.png${cacheBust.value}`
     : null
 );
 
 const fashionFrontFailed = ref(false);
-watch(() => props.fashionBook?.id, () => { fashionFrontFailed.value = false; });
+watch(fashionFileStem, () => { fashionFrontFailed.value = false; });
 
 /**
- * Whether the face/hair CSS layers should be shown on top of the fashion body.
- * Hidden when the fashion skin replaces the head model (replacesHead = true)
- * because the extracted body already includes the head.
+ * URL of the fashion skin-layer composite PNG — exposed body areas (neck, collarbone)
+ * that are white silhouettes in the prefab.  Rendered as a CSS multiply-tinted layer
+ * using the librarian's skin color, behind the main body composite so body sprites
+ * (clothing) cover them naturally.
+ */
+const fashionSkinUrl = computed(() =>
+  fashionFileStem.value
+    ? `/assets/fashionbodies/${fashionFileStem.value}${fashionVariantSuffix.value}_skin.png${cacheBust.value}`
+    : null
+);
+
+const fashionSkinFailed = ref(false);
+watch(fashionFileStem, () => { fashionSkinFailed.value = false; });
+watch(fashionVariantSuffix, () => { fashionSkinFailed.value = false; });
+
+/**
+ * Patron librarians have two composite PNGs extracted from their
+ * SpecialCustomizedAppearance prefab:
+ *   head_special_{id}.png      — head, face, front hair (above fashion body)
+ *   head_special_{id}_rear.png — rear hair (behind fashion body)
+ */
+const patronFrontUrl = computed(() =>
+  props.appearance.patronHeadId
+    ? `${BASE}head_special_${props.appearance.patronHeadId}.png${cacheBust.value}`
+    : null
+);
+const patronRearUrl = computed(() =>
+  props.appearance.patronHeadId
+    ? `${BASE}head_special_${props.appearance.patronHeadId}_rear.png${cacheBust.value}`
+    : null
+);
+
+const patronFrontFailed = ref(false);
+const patronRearFailed = ref(false);
+watch(() => props.appearance.patronHeadId, () => {
+  patronFrontFailed.value = false;
+  patronRearFailed.value = false;
+});
+
+/**
+ * Whether the fashion book replaces the entire head model.
+ * When true, neither generic face/hair layers nor patron composites are shown —
+ * the fashion body already includes the head (e.g. Roland's Black Silence book).
+ */
+const fashionReplacesHead = computed(() =>
+  props.fashionBook?.replacesHead === true
+);
+
+/** True when the patron composites should be shown (not overridden by a replacesHead book). */
+const hasPatronHead = computed(() =>
+  patronFrontUrl.value != null
+  && !patronFrontFailed.value
+  && !fashionReplacesHead.value
+);
+
+/**
+ * Whether the generic face/hair CSS layers should be shown.
+ * Hidden when a patron composite replaces the face, or when the fashion skin
+ * replaces the head model (replacesHead = true).
  */
 const showFaceHairLayers = computed(() =>
-  !props.fashionBook || !props.fashionBook.replacesHead
+  !hasPatronHead.value && !fashionReplacesHead.value
 );
 
 /**
@@ -180,17 +299,91 @@ const faceRotStyle = computed(() => {
   const fracX = fb.pivotFracX ?? 0.5;
   const fracY = fb.pivotFracY ?? 0.5;
   // CSS canvas height at PREVIEW_W: scale = PREVIEW_W / dims.w, height = dims.h * scale.
+  const previewW = PREVIEW_W.value;
   const canvasCssH = dims.value
-    ? PREVIEW_W * (dims.value.h / dims.value.w)
-    : PREVIEW_H; // fallback: assume square face canvas
+    ? previewW * (dims.value.h / dims.value.w)
+    : PREVIEW_H.value; // fallback: assume square face canvas
 
-  const originX = PREVIEW_W * fracX;
+  const originX = previewW * fracX;
   const originY = canvasCssH * fracY;
 
   return {
     transform: `rotate(${-fb.headTiltDeg}deg)`,
     transformOrigin: `${originX}px ${originY}px`,
   };
+});
+
+/**
+ * Uniform scale factor applied to all sprite layers, matching the game's own
+ * character scaling: `UICharacterRenderer` sets `unitAppearance.localScale` to
+ * `Vector2.one * customizeData.height * 0.005`, so height=200 is the 1.0
+ * reference and a 170-height librarian renders at 0.85x.
+ *
+ * The scale is anchored at each body's natural feet position (see `feetYCss`)
+ * so that resizing keeps feet planted — matching the in-game behavior where
+ * characters stand on a fixed floor and grow upward from it.  Note that feet
+ * positions differ between fashion projections because bodies have different
+ * natural aspect ratios; a cross-projection common ground would require
+ * per-book normalization, which breaks face/body canvas alignment.
+ */
+const HEIGHT_SCALE_FACTOR = 0.005;
+const heightScale = computed(
+  () => (props.appearance.height ?? 170) * HEIGHT_SCALE_FACTOR,
+);
+
+/**
+ * Y coordinate (CSS px) of the character's feet within the preview box, used
+ * as the scale transform origin so the feet stay pinned across height changes.
+ *
+ * Derivation depends on how the body PNG is rendered:
+ * - Non-replacesHead bodies share the face canvas width and are drawn with
+ *   `background-size: 100% auto; background-position: left top`, so the CSS
+ *   height of the body PNG = PREVIEW_W * (naturalH / naturalW).  The body's
+ *   feet sit at the bottom of the PNG, i.e. at that same Y (often off-screen
+ *   below the preview for full-body bodies — perfectly fine as a transform
+ *   origin since CSS allows origins outside the element).
+ * - ReplacesHead bodies use `background-size: contain; background-position:
+ *   top center`, which fits the whole body inside the PREVIEW_W x PREVIEW_H
+ *   box.  A body taller than the box (aspect h/w > 1) fills the height, so
+ *   feet land at PREVIEW_H.  A wider body fits by width, feet at
+ *   PREVIEW_W * (naturalH / naturalW).
+ * - When no body PNG is loaded (face-only librarians), fall back to the
+ *   bottom of the preview box so scaling still behaves reasonably.
+ */
+const feetYCss = computed(() => {
+  const previewW = PREVIEW_W.value;
+  const previewH = PREVIEW_H.value;
+  const bd = fashionBodyDims.value;
+  if (!bd || !props.fashionBook) return previewH;
+
+  const aspect = bd.h / bd.w;
+  if (fashionReplacesHead.value) {
+    // `contain` fits the image fully inside the box while preserving aspect.
+    const boxAspect = previewH / previewW;
+    return aspect >= boxAspect
+      ? previewH // image fills height, feet at preview bottom
+      : previewW * aspect; // image fits by width, feet at scaled bottom
+  }
+  // Non-replacesHead: width pinned to previewW, height scales with aspect.
+  return previewW * aspect;
+});
+
+/** Z-index per position so overlapping gifts layer in a natural order. */
+const POSITION_Z: Record<string, number> = {
+  Helmet: 10, Nose: 11, Cheek: 11, Mouth: 11, Eye: 12, Ear: 12,
+  Mask: 13, HairAccessory: 14, Hood: 15,
+};
+
+/**
+ * Equipped visible gifts.  Each gift PNG is rendered onto the same shared
+ * canvas as the face/hair sprites, so it layers correctly with the same
+ * background-size / background-position CSS — no coordinate conversion needed.
+ */
+const visibleGifts = computed(() => {
+  if (!props.gifts) return [];
+  return props.gifts
+    .filter((g): g is GiftSlot => g != null && g.visible)
+    .map((g) => ({ ...g, z: POSITION_Z[g.position] ?? 11 }));
 });
 </script>
 
@@ -214,11 +407,26 @@ const faceRotStyle = computed(() => {
     />
 
     <!--
-      Back hair rendered before the fashion body so it sits behind the body.
-      Hidden when the fashion book has a Hood sprite — the game hides all back hair
-      renderers unconditionally in that case (RefreshAppearanceByMotion).
+      Height scale wrapper — fills the preview box and applies a uniform scale
+      based on the librarian's configured height.  All sprite layers are children
+      so they scale together, keeping face/body alignment intact.
     -->
     <div
+      class="scale-wrap"
+      :style="{
+        transform: `scale(${heightScale})`,
+        transformOrigin: `${PREVIEW_W / 2}px ${feetYCss}px`,
+      }"
+    >
+
+    <!--
+      Back hair — rendered before the fashion body so it sits behind the body.
+      For regular librarians: the generic back hair sprite with hair color tint.
+      For patrons: the extracted rear-hair composite (no tint — source art has colors).
+      Hidden when the fashion book has a Hood sprite (game hides all back hair).
+    -->
+    <div
+      v-if="!hasPatronHead"
       v-show="showFaceHairLayers && !failedSrcs.has(layers.backHair.src) && !fashionBook?.hidesBackHair"
       class="layer-sprite"
       :style="{
@@ -228,6 +436,42 @@ const faceRotStyle = computed(() => {
         WebkitMaskImage: `url(${layers.backHair.src})`,
         ...faceRotStyle,
       }"
+    />
+    <div
+      v-if="hasPatronHead && patronRearUrl && !patronRearFailed && !fashionBook?.hidesBackHair"
+      class="layer-sprite body-layer"
+      :style="{ backgroundImage: `url(${patronRearUrl})`, ...faceRotStyle }"
+    />
+    <img
+      v-if="patronRearUrl"
+      :src="patronRearUrl"
+      class="probe"
+      alt=""
+      @error="patronRearFailed = true"
+    />
+
+    <!--
+      Fashion body skin layer: exposed skin areas (neck, collarbone) that are white
+      silhouettes in the character model.  Tinted with the librarian's skin color via
+      CSS multiply blend.  Rendered behind the main body composite so clothing covers
+      the skin naturally.
+    -->
+    <div
+      v-if="fashionBook && fashionSkinUrl && !fashionSkinFailed"
+      class="layer-sprite"
+      :style="{
+        backgroundImage: `url(${fashionSkinUrl})`,
+        backgroundColor: toRgb(appearance.skinColor),
+        maskImage: `url(${fashionSkinUrl})`,
+        WebkitMaskImage: `url(${fashionSkinUrl})`,
+      }"
+    />
+    <img
+      v-if="fashionSkinUrl"
+      :src="fashionSkinUrl"
+      class="probe"
+      alt=""
+      @error="fashionSkinFailed = true"
     />
 
     <!--
@@ -239,6 +483,7 @@ const faceRotStyle = computed(() => {
     <div
       v-if="fashionBook && fashionBodyUrl && !fashionBodyFailed"
       class="layer-sprite body-layer"
+      :class="{ 'body-layer--replaces-head': fashionReplacesHead }"
       :style="{ backgroundImage: `url(${fashionBodyUrl})` }"
     />
     <img
@@ -247,11 +492,33 @@ const faceRotStyle = computed(() => {
       class="probe"
       alt=""
       @error="fashionBodyFailed = true"
+      @load="(e) => {
+        const el = e.target as HTMLImageElement;
+        fashionBodyDims = { w: el.naturalWidth, h: el.naturalHeight };
+      }"
+    />
+
+    <!--
+      Patron front composite: head, face, and front hair for patron librarians.
+      Rendered above the fashion body, replacing the generic face/hair layers.
+    -->
+    <div
+      v-if="hasPatronHead && patronFrontUrl"
+      class="layer-sprite body-layer"
+      :style="{ backgroundImage: `url(${patronFrontUrl})`, ...faceRotStyle }"
+    />
+    <img
+      v-if="patronFrontUrl"
+      :src="patronFrontUrl"
+      class="probe"
+      alt=""
+      @error="patronFrontFailed = true"
     />
 
     <!--
       Remaining face/hair layers (head, eyes, brows, mouth, fronthair) rendered on top
       of the fashion body so the librarian's face shows through the body composite.
+      Hidden when a patron head composite is active.
     -->
     <div
       v-for="(layer, i) in layers.face"
@@ -284,6 +551,23 @@ const faceRotStyle = computed(() => {
       alt=""
       @error="fashionFrontFailed = true"
     />
+
+    <!--
+      Gift sprite overlays — each PNG is rendered onto the same shared canvas as
+      face/hair sprites, so they use the same CSS stacking (inset: 0, 100% auto).
+    -->
+    <div
+      v-for="gift in visibleGifts"
+      :key="`gift-${gift.id}`"
+      v-show="showFaceHairLayers"
+      class="layer-sprite gift-layer"
+      :style="{
+        backgroundImage: `url(/assets/gifts/gift_${gift.id}.png${cacheBust})`,
+        zIndex: gift.z,
+        ...faceRotStyle,
+      }"
+    />
+    </div>
   </div>
 </template>
 
@@ -299,6 +583,17 @@ const faceRotStyle = computed(() => {
 /* Hidden sentinel images used only for 404 detection. */
 .probe {
   display: none;
+}
+
+/*
+ * Height scale wrapper — fills the preview box; its inline `transform: scale()`
+ * is driven by the librarian's height and anchored at the body's natural feet
+ * position so resizing keeps feet planted while growing the character upward,
+ * mirroring the in-game fixed-camera view.
+ */
+.scale-wrap {
+  position: absolute;
+  inset: 0;
 }
 
 .layer-sprite {
@@ -329,5 +624,25 @@ const faceRotStyle = computed(() => {
   background-blend-mode: normal;
   mask-image: none;
   -webkit-mask-image: none;
+}
+
+/*
+ * replacesHead books render the body alone (no face/hair layers to align with),
+ * and the PNG is extracted at a tight aspect ratio matching the character's own
+ * bounds.  `contain` fits the full body into the square preview box — a full-body
+ * sprite taller than it is wide ends up fitting by height, centered horizontally,
+ * with the head at the top of the preview and the feet at the bottom.
+ */
+.body-layer.body-layer--replaces-head {
+  background-size: contain;
+  background-position: top center;
+}
+
+/* Gift overlays — same canvas-positioned PNGs as face layers, no tint. */
+.gift-layer {
+  background-blend-mode: normal;
+  mask-image: none;
+  -webkit-mask-image: none;
+  pointer-events: none;
 }
 </style>

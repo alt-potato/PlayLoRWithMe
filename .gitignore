@@ -422,5 +422,5 @@ FodyWeavers.xsd
 /CLAUDE.md
 /.claude
 /.serena
-/openspec
 *.temp.md
+/docs

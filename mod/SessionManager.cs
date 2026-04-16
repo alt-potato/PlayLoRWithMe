@@ -89,21 +89,44 @@ namespace PlayLoRWithMe
         /// Attaches a live <see cref="WebSocketClient"/> to a session,
         /// cancelling any pending expiry timer.
         /// </summary>
+        /// <remarks>
+        /// If the session already has a client (e.g. the tab reloaded before
+        /// the old connection's close was detected), the stale client is
+        /// force-closed and any librarian edit locks it held are released.
+        /// Without this, other players would remain blocked on the stale
+        /// lock until the ping timeout (up to 30s) fires.
+        /// </remarks>
         public void Attach(string sessionId, WebSocketClient client)
         {
             if (!_sessions.TryGetValue(sessionId, out var session))
                 return;
 
             Timer timerToDispose;
+            WebSocketClient staleClient;
             lock (_lock)
             {
                 timerToDispose = session.ExpiryTimer;
                 session.ExpiryTimer = null;
+                staleClient = session.Client;
                 session.Client = client;
                 session.IsConnected = true;
                 session.LastSeen = DateTime.UtcNow;
             }
             timerToDispose?.Dispose();
+
+            if (staleClient != null)
+            {
+                // Release any librarian locks from the previous connection —
+                // the reload implies the edit was abandoned.
+                ReleaseAllLibrarianLocks(sessionId);
+                // Force the stale receive loop to unblock and exit. Its later
+                // Detach call will no-op because session.Client now points at
+                // the new client.
+                staleClient.Close();
+                // Push the cleared lock state out so other clients stop
+                // showing a "locked by" badge on this librarian.
+                StateBroadcaster.Broadcast();
+            }
 
             // Notify everyone of the updated roster.
             BroadcastPlayerList();
@@ -113,10 +136,21 @@ namespace PlayLoRWithMe
         /// Marks a session as disconnected and starts a 5-minute expiry countdown.
         /// Assigned units remain locked during this window to allow reconnection.
         /// </summary>
-        public void Detach(string sessionId)
+        /// <param name="client">
+        /// The client whose receive loop is exiting. If the session has already
+        /// been re-attached to a different client (fast reload race), this call
+        /// is a no-op so we don't wipe state belonging to the newer connection.
+        /// </param>
+        public void Detach(string sessionId, WebSocketClient client)
         {
             if (!_sessions.TryGetValue(sessionId, out var session))
                 return;
+
+            lock (_lock)
+            {
+                if (session.Client != client)
+                    return;
+            }
 
             // Release any librarian edit locks immediately so other players
             // aren't blocked waiting for the expiry timer.
@@ -134,6 +168,10 @@ namespace PlayLoRWithMe
                 );
             }
 
+            // Push the cleared lock state out so other clients stop showing
+            // a "locked by" badge on this librarian without waiting for an
+            // unrelated state change.
+            StateBroadcaster.Broadcast();
             BroadcastPlayerList();
         }
 

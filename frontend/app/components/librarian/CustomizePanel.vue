@@ -16,6 +16,7 @@
     busy         – whether parent has an in-flight operation
     onRename     – called if the name was changed
     onSave       – called with the flat setCustomization payload
+    onSetGifts   – called immediately when gift equip/unequip/visibility changes
     onClose      – called on Complete or Cancel
 -->
 <script setup lang="ts">
@@ -26,6 +27,7 @@ import type {
   AppearanceData,
   CustomizePayload,
   ActionResult,
+  FashionBook,
 } from "~/types/game";
 
 const props = defineProps<{
@@ -35,14 +37,28 @@ const props = defineProps<{
   busy: boolean;
   onRename: (name: string) => Promise<ActionResult>;
   onSave: (payload: Omit<CustomizePayload, "floorIndex" | "unitIndex">) => Promise<ActionResult>;
+  onSetGifts: (slots: Record<string, number>) => Promise<ActionResult>;
   onClose: () => void;
 }>();
 
-type SubTab = "name" | "hairstyle" | "face" | "projection" | "dialogue";
+type SubTab = "name" | "hairstyle" | "face" | "projection" | "dialogue" | "symbols";
 const activeTab = ref<SubTab>("name");
 
 const saveBusy = ref(false);
 const saveError = ref<string | null>(null);
+
+// ── Patron/sephirah restriction flags ────────────────────────────────────
+// Patron librarians use SpecialCustomizedAppearance prefabs for their
+// heads — individual hair/face sprite IDs are ignored by the renderer.
+const hasPatronHead = computed(() => !!props.lib.appearance?.patronHeadId);
+const hasDialogue = computed(() => props.lib.dialogue != null);
+const canRename = computed(() => !props.lib.isSephirah);
+const disabledTabs = computed<Set<SubTab>>(() => {
+  const s = new Set<SubTab>();
+  if (hasPatronHead.value) { s.add("hairstyle"); s.add("face"); }
+  if (!hasDialogue.value) s.add("dialogue");
+  return s;
+});
 
 // ── Draft ─────────────────────────────────────────────────────────────────
 
@@ -84,6 +100,19 @@ const draft = reactive({
   workshopSkin:        props.lib.workshopSkin        ?? "",
 });
 
+/**
+ * Snapshot of dialogue values at panel-open time. Used as the comparison base
+ * when saving, so mid-edit server broadcasts don't shift what counts as
+ * "unchanged" and silently swallow the user's edits.
+ */
+const origDialogue = {
+  startBattle:    props.lib.dialogue?.startBattle    ?? null,
+  victory:        props.lib.dialogue?.victory        ?? null,
+  death:          props.lib.dialogue?.death          ?? null,
+  colleagueDeath: props.lib.dialogue?.colleagueDeath ?? null,
+  killsOpponent:  props.lib.dialogue?.killsOpponent  ?? null,
+} as const;
+
 /** Live AppearanceData fed to AppearancePreview — recomputed whenever draft changes. */
 const previewAppearance = computed<AppearanceData>(() => ({
   frontHairID: draft.frontHairID,
@@ -101,6 +130,26 @@ const customizeOptions = computed(() => props.state.customizeOptions);
 
 /** The fashion book currently selected in the draft, or null if none. */
 const activeFashionBook = computed(() => {
+  // Workshop skin (cloth overlay) takes priority when active.
+  if (draft.workshopSkin) {
+    const skin = customizeOptions.value?.workshopSkins?.find(
+      (s) => s.contentFolderIdx === draft.workshopSkin
+    );
+    if (skin) {
+      return {
+        id: 0,
+        fileStem: `ws_${skin.contentFolderIdx}`,
+        name: skin.name,
+        rangeType: "Hybrid",
+        replacesHead: skin.replacesHead ?? false,
+        hasFrontLayer: skin.hasFrontLayer,
+        headTiltDeg: skin.headTiltDeg,
+        pivotFracX: skin.pivotFracX,
+        pivotFracY: skin.pivotFracY,
+      } as FashionBook;
+    }
+  }
+
   if (draft.customBookId >= 0)
     return customizeOptions.value?.fashionBooks?.find(
       (b) => b.id === draft.customBookId && (b.packageId ?? "") === draft.customBookPackageId
@@ -112,6 +161,7 @@ const activeFashionBook = computed(() => {
   if (kp.bookId == null) return null;
   return {
     id: kp.bookId,
+    packageId: kp.bookPackageId,
     name: kp.name,
     rangeType: kp.equipRangeType ?? "Hybrid",
     replacesHead: props.lib.keyPageReplacesHead ?? false,
@@ -140,54 +190,66 @@ async function handleComplete(): Promise<void> {
   saveBusy.value = true;
   saveError.value = null;
 
-  // Rename if the name was edited.
-  if (draft.name.trim() && draft.name.trim() !== props.lib.name) {
+  // Rename if the name was edited. Track whether rename was sent so we can
+  // surface a clear error if the subsequent customize call fails.
+  let didRename = false;
+  if (canRename.value && draft.name.trim() && draft.name.trim() !== props.lib.name) {
     const result = await props.onRename(draft.name.trim());
     if (!result.ok) {
       saveError.value = result.error ?? "Rename failed";
       saveBusy.value = false;
       return;
     }
+    didRename = true;
   }
 
-  const origDlg = props.lib.dialogue;
-  // Returns the draft value only if it differs from the server's effective
-  // value, otherwise null (leave unchanged on server).
-  const dlgField = (draft: string, orig: string | null | undefined) =>
-    draft !== (orig ?? "") ? draft : null;
+  // Returns the draft value only if it differs from the snapshotted original,
+  // otherwise null (leave unchanged on server). Compares against the raw
+  // original (which may be null for random presets) — so "user typed nothing"
+  // (draft "" vs orig null) correctly skips, but "user cleared existing text"
+  // (draft "" vs orig "Hello") correctly sends the empty string.
+  const dlgField = (draftVal: string, orig: string | null) =>
+    draftVal !== (orig ?? "") ? draftVal : null;
 
-  // Send the full customization payload.
+  // Build the customization payload, omitting fields gated by restrictions.
+  // Face/hair/color are skipped for patron heads (renderer ignores them).
+  // Dialogue is skipped when the unit has no BattleDialogueModel.
   const payload: Omit<CustomizePayload, "floorIndex" | "unitIndex"> = {
-    frontHairID: draft.frontHairID,
-    backHairID:  draft.backHairID,
-    eyeID:       draft.eyeID,
-    browID:      draft.browID,
-    mouthID:     draft.mouthID,
+    // face/hair/color: only for non-patron units
+    ...(!hasPatronHead.value ? {
+      frontHairID: draft.frontHairID,
+      backHairID:  draft.backHairID,
+      eyeID:       draft.eyeID,
+      browID:      draft.browID,
+      mouthID:     draft.mouthID,
+      hairR: draft.hairColor[0], hairG: draft.hairColor[1], hairB: draft.hairColor[2],
+      skinR: draft.skinColor[0], skinG: draft.skinColor[1], skinB: draft.skinColor[2],
+      eyeR:  draft.eyeColor[0],  eyeG:  draft.eyeColor[1],  eyeB:  draft.eyeColor[2],
+    } : {}),
+    // height and body type are under projection (always editable)
     height:      draft.height,
-    hairR: draft.hairColor[0], hairG: draft.hairColor[1], hairB: draft.hairColor[2],
-    skinR: draft.skinColor[0], skinG: draft.skinColor[1], skinB: draft.skinColor[2],
-    eyeR:  draft.eyeColor[0],  eyeG:  draft.eyeColor[1],  eyeB:  draft.eyeColor[2],
-    // Only send dialogue fields that were actually changed from the server's
-    // effective value. Null tells the server to leave the field unchanged,
-    // which preserves random presets rather than locking them in as custom
-    // text just because the panel was opened and closed without editing.
-    dlgStartBattle:    dlgField(draft.dlgStartBattle,    origDlg?.startBattle),
-    dlgVictory:        dlgField(draft.dlgVictory,        origDlg?.victory),
-    dlgDeath:          dlgField(draft.dlgDeath,          origDlg?.death),
-    dlgColleagueDeath: dlgField(draft.dlgColleagueDeath, origDlg?.colleagueDeath),
-    dlgKillsOpponent:  dlgField(draft.dlgKillsOpponent,  origDlg?.killsOpponent),
+    appearanceType: draft.appearanceType,
+    // dialogue: only when the unit has a dialogue model
+    ...(hasDialogue.value ? {
+      dlgStartBattle:    dlgField(draft.dlgStartBattle,    origDialogue.startBattle),
+      dlgVictory:        dlgField(draft.dlgVictory,        origDialogue.victory),
+      dlgDeath:          dlgField(draft.dlgDeath,          origDialogue.death),
+      dlgColleagueDeath: dlgField(draft.dlgColleagueDeath, origDialogue.colleagueDeath),
+      dlgKillsOpponent:  dlgField(draft.dlgKillsOpponent,  origDialogue.killsOpponent),
+    } : {}),
     prefixID:     draft.prefixID,
     postfixID:    draft.postfixID,
     customBookId: draft.customBookId,
     ...(draft.customBookPackageId ? { customBookPackageId: draft.customBookPackageId } : {}),
     workshopSkin: draft.workshopSkin,
-    appearanceType: draft.appearanceType,
   };
 
   const result = await props.onSave(payload);
   saveBusy.value = false;
   if (!result.ok) {
-    saveError.value = result.error ?? "Save failed";
+    saveError.value = didRename
+      ? `Appearance save failed (name was updated). ${result.error ?? ""}`
+      : (result.error ?? "Save failed");
     return;
   }
 
@@ -204,25 +266,10 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
 
 const isBusy = computed(() => props.busy || saveBusy.value);
 
-// Re-sync dialogue and title fields from the server state whenever props.lib
-// changes (e.g. after a setCustomization broadcast updates the parent state).
-// immediate: true ensures pre-fill is correct even on first mount.
-watch(
-  () => props.lib,
-  (lib) => {
-    draft.prefixID  = lib.titles?.prefixID  ?? 0;
-    draft.postfixID = lib.titles?.postfixID ?? 0;
-    draft.dlgStartBattle    = lib.dialogue?.startBattle    ?? "";
-    draft.dlgVictory        = lib.dialogue?.victory        ?? "";
-    draft.dlgDeath          = lib.dialogue?.death          ?? "";
-    draft.dlgColleagueDeath = lib.dialogue?.colleagueDeath ?? "";
-    draft.dlgKillsOpponent  = lib.dialogue?.killsOpponent  ?? "";
-    draft.customBookId        = lib.customBookId             ?? -1;
-    draft.customBookPackageId = lib.customBookPackageId      ?? "";
-    draft.workshopSkin        = lib.workshopSkin             ?? "";
-  },
-  { immediate: true },
-);
+// Draft is initialized from props.lib when the panel opens. Server broadcasts
+// during editing are intentionally ignored — the user's in-progress changes
+// take priority. When the user saves (or cancels and reopens), the draft will
+// be re-initialized from fresh server data.
 </script>
 
 <template>
@@ -232,7 +279,7 @@ watch(
         <!-- Header -->
         <div class="panel-header">
           <span class="panel-title">Customize — {{ lib.name }}</span>
-          <button class="close-btn" title="Cancel" @click="onClose">✕</button>
+          <button class="close-btn" title="Cancel" aria-label="Close customize panel" @click="onClose">✕</button>
         </div>
 
         <!-- Body: preview + tab area -->
@@ -243,6 +290,8 @@ watch(
               :appearance="previewAppearance"
               :fashion-book="activeFashionBook"
               :appearance-type="draft.appearanceType"
+              :gifts="lib.gifts?.equipped"
+              :size="280"
             />
           </div>
 
@@ -256,11 +305,14 @@ watch(
                   ['face', 'Face'],
                   ['projection', 'Projection'],
                   ['dialogue', 'Dialogue'],
+                  ['symbols', 'Battle Symbols'],
                 ] as [SubTab, string][])"
                 :key="key"
                 class="tab-btn"
-                :class="{ active: activeTab === key }"
-                @click="activeTab = key"
+                :class="{ active: activeTab === key, disabled: disabledTabs.has(key) }"
+                :aria-disabled="disabledTabs.has(key) || undefined"
+                :title="disabledTabs.has(key) ? 'Not available for patron librarians' : undefined"
+                @click="!disabledTabs.has(key) && (activeTab = key)"
               >
                 {{ label }}
               </button>
@@ -275,9 +327,13 @@ watch(
                 v-model:postfix-i-d="draft.postfixID"
                 :options="customizeOptions ?? { prefixTitles: [], suffixTitles: [], suggestedNames: [], dialoguePresets: { startBattle: [], victory: [], death: [], colleagueDeath: [], killsOpponent: [] } }"
                 :busy="isBusy"
+                :can-rename="canRename"
               />
 
               <!-- Hairstyle -->
+              <div v-else-if="activeTab === 'hairstyle' && hasPatronHead" class="tab-disabled-msg">
+                Patron librarians have a fixed appearance.
+              </div>
               <LibrarianCustomizeHairstyleTab
                 v-else-if="activeTab === 'hairstyle'"
                 v-model:front-hair-i-d="draft.frontHairID"
@@ -287,6 +343,9 @@ watch(
               />
 
               <!-- Face -->
+              <div v-else-if="activeTab === 'face' && hasPatronHead" class="tab-disabled-msg">
+                Patron librarians have a fixed appearance.
+              </div>
               <LibrarianCustomizeFaceTab
                 v-else-if="activeTab === 'face'"
                 v-model:eye-i-d="draft.eyeID"
@@ -313,6 +372,9 @@ watch(
               />
 
               <!-- Dialogue -->
+              <div v-else-if="activeTab === 'dialogue' && !hasDialogue" class="tab-disabled-msg">
+                Dialogue is not available for patron librarians.
+              </div>
               <LibrarianCustomizeDialogueTab
                 v-else-if="activeTab === 'dialogue'"
                 v-model:start-battle="draft.dlgStartBattle"
@@ -322,6 +384,14 @@ watch(
                 v-model:kills-opponent="draft.dlgKillsOpponent"
                 :options="customizeOptions ?? { prefixTitles: [], suffixTitles: [], suggestedNames: [], dialoguePresets: { startBattle: [], victory: [], death: [], colleagueDeath: [], killsOpponent: [] } }"
                 :busy="isBusy"
+              />
+
+              <!-- Battle Symbols -->
+              <LibrarianCustomizeBattleSymbolsTab
+                v-else-if="activeTab === 'symbols'"
+                :lib="lib"
+                :busy="isBusy"
+                :on-set-gifts="onSetGifts"
               />
             </div>
           </div>
@@ -453,31 +523,57 @@ watch(
 
 /* ── Sub-tab bar ───────────────────────────────────────────────────────────── */
 
+/*
+ * Tab bar wraps to as many rows as needed — no horizontal scroll. Each
+ * button owns its own bottom border so wrapped rows render a seamless
+ * divider line even when the underline drops to the next row.
+ */
 .tab-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 0;
-  border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  overflow-x: auto;
 }
 
 .tab-btn {
-  padding: 0.45rem 0.75rem;
+  padding: var(--sp-2) var(--sp-4);
   background: transparent;
   border: none;
   color: var(--text-3);
   cursor: pointer;
-  font-size: 0.7rem;
+  font-size: var(--fs-sm);
   font-family: var(--font-display);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  white-space: nowrap;
-  transition: color 0.12s, border-color 0.12s;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border);
+  transition: color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.tab-btn:hover:not(.active):not(.disabled) {
+  color: var(--text-2);
+  background: var(--bg-card-2);
 }
 
 .tab-btn.active {
-  color: var(--gold);
-  border-bottom-color: var(--gold);
+  color: var(--gold-bright);
+  border-bottom: 2px solid var(--gold-bright);
+  padding-bottom: calc(var(--sp-2) - 1px);
+}
+
+.tab-btn.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  cursor: default;
+}
+
+.tab-disabled-msg {
+  color: var(--text-3);
+  font-size: 0.75rem;
+  font-family: var(--font-body);
+  padding: 2rem 0;
+  text-align: center;
 }
 
 .tab-content {

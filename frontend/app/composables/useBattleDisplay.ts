@@ -10,10 +10,23 @@ import type {
   Buff,
   Card,
   CardToken,
+  DeckCardPreview,
   SlottedCardEntry,
   SpeedDie,
   Unit,
 } from "~/types/game";
+
+/** Ally accent colours indexed by ally order. */
+export const ALLY_COLORS = ["#4fc3f7", "#81c784", "#ffb74d", "#ce93d8", "#f48fb1"] as const;
+
+/** Builds a unitId → hex color map for allies, cycling through ALLY_COLORS. */
+export function buildAllyColors(allies: { id: number }[]): Record<number, string> {
+  const m: Record<number, string> = {};
+  allies.forEach((a, i) => {
+    m[a.id] = ALLY_COLORS[i % ALLY_COLORS.length]!;
+  });
+  return m;
+}
 
 /** Maps resistance tier name → display colour. */
 export const RESIST_COLORS: Record<string, string> = {
@@ -205,6 +218,23 @@ export const DIE_TYPE_COLORS: Record<string, string> = {
 /** CSS colour for a die type label. */
 export function dieTypeColor(type: string): string {
   return DIE_TYPE_COLORS[type] ?? "#888";
+}
+
+/**
+ * Converts a DeckCardPreview to a minimal Card shape for HandCard rendering.
+ * id/index are set to the list position — HandCard does not use them for actions.
+ */
+export function previewToCard(p: DeckCardPreview, i: number): Card {
+  return {
+    id: { id: i, packageId: 0 },
+    index: i,
+    name: p.name,
+    cost: p.cost,
+    range: p.range,
+    rarity: p.rarity,
+    dice: p.dice,
+    abilityDesc: p.abilityDesc,
+  };
 }
 
 /** Sort speed dice (staggered first, then descending value) and pair with slotted cards. */

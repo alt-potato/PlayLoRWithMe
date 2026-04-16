@@ -1,7 +1,9 @@
-import type { GameState, SessionState, PlayerInfo, ActionResult } from "~/types/game";
+import type { GameState, SessionState, PlayerInfo, ActionResult, ServerMessage, ClientAction } from "~/types/game";
 import { applyDelta } from "~/utils/deltaApply";
 
 const SESSION_STORAGE_KEY = "plwm_session";
+const RECONNECT_DELAY_MS = 2000;
+const ACTION_TIMEOUT_MS = 5000;
 
 type Status = "connecting" | "connected" | "disconnected";
 
@@ -20,6 +22,8 @@ export function useWebSocket() {
 
   let ws: WebSocket | null = null;
   let lastSeq = 0;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let closing = false;
 
   // Pending action promises keyed by reqId. Each entry holds a resolve
   // callback and a safety timeout so callers never hang indefinitely.
@@ -64,7 +68,7 @@ export function useWebSocket() {
         p.resolve({ ok: false, error: "Connection lost" });
         pending.delete(id);
       }
-      setTimeout(connect, 2000);
+      if (!closing) reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
     };
 
     ws.onerror = () => {
@@ -76,27 +80,26 @@ export function useWebSocket() {
   // Message dispatch
   // -------------------------------------------------------------------------
 
-  function handleMessage(msg: Record<string, unknown>) {
+  function handleMessage(msg: ServerMessage) {
     switch (msg.type) {
       case "hello":
         session.value = {
-          sessionId: msg.sessionId as string,
-          assignedUnits: (msg.assignedUnits as number[]) ?? [],
-          claimsEnabled: (msg.claimsEnabled as boolean) ?? true,
+          sessionId: msg.sessionId,
+          assignedUnits: msg.assignedUnits ?? [],
+          claimsEnabled: msg.claimsEnabled ?? true,
         };
-        localStorage.setItem(SESSION_STORAGE_KEY, msg.sessionId as string);
+        localStorage.setItem(SESSION_STORAGE_KEY, msg.sessionId);
         break;
 
       case "state":
-        lastSeq = msg.seq as number;
-        gameState.value = msg.data as GameState;
+        lastSeq = msg.seq;
+        gameState.value = msg.data;
         break;
 
       case "delta": {
-        const seq = msg.seq as number;
-        if (gameState.value && seq === lastSeq + 1) {
-          gameState.value = applyDelta(gameState.value, msg.data as Record<string, unknown>);
-          lastSeq = seq;
+        if (gameState.value && msg.seq === lastSeq + 1) {
+          gameState.value = applyDelta(gameState.value, msg.data);
+          lastSeq = msg.seq;
         } else {
           // Gap detected — request a full resync.
           send({ type: "resync" });
@@ -108,21 +111,21 @@ export function useWebSocket() {
         if (session.value) {
           session.value = {
             ...session.value,
-            assignedUnits: (msg.assignedUnits as number[]) ?? [],
+            assignedUnits: msg.assignedUnits ?? [],
           };
         }
         break;
 
       case "playerList":
-        players.value = (msg.players as PlayerInfo[]) ?? [];
+        players.value = msg.players ?? [];
         break;
 
       case "actionResult": {
-        const p = pending.get(msg.reqId as string);
+        const p = pending.get(msg.reqId);
         if (p) {
           clearTimeout(p.timer);
-          pending.delete(msg.reqId as string);
-          p.resolve({ ok: msg.ok as boolean, error: msg.error as string | undefined });
+          pending.delete(msg.reqId);
+          p.resolve({ ok: msg.ok, error: msg.error });
         }
         break;
       }
@@ -148,13 +151,13 @@ export function useWebSocket() {
    * Sends an action and returns a promise that resolves when the server
    * responds with an actionResult. Times out after 5 seconds.
    */
-  function sendAction(action: Record<string, unknown>): Promise<ActionResult> {
+  function sendAction(action: ClientAction | Record<string, unknown>): Promise<ActionResult> {
     const reqId = crypto.randomUUID();
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         pending.delete(reqId);
         resolve({ ok: false, error: "Action timed out" });
-      }, 5000);
+      }, ACTION_TIMEOUT_MS);
       pending.set(reqId, { resolve, timer });
       send({ ...action, reqId });
     });
@@ -214,7 +217,21 @@ export function useWebSocket() {
     return sendAction({ type: "removeCardFromDeck", floorIndex, unitIndex, cardId, packageId });
   }
 
+  function setGifts(
+    floorIndex: number,
+    unitIndex: number,
+    slots: Record<string, number>,
+  ): Promise<ActionResult> {
+    return sendAction({ type: "setGifts", floorIndex, unitIndex, ...slots });
+  }
+
   onMounted(connect);
+
+  onBeforeUnmount(() => {
+    closing = true;
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    ws?.close();
+  });
 
   return {
     gameState,
@@ -231,5 +248,6 @@ export function useWebSocket() {
     equipKeyPage,
     addCardToDeck,
     removeCardFromDeck,
+    setGifts,
   };
 }

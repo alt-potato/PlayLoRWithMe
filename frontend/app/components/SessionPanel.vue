@@ -150,6 +150,7 @@ const unclaimedCount = computed(
                 v-if="isMe(p)"
                 class="rename-btn"
                 title="Rename"
+                aria-label="Rename yourself"
                 @click.stop="startRename"
               >
                 ✎
