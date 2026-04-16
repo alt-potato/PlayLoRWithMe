@@ -74,7 +74,7 @@ namespace PlayLoRWithMe
             try
             {
                 // Bump this whenever extraction logic changes to invalidate the on-disk cache.
-                const string CacheVersion = "34";
+                const string CacheVersion = "35";
                 var versionPath = Path.Combine(CustomizeDir, "_cache_version.txt");
 
                 bool stale =
@@ -1219,17 +1219,52 @@ namespace PlayLoRWithMe
                         // replacesHead skins, so we don't need to share dimensions with
                         // the face canvas.  A tight canvas lets the frontend render the
                         // body with background-size: contain so the full character fits
-                        // the preview box — otherwise the body would be constrained to
-                        // the face-canvas Y range and only the head-height-worth of the
-                        // body would survive the clip, making full-body skins look as
-                        // though only the head were extracted.
-                        var bodyBounds = ComputeSpriteBounds(body.Sprites, Vector3.zero, body.WorldScale);
+                        // the preview box.
+                        //
+                        // We composite back + front + skin sprites into a single PNG.
+                        // Core LoR replacesHead books dump everything into body.Sprites,
+                        // but workshop cloth bodies also populate body.FrontSprites with
+                        // the Customize_Renderer_Front layer (front-facing accessories
+                        // like ribbons, collars, hats) — these must be included or large
+                        // accessories get dropped entirely.
+                        //
+                        // Workshop cloth sprites are loaded via SpriteUtil.LoadLargePivotSprite
+                        // which forces every sprite to a 512x512 FullRect sprite — so
+                        // sprite.rect, sprite.textureRect, and the logical bounds are all
+                        // identical regardless of where the opaque pixels actually sit.
+                        // Sizing the canvas by those bounds bakes large asymmetric
+                        // transparent padding into the PNG.  We fix horizontal centering
+                        // by symmetrizing the canvas X-bounds around AnchorPos.x (the
+                        // head attach point from customPivot.position) — see below.
+                        var allReplaceSprites = new List<(SpriteSet sprSet, Vector3 worldPos)>(
+                            body.Sprites.Count + body.FrontSprites.Count + body.SkinSprites.Count);
+                        allReplaceSprites.AddRange(body.SkinSprites);
+                        allReplaceSprites.AddRange(body.Sprites);
+                        allReplaceSprites.AddRange(body.FrontSprites);
+                        if (allReplaceSprites.Count == 0) continue;
+
+                        var bodyBounds = ComputeSpriteBounds(allReplaceSprites, Vector3.zero, body.WorldScale);
+
+                        // Symmetrize X around the head attach point so the head
+                        // lands at the horizontal center of the PNG.  In-game,
+                        // AnchorPos (customPivot.position) is where the face is
+                        // placed on the body; using it as the X-center mirrors
+                        // the game's own character alignment.  Expand the canvas
+                        // to the larger of the two sides so no content is clipped.
+                        float headX = body.AnchorPos.x;
+                        float leftExtent  = headX - bodyBounds.min.x;
+                        float rightExtent = bodyBounds.max.x - headX;
+                        float halfW = Mathf.Max(leftExtent, rightExtent);
+                        bodyBounds.SetMinMax(
+                            new Vector3(headX - halfW, bodyBounds.min.y, bodyBounds.min.z),
+                            new Vector3(headX + halfW, bodyBounds.max.y, bodyBounds.max.z));
+
                         int bW = Mathf.Max(1, Mathf.RoundToInt(bodyBounds.size.x * ppu));
                         int bH = Mathf.Max(1, Mathf.RoundToInt(bodyBounds.size.y * ppu));
                         if (!backDone)
                             File.WriteAllBytes(path,
-                                ComposeBodySprites(body.Sprites, bW, bH, bodyBounds, ppu, Vector3.zero, body.WorldScale));
-                        // replacesHead=true → face overlay never shown; no front layer needed.
+                                ComposeBodySprites(allReplaceSprites, bW, bH, bodyBounds, ppu, Vector3.zero, body.WorldScale));
+                        // replacesHead=true → face overlay never shown; front PNG unused.
                     }
                     else
                     {
@@ -1332,6 +1367,25 @@ namespace PlayLoRWithMe
             float worldScale = 1f
         )
         {
+            var canvas = BuildBodyCanvas(sprites, canvasW, canvasH, canvasBounds, ppu, anchorAdjust, worldScale);
+            return EncodeCanvasToPng(canvas, canvasW, canvasH);
+        }
+
+        /// <summary>
+        /// Builds a composited Color[] canvas from a sorted list of body sprites.
+        /// Factored out of <see cref="ComposeBodySprites"/> so the compositing step
+        /// can be reused independently of PNG encoding.
+        /// </summary>
+        private static Color[] BuildBodyCanvas(
+            List<(SpriteSet sprSet, Vector3 worldPos)> sprites,
+            int canvasW,
+            int canvasH,
+            Bounds canvasBounds,
+            float ppu,
+            Vector3 anchorAdjust,
+            float worldScale = 1f
+        )
+        {
             // Float Color for accurate src-over alpha compositing.
             var canvas = new Color[canvasW * canvasH]; // transparent black
 
@@ -1416,6 +1470,14 @@ namespace PlayLoRWithMe
                 }
             }
 
+            return canvas;
+        }
+
+        /// <summary>
+        /// Encodes a Color[] canvas of the given dimensions to a PNG byte array.
+        /// </summary>
+        private static byte[] EncodeCanvasToPng(Color[] canvas, int canvasW, int canvasH)
+        {
             var tex = new Texture2D(canvasW, canvasH, TextureFormat.RGBA32, false);
             try
             {
