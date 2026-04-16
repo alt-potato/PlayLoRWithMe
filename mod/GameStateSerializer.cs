@@ -559,7 +559,8 @@ namespace PlayLoRWithMe
                                                 ?.GetValue(book) as List<PassiveModel>;
                                             if (allPassives != null)
                                             {
-                                                var attributed = allPassives.FindAll(pm => pm.IsReceivedSuccessionPassive);
+                                                var attributed = allPassives.FindAll(pm =>
+                                                    pm.reservedData != null && pm.IsReceivedSuccessionPassive);
                                                 if (attributed.Count > 0)
                                                 {
                                                     o.AddArray("attributedPassives", apArr =>
