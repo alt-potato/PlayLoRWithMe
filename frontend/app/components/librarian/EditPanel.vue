@@ -50,9 +50,13 @@ const props = defineProps<{
     payload: Omit<CustomizePayload, "floorIndex" | "unitIndex">,
   ) => Promise<ActionResult>;
   onSetGifts: (slots: Record<string, number>) => Promise<ActionResult>;
+  onEquipSourceBook: (bookInstanceId: number) => Promise<void>;
+  onUnequipSourceBook: (bookInstanceId: number) => Promise<void>;
+  onAttributePassive: (sourceInstanceId: number, passiveId: number, passivePackageId: string) => Promise<void>;
+  onRemoveAttributedPassive: (sourceInstanceId: number, passiveId: number, passivePackageId: string) => Promise<void>;
 }>();
 
-type Tab = "keypage" | "deck" | "info";
+type Tab = "keypage" | "deck" | "passives" | "info";
 const activeTab = ref<Tab>("keypage");
 
 const lockBusy = ref(false);
@@ -193,13 +197,13 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
         <!-- Tab bar -->
         <div class="tab-bar">
           <button
-            v-for="tab in (['keypage', 'deck', 'info'] as Tab[])"
+            v-for="tab in (['keypage', 'deck', 'passives', 'info'] as Tab[])"
             :key="tab"
             class="tab-btn"
             :class="{ active: activeTab === tab }"
             @click="activeTab = tab"
           >
-            {{ tab === 'keypage' ? 'Key Page' : tab === 'deck' ? 'Deck' : 'Info' }}
+            {{ tab === 'keypage' ? 'Key Page' : tab === 'deck' ? 'Deck' : tab === 'passives' ? 'Passives' : 'Info' }}
           </button>
         </div>
 
@@ -244,6 +248,17 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
               :edit-busy="editBusy || lockedByOther"
               :on-add-card="onAddCard"
               :on-remove-card="onRemoveCard"
+            />
+
+            <LibrarianPassivesTab
+              v-else-if="activeTab === 'passives'"
+              :lib="lib"
+              :state="state"
+              :edit-busy="editBusy || lockedByOther"
+              :on-equip-source-book="props.onEquipSourceBook"
+              :on-unequip-source-book="props.onUnequipSourceBook"
+              :on-attribute-passive="props.onAttributePassive"
+              :on-remove-attributed-passive="props.onRemoveAttributedPassive"
             />
 
             <!-- Info tab: rename + customize button + current key page summary -->
