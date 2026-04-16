@@ -36,6 +36,10 @@ const {
   equipKeyPage,
   addCardToDeck,
   removeCardFromDeck,
+  equipSourceBook,
+  unequipSourceBook,
+  attributePassive,
+  removeAttributedPassive,
 } = useWebSocket();
 
 // Provide librarian-specific action callbacks via injection so that
@@ -48,6 +52,10 @@ provide(LIBRARIAN_ACTIONS, {
   equipKeyPage,
   addCardToDeck,
   removeCardFromDeck,
+  equipSourceBook,
+  unequipSourceBook,
+  attributePassive,
+  removeAttributedPassive,
 });
 
 // Provide assetsReady so descendants (e.g. AppearancePreview) can react when

@@ -217,6 +217,42 @@ export function useWebSocket() {
     return sendAction({ type: "removeCardFromDeck", floorIndex, unitIndex, cardId, packageId });
   }
 
+  function equipSourceBook(
+    floorIndex: number,
+    unitIndex: number,
+    bookInstanceId: number,
+  ): Promise<ActionResult> {
+    return sendAction({ type: "equipSourceBook", floorIndex, unitIndex, bookInstanceId });
+  }
+
+  function unequipSourceBook(
+    floorIndex: number,
+    unitIndex: number,
+    bookInstanceId: number,
+  ): Promise<ActionResult> {
+    return sendAction({ type: "unequipSourceBook", floorIndex, unitIndex, bookInstanceId });
+  }
+
+  function attributePassive(
+    floorIndex: number,
+    unitIndex: number,
+    sourceInstanceId: number,
+    passiveId: number,
+    passivePackageId: string,
+  ): Promise<ActionResult> {
+    return sendAction({ type: "attributePassive", floorIndex, unitIndex, sourceInstanceId, passiveId, passivePackageId });
+  }
+
+  function removeAttributedPassive(
+    floorIndex: number,
+    unitIndex: number,
+    sourceInstanceId: number,
+    passiveId: number,
+    passivePackageId: string,
+  ): Promise<ActionResult> {
+    return sendAction({ type: "removeAttributedPassive", floorIndex, unitIndex, sourceInstanceId, passiveId, passivePackageId });
+  }
+
   function setGifts(
     floorIndex: number,
     unitIndex: number,
@@ -248,6 +284,10 @@ export function useWebSocket() {
     equipKeyPage,
     addCardToDeck,
     removeCardFromDeck,
+    equipSourceBook,
+    unequipSourceBook,
+    attributePassive,
+    removeAttributedPassive,
     setGifts,
   };
 }

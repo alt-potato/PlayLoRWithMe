@@ -240,6 +240,30 @@ async function onRemoveCard(card: DeckCardPreview): Promise<void> {
   );
 }
 
+async function onEquipSourceBook(bookInstanceId: number): Promise<void> {
+  const lib = editingLibrarian.value;
+  if (!lib) return;
+  await actions.equipSourceBook(lib.floorIndex, lib.unitIndex, bookInstanceId);
+}
+
+async function onUnequipSourceBook(bookInstanceId: number): Promise<void> {
+  const lib = editingLibrarian.value;
+  if (!lib) return;
+  await actions.unequipSourceBook(lib.floorIndex, lib.unitIndex, bookInstanceId);
+}
+
+async function onAttributePassive(sourceInstanceId: number, passiveId: number, passivePackageId: string): Promise<void> {
+  const lib = editingLibrarian.value;
+  if (!lib) return;
+  await actions.attributePassive(lib.floorIndex, lib.unitIndex, sourceInstanceId, passiveId, passivePackageId);
+}
+
+async function onRemoveAttributedPassive(sourceInstanceId: number, passiveId: number, passivePackageId: string): Promise<void> {
+  const lib = editingLibrarian.value;
+  if (!lib) return;
+  await actions.removeAttributedPassive(lib.floorIndex, lib.unitIndex, sourceInstanceId, passiveId, passivePackageId);
+}
+
 // ── Abnormality / EGO sections ─────────────────────────────────────────────
 
 /** Whether the abnormality pages section is expanded for the active floor. */
@@ -558,6 +582,10 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
       :on-remove-card="onRemoveCard"
       :on-set-customization="onSetCustomization"
       :on-set-gifts="onSetGifts"
+      :on-equip-source-book="onEquipSourceBook"
+      :on-unequip-source-book="onUnequipSourceBook"
+      :on-attribute-passive="onAttributePassive"
+      :on-remove-attributed-passive="onRemoveAttributedPassive"
     />
 
     <CardDetail

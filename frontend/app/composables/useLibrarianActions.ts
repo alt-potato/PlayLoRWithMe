@@ -14,6 +14,10 @@ export interface LibrarianActions {
   equipKeyPage: (floorIndex: number, unitIndex: number, bookInstanceId: number) => Promise<ActionResult>;
   addCardToDeck: (floorIndex: number, unitIndex: number, cardId: number, packageId: string) => Promise<ActionResult>;
   removeCardFromDeck: (floorIndex: number, unitIndex: number, cardId: number, packageId: string) => Promise<ActionResult>;
+  equipSourceBook: (floorIndex: number, unitIndex: number, bookInstanceId: number) => Promise<ActionResult>;
+  unequipSourceBook: (floorIndex: number, unitIndex: number, bookInstanceId: number) => Promise<ActionResult>;
+  attributePassive: (floorIndex: number, unitIndex: number, sourceInstanceId: number, passiveId: number, passivePackageId: string) => Promise<ActionResult>;
+  removeAttributedPassive: (floorIndex: number, unitIndex: number, sourceInstanceId: number, passiveId: number, passivePackageId: string) => Promise<ActionResult>;
 }
 
 export const LIBRARIAN_ACTIONS: InjectionKey<LibrarianActions> = Symbol("LibrarianActions");
