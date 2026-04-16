@@ -21,6 +21,9 @@ namespace PlayLoRWithMe
 
         private static bool _extracted = false;
 
+        /// <summary>Whether sprite extraction has completed successfully.</summary>
+        internal static bool IsReady => _extracted;
+
         /// <summary>
         /// Per-book metadata populated during extraction and read by
         /// <see cref="GameStateSerializer"/> when serializing fashion books.

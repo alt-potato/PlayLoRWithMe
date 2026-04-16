@@ -34,7 +34,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
         <span class="cost-badge" :style="costStyle(card) ?? {}">{{
           card.cost
         }}</span>
-        <button class="close-btn" @click="$emit('close')">✕</button>
+        <button class="close-btn" aria-label="Close card detail" @click="$emit('close')">✕</button>
       </div>
       <div class="card-title">{{ card.name }}</div>
       <div class="card-tags">

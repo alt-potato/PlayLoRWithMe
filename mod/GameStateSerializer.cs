@@ -12,6 +12,14 @@ namespace PlayLoRWithMe
     public static class GameStateSerializer
     {
         /// <summary>
+        /// Cached reflection lookup for the private <c>LibrariansNameXmlList._dictionary</c>
+        /// field, used to read the suggested-name pool without a public API.
+        /// </summary>
+        private static readonly FieldInfo _libNameDictField =
+            typeof(LibrariansNameXmlList).GetField("_dictionary",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+
+        /// <summary>
         /// The 10 named Sephirah floors in canonical order; index is the floorIndex
         /// used throughout the JSON API and WebSocket messages.
         /// </summary>
@@ -70,29 +78,47 @@ namespace PlayLoRWithMe
             if (gsm == null)
                 return new JsonWriter().Add("scene", "loading").Build();
 
+            var w = new JsonWriter();
+            w.Add("assetsReady", AppearanceCache.IsReady && GiftCache.IsReady);
+
             if (gsm.battleScene != null && gsm.battleScene.gameObject.activeSelf)
-                return BuildBattleJson(ownedUnitIds);
+            {
+                w.Add("scene", "battle");
+                WriteBattleScene(w, ownedUnitIds);
+            }
+            else if (gsm.uIController != null && gsm.uIController.gameObject.activeSelf)
+            {
+                w.Add("scene", "main");
+                WriteMainScene(w, ownedUnitIds);
+            }
+            else if (gsm.storyRoot != null && gsm.storyRoot.gameObject.activeSelf)
+            {
+                w.Add("scene", "story");
+                WriteStoryScene(w);
+            }
+            else if (gsm.titleScene != null && gsm.titleScene.gameObject.activeSelf)
+            {
+                w.Add("scene", "title");
+                WriteTitleScene(w);
+            }
+            else
+            {
+                w.Add("scene", "transition");
+            }
 
-            if (gsm.uIController != null && gsm.uIController.gameObject.activeSelf)
-                return BuildMainJson();
-
-            if (gsm.storyRoot != null && gsm.storyRoot.gameObject.activeSelf)
-                return new JsonWriter().Add("scene", "story").Build();
-
-            if (gsm.titleScene != null && gsm.titleScene.gameObject.activeSelf)
-                return new JsonWriter().Add("scene", "title").Build();
-
-            return new JsonWriter().Add("scene", "transition").Build();
+            return w.Build();
         }
 
         /// <summary>
-        /// Builds a JSON representing the current main menu page.
+        /// Serializes the main library/floor/librarian management scene.
         /// During <c>BattleSetting</c> phase also emits pre-battle ally/enemy
         /// previews so the frontend can render the formation screen.
         /// </summary>
-        private static string BuildMainJson()
+        private static void WriteMainScene(
+            JsonWriter w,
+            System.Collections.Generic.HashSet<int> ownedUnitIds
+        )
         {
-            var w = new JsonWriter().Add("scene", "main");
             var uic = UI.UIController.Instance;
             if (uic != null)
                 w.Add("uiPhase", uic.CurrentUIPhase.ToString());
@@ -105,8 +131,22 @@ namespace PlayLoRWithMe
                 // WriteLibraryInventory calls WriteCustomizeOptions internally.
                 WriteLibraryInventory(w);
             }
+        }
 
-            return w.Build();
+        /// <summary>
+        /// Serializes the title screen. Currently a no-op placeholder; the scene
+        /// tag is already written by the dispatcher.
+        /// </summary>
+        private static void WriteTitleScene(JsonWriter w)
+        {
+        }
+
+        /// <summary>
+        /// Serializes the story/cutscene scene. Currently a no-op placeholder;
+        /// the scene tag is already written by the dispatcher.
+        /// </summary>
+        private static void WriteStoryScene(JsonWriter w)
+        {
         }
 
         /// <summary>
@@ -954,15 +994,7 @@ namespace PlayLoRWithMe
             {
                 // Suggested name pool via reflection (LibrariansNameXmlList._dictionary is private).
                 var nameXml = Singleton<LibrariansNameXmlList>.Instance;
-                var nameDict =
-                    typeof(LibrariansNameXmlList)
-                        .GetField(
-                            "_dictionary",
-                            System.Reflection.BindingFlags.NonPublic
-                                | System.Reflection.BindingFlags.Instance
-                        )
-                        ?.GetValue(nameXml)
-                    as Dictionary<int, string>;
+                var nameDict = _libNameDictField?.GetValue(nameXml) as Dictionary<int, string>;
 
                 o.AddArray("suggestedNames", arr =>
                 {
@@ -1057,10 +1089,11 @@ namespace PlayLoRWithMe
                     // These have a non-empty packageId and are not tracked by
                     // CustomCoreBookInventoryModel (which explicitly skips workshop books).
                     var bookInv = Singleton<BookInventoryModel>.Instance;
-                    if (bookInv != null)
+                    var allBooks = bookInv?.GetBookListAll();
+                    if (allBooks != null)
                     {
                         var seenWs = new HashSet<string>();
-                        foreach (var book in bookInv.GetBookListAll())
+                        foreach (var book in allBooks)
                         {
                             if (!book.IsWorkshop) continue;
                             var lid = book.GetBookClassInfoId();
@@ -1322,12 +1355,14 @@ namespace PlayLoRWithMe
         // -------------------------------------------------------------------------
 
         /// <summary>
-        /// Builds a JSON representing the current battle state.
+        /// Serializes the full battle state including units, slotted cards,
+        /// and abnormality selection.
         /// </summary>
-        private static string BuildBattleJson(System.Collections.Generic.HashSet<int> ownedUnitIds)
+        private static void WriteBattleScene(
+            JsonWriter w,
+            System.Collections.Generic.HashSet<int> ownedUnitIds
+        )
         {
-            var w = new JsonWriter().Add("scene", "battle");
-
             var sc = Singleton<StageController>.Instance;
             if (sc != null)
             {
@@ -1441,7 +1476,6 @@ namespace PlayLoRWithMe
                 );
             }
 
-            return w.Build();
         }
 
         /// <summary>

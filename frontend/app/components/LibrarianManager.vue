@@ -18,10 +18,13 @@
     state       – full game state (scene = 'main', floors array present)
     session     – current session identity
     players     – connected player list
-    sendAction  – WebSocket action dispatcher
     claimUnit   – claim a librarian unit
     releaseUnit – release a librarian unit
     renamePlayer – rename the current player
+
+  Injected (LIBRARIAN_ACTIONS):
+    sendAction, lockLibrarian, unlockLibrarian, renameLibrarian,
+    equipKeyPage, addCardToDeck, removeCardFromDeck
 -->
 <script setup lang="ts">
 import type {
@@ -37,60 +40,32 @@ import type {
   CustomizePayload,
   FashionBook,
 } from "~/types/game";
+import { LIBRARIAN_ACTIONS, floorColor } from "~/composables/useLibrarianActions";
 
 const props = defineProps<{
   state: GameState;
   session: SessionState | null;
   players: PlayerInfo[];
-  sendAction: (action: Record<string, unknown>) => Promise<ActionResult>;
   claimUnit: (unitId: number) => Promise<ActionResult>;
   releaseUnit: (unitId: number) => Promise<ActionResult>;
   renamePlayer: (name: string) => Promise<ActionResult>;
-  lockLibrarian: (
-    floorIndex: number,
-    unitIndex: number,
-  ) => Promise<ActionResult>;
-  unlockLibrarian: (
-    floorIndex: number,
-    unitIndex: number,
-  ) => Promise<ActionResult>;
-  renameLibrarian: (
-    floorIndex: number,
-    unitIndex: number,
-    name: string,
-  ) => Promise<ActionResult>;
-  equipKeyPage: (
-    floorIndex: number,
-    unitIndex: number,
-    bookInstanceId: number,
-  ) => Promise<ActionResult>;
-  addCardToDeck: (
-    floorIndex: number,
-    unitIndex: number,
-    cardId: number,
-    packageId: string,
-  ) => Promise<ActionResult>;
-  removeCardFromDeck: (
-    floorIndex: number,
-    unitIndex: number,
-    cardId: number,
-    packageId: string,
-  ) => Promise<ActionResult>;
 }>();
+
+const actions = inject(LIBRARIAN_ACTIONS)!;
 
 // ── setCustomization callback ──────────────────────────────────────────────
 
 /**
  * Sends a setCustomization action for the currently editing librarian.
  * Uses the generic sendAction dispatcher since this action is not a common
- * enough operation to warrant a dedicated prop on app.vue.
+ * enough operation to warrant a dedicated composable method.
  */
 async function onSetCustomization(
   payload: Omit<CustomizePayload, "floorIndex" | "unitIndex">,
 ): Promise<ActionResult> {
   const lib = editingLibrarian.value;
   if (!lib) return { ok: false, error: "No librarian selected" };
-  return await props.sendAction({
+  return await actions.sendAction({
     type: "setCustomization",
     floorIndex: lib.floorIndex,
     unitIndex: lib.unitIndex,
@@ -107,30 +82,12 @@ async function onSetGifts(
 ): Promise<ActionResult> {
   const lib = editingLibrarian.value;
   if (!lib) return { ok: false, error: "No librarian selected" };
-  return await props.sendAction({
+  return await actions.sendAction({
     type: "setGifts",
     floorIndex: lib.floorIndex,
     unitIndex: lib.unitIndex,
     ...slots,
   });
-}
-
-/** Accent color keyed by floorIndex (0 = Malkuth … 9 = Keter). */
-const FLOOR_COLORS: Record<number, string> = {
-  0: "#be9966", // Malkuth
-  1: "#6968c4", // Yesod
-  2: "#e5881b", // Hod
-  3: "#4ed564", // Netzach
-  4: "#ffe527", // Tiphereth
-  5: "#ff3326", // Gebura
-  6: "#5ccaf6", // Chesed
-  7: "#957704", // Binah
-  8: "#7c7b7c", // Hokma
-  9: "#dddddd", // Keter
-};
-
-function floorColor(floorIdx: number): string {
-  return FLOOR_COLORS[floorIdx] ?? "#888";
 }
 
 function floorIconUrl(floorIdx: number): string {
@@ -225,7 +182,7 @@ function closeEdit(): void {
   // must release the lock explicitly here.
   const lib = editingLibrarian.value;
   editingLibrarian.value = null;
-  if (lib) void props.unlockLibrarian(lib.floorIndex, lib.unitIndex);
+  if (lib) void actions.unlockLibrarian(lib.floorIndex, lib.unitIndex);
 }
 
 // Keep the editingLibrarian in sync with state updates (e.g. after a rename).
@@ -245,37 +202,37 @@ watch(
 async function onLock(): Promise<ActionResult> {
   const lib = editingLibrarian.value;
   if (!lib) return { ok: false, error: "No librarian selected" };
-  return props.lockLibrarian(lib.floorIndex, lib.unitIndex);
+  return actions.lockLibrarian(lib.floorIndex, lib.unitIndex);
 }
 
 async function onUnlock(): Promise<ActionResult> {
   const lib = editingLibrarian.value;
   if (!lib) return { ok: false, error: "No librarian selected" };
-  return props.unlockLibrarian(lib.floorIndex, lib.unitIndex);
+  return actions.unlockLibrarian(lib.floorIndex, lib.unitIndex);
 }
 
 async function onRename(name: string): Promise<ActionResult> {
   const lib = editingLibrarian.value;
   if (!lib) return { ok: false, error: "No librarian selected" };
-  return props.renameLibrarian(lib.floorIndex, lib.unitIndex, name);
+  return actions.renameLibrarian(lib.floorIndex, lib.unitIndex, name);
 }
 
 async function onEquipPage(kp: AvailableKeyPage): Promise<void> {
   const lib = editingLibrarian.value;
   if (!lib) return;
-  await props.equipKeyPage(lib.floorIndex, lib.unitIndex, kp.instanceId);
+  await actions.equipKeyPage(lib.floorIndex, lib.unitIndex, kp.instanceId);
 }
 
 async function onAddCard(card: AvailableCard): Promise<void> {
   const lib = editingLibrarian.value;
   if (!lib) return;
-  await props.addCardToDeck(lib.floorIndex, lib.unitIndex, card.cardId.id, card.cardId.packageId);
+  await actions.addCardToDeck(lib.floorIndex, lib.unitIndex, card.cardId.id, card.cardId.packageId);
 }
 
 async function onRemoveCard(card: DeckCardPreview): Promise<void> {
   const lib = editingLibrarian.value;
   if (!lib || !card.cardId) return;
-  await props.removeCardFromDeck(
+  await actions.removeCardFromDeck(
     lib.floorIndex,
     lib.unitIndex,
     card.cardId.id,
@@ -378,7 +335,13 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
         >
           <div
             class="section-toggle"
+            role="button"
+            tabindex="0"
+            aria-label="Toggle Abnormality Pages"
+            :aria-expanded="emotionCardsOpen"
             @click="emotionCardsOpen = !emotionCardsOpen"
+            @keydown.enter="emotionCardsOpen = !emotionCardsOpen"
+            @keydown.space.prevent="emotionCardsOpen = !emotionCardsOpen"
           >
             <span class="section-toggle-label">Abnormality Pages</span>
             <span class="section-toggle-count">{{
@@ -427,7 +390,13 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
         >
           <div
             class="section-toggle"
+            role="button"
+            tabindex="0"
+            aria-label="Toggle EGO Pages"
+            :aria-expanded="egoCardsOpen"
             @click="egoCardsOpen = !egoCardsOpen"
+            @keydown.enter="egoCardsOpen = !egoCardsOpen"
+            @keydown.space.prevent="egoCardsOpen = !egoCardsOpen"
           >
             <span class="section-toggle-label">EGO Pages</span>
             <span class="section-toggle-count">{{

@@ -134,7 +134,7 @@ namespace PlayLoRWithMe
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[PlayLoRWithMe] Accept error: {ex}");
+                    Debug.LogWarning($"[PlayLoRWithMe] Accept error: {ex}");
                 }
             }
         }
@@ -170,7 +170,7 @@ namespace PlayLoRWithMe
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[PlayLoRWithMe] Handler error: {ex}");
+                Debug.LogWarning($"[PlayLoRWithMe] Handler error: {ex}");
                 try
                 {
                     ctx.Response.StatusCode = 500;
@@ -178,7 +178,7 @@ namespace PlayLoRWithMe
                 }
                 catch (Exception ex2)
                 {
-                    Debug.Log($"[PlayLoRWithMe] Failed to send 500 response: {ex2.Message}");
+                    Debug.LogWarning($"[PlayLoRWithMe] Failed to send 500 response: {ex2.Message}");
                 }
             }
         }
@@ -262,7 +262,7 @@ namespace PlayLoRWithMe
                 }
                 catch (Exception ex2)
                 {
-                    Debug.Log($"[PlayLoRWithMe] Failed to send 400 response: {ex2.Message}");
+                    Debug.LogWarning($"[PlayLoRWithMe] Failed to send 400 response: {ex2.Message}");
                 }
                 return;
             }

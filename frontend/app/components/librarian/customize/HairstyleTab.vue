@@ -38,17 +38,17 @@ function step(field: "frontHairID" | "backHairID", delta: number): void {
   <div class="tab-inner">
     <div class="section-label">Bangs (Front Hair)</div>
     <div class="stepper-row">
-      <button class="step-btn" :disabled="busy" @click="step('frontHairID', -1)">◀</button>
+      <button class="step-btn" :disabled="busy" aria-label="Previous front hair style" @click="step('frontHairID', -1)">◀</button>
       <span class="step-value">{{ frontHairID }}</span>
-      <button class="step-btn" :disabled="busy" @click="step('frontHairID', 1)">▶</button>
+      <button class="step-btn" :disabled="busy" aria-label="Next front hair style" @click="step('frontHairID', 1)">▶</button>
       <span class="step-range">/ {{ FRONT_HAIR_MAX }}</span>
     </div>
 
     <div class="section-label" style="margin-top: 0.75rem;">Backside Hair</div>
     <div class="stepper-row">
-      <button class="step-btn" :disabled="busy" @click="step('backHairID', -1)">◀</button>
+      <button class="step-btn" :disabled="busy" aria-label="Previous back hair style" @click="step('backHairID', -1)">◀</button>
       <span class="step-value">{{ backHairID }}</span>
-      <button class="step-btn" :disabled="busy" @click="step('backHairID', 1)">▶</button>
+      <button class="step-btn" :disabled="busy" aria-label="Next back hair style" @click="step('backHairID', 1)">▶</button>
       <span class="step-range">/ {{ BACK_HAIR_MAX }}</span>
     </div>
 

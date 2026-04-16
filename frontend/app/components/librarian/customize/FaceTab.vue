@@ -46,25 +46,25 @@ function step(field: StepField, delta: number): void {
   <div class="tab-inner">
     <div class="section-label">Eyes</div>
     <div class="stepper-row">
-      <button class="step-btn" :disabled="busy" @click="step('eyeID', -1)">◀</button>
+      <button class="step-btn" :disabled="busy" aria-label="Previous eye style" @click="step('eyeID', -1)">◀</button>
       <span class="step-value">{{ eyeID }}</span>
-      <button class="step-btn" :disabled="busy" @click="step('eyeID', 1)">▶</button>
+      <button class="step-btn" :disabled="busy" aria-label="Next eye style" @click="step('eyeID', 1)">▶</button>
       <span class="step-range">/ {{ EYE_MAX }}</span>
     </div>
 
     <div class="section-label" style="margin-top: 0.75rem;">Eyebrows</div>
     <div class="stepper-row">
-      <button class="step-btn" :disabled="busy" @click="step('browID', -1)">◀</button>
+      <button class="step-btn" :disabled="busy" aria-label="Previous eyebrow style" @click="step('browID', -1)">◀</button>
       <span class="step-value">{{ browID }}</span>
-      <button class="step-btn" :disabled="busy" @click="step('browID', 1)">▶</button>
+      <button class="step-btn" :disabled="busy" aria-label="Next eyebrow style" @click="step('browID', 1)">▶</button>
       <span class="step-range">/ {{ BROW_MAX }}</span>
     </div>
 
     <div class="section-label" style="margin-top: 0.75rem;">Mouth</div>
     <div class="stepper-row">
-      <button class="step-btn" :disabled="busy" @click="step('mouthID', -1)">◀</button>
+      <button class="step-btn" :disabled="busy" aria-label="Previous mouth style" @click="step('mouthID', -1)">◀</button>
       <span class="step-value">{{ mouthID }}</span>
-      <button class="step-btn" :disabled="busy" @click="step('mouthID', 1)">▶</button>
+      <button class="step-btn" :disabled="busy" aria-label="Next mouth style" @click="step('mouthID', 1)">▶</button>
       <span class="step-range">/ {{ MOUTH_MAX }}</span>
     </div>
 

@@ -52,8 +52,14 @@ namespace PlayLoRWithMe
             new ConcurrentQueue<PendingAction>();
 
         /// <summary>
+        /// Max milliseconds the HTTP thread waits for the Unity main thread to
+        /// process an action before returning a timeout error.
+        /// </summary>
+        public static int TimeoutMs = 500;
+
+        /// <summary>
         /// Called from the HTTP server background thread. Blocks until the Unity main
-        /// thread executes the action (or 500 ms timeout). Returns (ok, error).
+        /// thread executes the action (or <see cref="TimeoutMs"/> timeout). Returns (ok, error).
         /// </summary>
         public static (bool ok, string error) EnqueueAndWait(string actionJson)
         {
@@ -61,7 +67,7 @@ namespace PlayLoRWithMe
             _queue.Enqueue(pending);
             try
             {
-                if (!pending.Done.Wait(500))
+                if (!pending.Done.Wait(TimeoutMs))
                     return (false, "Action timed out");
                 return (pending.Ok, pending.Error);
             }

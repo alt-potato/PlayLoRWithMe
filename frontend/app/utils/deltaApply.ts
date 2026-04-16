@@ -42,6 +42,9 @@ export function applyDelta(base: GameState, delta: Record<string, unknown>): Gam
     );
   }
 
+  // Double cast required: Record<string, unknown> doesn't structurally overlap
+  // with GameState, but we know the result is valid because it was built from
+  // a valid GameState base with only targeted field replacements.
   return result as unknown as GameState;
 }
 

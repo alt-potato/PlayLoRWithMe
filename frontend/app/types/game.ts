@@ -604,9 +604,28 @@ export interface CustomizePayload {
   appearanceType: string;
 }
 
+/** Server → client WebSocket message types. */
+export type ServerMessage =
+  | { type: "hello"; sessionId: string; assignedUnits: number[]; claimsEnabled: boolean }
+  | { type: "state"; seq: number; data: GameState }
+  | { type: "delta"; seq: number; data: Record<string, unknown> }
+  | { type: "sessionUpdate"; assignedUnits: number[] }
+  | { type: "playerList"; players: PlayerInfo[] }
+  | { type: "actionResult"; reqId: string; ok: boolean; error?: string }
+  | { type: "ping" };
+
+/** Client → server action payloads. */
+export type ClientAction =
+  | { type: "playCard"; unitId: number; cardIndex: number; diceSlot: number; targetUnitId?: number; targetDiceSlot?: number; isEgo?: 1 }
+  | { type: "removeCard"; unitId: number; diceSlot: number }
+  | { type: "confirm" }
+  | { type: "selectAbnormality"; cardId: number; targetUnitId?: number };
+
 /** Top-level SSE / GET /state payload. */
 export interface GameState {
   scene: SceneName;
+  /** Whether the server has finished extracting appearance/gift sprite assets. */
+  assetsReady?: boolean;
   /** Active stage phase class name (e.g. "ApplyLibrarianCardPhase"). */
   phase?: string;
   /** Active stage state enum value (e.g. "BattleSetting"). */

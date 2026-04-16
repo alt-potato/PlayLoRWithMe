@@ -75,8 +75,11 @@ namespace PlayLoRWithMe
                 lock (_sendLock)
                     WebSocketCodec.SendText(_stream, json);
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.LogWarning(
+                    $"[PlayLoRWithMe] WebSocket send failed for {SessionId}: {ex.Message}"
+                );
                 Close();
             }
         }
@@ -165,8 +168,11 @@ namespace PlayLoRWithMe
                 lock (_sendLock)
                     WebSocketCodec.WriteFrame(_stream, WebSocketCodec.Opcode.Ping, null);
             }
-            catch
+            catch (Exception ex)
             {
+                Debug.LogWarning(
+                    $"[PlayLoRWithMe] WebSocket ping failed for {SessionId}: {ex.Message}"
+                );
                 Close();
             }
         }
@@ -213,7 +219,7 @@ namespace PlayLoRWithMe
             }
             catch (System.Exception ex)
             {
-                Debug.Log($"[PlayLoRWithMe] WebSocket close-frame send failed: {ex.Message}");
+                Debug.LogWarning($"[PlayLoRWithMe] WebSocket close-frame send failed: {ex.Message}");
             }
 
             try
@@ -222,7 +228,7 @@ namespace PlayLoRWithMe
             }
             catch (System.Exception ex)
             {
-                Debug.Log($"[PlayLoRWithMe] WebSocket stream close failed: {ex.Message}");
+                Debug.LogWarning($"[PlayLoRWithMe] WebSocket stream close failed: {ex.Message}");
             }
         }
     }

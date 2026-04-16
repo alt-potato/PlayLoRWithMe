@@ -187,7 +187,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
           <span v-else-if="!hasLock && lockBusy" class="lock-badge lock-badge--pending">
             Acquiring lock…
           </span>
-          <button class="close-btn" title="Close" @click="onClose">✕</button>
+          <button class="close-btn" title="Close" aria-label="Close edit panel" @click="onClose">✕</button>
         </div>
 
         <!-- Tab bar -->

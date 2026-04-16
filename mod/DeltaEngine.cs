@@ -33,13 +33,62 @@ namespace PlayLoRWithMe
             // any JSON scanning. Parsed lazily into LastFields on the next call.
             public string LastJson;
 
-            // The last full JSON string sent to this session, keyed by top-level field.
-            // Null until the second BuildMessage call (first actual delta computation).
-            public Dictionary<string, string> LastFields;
+            // Whether LastFields has been populated (replaces the null check now that
+            // we reuse dictionaries instead of allocating new ones).
+            public bool HasLastFields;
 
-            // Per-unit JSON strings for allies and enemies, keyed by unit id.
-            public Dictionary<int, string> LastAllies;
-            public Dictionary<int, string> LastEnemies;
+            // Double-buffered top-level field dictionaries. One holds last-sent data
+            // while the other is cleared and filled with current data; they swap each
+            // cycle to avoid allocating new dictionaries on every broadcast.
+            public Dictionary<string, string> FieldsA = new Dictionary<string, string>();
+            public Dictionary<string, string> FieldsB = new Dictionary<string, string>();
+
+            // Which buffer currently holds "last" data. When true, FieldsA is last
+            // and FieldsB is the scratch buffer (and vice versa).
+            public bool FieldsAIsLast;
+
+            // Double-buffered unit dictionaries for allies and enemies.
+            public Dictionary<int, string> AlliesA = new Dictionary<int, string>();
+            public Dictionary<int, string> AlliesB = new Dictionary<int, string>();
+            public bool AlliesAIsLast;
+
+            public Dictionary<int, string> EnemiesA = new Dictionary<int, string>();
+            public Dictionary<int, string> EnemiesB = new Dictionary<int, string>();
+            public bool EnemiesAIsLast;
+
+            // Reusable scratch collections for DiffUnitArray to avoid per-call allocations.
+            public readonly List<string> ScratchChanged = new List<string>();
+            public readonly List<int> ScratchRemoved = new List<int>();
+
+            // Reusable StringBuilder for BuildDelta.
+            public readonly StringBuilder DeltaBuilder = new StringBuilder(256);
+
+            /// <summary>Returns the buffer currently holding last-sent top-level fields.</summary>
+            public Dictionary<string, string> LastFields =>
+                FieldsAIsLast ? FieldsA : FieldsB;
+
+            /// <summary>Returns the scratch buffer for populating new top-level fields.</summary>
+            public Dictionary<string, string> NewFieldsScratch =>
+                FieldsAIsLast ? FieldsB : FieldsA;
+
+            /// <summary>Swaps the field buffers so the scratch becomes "last".</summary>
+            public void SwapFields() => FieldsAIsLast = !FieldsAIsLast;
+
+            public Dictionary<int, string> LastAllies =>
+                AlliesAIsLast ? AlliesA : AlliesB;
+
+            public Dictionary<int, string> NewAlliesScratch =>
+                AlliesAIsLast ? AlliesB : AlliesA;
+
+            public void SwapAllies() => AlliesAIsLast = !AlliesAIsLast;
+
+            public Dictionary<int, string> LastEnemies =>
+                EnemiesAIsLast ? EnemiesA : EnemiesB;
+
+            public Dictionary<int, string> NewEnemiesScratch =>
+                EnemiesAIsLast ? EnemiesB : EnemiesA;
+
+            public void SwapEnemies() => EnemiesAIsLast = !EnemiesAIsLast;
         }
 
         // -------------------------------------------------------------------------
@@ -52,13 +101,7 @@ namespace PlayLoRWithMe
         /// </summary>
         public void AddSession(string sessionId)
         {
-            _sessions[sessionId] = new SessionState
-            {
-                Seq = 0,
-                LastFields = null,
-                LastAllies = new Dictionary<int, string>(),
-                LastEnemies = new Dictionary<int, string>(),
-            };
+            _sessions[sessionId] = new SessionState { Seq = 0 };
         }
 
         /// <summary>Removes all tracking state for a session.</summary>
@@ -85,25 +128,34 @@ namespace PlayLoRWithMe
                 // First message: send the full state immediately without parsing anything —
                 // there is no previous state to diff against. Store the raw JSON so the
                 // next call can parse it as the baseline for delta computation.
-                if (state.LastJson == null && state.LastFields == null)
+                if (state.LastJson == null && !state.HasLastFields)
                 {
                     state.LastJson = filteredJson;
                     return WrapFull(seq, filteredJson);
                 }
 
-                // Second call onward: if we have an unparsed baseline, parse it now.
-                if (state.LastFields == null)
+                // Second call onward: if we have an unparsed baseline, parse it now
+                // into the current "last" buffer.
+                if (!state.HasLastFields)
                 {
-                    state.LastFields = ParseTopLevelFields(state.LastJson);
-                    UpdateUnitCaches(state, state.LastFields);
+                    var lastBuf = state.LastFields;
+                    lastBuf.Clear();
+                    ParseTopLevelFields(state.LastJson, lastBuf);
+                    UpdateUnitCaches(state, lastBuf);
+                    state.HasLastFields = true;
                     state.LastJson = null;
                 }
 
-                var newFields = ParseTopLevelFields(filteredJson);
+                // Parse new state into the scratch buffer, then diff against last.
+                var newFields = state.NewFieldsScratch;
+                newFields.Clear();
+                ParseTopLevelFields(filteredJson, newFields);
+
                 var delta = BuildDelta(state, newFields);
 
-                state.LastFields = newFields;
-                UpdateUnitCaches(state, newFields);
+                // Swap so the scratch (now holding new data) becomes "last".
+                state.SwapFields();
+                UpdateUnitCaches(state, state.LastFields);
 
                 if (delta == null)
                     return null; // nothing changed — skip this broadcast
@@ -120,13 +172,13 @@ namespace PlayLoRWithMe
         /// Splits a flat JSON object into a dictionary of top-level key → raw value
         /// substring. Handles string, number, boolean, null, object, and array values.
         /// Operates on the raw JSON string to avoid a full parse.
+        /// The caller must clear <paramref name="result"/> beforehand.
         /// </summary>
-        private static Dictionary<string, string> ParseTopLevelFields(string json)
+        private static void ParseTopLevelFields(string json, Dictionary<string, string> result)
         {
-            var result = new Dictionary<string, string>();
             int i = SkipWhitespace(json, 0);
             if (i >= json.Length || json[i] != '{')
-                return result;
+                return;
             i++; // skip '{'
 
             while (true)
@@ -153,19 +205,17 @@ namespace PlayLoRWithMe
                 if (i < json.Length && json[i] == ',')
                     i++;
             }
-
-            return result;
         }
 
         /// <summary>
         /// Parses the "allies" or "enemies" JSON array into a dictionary of unit id
         /// → raw unit object JSON. Used for per-unit change detection.
+        /// The caller must clear <paramref name="result"/> beforehand.
         /// </summary>
-        private static Dictionary<int, string> ParseUnitArray(string arrayJson)
+        private static void ParseUnitArray(string arrayJson, Dictionary<int, string> result)
         {
-            var result = new Dictionary<int, string>();
             if (string.IsNullOrEmpty(arrayJson) || arrayJson[0] != '[')
-                return result;
+                return;
 
             int i = 1; // skip '['
             while (true)
@@ -187,8 +237,6 @@ namespace PlayLoRWithMe
                 if (i < arrayJson.Length && arrayJson[i] == ',')
                     i++;
             }
-
-            return result;
         }
 
         // -------------------------------------------------------------------------
@@ -199,7 +247,9 @@ namespace PlayLoRWithMe
         // containing only the changed fields (ready to embed in a delta envelope).
         private static string BuildDelta(SessionState state, Dictionary<string, string> newFields)
         {
-            var sb = new StringBuilder("{");
+            var sb = state.DeltaBuilder;
+            sb.Clear();
+            sb.Append('{');
             bool hasChanges = false;
 
             foreach (var kv in newFields)
@@ -233,20 +283,26 @@ namespace PlayLoRWithMe
                 }
             }
 
-            // Diff unit arrays.
-            bool alliesDiff = DiffUnitArray(
+            // Diff unit arrays using double-buffered dictionaries and scratch lists.
+            DiffUnitArray(
                 state.LastAllies,
+                state.NewAlliesScratch,
                 newFields.TryGetValue("allies", out string newAlliesJson) ? newAlliesJson : null,
                 sb,
                 "allies",
+                state.ScratchChanged,
+                state.ScratchRemoved,
                 ref hasChanges
             );
 
-            bool enemiesDiff = DiffUnitArray(
+            DiffUnitArray(
                 state.LastEnemies,
+                state.NewEnemiesScratch,
                 newFields.TryGetValue("enemies", out string newEnemiesJson) ? newEnemiesJson : null,
                 sb,
                 "enemies",
+                state.ScratchChanged,
+                state.ScratchRemoved,
                 ref hasChanges
             );
 
@@ -257,38 +313,44 @@ namespace PlayLoRWithMe
             return sb.ToString();
         }
 
-        // Compares the last-known unit map against the new array JSON. Appends only
-        // changed or new units to sb; appends a "_removed" array if any units left.
-        // Returns true if any diff was written.
+        /// <summary>
+        /// Compares the last-known unit map against the new array JSON. Parses the new
+        /// array into <paramref name="newUnitsScratch"/> (which the caller will swap into
+        /// the "last" position after this returns). Appends only changed or new units to
+        /// sb; appends a "_removed" array if any units disappeared.
+        /// </summary>
         private static bool DiffUnitArray(
             Dictionary<int, string> lastUnits,
+            Dictionary<int, string> newUnitsScratch,
             string newArrayJson,
             StringBuilder sb,
             string fieldName,
+            List<string> changedScratch,
+            List<int> removedScratch,
             ref bool hasChanges
         )
         {
-            if (string.IsNullOrEmpty(newArrayJson) && lastUnits.Count == 0)
+            newUnitsScratch.Clear();
+            if (!string.IsNullOrEmpty(newArrayJson))
+                ParseUnitArray(newArrayJson, newUnitsScratch);
+
+            if (newUnitsScratch.Count == 0 && lastUnits.Count == 0)
                 return false;
 
-            var newUnits = string.IsNullOrEmpty(newArrayJson)
-                ? new Dictionary<int, string>()
-                : ParseUnitArray(newArrayJson);
+            changedScratch.Clear();
+            removedScratch.Clear();
 
-            var changed = new List<string>();
-            var removed = new List<int>();
-
-            foreach (var kv in newUnits)
+            foreach (var kv in newUnitsScratch)
             {
                 if (!lastUnits.TryGetValue(kv.Key, out string oldJson) || oldJson != kv.Value)
-                    changed.Add(kv.Value);
+                    changedScratch.Add(kv.Value);
             }
 
             foreach (int id in lastUnits.Keys)
-                if (!newUnits.ContainsKey(id))
-                    removed.Add(id);
+                if (!newUnitsScratch.ContainsKey(id))
+                    removedScratch.Add(id);
 
-            if (changed.Count == 0 && removed.Count == 0)
+            if (changedScratch.Count == 0 && removedScratch.Count == 0)
                 return false;
 
             if (hasChanges)
@@ -297,23 +359,23 @@ namespace PlayLoRWithMe
 
             // Changed/new units as a partial array.
             sb.Append('"').Append(fieldName).Append("\":[");
-            for (int i = 0; i < changed.Count; i++)
+            for (int i = 0; i < changedScratch.Count; i++)
             {
                 if (i > 0)
                     sb.Append(',');
-                sb.Append(changed[i]);
+                sb.Append(changedScratch[i]);
             }
             sb.Append(']');
 
             // Signal removed units separately so the client can purge them.
-            if (removed.Count > 0)
+            if (removedScratch.Count > 0)
             {
                 sb.Append(",\"_removed_").Append(fieldName).Append("\":[");
-                for (int i = 0; i < removed.Count; i++)
+                for (int i = 0; i < removedScratch.Count; i++)
                 {
                     if (i > 0)
                         sb.Append(',');
-                    sb.Append(removed[i]);
+                    sb.Append(removedScratch[i]);
                 }
                 sb.Append(']');
             }
@@ -321,17 +383,32 @@ namespace PlayLoRWithMe
             return true;
         }
 
+        /// <summary>
+        /// Swaps the unit double-buffers so DiffUnitArray's scratch results become
+        /// the new "last" snapshots. When called on the initial baseline (before any
+        /// DiffUnitArray has run), parses into the current last buffer directly.
+        /// </summary>
         private static void UpdateUnitCaches(SessionState state, Dictionary<string, string> fields)
         {
-            if (fields.TryGetValue("allies", out string alliesJson))
-                state.LastAllies = ParseUnitArray(alliesJson);
-            else
-                state.LastAllies.Clear();
+            if (!state.HasLastFields)
+            {
+                // Initial baseline — parse directly into the current "last" buffers.
+                var allies = state.LastAllies;
+                allies.Clear();
+                if (fields.TryGetValue("allies", out string aJson))
+                    ParseUnitArray(aJson, allies);
 
-            if (fields.TryGetValue("enemies", out string enemiesJson))
-                state.LastEnemies = ParseUnitArray(enemiesJson);
-            else
-                state.LastEnemies.Clear();
+                var enemies = state.LastEnemies;
+                enemies.Clear();
+                if (fields.TryGetValue("enemies", out string eJson))
+                    ParseUnitArray(eJson, enemies);
+                return;
+            }
+
+            // DiffUnitArray already populated the scratch buffers; swap them in.
+            // If the field was absent, the scratch buffer was cleared by DiffUnitArray.
+            state.SwapAllies();
+            state.SwapEnemies();
         }
 
         // -------------------------------------------------------------------------

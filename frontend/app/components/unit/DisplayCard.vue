@@ -108,6 +108,25 @@ function toggleBuff(type: string) {
 
 const hasEgo = computed(() => (ally.value.ego?.length ?? 0) > 0);
 
+/**
+ * Whether a hand card at the given index should appear dimmed.
+ * A card is dimmed when the unit is unowned, when a slot for a different
+ * unit is selected, or when the player is targeting from this unit but
+ * with a different card.
+ */
+function isCardDimmed(cardIndex: number, isEgo: boolean): boolean {
+  if (!isOwnUnit(props.unit.id)) return true;
+  if (selectingSlot.value !== null && selectingSlot.value.unitId !== props.unit.id) return true;
+  if (
+    selectingTargetFor.value !== null &&
+    selectingTargetFor.value.unitId === props.unit.id &&
+    !(selectingTargetFor.value.cardIndex === cardIndex && selectingTargetFor.value.isEgo === isEgo)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 watch(hasEgo, (val) => {
   if (!val) egoMode.value = false;
 });
@@ -272,17 +291,7 @@ const detailsLabel = computed(() => {
                   selectingTargetFor?.cardIndex === i &&
                   selectingTargetFor?.isEgo === true
                 "
-                :dimmed="
-                  !isOwnUnit(unit.id) ||
-                  (selectingSlot !== null &&
-                    selectingSlot.unitId !== unit.id) ||
-                  (selectingTargetFor !== null &&
-                    selectingTargetFor.unitId === unit.id &&
-                    !(
-                      selectingTargetFor.cardIndex === i &&
-                      selectingTargetFor.isEgo === true
-                    ))
-                "
+                :dimmed="isCardDimmed(Number(i), true)"
                 :unusable="!isOwnUnit(unit.id) || c.canUse === false"
                 @click="onCardClick(unit.id, Number(i), true)"
                 @detail="detailCard = c"
@@ -298,17 +307,7 @@ const detailsLabel = computed(() => {
                   selectingTargetFor?.cardIndex === i &&
                   !selectingTargetFor?.isEgo
                 "
-                :dimmed="
-                  !isOwnUnit(unit.id) ||
-                  (selectingSlot !== null &&
-                    selectingSlot.unitId !== unit.id) ||
-                  (selectingTargetFor !== null &&
-                    selectingTargetFor.unitId === unit.id &&
-                    !(
-                      selectingTargetFor.cardIndex === i &&
-                      !selectingTargetFor.isEgo
-                    ))
-                "
+                :dimmed="isCardDimmed(Number(i), false)"
                 :unusable="!isOwnUnit(unit.id) || c.canUse === false"
                 @click="onCardClick(unit.id, Number(i))"
                 @detail="detailCard = c"

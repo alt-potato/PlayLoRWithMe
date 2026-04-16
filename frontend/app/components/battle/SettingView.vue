@@ -18,6 +18,7 @@
 <script setup lang="ts">
 import type {
   AllyUnit,
+  ClientAction,
   GameState,
   PlayerInfo,
   SessionState,
@@ -29,7 +30,7 @@ const props = defineProps<{
   state: GameState;
   session: SessionState | null;
   players: PlayerInfo[];
-  sendAction: (action: Record<string, unknown>) => Promise<ActionResult>;
+  sendAction: (action: ClientAction) => Promise<ActionResult>;
   claimUnit: (unitId: number) => Promise<ActionResult>;
   releaseUnit: (unitId: number) => Promise<ActionResult>;
 }>();

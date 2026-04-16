@@ -13,6 +13,9 @@ namespace PlayLoRWithMe
     {
         private static bool _extracted = false;
 
+        /// <summary>Whether gift sprite extraction has completed successfully.</summary>
+        internal static bool IsReady => _extracted;
+
         private static string GiftDir => Path.Combine(Server.WwwRootPath, "assets", "gifts");
 
         /// <summary>

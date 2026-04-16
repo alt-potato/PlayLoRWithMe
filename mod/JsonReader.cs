@@ -12,9 +12,10 @@ namespace PlayLoRWithMe
     /// </summary>
     public sealed class JsonReader
     {
-        // Matches "key":"string-value" (with escaped quotes) or "key":integer
+        // Matches "key":"string-value" (with escaped quotes) or "key":<scalar>.
+        // Intentionally flat: does not handle nested objects or arrays.
         private static readonly Regex _pattern = new Regex(
-            "\"(\\w+)\"\\s*:\\s*(?:\"((?:[^\"\\\\]|\\\\.)*)\"\\s*|(-?\\d+))",
+            "\"(\\w+)\"\\s*:\\s*(?:\"((?:[^\"\\\\]|\\\\.)*)\"\\s*|(-?\\d+|true|false|null))",
             RegexOptions.Compiled
         );
 

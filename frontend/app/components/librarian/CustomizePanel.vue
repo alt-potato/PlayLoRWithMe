@@ -279,7 +279,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
         <!-- Header -->
         <div class="panel-header">
           <span class="panel-title">Customize — {{ lib.name }}</span>
-          <button class="close-btn" title="Cancel" @click="onClose">✕</button>
+          <button class="close-btn" title="Cancel" aria-label="Close customize panel" @click="onClose">✕</button>
         </div>
 
         <!-- Body: preview + tab area -->

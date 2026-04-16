@@ -34,7 +34,9 @@
     fashionBook – active FashionBook, or null/undefined if none.
 -->
 <script setup lang="ts">
+import type { Ref } from "vue";
 import type { AppearanceData, FashionBook, GiftSlot } from "~/types/game";
+import { ASSETS_READY } from "~/composables/useAssetsReady";
 
 const props = defineProps<{
   appearance: AppearanceData;
@@ -59,6 +61,13 @@ const props = defineProps<{
   size?: number;
 }>();
 
+/**
+ * Cache-bust suffix appended to all sprite URLs. Empty initially; set to a
+ * timestamp query when assetsReady transitions to true, forcing the browser to
+ * re-request images that previously returned 404.
+ */
+const cacheBust = ref("");
+
 const BASE = "/assets/customize/";
 
 /**
@@ -80,7 +89,7 @@ let _dimsPromise: Promise<{ w: number; h: number } | null> | null = null;
 
 function fetchDims(): Promise<{ w: number; h: number } | null> {
   if (_dimsPromise) return _dimsPromise;
-  _dimsPromise = fetch("/assets/customize/dimensions.json")
+  _dimsPromise = fetch(`/assets/customize/dimensions.json${cacheBust.value}`)
     .then((r) => r.json() as Promise<{ w: number; h: number }>)
     .catch(() => null);
   return _dimsPromise;
@@ -88,6 +97,25 @@ function fetchDims(): Promise<{ w: number; h: number } | null> {
 
 onMounted(async () => {
   dims.value = await fetchDims();
+});
+
+// When the server finishes extracting assets, clear cached 404s and bust the
+// browser cache so previously-failed sprite layers re-request and appear
+// without requiring a page reload.
+const assetsReady = inject<Ref<boolean>>(ASSETS_READY, ref(true));
+watch(assetsReady, (ready) => {
+  if (!ready) return;
+  // cache-bust query forces the browser to re-request previously-404'd URLs
+  cacheBust.value = `?_=${Date.now()}`;
+  failedSrcs.value = new Set();
+  fashionBodyFailed.value = false;
+  fashionFrontFailed.value = false;
+  fashionSkinFailed.value = false;
+  patronFrontFailed.value = false;
+  patronRearFailed.value = false;
+  // invalidate module-level dimensions cache and re-fetch
+  _dimsPromise = null;
+  fetchDims().then((d) => { dims.value = d; });
 });
 
 /** Convert a [r, g, b] byte tuple (0–255) to a CSS rgb() string. */
@@ -104,14 +132,15 @@ const layers = computed(() => {
   const hair = toRgb(a.hairColor);
   const skin = toRgb(a.skinColor);
   const eye = toRgb(a.eyeColor);
+  const cb = cacheBust.value;
   return {
-    backHair: { src: `${BASE}backhair_${a.backHairID}.png`, tint: hair },
+    backHair: { src: `${BASE}backhair_${a.backHairID}.png${cb}`, tint: hair },
     face: [
-      { src: `${BASE}head_${a.headID ?? 0}.png`, tint: skin },
-      { src: `${BASE}eyes_${a.eyeID}.png`, tint: eye },
-      { src: `${BASE}brows_${a.browID}.png`, tint: hair },
-      { src: `${BASE}mouths_${a.mouthID}.png`, tint: skin },
-      { src: `${BASE}fronthair_${a.frontHairID}.png`, tint: hair },
+      { src: `${BASE}head_${a.headID ?? 0}.png${cb}`, tint: skin },
+      { src: `${BASE}eyes_${a.eyeID}.png${cb}`, tint: eye },
+      { src: `${BASE}brows_${a.browID}.png${cb}`, tint: hair },
+      { src: `${BASE}mouths_${a.mouthID}.png${cb}`, tint: skin },
+      { src: `${BASE}fronthair_${a.frontHairID}.png${cb}`, tint: hair },
     ],
   };
 });
@@ -156,7 +185,7 @@ const fashionFileStem = computed(() => {
 /** URL of the fashion body composite PNG (behind face), or null if inactive. */
 const fashionBodyUrl = computed(() =>
   fashionFileStem.value
-    ? `/assets/fashionbodies/${fashionFileStem.value}${fashionVariantSuffix.value}.png`
+    ? `/assets/fashionbodies/${fashionFileStem.value}${fashionVariantSuffix.value}.png${cacheBust.value}`
     : null
 );
 
@@ -183,7 +212,7 @@ watch(fashionVariantSuffix, () => {
  */
 const fashionFrontUrl = computed(() =>
   props.fashionBook?.hasFrontLayer
-    ? `/assets/fashionbodies_front/${fashionFileStem.value}${fashionVariantSuffix.value}.png`
+    ? `/assets/fashionbodies_front/${fashionFileStem.value}${fashionVariantSuffix.value}.png${cacheBust.value}`
     : null
 );
 
@@ -198,7 +227,7 @@ watch(fashionFileStem, () => { fashionFrontFailed.value = false; });
  */
 const fashionSkinUrl = computed(() =>
   fashionFileStem.value
-    ? `/assets/fashionbodies/${fashionFileStem.value}${fashionVariantSuffix.value}_skin.png`
+    ? `/assets/fashionbodies/${fashionFileStem.value}${fashionVariantSuffix.value}_skin.png${cacheBust.value}`
     : null
 );
 
@@ -214,12 +243,12 @@ watch(fashionVariantSuffix, () => { fashionSkinFailed.value = false; });
  */
 const patronFrontUrl = computed(() =>
   props.appearance.patronHeadId
-    ? `${BASE}head_special_${props.appearance.patronHeadId}.png`
+    ? `${BASE}head_special_${props.appearance.patronHeadId}.png${cacheBust.value}`
     : null
 );
 const patronRearUrl = computed(() =>
   props.appearance.patronHeadId
-    ? `${BASE}head_special_${props.appearance.patronHeadId}_rear.png`
+    ? `${BASE}head_special_${props.appearance.patronHeadId}_rear.png${cacheBust.value}`
     : null
 );
 
@@ -533,7 +562,7 @@ const visibleGifts = computed(() => {
       v-show="showFaceHairLayers"
       class="layer-sprite gift-layer"
       :style="{
-        backgroundImage: `url(/assets/gifts/gift_${gift.id}.png)`,
+        backgroundImage: `url(/assets/gifts/gift_${gift.id}.png${cacheBust})`,
         zIndex: gift.z,
         ...faceRotStyle,
       }"

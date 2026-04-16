@@ -237,6 +237,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
           v-if="isAlly && isSelectPhase && card != null && isOwnUnit(unit.id)"
           class="remove-btn"
           title="Return to hand"
+          aria-label="Remove card from slot"
           @click="onRemoveCard(unit.id, card.slot)"
         >
           ✕

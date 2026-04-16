@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { LIBRARIAN_ACTIONS } from "~/composables/useLibrarianActions";
+import { ASSETS_READY } from "~/composables/useAssetsReady";
+
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
 const statusTitle: Record<ConnectionStatus, string> = {
@@ -34,6 +37,23 @@ const {
   addCardToDeck,
   removeCardFromDeck,
 } = useWebSocket();
+
+// Provide librarian-specific action callbacks via injection so that
+// LibrarianManager and its descendants can access them without prop drilling.
+provide(LIBRARIAN_ACTIONS, {
+  sendAction,
+  lockLibrarian,
+  unlockLibrarian,
+  renameLibrarian,
+  equipKeyPage,
+  addCardToDeck,
+  removeCardFromDeck,
+});
+
+// Provide assetsReady so descendants (e.g. AppearancePreview) can react when
+// the server finishes extracting appearance sprites — clearing cached 404s.
+const assetsReady = computed(() => gameState.value?.assetsReady === true);
+provide(ASSETS_READY, assetsReady);
 
 // SessionPanel is hoisted into the global header so it is reachable from
 // every scene (title, main/librarian manager, battle setup, battle).
@@ -117,16 +137,9 @@ const rawJson = computed(() =>
         :state="gameState"
         :session="session"
         :players="players"
-        :send-action="sendAction"
         :claim-unit="claimUnit"
         :release-unit="releaseUnit"
         :rename-player="renamePlayer"
-        :lock-librarian="lockLibrarian"
-        :unlock-librarian="unlockLibrarian"
-        :rename-librarian="renameLibrarian"
-        :equip-key-page="equipKeyPage"
-        :add-card-to-deck="addCardToDeck"
-        :remove-card-from-deck="removeCardFromDeck"
       />
 
       <div v-else-if="gameState" class="scene-idle">

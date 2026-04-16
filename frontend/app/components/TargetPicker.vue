@@ -62,7 +62,7 @@ function dieState(
       <span class="slot-label"
         >Slot {{ selecting.diceSlot }} &rarr; target</span
       >
-      <button class="close-btn" @click="emit('cancel')">✕</button>
+      <button class="close-btn" aria-label="Cancel target selection" @click="emit('cancel')">✕</button>
     </div>
 
     <!-- Enemy list -->
