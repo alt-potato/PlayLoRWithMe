@@ -795,6 +795,8 @@ namespace PlayLoRWithMe
                                             var passiveXml = Singleton<PassiveXmlList>.Instance?.GetData(p.id);
                                             if (passiveXml != null)
                                                 po.Add("cost", passiveXml.cost);
+                                            if (passiveXml != null && !passiveXml.CanGivePassive)
+                                                po.Add("canTransfer", false);
                                         });
                                     }
                                 }

@@ -133,6 +133,8 @@ export interface Passive {
   isNegative?: boolean;
   rare?: string;
   cost?: number;
+  /** False when the passive cannot be attributed to another key page (unique). Absent = true. */
+  canTransfer?: boolean;
 }
 
 /** An active buff/debuff on a unit. */
