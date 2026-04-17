@@ -567,22 +567,31 @@ namespace PlayLoRWithMe
                                                 {
                                                     o.AddArray("attributedPassives", apArr =>
                                                     {
+                                                        var descList = Singleton<PassiveDescXmlList>.Instance;
                                                         foreach (var pm in attributed)
                                                         {
                                                             var pmData = pm.originData;
                                                             if (pmData?.currentpassive == null)
                                                                 continue;
                                                             var pxml = pmData.currentpassive;
+                                                            // Resolve localized name/desc the same way BookPassiveInfo does —
+                                                            // the raw XML fields are blank for most vanilla entries.
+                                                            string pname = pxml.id.IsWorkshop()
+                                                                ? pxml.name
+                                                                : (descList?.GetName(pxml.id) ?? pxml.name);
+                                                            string pdesc = pxml.id.IsWorkshop()
+                                                                ? pxml.desc
+                                                                : (descList?.GetDesc(pxml.id) ?? pxml.desc);
                                                             apArr.AddObject(ap =>
                                                             {
                                                                 ap.AddObject("passive", pp =>
                                                                 {
                                                                     AddLorId(pp, "id", pxml.id);
-                                                                    pp.Add("name", pxml.name)
+                                                                    pp.Add("name", pname)
                                                                       .Add("rare", pxml.rare.ToString())
                                                                       .Add("isNegative", pxml.isNegative);
-                                                                    if (!string.IsNullOrEmpty(pxml.desc))
-                                                                        pp.Add("desc", pxml.desc);
+                                                                    if (!string.IsNullOrEmpty(pdesc))
+                                                                        pp.Add("desc", pdesc);
                                                                     pp.Add("cost", pxml.cost);
                                                                 });
                                                                 ap.Add("sourceInstanceId", pmData.receivepassivebookId);

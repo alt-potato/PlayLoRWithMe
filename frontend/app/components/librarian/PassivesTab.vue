@@ -253,18 +253,13 @@ function hasEmptySlots(): boolean {
             <span class="book-group-name">{{ group.name }}</span>
           </button>
           <template v-if="!collapsedGroups.has(group.bookIcon)">
-            <div
-              v-for="kp in group.pages"
-              :key="kp.instanceId"
-              class="source-tile"
-              :class="{
-                'source-tile--equipped': isSource(kp),
-                'source-tile--ineligible': isIneligible(kp),
-              }"
-            >
+            <template v-for="kp in group.pages" :key="kp.instanceId">
               <div
-                class="source-tile-header"
-                :class="{ disabled: isIneligible(kp) }"
+                class="source-tile"
+                :class="{
+                  'source-tile--equipped': isSource(kp),
+                  'source-tile--ineligible': isIneligible(kp),
+                }"
                 @click="isIneligible(kp) ? undefined : isSource(kp) ? toggleSourceExpansion(kp) : equipSource(kp)"
               >
                 <span class="source-tile-name">{{ kp.name }}</span>
@@ -283,7 +278,6 @@ function hasEmptySlots(): boolean {
                   Unequip
                 </button>
               </div>
-              <!-- Expanded passives -->
               <div v-if="isSource(kp) && isExpanded(kp)" class="source-passives">
                 <UnitPassiveList :passives="kp.passives">
                   <template #action="{ passive }">
@@ -299,7 +293,7 @@ function hasEmptySlots(): boolean {
                   </template>
                 </UnitPassiveList>
               </div>
-            </div>
+            </template>
           </template>
         </template>
       </div>
@@ -523,14 +517,24 @@ function hasEmptySlots(): boolean {
 /* ── Source tiles ───────────────────────────────────────────────────────────── */
 
 .source-tile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--bg-card);
-  overflow: hidden;
-  transition: border-color var(--duration-fast) var(--ease-out);
+  color: var(--text-1);
+  cursor: pointer;
+  text-align: left;
+  font-size: var(--fs-sm);
+  font-family: var(--font-display);
+  transition: background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
 }
 
 .source-tile:hover {
+  background: var(--bg-card-2);
   border-color: var(--border-mid);
 }
 
@@ -541,24 +545,6 @@ function hasEmptySlots(): boolean {
 
 .source-tile--ineligible {
   opacity: 0.4;
-}
-
-.source-tile-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--sp-2) var(--sp-3);
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: var(--text-1);
-  cursor: pointer;
-  text-align: left;
-  font-size: var(--fs-sm);
-  font-family: var(--font-display);
-}
-
-.source-tile--ineligible .source-tile-header {
   cursor: default;
 }
 
@@ -584,8 +570,8 @@ function hasEmptySlots(): boolean {
 }
 
 .source-passives {
-  border-top: 1px solid var(--border);
-  padding: var(--sp-1) var(--sp-2);
+  padding: 0 var(--sp-2) var(--sp-1) var(--sp-3);
+  margin-top: calc(-1 * var(--sp-1));
 }
 
 /* ── Right column ──────────────────────────────────────────────────────────── */
