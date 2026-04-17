@@ -984,8 +984,9 @@ namespace PlayLoRWithMe
                                 );
                             AddLorId(o, "bookId", book.ClassInfo.id);
 
-                            // Passive-giving eligibility: if this book's passives are
-                            // already attributed to another key page, mark it unavailable.
+                            // Passive-giving eligibility mirrors GetBookList_PassiveEquip:
+                            // a book can't be a passive source if it's already attributed
+                            // elsewhere OR if it's equipped as someone's primary key page.
                             int givenToId = book.originData?.equipedPassiveBookInstanceId ?? -1;
                             if (givenToId >= 0)
                             {
@@ -993,6 +994,11 @@ namespace PlayLoRWithMe
                                 var targetBook = BookInventoryModel.Instance?.GetBookByInstanceId(givenToId);
                                 if (targetBook?.owner != null)
                                     o.Add("passiveGivenTo", targetBook.owner.name);
+                            }
+                            else if (book.owner != null)
+                            {
+                                o.Add("canGivePassive", false)
+                                 .Add("passiveGivenTo", book.owner.name);
                             }
 
                             var inventoryPassiveList = book.CreatePassiveList();

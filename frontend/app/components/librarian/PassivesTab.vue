@@ -259,28 +259,38 @@ function hasEmptySlots(): boolean {
                 :class="{
                   'source-tile--equipped': isSource(kp),
                   'source-tile--ineligible': isIneligible(kp),
+                  'source-tile--expanded': isExpanded(kp),
                 }"
-                @click="isIneligible(kp) ? undefined : isSource(kp) ? toggleSourceExpansion(kp) : equipSource(kp)"
+                @click="toggleSourceExpansion(kp)"
               >
+                <span class="source-tile-chevron">{{ isExpanded(kp) ? "▾" : "▸" }}</span>
                 <span class="source-tile-name">{{ kp.name }}</span>
                 <span v-if="isIneligible(kp)" class="source-tile-status">
                   In use by {{ kp.passiveGivenTo }}
                 </span>
-                <span v-else-if="!isSource(kp)" class="source-tile-speed">
+                <span v-else class="source-tile-speed">
                   {{ kp.speedMin }}–{{ kp.speedMax }}
                 </span>
                 <button
-                  v-else
+                  v-if="isSource(kp)"
                   class="unequip-btn unequip-btn--inline"
                   :disabled="editBusy"
                   @click.stop="unequipSource(kp.instanceId)"
                 >
                   Unequip
                 </button>
+                <button
+                  v-else-if="!isIneligible(kp)"
+                  class="equip-source-btn"
+                  :disabled="editBusy"
+                  @click.stop="equipSource(kp)"
+                >
+                  Equip
+                </button>
               </div>
-              <div v-if="isSource(kp) && isExpanded(kp)" class="source-passives">
+              <div v-if="isExpanded(kp)" class="source-passives">
                 <UnitPassiveList :passives="kp.passives">
-                  <template #action="{ passive }">
+                  <template v-if="isSource(kp)" #action="{ passive }">
                     <button
                       v-if="passive.canTransfer !== false"
                       class="attribute-btn"
@@ -545,7 +555,13 @@ function hasEmptySlots(): boolean {
 
 .source-tile--ineligible {
   opacity: 0.4;
-  cursor: default;
+}
+
+.source-tile-chevron {
+  font-size: var(--fs-2xs);
+  color: var(--text-3);
+  flex-shrink: 0;
+  width: 0.8em;
 }
 
 .source-tile-name {
@@ -706,6 +722,31 @@ function hasEmptySlots(): boolean {
 }
 
 .unequip-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.equip-source-btn {
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-3xs);
+  font-family: var(--font-display);
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: var(--sp-2);
+  transition: background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.equip-source-btn:not(:disabled):hover {
+  background: var(--gold);
+  color: var(--gold-ink);
+}
+
+.equip-source-btn:disabled {
   opacity: 0.4;
   cursor: default;
 }
