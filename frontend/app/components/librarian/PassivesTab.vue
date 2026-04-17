@@ -175,10 +175,84 @@ const chapters = computed(() => {
 
 const chapterFilter = ref("All");
 
+// ── Advanced search ─────────────────────────────────────────────────────────
+
+const kpNameSearch = ref("");
+const passiveSearch = ref("");
+const costFilter = ref<Set<string>>(new Set());
+const keywordFilter = ref<Set<string>>(new Set());
+const showAdvanced = ref(false);
+
+const COST_LABELS = ["1", "2", "3", "4", "5", "6+"];
+const KEYWORD_LABELS = [
+  "Power",
+  "Strength",
+  "Endurance",
+  "Burn",
+  "Paralysis",
+  "Bleed",
+  "Recovery",
+  "Damage",
+];
+
+// Direct togglers — passing a ref through a function argument doesn't work in
+// Vue 3 templates (refs are auto-unwrapped at the call site), so each filter
+// needs its own function that mutates its own ref.
+function toggleCost(value: string) {
+  const next = new Set(costFilter.value);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
+  costFilter.value = next;
+}
+
+function toggleKeyword(value: string) {
+  const next = new Set(keywordFilter.value);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
+  keywordFilter.value = next;
+}
+
+function matchesPassiveCost(p: Passive, selection: Set<string>): boolean {
+  if (selection.size === 0) return true;
+  const c = p.cost ?? 0;
+  const label = c >= 6 ? "6+" : String(c);
+  return selection.has(label);
+}
+
+function matchesKeyword(p: Passive, selection: Set<string>): boolean {
+  if (selection.size === 0) return true;
+  const text = `${p.name ?? ""} ${p.desc ?? ""}`.toLowerCase();
+  for (const k of selection) if (text.includes(k.toLowerCase())) return true;
+  return false;
+}
+
 const filteredPages = computed(() => {
-  if (chapterFilter.value === "All") return availableKeyPages.value;
-  const ch = Number(chapterFilter.value);
-  return availableKeyPages.value.filter((kp) => kp.chapter === ch);
+  const ch = chapterFilter.value === "All" ? null : Number(chapterFilter.value);
+  const nameSearch = kpNameSearch.value.trim().toLowerCase();
+  const passiveSearchText = passiveSearch.value.trim().toLowerCase();
+  const hasPassiveFilter =
+    passiveSearchText !== "" ||
+    costFilter.value.size > 0 ||
+    keywordFilter.value.size > 0;
+
+  return availableKeyPages.value.filter((kp) => {
+    if (ch != null && kp.chapter !== ch) return false;
+    if (nameSearch && !kp.name.toLowerCase().includes(nameSearch)) return false;
+    if (hasPassiveFilter) {
+      // Page matches iff at least one of its passives satisfies all active
+      // passive-level filters (AND across filter types, within a single passive).
+      return (kp.passives ?? []).some((p) => {
+        if (passiveSearchText) {
+          const text = `${p.name ?? ""} ${p.desc ?? ""}`.toLowerCase();
+          if (!text.includes(passiveSearchText)) return false;
+        }
+        if (!matchesPassiveCost(p, costFilter.value)) return false;
+        if (!matchesKeyword(p, keywordFilter.value)) return false;
+        return true;
+      });
+    }
+    return true;
+  });
 });
 
 // ── Book grouping (reused from KeyPageTab) ──────────────────────────────────
@@ -420,6 +494,52 @@ function hasEmptySlots(): boolean {
           {{ ch === "All" ? "All" : `Ch.${ch}` }}
         </button>
       </div>
+
+      <button class="pt-advanced-toggle" @click="showAdvanced = !showAdvanced">
+        {{ showAdvanced ? "▾" : "▸" }} Advanced
+      </button>
+
+      <template v-if="showAdvanced">
+        <input
+          v-model="kpNameSearch"
+          class="pt-search-input"
+          placeholder="Search key pages..."
+          type="search"
+        />
+        <input
+          v-model="passiveSearch"
+          class="pt-search-input"
+          placeholder="Search passive abilities..."
+          type="search"
+        />
+
+        <div class="pt-filter-section-label">Cost</div>
+        <div class="pt-filter-pills">
+          <button
+            v-for="label in COST_LABELS"
+            :key="label"
+            class="pt-filter-pill"
+            :class="{ active: costFilter.has(label) }"
+            @click="toggleCost(label)"
+          >
+            {{ label }}
+          </button>
+        </div>
+
+        <div class="pt-filter-section-label">Keyword</div>
+        <div class="pt-filter-pills">
+          <button
+            v-for="kw in KEYWORD_LABELS"
+            :key="kw"
+            class="pt-filter-pill"
+            :class="{ active: keywordFilter.has(kw) }"
+            @click="toggleKeyword(kw)"
+          >
+            {{ kw }}
+          </button>
+        </div>
+      </template>
+
       <div class="source-grid">
         <div v-if="!groupedPages.length" class="col-empty">No key pages available.</div>
         <template v-for="group in groupedPages" :key="group.bookIcon">
@@ -560,13 +680,15 @@ function hasEmptySlots(): boolean {
           <div class="attributed-source">from: {{ ap.sourceName ?? "Unknown" }}</div>
         </div>
 
-        <!-- Empty slots — thin dashed placeholders (no label) -->
+        <!-- Empty slots — single `-` placeholder per slot -->
         <div
           v-for="i in Math.max(0, emptySlotCount)"
           :key="'empty-' + i"
           class="empty-slot"
           aria-label="Empty slot"
-        />
+        >
+          -
+        </div>
       </div>
 
       <div v-if="actionError" class="action-error">{{ actionError }}</div>
@@ -679,6 +801,93 @@ function hasEmptySlots(): boolean {
   background: var(--gold);
   color: var(--gold-ink);
   border-color: var(--gold-bright);
+}
+
+/* ── Advanced search ──────────────────────────────────────────────────────── */
+
+.pt-search-input {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-mid);
+  background: var(--bg-card-2);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition: border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.pt-search-input::placeholder {
+  color: var(--text-3);
+}
+
+.pt-search-input:focus {
+  outline: none;
+  border-color: var(--gold-dim);
+  box-shadow: var(--shadow-gold);
+}
+
+.pt-advanced-toggle {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.pt-advanced-toggle:hover {
+  color: var(--text-2);
+}
+
+.pt-filter-section-label {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+  font-family: var(--font-display);
+  margin-top: var(--sp-1);
+  flex-shrink: 0;
+}
+
+.pt-filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  flex-shrink: 0;
+}
+
+.pt-filter-pill {
+  font-size: var(--fs-xs);
+  font-family: var(--font-display);
+  padding: var(--sp-1) var(--sp-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.pt-filter-pill:hover {
+  color: var(--text-1);
+  border-color: var(--border-hi);
+}
+
+.pt-filter-pill.active {
+  background: var(--gold-ink);
+  color: var(--gold-bright);
+  border-color: var(--gold-dim);
 }
 
 @media (min-width: 700px) {
@@ -894,9 +1103,11 @@ function hasEmptySlots(): boolean {
 }
 
 .empty-slot {
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-sm);
-  height: 0.4rem;
+  color: var(--text-3);
+  font-size: var(--fs-xs);
+  text-align: center;
+  padding: 0 var(--sp-2);
+  line-height: 1;
 }
 
 .action-error {

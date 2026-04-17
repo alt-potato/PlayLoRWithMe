@@ -58,12 +58,32 @@ const diceTypes = computed(() => {
 const COST_LABELS = ["0", "1", "2", "3", "4", "5+"];
 const DICE_COUNT_LABELS = ["0", "1", "2", "3", "4+"];
 
-/** Toggle a value in a Set-backed ref; replaces the Set to trigger reactivity. */
-function toggleSet(setRef: Ref<Set<string>>, value: string) {
-  const next = new Set(setRef.value);
+// Direct togglers — Vue auto-unwraps refs in template expressions, so passing
+// a ref as a function argument delivers the unwrapped value, not the ref.
+// Each filter needs its own toggler that mutates its own ref.
+function toggleRarity(value: string) {
+  const next = new Set(rarityFilter.value);
   if (next.has(value)) next.delete(value);
   else next.add(value);
-  setRef.value = next;
+  rarityFilter.value = next;
+}
+function toggleCost(value: string) {
+  const next = new Set(costFilter.value);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
+  costFilter.value = next;
+}
+function toggleDiceCount(value: string) {
+  const next = new Set(diceCountFilter.value);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
+  diceCountFilter.value = next;
+}
+function toggleDiceType(value: string) {
+  const next = new Set(diceTypeFilter.value);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
+  diceTypeFilter.value = next;
 }
 
 /** "5+" matches cost >= 5; all other labels match exact numeric cost. */
@@ -113,14 +133,6 @@ watch(filtered, (val) => emit("filtered", val), { immediate: true });
 
 <template>
   <div class="card-filter">
-    <!-- Text search -->
-    <input
-      v-model="searchText"
-      class="filter-search"
-      placeholder="Search cards..."
-      type="search"
-    />
-
     <!-- Chapter pills (single-select; "All" is the implicit default) -->
     <div v-if="chapters.length > 2" class="filter-pills">
       <button
@@ -140,6 +152,14 @@ watch(filtered, (val) => emit("filtered", val), { immediate: true });
     </button>
 
     <template v-if="showAdvanced">
+      <!-- Text search -->
+      <input
+        v-model="searchText"
+        class="filter-search"
+        placeholder="Search cards..."
+        type="search"
+      />
+
       <!-- Cost (multi-select) -->
       <div class="filter-section-label">Cost</div>
       <div class="filter-pills">
@@ -148,7 +168,7 @@ watch(filtered, (val) => emit("filtered", val), { immediate: true });
           :key="label"
           class="filter-pill"
           :class="{ active: costFilter.has(label) }"
-          @click="toggleSet(costFilter, label)"
+          @click="toggleCost(label)"
         >
           {{ label }}
         </button>
@@ -162,7 +182,7 @@ watch(filtered, (val) => emit("filtered", val), { immediate: true });
           :key="r"
           class="filter-pill"
           :class="{ active: rarityFilter.has(r) }"
-          @click="toggleSet(rarityFilter, r)"
+          @click="toggleRarity(r)"
         >
           {{ r }}
         </button>
@@ -176,7 +196,7 @@ watch(filtered, (val) => emit("filtered", val), { immediate: true });
           :key="label"
           class="filter-pill"
           :class="{ active: diceCountFilter.has(label) }"
-          @click="toggleSet(diceCountFilter, label)"
+          @click="toggleDiceCount(label)"
         >
           {{ label }}
         </button>
@@ -190,7 +210,7 @@ watch(filtered, (val) => emit("filtered", val), { immediate: true });
           :key="dt"
           class="filter-pill"
           :class="{ active: diceTypeFilter.has(dt) }"
-          @click="toggleSet(diceTypeFilter, dt)"
+          @click="toggleDiceType(dt)"
         >
           {{ dt }}
         </button>
