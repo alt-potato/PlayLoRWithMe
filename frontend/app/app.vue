@@ -235,8 +235,11 @@ const rawJson = computed(() =>
   --text-info-hi: #b0bec5;
 
   /* ── Rarity accents ── */
-  --rarity-uncommon: #56a348;
-  --rarity-rare: #4169c4;
+  --rarity-common: #2e7d32;
+  --rarity-uncommon: #1565c0;
+  --rarity-rare: #6a1b9a;
+  --rarity-unique: #c9a227;
+  --rarity-special: #c62828;
 
   --blue-hi: #1976d2;
   --cyan: #4fc3f7;

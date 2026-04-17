@@ -132,11 +132,11 @@ export function diceIcon(type: string, detail: string): string | null {
 }
 
 export const RARITY_COLORS: Record<string, string> = {
-  Common: "#2e7d32",
-  Uncommon: "#1565c0",
-  Rare: "#6a1b9a",
-  Unique: "#c9a227",
-  Special: "#c62828",
+  Common: "var(--rarity-common)",
+  Uncommon: "var(--rarity-uncommon)",
+  Rare: "var(--rarity-rare)",
+  Unique: "var(--rarity-unique)",
+  Special: "var(--rarity-special)",
 };
 
 /** CSS colour for a card rarity. */

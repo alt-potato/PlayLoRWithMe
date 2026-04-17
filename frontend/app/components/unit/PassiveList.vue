@@ -77,6 +77,10 @@ function passiveClass(p: Passive) {
   border-top: 1px solid var(--border);
 }
 
+.passive-entry.rarity-common {
+  border-left-color: var(--rarity-common);
+}
+
 .passive-entry.rarity-uncommon {
   border-left-color: var(--rarity-uncommon);
 }
@@ -86,11 +90,11 @@ function passiveClass(p: Passive) {
 }
 
 .passive-entry.rarity-unique {
-  border-left-color: var(--gold);
+  border-left-color: var(--rarity-unique);
 }
 
 .passive-entry.rarity-special {
-  border-left-color: var(--crimson-hi);
+  border-left-color: var(--rarity-special);
 }
 
 .passive-entry.unavailable {
