@@ -134,7 +134,7 @@ details[open].passive-entry > .passive-header .chevron {
 
 .passive-cost {
   font-size: 0.65rem;
-  color: var(--text-3);
+  color: var(--text-2);
   flex-shrink: 0;
   width: 1rem;
   text-align: center;

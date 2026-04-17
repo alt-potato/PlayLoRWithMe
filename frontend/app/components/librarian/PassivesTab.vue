@@ -1,11 +1,11 @@
 <!--
   PassivesTab.vue
 
-  Passive attribution tab inside the librarian EditPanel. Left column shows
-  available key pages (grouped by book) that can be equipped as passive sources;
-  clicking one equips it and expands to show its transferable passives. Right
-  column shows the current key page's passive slots (innate greyed, attributed
-  with remove buttons) and a source key pages summary with unequip controls.
+  Passive attribution tab inside the librarian EditPanel. Uses a Save/Cancel
+  model: all source-equip/unequip and passive attribute/remove actions are
+  staged locally. Nothing hits the server until the user clicks Save Changes.
+  Cancel discards staged edits. Because passives are per-key-page, a primary
+  key-page change (server-side reset) re-initializes the staged view.
 
   Props:
     lib                    – librarian being edited
@@ -44,13 +44,35 @@ const props = defineProps<{
 }>();
 
 const availableKeyPages = computed(() => props.state.availableKeyPages ?? []);
-const sourceKeyPageIds = computed(() => new Set(props.lib.sourceKeyPageIds ?? []));
-const attributedPassives = computed(() => props.lib.attributedPassives ?? []);
+
+// ── Staged state (Save/Cancel model) ────────────────────────────────────────
+
+const stagedSourceIds = ref<Set<number>>(new Set());
+const stagedAttributions = ref<AttributedPassive[]>([]);
+
+function initStaged() {
+  stagedSourceIds.value = new Set(props.lib.sourceKeyPageIds ?? []);
+  stagedAttributions.value = [...(props.lib.attributedPassives ?? [])];
+}
+
+initStaged();
+
+// Server resets passives when the primary key-page changes, so staged state
+// must follow.
+watch(() => props.lib.keyPage?.instanceId, () => { initStaged(); });
+
+// UI reads staged values, not server values.
+const sourceKeyPageIds = computed(() => stagedSourceIds.value);
+const attributedPassives = computed(() => stagedAttributions.value);
+
 const innatePassives = computed(() => {
   const all = props.lib.passives ?? [];
   const attr = props.lib.attributedPassives ?? [];
   if (!attr.length) return all;
-  // Remove one matching passive per attributed entry (handles duplicates)
+  // Remove one matching passive per actually-attributed entry (handles duplicates).
+  // Innate derivation uses the *actual* server-side attribution list, since the
+  // server authoritatively decides which of the key-page's passive slots are
+  // filled by attribution vs. innate.
   const remaining = [...all];
   for (const ap of attr) {
     const key = `${ap.passive.id.id}:${ap.passive.id.packageId}`;
@@ -63,11 +85,86 @@ const innatePassives = computed(() => {
 });
 const passiveSlotCount = computed(() => props.lib.passiveSlotCount ?? 0);
 const maxPassiveCost = computed(() => props.lib.maxPassiveCost ?? 0);
-const currentPassiveCost = computed(() => props.lib.currentPassiveCost ?? 0);
 
 const emptySlotCount = computed(
   () => passiveSlotCount.value - innatePassives.value.length - attributedPassives.value.length,
 );
+
+// ── Pending diff (staged vs server) ─────────────────────────────────────────
+
+const actualSourceIds = computed(() => new Set(props.lib.sourceKeyPageIds ?? []));
+
+function attrKey(sourceId: number, p: Passive): string {
+  return `${sourceId}:${p.id.id}:${p.id.packageId}`;
+}
+
+const actualAttrKeys = computed(() => new Set(
+  (props.lib.attributedPassives ?? []).map((ap) => attrKey(ap.sourceInstanceId, ap.passive)),
+));
+
+const pendingSourceAdds = computed(() => {
+  const out = new Set<number>();
+  for (const id of stagedSourceIds.value) if (!actualSourceIds.value.has(id)) out.add(id);
+  return out;
+});
+const pendingSourceRemoves = computed(() => {
+  const out = new Set<number>();
+  for (const id of actualSourceIds.value) if (!stagedSourceIds.value.has(id)) out.add(id);
+  return out;
+});
+const pendingAttrAdds = computed(() =>
+  stagedAttributions.value.filter(
+    (ap) => !actualAttrKeys.value.has(attrKey(ap.sourceInstanceId, ap.passive)),
+  ),
+);
+const pendingAttrRemoves = computed(() => {
+  const stagedKeys = new Set(
+    stagedAttributions.value.map((ap) => attrKey(ap.sourceInstanceId, ap.passive)),
+  );
+  return (props.lib.attributedPassives ?? []).filter(
+    (ap) => !stagedKeys.has(attrKey(ap.sourceInstanceId, ap.passive)),
+  );
+});
+
+const isDirty = computed(
+  () =>
+    pendingSourceAdds.value.size > 0 ||
+    pendingSourceRemoves.value.size > 0 ||
+    pendingAttrAdds.value.length > 0 ||
+    pendingAttrRemoves.value.length > 0,
+);
+
+function isPendingSourceAdd(kp: AvailableKeyPage): boolean {
+  return pendingSourceAdds.value.has(kp.instanceId);
+}
+function isPendingAttrAdd(ap: AttributedPassive): boolean {
+  return !actualAttrKeys.value.has(attrKey(ap.sourceInstanceId, ap.passive));
+}
+
+// Staged cost = server current minus the costs of pending removals plus the
+// costs of pending additions. Server `currentPassiveCost` already reflects the
+// actual attribution set; we adjust by the diff.
+const stagedPassiveCost = computed(() => {
+  let cost = props.lib.currentPassiveCost ?? 0;
+  for (const ap of pendingAttrRemoves.value) cost -= ap.passive.cost ?? 0;
+  for (const ap of pendingAttrAdds.value) cost += ap.passive.cost ?? 0;
+  return cost;
+});
+
+// Duplicate prevention: a passive (by id+packageId) can appear at most once
+// across innate + attributed. Check the staged view so users can re-attribute
+// a passive they just pending-removed from a different source.
+const stagedPassiveIds = computed(() => {
+  const set = new Set<string>();
+  for (const p of innatePassives.value) set.add(`${p.id.id}:${p.id.packageId}`);
+  for (const ap of stagedAttributions.value)
+    set.add(`${ap.passive.id.id}:${ap.passive.id.packageId}`);
+  return set;
+});
+
+function hasDuplicate(p: Passive): boolean {
+  return stagedPassiveIds.value.has(`${p.id.id}:${p.id.packageId}`);
+}
 
 // ── Chapter filter (reused from KeyPageTab) ─────────────────────────────────
 
@@ -139,8 +236,18 @@ function isExpanded(kp: AvailableKeyPage): boolean {
   return expandedSources.value.has(kp.instanceId);
 }
 
-/** Whether a key page is ineligible (attributed to another librarian). */
+/** Whether this key page is the current librarian's own primary key page. */
+function isOwnPrimary(kp: AvailableKeyPage): boolean {
+  return kp.instanceId === props.lib.keyPage?.instanceId;
+}
+
+/**
+ * Whether a key page is ineligible (attributed to another librarian or
+ * equipped as someone else's primary). Own pages — this librarian's primary
+ * or one of its existing sources — are never ineligible from this perspective.
+ */
 function isIneligible(kp: AvailableKeyPage): boolean {
+  if (isOwnPrimary(kp) || isSource(kp)) return false;
   return kp.canGivePassive === false;
 }
 
@@ -149,14 +256,18 @@ function isIneligible(kp: AvailableKeyPage): boolean {
 const sourceNameMap = computed(() => {
   const map = new Map<number, string>();
   for (const kp of availableKeyPages.value) {
-    if (sourceKeyPageIds.value.has(kp.instanceId)) {
-      map.set(kp.instanceId, kp.name);
-    }
+    map.set(kp.instanceId, kp.name);
+  }
+  // Ensure a name exists for pending-remove sources that may have dropped
+  // out of availableKeyPages after being queued for unequip.
+  for (const ap of props.lib.attributedPassives ?? []) {
+    if (ap.sourceName && !map.has(ap.sourceInstanceId))
+      map.set(ap.sourceInstanceId, ap.sourceName);
   }
   return map;
 });
 
-/** Count of passives attributed from each source. */
+/** Count of passives attributed from each source (staged view). */
 const sourcePassiveCounts = computed(() => {
   const map = new Map<number, number>();
   for (const ap of attributedPassives.value) {
@@ -165,60 +276,127 @@ const sourcePassiveCounts = computed(() => {
   return map;
 });
 
-// ── Actions ─────────────────────────────────────────────────────────────────
+/** Source summary rows: staged sources first, then pending-remove sources. */
+interface SourceSummaryRow {
+  id: number;
+  pendingRemove: boolean;
+}
+const sourceSummaryRows = computed((): SourceSummaryRow[] => {
+  const rows: SourceSummaryRow[] = [];
+  for (const id of sourceKeyPageIds.value) rows.push({ id, pendingRemove: false });
+  for (const id of pendingSourceRemoves.value) rows.push({ id, pendingRemove: true });
+  return rows;
+});
+
+/** Undo a pending source removal by re-adding it to the staged set. */
+function undoUnequipSource(instanceId: number) {
+  const next = new Set(stagedSourceIds.value);
+  next.add(instanceId);
+  stagedSourceIds.value = next;
+}
+
+// ── Local stagers ───────────────────────────────────────────────────────────
 
 const actionError = ref<string | null>(null);
+const saveBusy = ref(false);
+const localBusy = computed(() => props.editBusy || saveBusy.value);
 
-async function equipSource(kp: AvailableKeyPage) {
-  actionError.value = null;
-  try {
-    await props.onEquipSourceBook(kp.instanceId);
-    // Auto-expand after equipping.
-    const next = new Set(expandedSources.value);
-    next.add(kp.instanceId);
-    expandedSources.value = next;
-  } catch (e) {
-    actionError.value = String(e);
+function equipSource(kp: AvailableKeyPage) {
+  const next = new Set(stagedSourceIds.value);
+  next.add(kp.instanceId);
+  stagedSourceIds.value = next;
+  const exp = new Set(expandedSources.value);
+  exp.add(kp.instanceId);
+  expandedSources.value = exp;
+}
+
+function unequipSource(instanceId: number) {
+  const next = new Set(stagedSourceIds.value);
+  next.delete(instanceId);
+  stagedSourceIds.value = next;
+  // Cascade: drop any staged attributions from this source.
+  stagedAttributions.value = stagedAttributions.value.filter(
+    (ap) => ap.sourceInstanceId !== instanceId,
+  );
+  const exp = new Set(expandedSources.value);
+  exp.delete(instanceId);
+  expandedSources.value = exp;
+}
+
+function attributePassive(sourceInstanceId: number, p: Passive) {
+  const sourceName = availableKeyPages.value.find(
+    (kp) => kp.instanceId === sourceInstanceId,
+  )?.name;
+  stagedAttributions.value = [
+    ...stagedAttributions.value,
+    { sourceInstanceId, passive: p, sourceName },
+  ];
+}
+
+function removeAttributed(ap: AttributedPassive) {
+  const key = attrKey(ap.sourceInstanceId, ap.passive);
+  const idx = stagedAttributions.value.findIndex(
+    (x) => attrKey(x.sourceInstanceId, x.passive) === key,
+  );
+  if (idx >= 0) {
+    const next = [...stagedAttributions.value];
+    next.splice(idx, 1);
+    stagedAttributions.value = next;
   }
 }
 
-async function unequipSource(bookInstanceId: number) {
-  actionError.value = null;
-  try {
-    await props.onUnequipSourceBook(bookInstanceId);
-    const next = new Set(expandedSources.value);
-    next.delete(bookInstanceId);
-    expandedSources.value = next;
-  } catch (e) {
-    actionError.value = String(e);
-  }
+/** Restore a pending-remove attribution to the staged set. */
+function undoRemoveAttributed(ap: AttributedPassive) {
+  stagedAttributions.value = [...stagedAttributions.value, ap];
 }
 
-async function attributePassive(sourceInstanceId: number, p: Passive) {
+// ── Save / Cancel ───────────────────────────────────────────────────────────
+
+async function saveChanges() {
+  if (!isDirty.value) return;
+  saveBusy.value = true;
   actionError.value = null;
   try {
-    await props.onAttributePassive(sourceInstanceId, p.id.id, p.id.packageId);
+    // Order matters: drop attributions before unequipping their source, and
+    // equip new sources before attributing from them.
+    for (const ap of pendingAttrRemoves.value) {
+      await props.onRemoveAttributedPassive(
+        ap.sourceInstanceId,
+        ap.passive.id.id,
+        ap.passive.id.packageId,
+      );
+    }
+    for (const id of pendingSourceRemoves.value) {
+      await props.onUnequipSourceBook(id);
+    }
+    for (const id of pendingSourceAdds.value) {
+      await props.onEquipSourceBook(id);
+    }
+    for (const ap of pendingAttrAdds.value) {
+      await props.onAttributePassive(
+        ap.sourceInstanceId,
+        ap.passive.id.id,
+        ap.passive.id.packageId,
+      );
+    }
   } catch (e) {
     actionError.value = String(e);
+  } finally {
+    saveBusy.value = false;
   }
+  // Re-sync staged state to whatever the server actually accepted.
+  await nextTick();
+  initStaged();
 }
 
-async function removeAttributed(ap: AttributedPassive) {
+function cancelChanges() {
+  initStaged();
   actionError.value = null;
-  try {
-    await props.onRemoveAttributedPassive(
-      ap.sourceInstanceId,
-      ap.passive.id.id,
-      ap.passive.id.packageId,
-    );
-  } catch (e) {
-    actionError.value = String(e);
-  }
 }
 
 /** Whether the cost cap would be exceeded by attributing a passive with this cost. */
 function wouldExceedCost(passiveCost: number): boolean {
-  return currentPassiveCost.value + passiveCost > maxPassiveCost.value;
+  return stagedPassiveCost.value + passiveCost > maxPassiveCost.value;
 }
 
 function hasEmptySlots(): boolean {
@@ -258,31 +436,33 @@ function hasEmptySlots(): boolean {
                 class="source-tile"
                 :class="{
                   'source-tile--equipped': isSource(kp),
+                  'source-tile--own': isOwnPrimary(kp),
                   'source-tile--ineligible': isIneligible(kp),
                   'source-tile--expanded': isExpanded(kp),
+                  'source-tile--pending-add': isPendingSourceAdd(kp),
                 }"
                 @click="toggleSourceExpansion(kp)"
               >
                 <span class="source-tile-chevron">{{ isExpanded(kp) ? "▾" : "▸" }}</span>
                 <span class="source-tile-name">{{ kp.name }}</span>
-                <span v-if="isIneligible(kp)" class="source-tile-status">
-                  In use by {{ kp.passiveGivenTo }}
+                <span v-if="isOwnPrimary(kp)" class="source-tile-status">
+                  Equipped
                 </span>
-                <span v-else class="source-tile-speed">
-                  {{ kp.speedMin }}–{{ kp.speedMax }}
+                <span v-else-if="isIneligible(kp)" class="source-tile-status">
+                  In use by {{ kp.passiveGivenTo }}
                 </span>
                 <button
                   v-if="isSource(kp)"
                   class="unequip-btn unequip-btn--inline"
-                  :disabled="editBusy"
+                  :disabled="localBusy"
                   @click.stop="unequipSource(kp.instanceId)"
                 >
                   Unequip
                 </button>
                 <button
-                  v-else-if="!isIneligible(kp)"
+                  v-else-if="!isIneligible(kp) && !isOwnPrimary(kp)"
                   class="equip-source-btn"
-                  :disabled="editBusy"
+                  :disabled="localBusy"
                   @click.stop="equipSource(kp)"
                 >
                   Equip
@@ -292,13 +472,14 @@ function hasEmptySlots(): boolean {
                 <UnitPassiveList :passives="kp.passives">
                   <template v-if="isSource(kp)" #action="{ passive }">
                     <button
-                      v-if="passive.canTransfer !== false"
+                      v-if="passive.canTransfer !== false && !hasDuplicate(passive)"
                       class="attribute-btn"
-                      :disabled="editBusy || wouldExceedCost(passive.cost ?? 0) || !hasEmptySlots()"
+                      :disabled="localBusy || wouldExceedCost(passive.cost ?? 0) || !hasEmptySlots()"
                       @click.stop="attributePassive(kp.instanceId, passive)"
                     >
                       Attribute
                     </button>
+                    <span v-else-if="hasDuplicate(passive)" class="unique-label">Duplicate</span>
                     <span v-else class="unique-label">Unique</span>
                   </template>
                 </UnitPassiveList>
@@ -313,10 +494,18 @@ function hasEmptySlots(): boolean {
     <div class="pt-col pt-col--detail">
       <div class="col-header">Current Passives</div>
 
-      <!-- Cost bar -->
+      <!-- Primary key page (passives are per-key-page; compact omits stats/resistances) -->
+      <LibrarianKeyPageDetail
+        v-if="lib.keyPage"
+        class="primary-keypage"
+        :key-page="lib.keyPage"
+        :compact="true"
+      />
+
+      <!-- Cost bar (reflects staged state) -->
       <div class="cost-bar">
         <span class="cost-label">Passive Cost</span>
-        <span class="cost-value">{{ currentPassiveCost }} / {{ maxPassiveCost }}</span>
+        <span class="cost-value">{{ stagedPassiveCost }} / {{ maxPassiveCost }}</span>
       </div>
 
       <div class="current-passives">
@@ -329,17 +518,18 @@ function hasEmptySlots(): boolean {
           <UnitPassiveList :passives="[p]" />
         </div>
 
-        <!-- Attributed passives -->
+        <!-- Staged attributed passives (includes pending-add) -->
         <div
           v-for="ap in attributedPassives"
           :key="'attr-' + ap.passive.id.id + ap.sourceInstanceId"
           class="current-passive current-passive--attributed"
+          :class="{ 'current-passive--pending-add': isPendingAttrAdd(ap) }"
         >
           <UnitPassiveList :passives="[ap.passive]">
             <template #action="{ passive: _ }">
               <button
                 class="remove-btn"
-                :disabled="editBusy"
+                :disabled="localBusy"
                 @click="removeAttributed(ap)"
               >
                 ✕
@@ -349,42 +539,81 @@ function hasEmptySlots(): boolean {
           <div class="attributed-source">from: {{ ap.sourceName ?? "Unknown" }}</div>
         </div>
 
-        <!-- Empty slots -->
+        <!-- Pending-remove attributed passives (struck; click ↶ to undo) -->
+        <div
+          v-for="ap in pendingAttrRemoves"
+          :key="'rm-' + ap.passive.id.id + ap.sourceInstanceId"
+          class="current-passive current-passive--attributed current-passive--pending-remove"
+        >
+          <UnitPassiveList :passives="[ap.passive]">
+            <template #action="{ passive: _ }">
+              <button
+                class="remove-btn"
+                :disabled="localBusy"
+                title="Undo remove"
+                @click="undoRemoveAttributed(ap)"
+              >
+                ↶
+              </button>
+            </template>
+          </UnitPassiveList>
+          <div class="attributed-source">from: {{ ap.sourceName ?? "Unknown" }}</div>
+        </div>
+
+        <!-- Empty slots — thin dashed placeholders (no label) -->
         <div
           v-for="i in Math.max(0, emptySlotCount)"
           :key="'empty-' + i"
           class="empty-slot"
-        >
-          Empty slot
-        </div>
+          aria-label="Empty slot"
+        />
       </div>
 
       <div v-if="actionError" class="action-error">{{ actionError }}</div>
 
-      <!-- Source key pages summary -->
-      <div v-if="sourceKeyPageIds.size > 0" class="source-summary">
+      <!-- Source key pages summary — includes pending-remove rows (struck) -->
+      <div v-if="sourceSummaryRows.length > 0" class="source-summary">
         <div class="source-summary-header">
           Source Key Pages ({{ sourceKeyPageIds.size }}/4)
         </div>
         <div
-          v-for="sid in sourceKeyPageIds"
-          :key="sid"
+          v-for="row in sourceSummaryRows"
+          :key="(row.pendingRemove ? 'rm-' : 'kp-') + row.id"
           class="source-summary-row"
+          :class="{ 'source-summary-row--pending-remove': row.pendingRemove }"
         >
           <div class="source-summary-info">
-            <span class="source-summary-name">{{ sourceNameMap.get(sid) ?? "Unknown" }}</span>
+            <span class="source-summary-name">{{ sourceNameMap.get(row.id) ?? "Unknown" }}</span>
             <span class="source-summary-count">
-              {{ sourcePassiveCounts.get(sid) ?? 0 }} passives
+              {{ sourcePassiveCounts.get(row.id) ?? 0 }} passives
             </span>
           </div>
           <button
+            v-if="row.pendingRemove"
             class="remove-btn"
-            :disabled="editBusy"
-            @click="unequipSource(sid)"
+            :disabled="localBusy"
+            title="Undo unequip"
+            @click="undoUnequipSource(row.id)"
+          >
+            ↶
+          </button>
+          <button
+            v-else
+            class="remove-btn"
+            :disabled="localBusy"
+            @click="unequipSource(row.id)"
           >
             ✕
           </button>
         </div>
+      </div>
+
+      <!-- Save / Cancel bar — visible when staged state differs from server -->
+      <div v-if="isDirty" class="save-cancel-bar">
+        <button class="cancel-btn" :disabled="saveBusy" @click="cancelChanges">Cancel</button>
+        <button class="save-btn" :disabled="saveBusy || editBusy" @click="saveChanges">
+          {{ saveBusy ? "Saving…" : "Save Changes" }}
+        </button>
       </div>
     </div>
   </div>
@@ -485,6 +714,8 @@ function hasEmptySlots(): boolean {
 
 .source-grid {
   overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding-right: var(--sp-1);
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
@@ -553,15 +784,27 @@ function hasEmptySlots(): boolean {
   background: var(--gold-glow);
 }
 
+.source-tile--own {
+  border-color: var(--border-mid);
+  background: var(--bg-card-2);
+}
+
 .source-tile--ineligible {
   opacity: 0.4;
 }
 
+.source-tile--pending-add {
+  border-style: dashed;
+  border-color: var(--gold);
+  background: var(--gold-glow);
+}
+
 .source-tile-chevron {
   font-size: var(--fs-2xs);
-  color: var(--text-3);
+  color: var(--text-2);
   flex-shrink: 0;
   width: 0.8em;
+  margin-right: var(--sp-2);
 }
 
 .source-tile-name {
@@ -574,14 +817,7 @@ function hasEmptySlots(): boolean {
 .source-tile-status {
   flex-shrink: 0;
   font-size: var(--fs-3xs);
-  color: var(--text-3);
-  margin-left: var(--sp-2);
-}
-
-.source-tile-speed {
-  flex-shrink: 0;
-  color: var(--text-3);
-  font-size: var(--fs-xs);
+  color: var(--text-2);
   margin-left: var(--sp-2);
 }
 
@@ -591,6 +827,12 @@ function hasEmptySlots(): boolean {
 }
 
 /* ── Right column ──────────────────────────────────────────────────────────── */
+
+.primary-keypage {
+  flex-shrink: 0;
+  padding-top: 0;
+  padding-bottom: var(--sp-1);
+}
 
 .cost-bar {
   display: flex;
@@ -620,12 +862,28 @@ function hasEmptySlots(): boolean {
   flex-direction: column;
   gap: var(--sp-1);
   overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding-right: var(--sp-1);
   flex: 1;
   min-height: 0;
 }
 
 .current-passive--innate {
   opacity: 0.6;
+}
+
+.current-passive--pending-add :deep(.passive-entry) {
+  border-left-style: dashed;
+  border-left-color: var(--gold);
+}
+
+.current-passive--pending-remove {
+  opacity: 0.55;
+}
+
+.current-passive--pending-remove :deep(.passive-name),
+.current-passive--pending-remove .attributed-source {
+  text-decoration: line-through;
 }
 
 .attributed-source {
@@ -637,11 +895,8 @@ function hasEmptySlots(): boolean {
 
 .empty-slot {
   border: 1px dashed var(--border);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--radius-md);
-  color: var(--text-3);
-  font-size: var(--fs-xs);
-  text-align: center;
+  border-radius: var(--radius-sm);
+  height: 0.4rem;
 }
 
 .action-error {
@@ -775,6 +1030,15 @@ function hasEmptySlots(): boolean {
   padding: var(--sp-1) 0;
 }
 
+.source-summary-row--pending-remove {
+  opacity: 0.55;
+}
+
+.source-summary-row--pending-remove .source-summary-name,
+.source-summary-row--pending-remove .source-summary-count {
+  text-decoration: line-through;
+}
+
 .source-summary-info {
   display: flex;
   flex-direction: column;
@@ -792,5 +1056,65 @@ function hasEmptySlots(): boolean {
 .source-summary-count {
   font-size: var(--fs-3xs);
   color: var(--text-3);
+}
+
+/* ── Save / Cancel bar ─────────────────────────────────────────────────────── */
+
+.save-cancel-bar {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+  padding-top: var(--sp-3);
+  margin-top: var(--sp-2);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.save-btn {
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gold);
+  background: var(--gold);
+  color: var(--gold-ink);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.save-btn:not(:disabled):hover {
+  background: var(--gold-bright);
+}
+
+.save-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.cancel-btn {
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.cancel-btn:not(:disabled):hover {
+  color: var(--text-1);
+  border-color: var(--text-2);
+}
+
+.cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 </style>

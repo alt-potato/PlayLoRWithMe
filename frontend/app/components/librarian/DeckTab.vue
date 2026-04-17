@@ -110,6 +110,7 @@ function availableToCard(c: AvailableCard, i: number): Card {
     <!-- Right: equipped deck — click a card to remove one copy -->
     <div class="deck-col deck-col--equipped">
       <div class="col-header">Deck</div>
+      <LibrarianKeyPageDetail class="deck-keypage" :key-page="lib.keyPage" :compact="true" />
       <div v-if="!lib.deckPreview.length" class="col-empty">No cards equipped.</div>
       <div v-else class="card-grid">
         <HandCard
@@ -164,12 +165,19 @@ function availableToCard(c: AvailableCard, i: number): Card {
 
 .card-grid {
   overflow-y: auto;
+  scrollbar-gutter: stable;
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-2);
   align-content: flex-start;
   flex: 1;
   min-height: 0;
+}
+
+.deck-keypage {
+  flex-shrink: 0;
+  padding-top: 0;
+  padding-bottom: var(--sp-1);
 }
 
 /*

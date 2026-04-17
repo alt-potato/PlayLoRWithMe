@@ -7,6 +7,8 @@
 
   Props:
     keyPage – key page data to display
+    compact – when true, hides stats and resistances (used on Deck/Passives tabs
+              where only the name + passives are relevant)
 -->
 <script setup lang="ts">
 import type { AvailableKeyPage, KeyPage, Passive, Resistances } from "~/types/game";
@@ -14,7 +16,7 @@ import type { AvailableKeyPage, KeyPage, Passive, Resistances } from "~/types/ga
 /** Union of both key page shapes — use optional fields for extras not on KeyPage. */
 export type AnyKeyPage = AvailableKeyPage | KeyPage;
 
-const props = defineProps<{ keyPage: AnyKeyPage }>();
+const props = defineProps<{ keyPage: AnyKeyPage; compact?: boolean }>();
 
 const kp = computed(() => props.keyPage);
 const resistances = computed((): Resistances | undefined => kp.value.resistances);
@@ -29,7 +31,7 @@ const hasSpeed = computed(() => kp.value.speedMin != null && kp.value.speedMax !
     <div class="kp-name">{{ kp.name }}</div>
 
     <!-- Stats: HP, break gauge, speed -->
-    <div class="kp-stats">
+    <div v-if="!props.compact" class="kp-stats">
       <div v-if="hp != null" class="stat-row">
         <img src="/assets/stats/health.png" class="stat-icon" alt="HP" />
         <span class="stat-value">{{ hp }}</span>
@@ -45,7 +47,7 @@ const hasSpeed = computed(() => kp.value.speedMin != null && kp.value.speedMax !
     </div>
 
     <!-- Resistances -->
-    <template v-if="resistances">
+    <template v-if="resistances && !props.compact">
       <div class="section-label">Resistances</div>
       <UnitResistanceTable :resistances="resistances" />
     </template>
