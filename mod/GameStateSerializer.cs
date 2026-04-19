@@ -927,23 +927,33 @@ namespace PlayLoRWithMe
                 BookInventoryModel.Instance?.GetBookList_equip()
                 ?? new System.Collections.Generic.List<BookModel>();
 
-            // Replicate UISettingEquipPageScrollList.SetData sort + Reverse:
-            //   primary  : chapter ascending
-            //   secondary: workshopId descending (larger packageId first)
-            //   tertiary : UIStoryLine enum value ascending
-            // After Reverse → chapter descending, workshopId ascending, storyLine descending.
+            // Replicate the in-game equip-page list ordering:
+            //   Section order (UISettingEquipPageScrollList.SetData): chapter DESC,
+            //     workshopId ASC, UIStoryLine enum value DESC.
+            //   Within each section (SortUtil.EquipPageCompByRarity): rarity DESC,
+            //     bookId.id ASC.
             availableBooks.Sort(
                 (x, y) =>
                 {
-                    if (x.ClassInfo.Chapter != y.ClassInfo.Chapter)
-                        return x.ClassInfo.Chapter.CompareTo(y.ClassInfo.Chapter);
-                    int wsComp = x.ClassInfo.workshopID.CompareTo(y.ClassInfo.workshopID);
-                    if (wsComp != 0)
-                        return wsComp > 0 ? -1 : 1; // descending before Reverse
-                    return GetStoryLineInt(x).CompareTo(GetStoryLineInt(y));
+                    int cmp = y.ClassInfo.Chapter.CompareTo(x.ClassInfo.Chapter);
+                    if (cmp != 0)
+                        return cmp;
+                    cmp = string.Compare(
+                        x.ClassInfo.workshopID,
+                        y.ClassInfo.workshopID,
+                        System.StringComparison.Ordinal
+                    );
+                    if (cmp != 0)
+                        return cmp;
+                    cmp = GetStoryLineInt(y).CompareTo(GetStoryLineInt(x));
+                    if (cmp != 0)
+                        return cmp;
+                    cmp = ((int)y.ClassInfo.Rarity).CompareTo((int)x.ClassInfo.Rarity);
+                    if (cmp != 0)
+                        return cmp;
+                    return x.ClassInfo.id.id.CompareTo(y.ClassInfo.id.id);
                 }
             );
-            availableBooks.Reverse();
 
             w.AddArray(
                 "availableKeyPages",
