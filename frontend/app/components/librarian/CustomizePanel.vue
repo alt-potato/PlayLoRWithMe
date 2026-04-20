@@ -55,7 +55,7 @@ const hasDialogue = computed(() => props.lib.dialogue != null);
 const canRename = computed(() => !props.lib.isSephirah);
 const disabledTabs = computed<Set<SubTab>>(() => {
   const s = new Set<SubTab>();
-  if (hasPatronHead.value) { s.add("hairstyle"); s.add("face"); }
+  if (hasPatronHead.value) { s.add("hairstyle"); s.add("face"); s.add("dialogue"); }
   if (!hasDialogue.value) s.add("dialogue");
   return s;
 });
@@ -124,6 +124,8 @@ const previewAppearance = computed<AppearanceData>(() => ({
   hairColor:   draft.hairColor,
   skinColor:   draft.skinColor,
   eyeColor:    draft.eyeColor,
+  headID:      props.lib.appearance?.headID,
+  patronHeadId: props.lib.appearance?.patronHeadId,
 }));
 
 const customizeOptions = computed(() => props.state.customizeOptions);
@@ -229,8 +231,8 @@ async function handleComplete(): Promise<void> {
     // height and body type are under projection (always editable)
     height:      draft.height,
     appearanceType: draft.appearanceType,
-    // dialogue: only when the unit has a dialogue model
-    ...(hasDialogue.value ? {
+    // dialogue: only when the unit has a dialogue model and isn't a patron
+    ...(hasDialogue.value && !hasPatronHead.value ? {
       dlgStartBattle:    dlgField(draft.dlgStartBattle,    origDialogue.startBattle),
       dlgVictory:        dlgField(draft.dlgVictory,        origDialogue.victory),
       dlgDeath:          dlgField(draft.dlgDeath,          origDialogue.death),
@@ -372,7 +374,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
               />
 
               <!-- Dialogue -->
-              <div v-else-if="activeTab === 'dialogue' && !hasDialogue" class="tab-disabled-msg">
+              <div v-else-if="activeTab === 'dialogue' && disabledTabs.has('dialogue')" class="tab-disabled-msg">
                 Dialogue is not available for patron librarians.
               </div>
               <LibrarianCustomizeDialogueTab

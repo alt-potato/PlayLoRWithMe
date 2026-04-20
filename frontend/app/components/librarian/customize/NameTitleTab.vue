@@ -61,12 +61,13 @@ const postfixText = computed(
     props.options.suffixTitles.find((t) => t.id === props.postfixID)?.text ?? "",
 );
 
-/** Live display showing how the full librarian name will appear in-game. */
+/** Live display showing how the full librarian name will appear in-game.
+ *  In-game order is `<prefix> <suffix> <name>`. */
 const previewLabel = computed(() => {
   const parts: string[] = [];
   if (prefixText.value) parts.push(prefixText.value);
-  parts.push(props.name || "…");
   if (postfixText.value) parts.push(postfixText.value);
+  parts.push(props.name || "…");
   return parts.join(" ");
 });
 </script>
