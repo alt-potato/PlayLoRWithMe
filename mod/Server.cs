@@ -113,7 +113,7 @@ namespace PlayLoRWithMe
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] Failed to read config.xml: {ex.Message}");
+                Debug.LogWarning($"[PlayLoRWithMe] Failed to read config.xml: {ex}");
             }
         }
 
@@ -178,7 +178,7 @@ namespace PlayLoRWithMe
                 }
                 catch (Exception ex2)
                 {
-                    Debug.LogWarning($"[PlayLoRWithMe] Failed to send 500 response: {ex2.Message}");
+                    Debug.LogWarning($"[PlayLoRWithMe] Failed to send 500 response: {ex2}");
                 }
             }
         }
@@ -466,8 +466,11 @@ namespace PlayLoRWithMe
         // WebSocket on the Unity main thread when DrainQueue runs.
         private void HandleWsAction(WebSocketClient client, string json, string reqId)
         {
-            // Unit-targeted actions require the session to own (or have unclaimed access to)
-            // the unit. confirm and selectAbnormality have no unitId and are always allowed.
+            // Authorization policy:
+            //   claims disabled → any session may act on any unit
+            //   claims enabled  → only the session that has claimed the unit may act on it;
+            //                     unclaimed units are rejected
+            // Actions without a unitId (confirm, selectAbnormality) bypass this gate.
             var r = new JsonReader(json);
             if (
                 ClaimsEnabled
@@ -833,8 +836,8 @@ namespace PlayLoRWithMe
 
         /// <summary>
         /// Attributes a passive from a source book to the librarian's key page.
-        /// Finds the first available dummy slot (originpassive.id == 9999999) on the
-        /// target, validates eligibility (uniqueness, cost), and performs the change.
+        /// Finds the first available empty attribution slot on the target, validates
+        /// eligibility (uniqueness, cost), and performs the change.
         /// </summary>
         private void HandleAttributePassive(WebSocketClient client, JsonReader r, string reqId)
         {
@@ -887,14 +890,15 @@ namespace PlayLoRWithMe
             InitReserved(targetBook);
             InitReserved(sourceBook);
 
-            // find the first empty attribution slot on target (dummy slot with id 9999999
-            // that has not already received a passive)
+            // find the first empty attribution slot on target (placeholder passive
+            // that has not already received an attributed passive)
             var targetPassives = GetAllPassives(targetBook);
             PassiveModel targetSlot = null;
             if (targetPassives != null)
             {
                 targetSlot = targetPassives.Find(
-                    p => p.originpassive?.id == 9999999 && !p.IsReceivedSuccessionPassive);
+                    p => p.originpassive?.id == GameStateSerializer.EmptyAttributionPassiveId
+                        && !p.IsReceivedSuccessionPassive);
             }
             if (targetSlot == null)
             {
@@ -1075,7 +1079,12 @@ namespace PlayLoRWithMe
             if (!string.IsNullOrEmpty(at))
             {
                 try { unit.appearanceType = (Gender)System.Enum.Parse(typeof(Gender), at); }
-                catch { /* ignore invalid values */ }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning(
+                        $"[PlayLoRWithMe] SetCustomization: invalid appearanceType '{at}': {ex.Message}"
+                    );
+                }
             }
 
             // Apply dialogue changes. Skip for sephirah units (no BattleDialogueModel).
@@ -1095,7 +1104,12 @@ namespace PlayLoRWithMe
                         unit.battleDialogModel = dlgModel;
                     }
                 }
-                catch { /* Librarian character data unavailable — skip dialogue */ }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning(
+                        $"[PlayLoRWithMe] SetCustomization: failed to initialize Librarian dialogue model: {ex.Message}"
+                    );
+                }
             }
 
             if (dlgModel != null)
@@ -1152,8 +1166,6 @@ namespace PlayLoRWithMe
                     if (bxi != null)
                     {
                         unit.EquipCustomCoreBook(new BookModel(bxi));
-                        var after = unit.GetCustomBookItemData();
-                        Debug.Log($"[PlayLoRWithMe] SetCustomization: customBook cbid={cbid} pkg={cbPkg} bxi.range={bxi.RangeType} equipped.range={unit.bookItem?.ClassInfo?.RangeType} result={after?.GetBookClassInfoId()}");
                     }
                     else
                     {

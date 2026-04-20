@@ -129,7 +129,6 @@ export interface Passive {
   name: string;
   desc?: string;
   icon?: string;
-  disabled?: boolean;
   isNegative?: boolean;
   rare?: string;
   cost?: number;

@@ -12,6 +12,13 @@ namespace PlayLoRWithMe
     public static class GameStateSerializer
     {
         /// <summary>
+        /// Marker id used by the game to tag an empty succession (attribution) slot
+        /// on a key page's passive list. Passives with this originpassive.id are
+        /// placeholders the player can fill via passive attribution.
+        /// </summary>
+        public const int EmptyAttributionPassiveId = 9999999;
+
+        /// <summary>
         /// Cached reflection lookup for the private <c>LibrariansNameXmlList._dictionary</c>
         /// field, used to read the suggested-name pool without a public API.
         /// </summary>
@@ -561,7 +568,7 @@ namespace PlayLoRWithMe
                                             {
                                                 var attributed = allPassives.FindAll(pm =>
                                                     pm.originData != null
-                                                    && pm.originData.currentpassive?.id != 9999999
+                                                    && pm.originData.currentpassive?.id != EmptyAttributionPassiveId
                                                     && pm.originData.receivepassivebookId != pm.BookInstanceId);
                                                 if (attributed.Count > 0)
                                                 {
@@ -1824,7 +1831,6 @@ namespace PlayLoRWithMe
                             o.Add("name", p.name)
                                 .Add("desc", p.desc)
                                 .Add("rare", p.rare.ToString())
-                                .Add("disabled", p.disabled)
                                 .Add("isNegative", p.isNegative);
                         });
                     }

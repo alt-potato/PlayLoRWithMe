@@ -24,7 +24,6 @@ defineSlots<{
 
 function passiveClass(p: Passive) {
   const cls: Record<string, boolean> = {
-    unavailable: !!p.disabled,
     "passive-negative": !!p.isNegative,
   };
   if (p.rare) cls[`rarity-${p.rare.toLowerCase()}`] = true;
@@ -95,10 +94,6 @@ function passiveClass(p: Passive) {
 
 .passive-entry.rarity-special {
   border-left-color: var(--rarity-special);
-}
-
-.passive-entry.unavailable {
-  opacity: 0.42;
 }
 
 .passive-header {

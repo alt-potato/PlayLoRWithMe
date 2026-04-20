@@ -13,12 +13,16 @@ namespace PlayLoRWithMe
     /// </summary>
     public static class StateBroadcaster
     {
-        private static bool _subscribedToUIPhase = false;
+        // Mutated from the main thread, read by background-thread Broadcast()
+        // callers indirectly via SubscribeToUIPhaseChanges. volatile gives a
+        // reliable happens-before on the flip without introducing a lock.
+        private static volatile bool _subscribedToUIPhase = false;
 
-        // captured the first time a known-main-thread hook (UIController.Update or
-        // StageController.OnUpdate postfix) runs. used by Broadcast() to decide
-        // whether a caller needs to be marshalled onto the main thread.
-        private static int _mainThreadId = -1;
+        // Captured the first time a known-main-thread hook (UIController.Update or
+        // StageController.OnUpdate postfix) runs. Read by Broadcast() on background
+        // threads to decide whether a caller needs to be marshalled onto the main
+        // thread, so it must be volatile for a timely cross-thread read.
+        private static volatile int _mainThreadId = -1;
 
         /// <summary>
         /// Broadcasts the current game state. Safe to call from any thread:

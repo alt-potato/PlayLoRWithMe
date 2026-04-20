@@ -257,7 +257,7 @@ provide(BATTLE_CTX, {
         <button
           class="toggle-btn"
           :class="{ active: showIncoming }"
-          :style="showIncoming ? { '--tc': '#c62828' } : {}"
+          :style="showIncoming ? { '--tc': 'var(--incoming)' } : {}"
           title="Incoming one-sided attacks"
           aria-label="Toggle incoming one-sided attacks"
           :aria-pressed="showIncoming"
@@ -268,7 +268,7 @@ provide(BATTLE_CTX, {
         <button
           class="toggle-btn"
           :class="{ active: showClash }"
-          :style="showClash ? { '--tc': '#c9a227' } : {}"
+          :style="showClash ? { '--tc': 'var(--clash)' } : {}"
           title="Clashes"
           aria-label="Toggle clashes"
           :aria-pressed="showClash"
@@ -279,7 +279,7 @@ provide(BATTLE_CTX, {
         <button
           class="toggle-btn"
           :class="{ active: showOutgoing }"
-          :style="showOutgoing ? { '--tc': '#4fc3f7' } : {}"
+          :style="showOutgoing ? { '--tc': 'var(--outgoing)' } : {}"
           title="Outgoing one-sided attacks"
           aria-label="Toggle outgoing one-sided attacks"
           :aria-pressed="showOutgoing"

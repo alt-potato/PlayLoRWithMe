@@ -317,9 +317,10 @@ namespace PlayLoRWithMe
         /// Compares the last-known unit map against the new array JSON. Parses the new
         /// array into <paramref name="newUnitsScratch"/> (which the caller will swap into
         /// the "last" position after this returns). Appends only changed or new units to
-        /// sb; appends a "_removed" array if any units disappeared.
+        /// sb; appends a "_removed" array if any units disappeared. Flips
+        /// <paramref name="hasChanges"/> to true when anything is appended.
         /// </summary>
-        private static bool DiffUnitArray(
+        private static void DiffUnitArray(
             Dictionary<int, string> lastUnits,
             Dictionary<int, string> newUnitsScratch,
             string newArrayJson,
@@ -335,7 +336,7 @@ namespace PlayLoRWithMe
                 ParseUnitArray(newArrayJson, newUnitsScratch);
 
             if (newUnitsScratch.Count == 0 && lastUnits.Count == 0)
-                return false;
+                return;
 
             changedScratch.Clear();
             removedScratch.Clear();
@@ -351,7 +352,7 @@ namespace PlayLoRWithMe
                     removedScratch.Add(id);
 
             if (changedScratch.Count == 0 && removedScratch.Count == 0)
-                return false;
+                return;
 
             if (hasChanges)
                 sb.Append(',');
@@ -379,8 +380,6 @@ namespace PlayLoRWithMe
                 }
                 sb.Append(']');
             }
-
-            return true;
         }
 
         /// <summary>
