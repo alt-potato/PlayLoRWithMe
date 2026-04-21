@@ -148,6 +148,7 @@ const activeFashionBook = computed(() => {
         headTiltDeg: skin.headTiltDeg,
         pivotFracX: skin.pivotFracX,
         pivotFracY: skin.pivotFracY,
+        feetYFrac: skin.feetYFrac,
       } as FashionBook;
     }
   }
