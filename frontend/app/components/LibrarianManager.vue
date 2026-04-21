@@ -145,6 +145,7 @@ function fashionBookFor(lib: LibrarianEntry): FashionBook | null {
     pivotFracY: lib.keyPagePivotFracY,
     hidesBackHair: lib.keyPageHidesBackHair,
     skinGender: lib.keyPageSkinGender,
+    feetYFrac: lib.keyPageFeetYFrac,
   };
 }
 

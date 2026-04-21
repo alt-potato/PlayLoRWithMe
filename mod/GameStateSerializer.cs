@@ -506,6 +506,8 @@ namespace PlayLoRWithMe
                                                             o.Add("keyPageHasFrontLayer", true);
                                                         if (kpMeta.HidesBackHair)
                                                             o.Add("keyPageHidesBackHair", true);
+                                                        if (kpMeta.FeetYFrac < 0.999f)
+                                                            o.Add("keyPageFeetYFrac", kpMeta.FeetYFrac);
                                                     }
                                                 }
                                             }
@@ -1193,6 +1195,10 @@ namespace PlayLoRWithMe
                                 // Hood present: game hides all back hair renderers in this case.
                                 if (meta.HidesBackHair)
                                     fb.Add("hidesBackHair", true);
+                                // Feet-Y fraction: emitted only when the body PNG extends below
+                                // feet (weapons/props), so feet-alignment math can offset inward.
+                                if (meta.FeetYFrac < 0.999f)
+                                    fb.Add("feetYFrac", meta.FeetYFrac);
                             }
                         });
                     }
@@ -1236,6 +1242,8 @@ namespace PlayLoRWithMe
                                         fb.Add("hasFrontLayer", true);
                                     if (meta.HidesBackHair)
                                         fb.Add("hidesBackHair", true);
+                                    if (meta.FeetYFrac < 0.999f)
+                                        fb.Add("feetYFrac", meta.FeetYFrac);
                                 }
                             });
                         }
@@ -1285,6 +1293,8 @@ namespace PlayLoRWithMe
                                     s.Add("headTiltDeg", meta.TiltDeg)
                                         .Add("pivotFracX", meta.PivotFracX)
                                         .Add("pivotFracY", meta.PivotFracY);
+                                if (meta.FeetYFrac < 0.999f)
+                                    s.Add("feetYFrac", meta.FeetYFrac);
                             }
                         });
                     }

@@ -304,6 +304,8 @@ export interface LibrarianEntry {
   keyPageHidesBackHair?: boolean;
   /** SkinGender of the equipped key page skin: "F" or "M". */
   keyPageSkinGender?: string;
+  /** Feet-Y fraction of the equipped key page body PNG (see FashionBook.feetYFrac). */
+  keyPageFeetYFrac?: number;
 }
 
 /** Fields shared by both ally and enemy units. */
@@ -560,6 +562,13 @@ export interface FashionBook {
    * When present, the body type toggle is enabled and body PNGs use a _f / _m suffix.
    */
   skinGender?: string;
+  /**
+   * Vertical position of the character's feet within the body PNG, as a fraction
+   * [0,1] from the top.  1.0 (or omitted) means feet sit at the PNG bottom;
+   * smaller values indicate the PNG extends below feet (weapons/props), letting
+   * the frontend offset inward when aligning feet to a shared floor line.
+   */
+  feetYFrac?: number;
 }
 
 /** A workshop cloth-overlay skin from CustomizingResourceLoader. */
@@ -574,6 +583,7 @@ export interface WorkshopSkin {
   headTiltDeg?: number;
   pivotFracX?: number;
   pivotFracY?: number;
+  feetYFrac?: number;
 }
 
 export interface CustomizeOptions {

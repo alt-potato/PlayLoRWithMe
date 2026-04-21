@@ -173,6 +173,7 @@ const activeFashionBook = computed(() => {
     pivotFracY: props.lib.keyPagePivotFracY,
     hidesBackHair: props.lib.keyPageHidesBackHair,
     skinGender: props.lib.keyPageSkinGender,
+    feetYFrac: props.lib.keyPageFeetYFrac,
   };
 });
 
