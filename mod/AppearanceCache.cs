@@ -1314,11 +1314,11 @@ namespace PlayLoRWithMe
                         if (!backDone)
                             File.WriteAllBytes(path, EncodeCanvasToPng(canvasPixels, bW, bH));
 
-                        int visibleBottomRow = FindVisibleBottomRow(canvasPixels, bW, bH);
-                        float feetWorldY = visibleBottomRow >= 0
-                            ? bodyBounds.min.y + visibleBottomRow / ppu
-                            : 0f;
-                        RecordFeetYFrac(body.FileStem, bodyBounds.max.y, bodyBounds.min.y, feetWorldY);
+                        // Feet sit at world Y = 0 (prefab origin authored at feet) — same
+                        // convention as the non-replacesHead branch below.  Pixel-scanning
+                        // for the visible bottom would misidentify props hanging below the
+                        // feet (e.g. Mao's scabbard) as the floor reference.
+                        RecordFeetYFrac(body.FileStem, bodyBounds.max.y, bodyBounds.min.y, 0f);
                         // replacesHead=true → face overlay never shown; front PNG unused.
                     }
                     else
@@ -1412,28 +1412,6 @@ namespace PlayLoRWithMe
             if (!FashionMeta.TryGetValue(stem, out var m)) return;
             FashionMeta[stem] = (m.TiltDeg, m.PivotFracX, m.PivotFracY,
                 m.HasFrontLayer, m.HidesBackHair, m.SkinGender, frac);
-        }
-
-        /// <summary>
-        /// Scans a composited RGBA canvas from the bottom row upward and returns the
-        /// first row (canvas Y, 0 = bottom row, increases upward) containing any pixel
-        /// whose alpha exceeds <paramref name="alphaThreshold"/>.  Returns -1 when the
-        /// canvas is entirely transparent.  Used to derive the visible feet position
-        /// for fashion bodies whose logical sprite bounds include transparent padding
-        /// (e.g. workshop FullRect sprites from LoadLargePivotSprite).
-        /// </summary>
-        private static int FindVisibleBottomRow(Color[] canvas, int w, int h, float alphaThreshold = 4f / 255f)
-        {
-            for (int y = 0; y < h; y++)
-            {
-                int rowStart = y * w;
-                for (int x = 0; x < w; x++)
-                {
-                    if (canvas[rowStart + x].a > alphaThreshold)
-                        return y;
-                }
-            }
-            return -1;
         }
 
         /// <summary>
