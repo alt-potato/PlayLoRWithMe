@@ -295,6 +295,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
               :appearance-type="draft.appearanceType"
               :gifts="lib.gifts?.equipped"
               :size="280"
+              :zoom="3"
             />
           </div>
 
