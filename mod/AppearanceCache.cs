@@ -1719,7 +1719,8 @@ namespace PlayLoRWithMe
             int canvasH,
             Bounds totalBounds,
             float ppu,
-            Vector3 worldOffset = default
+            Vector3 worldOffset = default,
+            float worldScale = 1f
         )
         {
             var crop = ReadSpriteCrop(sprite);
@@ -1729,26 +1730,30 @@ namespace PlayLoRWithMe
                 int cropH = crop.height;
 
                 float spritePpu = sprite.pixelsPerUnit;
-                // Scale factor when the sprite's ppu differs from the canvas ppu
-                // (e.g. a 50-ppu gift sprite on a 100-ppu canvas needs to be scaled by 2×).
-                float ppuRatio = ppu / spritePpu;
+                // Scale factor combining two effects: ppu mismatch between the sprite and
+                // the shared canvas (e.g. 50-ppu sprite on a 100-ppu canvas needs 2× upscale),
+                // and any non-unit lossy scale accumulated through the prefab transform chain
+                // (e.g. a gift whose renderer sits under a group with localScale != 1).
+                // Mirrors BuildBodyCanvas's ppuScale so gift sprites extract at the same
+                // size the game would render them at worldScale = 1.
+                float ppuRatio = ppu / spritePpu * worldScale;
 
                 // Compute where this sprite's tight crop sits on the shared canvas.
                 //
-                // sprite.bounds.min is the world-space bottom-left corner of the sprite's
-                // LOGICAL rect (including transparent padding) relative to its pivot (0,0).
-                // Adding worldOffset accounts for transforms in the gift prefab hierarchy.
-                // Subtracting totalBounds.min and scaling by ppu gives the pixel offset from
-                // the shared canvas origin to the logical rect's bottom-left.
+                // sprite.bounds.min is the bottom-left corner of the sprite's LOGICAL rect
+                // (including transparent padding) in the renderer's local space.  Scaling
+                // by worldScale converts it to world units, then worldOffset places the
+                // pivot on the shared canvas.  Subtracting totalBounds.min and multiplying
+                // by ppu yields the pixel offset from the canvas origin.
                 //
                 // textureRectOffset is the additional sub-pixel offset from the logical rect's
                 // bottom-left to the tight crop's bottom-left — in the sprite's own pixel
                 // space, so it must be scaled by ppuRatio to match the canvas pixels.
                 int boundsOffsetX = Mathf.RoundToInt(
-                    (sprite.bounds.min.x + worldOffset.x - totalBounds.min.x) * ppu
+                    (sprite.bounds.min.x * worldScale + worldOffset.x - totalBounds.min.x) * ppu
                 );
                 int boundsOffsetY = Mathf.RoundToInt(
-                    (sprite.bounds.min.y + worldOffset.y - totalBounds.min.y) * ppu
+                    (sprite.bounds.min.y * worldScale + worldOffset.y - totalBounds.min.y) * ppu
                 );
                 var texRectOffset = sprite.textureRectOffset;
                 int offsetX = boundsOffsetX + Mathf.RoundToInt(texRectOffset.x * ppuRatio);

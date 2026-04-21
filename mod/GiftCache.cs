@@ -87,8 +87,12 @@ namespace PlayLoRWithMe
 
                     if (haveCanvas)
                     {
-                        // Compute the gift sprite's world offset by walking the transform
-                        // hierarchy from the sprite renderer up to the prefab root.
+                        // Compose the renderer's local-to-prefab transform by walking up
+                        // from the sprite renderer through (and including) the prefab root,
+                        // accumulating both position AND scale.  Dropping the scale portion
+                        // extracts a prefab like Imperfect Ego (id 35) — whose hierarchy
+                        // carries a non-unit localScale on a group above the renderer — at
+                        // the wrong size even though the pivot lands in the right place.
                         var renderers = appearance.GetSpriteRenderers();
                         SpriteRenderer frontRenderer = null;
                         foreach (var r in renderers)
@@ -97,20 +101,22 @@ namespace PlayLoRWithMe
                         }
 
                         var worldOffset = Vector3.zero;
+                        var worldScale  = Vector3.one;
                         if (frontRenderer != null)
                         {
                             var t = frontRenderer.transform;
-                            while (t != null && t != prefab.transform)
+                            while (t != null)
                             {
-                                worldOffset += t.localPosition;
+                                worldOffset = t.localPosition + Vector3.Scale(t.localScale, worldOffset);
+                                worldScale  = Vector3.Scale(worldScale, t.localScale);
+                                if (t == prefab.transform) break;
                                 t = t.parent;
                             }
-                            // Include the prefab root's own localPosition.
-                            worldOffset += prefab.transform.localPosition;
                         }
 
                         File.WriteAllBytes(path,
-                            AppearanceCache.SpriteToPng(sprite, canvasW, canvasH, bounds, ppu, worldOffset));
+                            AppearanceCache.SpriteToPng(
+                                sprite, canvasW, canvasH, bounds, ppu, worldOffset, worldScale.x));
                     }
                     else
                     {
