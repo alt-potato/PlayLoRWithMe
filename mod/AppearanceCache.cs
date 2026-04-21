@@ -41,9 +41,14 @@ namespace PlayLoRWithMe
         /// body sprites render in front of the face overlay in-game).
         /// HidesBackHair is true when the character model has a Hood sprite; the game
         /// hides all back hair renderers in that case.
+        /// FeetYFrac is the vertical position of the character's feet within the body PNG,
+        /// as a fraction [0,1] from the top — 1.0 means feet sit at the PNG bottom, &lt;1.0
+        /// means the PNG extends below feet (weapons/props).  Used by the frontend to pin
+        /// feet to a shared floor line when scaling.  Populated during extraction; defaults
+        /// to 1.0 if the body has no sprites extending below feet.
         /// </summary>
-        internal static readonly Dictionary<string, (float TiltDeg, float PivotFracX, float PivotFracY, bool HasFrontLayer, bool HidesBackHair, string SkinGender)>
-            FashionMeta = new Dictionary<string, (float, float, float, bool, bool, string)>();
+        internal static readonly Dictionary<string, (float TiltDeg, float PivotFracX, float PivotFracY, bool HasFrontLayer, bool HidesBackHair, string SkinGender, float FeetYFrac)>
+            FashionMeta = new Dictionary<string, (float, float, float, bool, bool, string, float)>();
 
         /// <summary>
         /// Face/hair canvas bounds in world space, populated during extraction.
@@ -292,7 +297,8 @@ namespace PlayLoRWithMe
                         var existing = FashionMeta[stem];
                         if (b.FrontSprites.Count > 0 && !existing.HasFrontLayer)
                             FashionMeta[stem] = (existing.TiltDeg, existing.PivotFracX,
-                                existing.PivotFracY, true, existing.HidesBackHair, existing.SkinGender);
+                                existing.PivotFracY, true, existing.HidesBackHair,
+                                existing.SkinGender, existing.FeetYFrac);
                         continue;
                     }
                     string skinGender;
@@ -307,8 +313,11 @@ namespace PlayLoRWithMe
                         var bxi = Singleton<BookXmlList>.Instance?.GetData(b.BookId);
                         skinGender = bxi?.gender.ToString() ?? "N";
                     }
+                    // Initial placeholder for FeetYFrac; overwritten in pass 4 once
+                    // the body PNG's actual extent is known.  1.0 means "feet at PNG bottom"
+                    // and is a safe default for bodies whose sprite extents match the feet.
                     FashionMeta[stem] = (b.PivotRotDeg, fracX, fracY,
-                        b.FrontSprites.Count > 0, !b.ReplacesHead && b.HasHood, skinGender);
+                        b.FrontSprites.Count > 0, !b.ReplacesHead && b.HasHood, skinGender, 1f);
                 }
             }
 
@@ -1292,9 +1301,24 @@ namespace PlayLoRWithMe
 
                         int bW = Mathf.Max(1, Mathf.RoundToInt(bodyBounds.size.x * ppu));
                         int bH = Mathf.Max(1, Mathf.RoundToInt(bodyBounds.size.y * ppu));
+
+                        // Composite the canvas, then scan pixels for the visible bottom
+                        // row.  sprite.bounds for workshop FullRect bodies (loaded via
+                        // LoadLargePivotSprite) covers the whole 512x512 texture even
+                        // when the character occupies only the middle — so bodyBounds
+                        // extends well below the authored feet-at-origin.  A pixel scan
+                        // gives the true visible bottom regardless of padding, keeping
+                        // feet aligned with the shared floor line in the frontend.
+                        var canvasPixels = BuildBodyCanvas(
+                            allReplaceSprites, bW, bH, bodyBounds, ppu, Vector3.zero, body.WorldScale);
                         if (!backDone)
-                            File.WriteAllBytes(path,
-                                ComposeBodySprites(allReplaceSprites, bW, bH, bodyBounds, ppu, Vector3.zero, body.WorldScale));
+                            File.WriteAllBytes(path, EncodeCanvasToPng(canvasPixels, bW, bH));
+
+                        int visibleBottomRow = FindVisibleBottomRow(canvasPixels, bW, bH);
+                        float feetWorldY = visibleBottomRow >= 0
+                            ? bodyBounds.min.y + visibleBottomRow / ppu
+                            : 0f;
+                        RecordFeetYFrac(body.FileStem, bodyBounds.max.y, bodyBounds.min.y, feetWorldY);
                         // replacesHead=true → face overlay never shown; front PNG unused.
                     }
                     else
@@ -1323,7 +1347,18 @@ namespace PlayLoRWithMe
                                     visMinYFace = visBtmFace;
                             }
                         }
-                        float extMinY = Mathf.Min(faceHairBounds.min.y, visMinYFace);
+                        // Always include the feet position (-anchor.y in face-canvas space)
+                        // in the canvas range, even when no body sprite reaches that far.
+                        // Books whose sprites cover only the upper body (e.g. E.G.O. gear
+                        // like Distorted Yan, whose body sprites sit well above the prefab's
+                        // authored feet) would otherwise have their visible bottom at the
+                        // lowest sprite and feetYFrac clamp to 1.0 — placing the PNG bottom
+                        // at the floor line and making the character float by the gap
+                        // between the lowest sprite and the feet.  Extending the canvas to
+                        // the feet keeps feetYFrac accurate, so the frontend's feet-anchored
+                        // scale transform still lands feet on the shared floor line.  The
+                        // extra space is transparent and costs a few empty pixel rows.
+                        float extMinY = Mathf.Min(visMinYFace, -anchor.y);
                         var extBounds = new Bounds(
                             new Vector3(faceHairBounds.center.x, (extMinY + extMaxY) * 0.5f, 0f),
                             new Vector3(faceHairBounds.size.x, extMaxY - extMinY, 0.2f));
@@ -1345,6 +1380,12 @@ namespace PlayLoRWithMe
                         if (!skinDone)
                             File.WriteAllBytes(skinPath,
                                 ComposeBodySprites(body.SkinSprites, faceHairW, extH, extBounds, ppu, anchor, body.WorldScale));
+
+                        // Feet sit at world Y = 0 (prefab origin authored at feet); in
+                        // canvas space that's -anchor.y.  Expose as a fraction from the top
+                        // so the frontend can align feet to a shared floor line without
+                        // needing the canvas' absolute coordinates.
+                        RecordFeetYFrac(body.FileStem, extMaxY, extMinY, -anchor.y);
                     }
                 }
                 catch (System.Exception ex)
@@ -1354,6 +1395,45 @@ namespace PlayLoRWithMe
                     );
                 }
             }
+        }
+
+        /// <summary>
+        /// Updates <see cref="FashionMeta"/> for <paramref name="stem"/> with a feet-Y
+        /// fraction: the vertical position of the character's feet within the body PNG,
+        /// measured from the top as a value in [0, 1].  1.0 means feet sit exactly at the
+        /// PNG bottom; smaller values mean the PNG extends below feet (weapons, props)
+        /// and the frontend should offset inward to keep feet on the shared floor line.
+        /// </summary>
+        private static void RecordFeetYFrac(string stem, float topY, float bottomY, float feetY)
+        {
+            float canvasH = topY - bottomY;
+            if (canvasH <= Mathf.Epsilon) return;
+            float frac = Mathf.Clamp01((topY - feetY) / canvasH);
+            if (!FashionMeta.TryGetValue(stem, out var m)) return;
+            FashionMeta[stem] = (m.TiltDeg, m.PivotFracX, m.PivotFracY,
+                m.HasFrontLayer, m.HidesBackHair, m.SkinGender, frac);
+        }
+
+        /// <summary>
+        /// Scans a composited RGBA canvas from the bottom row upward and returns the
+        /// first row (canvas Y, 0 = bottom row, increases upward) containing any pixel
+        /// whose alpha exceeds <paramref name="alphaThreshold"/>.  Returns -1 when the
+        /// canvas is entirely transparent.  Used to derive the visible feet position
+        /// for fashion bodies whose logical sprite bounds include transparent padding
+        /// (e.g. workshop FullRect sprites from LoadLargePivotSprite).
+        /// </summary>
+        private static int FindVisibleBottomRow(Color[] canvas, int w, int h, float alphaThreshold = 4f / 255f)
+        {
+            for (int y = 0; y < h; y++)
+            {
+                int rowStart = y * w;
+                for (int x = 0; x < w; x++)
+                {
+                    if (canvas[rowStart + x].a > alphaThreshold)
+                        return y;
+                }
+            }
+            return -1;
         }
 
         /// <summary>

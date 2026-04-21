@@ -59,6 +59,15 @@ const props = defineProps<{
    * render larger thumbnails (e.g. roster tiles) without forking the component.
    */
   size?: number;
+  /**
+   * Extra scale factor layered on top of the height-driven scale.  Makes the
+   * character appear larger inside the same-sized viewport so the preview
+   * reads as a "portrait" rather than a tiny silhouette in dead space.  The
+   * scale-wrap also translates downward to keep the head visible — feet are
+   * intentionally pushed below the viewport so the head's natural top
+   * position is preserved as zoom grows.  Defaults to `DEFAULT_ZOOM`.
+   */
+  zoom?: number;
 }>();
 
 /**
@@ -115,7 +124,9 @@ watch(assetsReady, (ready) => {
   patronRearFailed.value = false;
   // invalidate module-level dimensions cache and re-fetch
   _dimsPromise = null;
-  fetchDims().then((d) => { dims.value = d; });
+  fetchDims().then((d) => {
+    dims.value = d;
+  });
 });
 
 /** Convert a [r, g, b] byte tuple (0–255) to a CSS rgb() string. */
@@ -186,7 +197,7 @@ const fashionFileStem = computed(() => {
 const fashionBodyUrl = computed(() =>
   fashionFileStem.value
     ? `/assets/fashionbodies/${fashionFileStem.value}${fashionVariantSuffix.value}.png${cacheBust.value}`
-    : null
+    : null,
 );
 
 const fashionBodyFailed = ref(false);
@@ -213,11 +224,13 @@ watch(fashionVariantSuffix, () => {
 const fashionFrontUrl = computed(() =>
   props.fashionBook?.hasFrontLayer
     ? `/assets/fashionbodies_front/${fashionFileStem.value}${fashionVariantSuffix.value}.png${cacheBust.value}`
-    : null
+    : null,
 );
 
 const fashionFrontFailed = ref(false);
-watch(fashionFileStem, () => { fashionFrontFailed.value = false; });
+watch(fashionFileStem, () => {
+  fashionFrontFailed.value = false;
+});
 
 /**
  * URL of the fashion skin-layer composite PNG — exposed body areas (neck, collarbone)
@@ -228,12 +241,16 @@ watch(fashionFileStem, () => { fashionFrontFailed.value = false; });
 const fashionSkinUrl = computed(() =>
   fashionFileStem.value
     ? `/assets/fashionbodies/${fashionFileStem.value}${fashionVariantSuffix.value}_skin.png${cacheBust.value}`
-    : null
+    : null,
 );
 
 const fashionSkinFailed = ref(false);
-watch(fashionFileStem, () => { fashionSkinFailed.value = false; });
-watch(fashionVariantSuffix, () => { fashionSkinFailed.value = false; });
+watch(fashionFileStem, () => {
+  fashionSkinFailed.value = false;
+});
+watch(fashionVariantSuffix, () => {
+  fashionSkinFailed.value = false;
+});
 
 /**
  * Patron librarians have two composite PNGs extracted from their
@@ -244,35 +261,39 @@ watch(fashionVariantSuffix, () => { fashionSkinFailed.value = false; });
 const patronFrontUrl = computed(() =>
   props.appearance.patronHeadId
     ? `${BASE}head_special_${props.appearance.patronHeadId}.png${cacheBust.value}`
-    : null
+    : null,
 );
 const patronRearUrl = computed(() =>
   props.appearance.patronHeadId
     ? `${BASE}head_special_${props.appearance.patronHeadId}_rear.png${cacheBust.value}`
-    : null
+    : null,
 );
 
 const patronFrontFailed = ref(false);
 const patronRearFailed = ref(false);
-watch(() => props.appearance.patronHeadId, () => {
-  patronFrontFailed.value = false;
-  patronRearFailed.value = false;
-});
+watch(
+  () => props.appearance.patronHeadId,
+  () => {
+    patronFrontFailed.value = false;
+    patronRearFailed.value = false;
+  },
+);
 
 /**
  * Whether the fashion book replaces the entire head model.
  * When true, neither generic face/hair layers nor patron composites are shown —
  * the fashion body already includes the head (e.g. Roland's Black Silence book).
  */
-const fashionReplacesHead = computed(() =>
-  props.fashionBook?.replacesHead === true
+const fashionReplacesHead = computed(
+  () => props.fashionBook?.replacesHead === true,
 );
 
 /** True when the patron composites should be shown (not overridden by a replacesHead book). */
-const hasPatronHead = computed(() =>
-  patronFrontUrl.value != null
-  && !patronFrontFailed.value
-  && !fashionReplacesHead.value
+const hasPatronHead = computed(
+  () =>
+    patronFrontUrl.value != null &&
+    !patronFrontFailed.value &&
+    !fashionReplacesHead.value,
 );
 
 /**
@@ -280,8 +301,8 @@ const hasPatronHead = computed(() =>
  * Hidden when a patron composite replaces the face, or when the fashion skin
  * replaces the head model (replacesHead = true).
  */
-const showFaceHairLayers = computed(() =>
-  !hasPatronHead.value && !fashionReplacesHead.value
+const showFaceHairLayers = computed(
+  () => !hasPatronHead.value && !fashionReplacesHead.value,
 );
 
 /**
@@ -315,38 +336,61 @@ const faceRotStyle = computed(() => {
 
 /**
  * Uniform scale factor applied to all sprite layers, matching the game's own
- * character scaling: `UICharacterRenderer` sets `unitAppearance.localScale` to
- * `Vector2.one * customizeData.height * 0.005`, so height=200 is the 1.0
- * reference and a 170-height librarian renders at 0.85x.
+ * character scaling: `UICharacterRenderer.GetRenderTextureByIndexAndSize` sets
+ * `unitAppearance.localScale` to `Vector2.one * customizeData.height * 0.005`,
+ * so height=200 is the 1.0 reference and a 170-height librarian renders at 0.85x.
  *
- * The scale is anchored at each body's natural feet position (see `feetYCss`)
- * so that resizing keeps feet planted — matching the in-game behavior where
- * characters stand on a fixed floor and grow upward from it.  Note that feet
- * positions differ between fashion projections because bodies have different
- * natural aspect ratios; a cross-projection common ground would require
- * per-book normalization, which breaks face/body canvas alignment.
+ * The scale is anchored at each body's natural feet position (see `feetYCss`,
+ * driven by the per-book `feetYFrac` exported by AppearanceCache) so resizing
+ * keeps feet planted on a shared floor line — matching the in-game behavior
+ * where the prefab's transform origin sits at the feet and scaling about the
+ * transform origin trivially preserves foot alignment.
  */
 const HEIGHT_SCALE_FACTOR = 0.005;
-const heightScale = computed(
+const DEFAULT_ZOOM = 2.25;
+/**
+ * Fraction of the preview height reserved as breathing room between the
+ * shared floor line and the bottom edge of the viewport.
+ */
+const FOOT_BUFFER_FRACTION = 0;
+const baseHeightScale = computed(
   () => (props.appearance.height ?? 170) * HEIGHT_SCALE_FACTOR,
 );
+const zoomFactor = computed(() => props.zoom ?? DEFAULT_ZOOM);
+const heightScale = computed(() => baseHeightScale.value * zoomFactor.value);
+
+/**
+ * Y coordinate (CSS px) of the shared floor line — the position in the
+ * viewport where every librarian's feet land.
+ */
+const floorY = computed(() => PREVIEW_H.value * (1 - FOOT_BUFFER_FRACTION));
+
+/**
+ * Vertical translation (CSS px) applied before the scale.  Pins each
+ * librarian's `feetYCss` (the transform-origin Y) to the shared `floorY`,
+ * so all librarians stand on the same floor regardless of body aspect or
+ * height — taller librarians have heads correspondingly higher, shorter
+ * ones lower, mirroring the in-game fixed-camera view.
+ */
+const zoomCompensateY = computed(() => floorY.value - feetYCss.value);
 
 /**
  * Y coordinate (CSS px) of the character's feet within the preview box, used
  * as the scale transform origin so the feet stay pinned across height changes.
  *
- * Derivation depends on how the body PNG is rendered:
+ * The per-book `feetYFrac` (exported by AppearanceCache; defaults to 1.0 when
+ * omitted = feet at PNG bottom) marks where feet actually sit inside the PNG,
+ * letting us offset inward when the PNG extends below feet (weapons/props).
+ *
+ * Layout specifics:
  * - Non-replacesHead bodies share the face canvas width and are drawn with
  *   `background-size: 100% auto; background-position: left top`, so the CSS
- *   height of the body PNG = PREVIEW_W * (naturalH / naturalW).  The body's
- *   feet sit at the bottom of the PNG, i.e. at that same Y (often off-screen
- *   below the preview for full-body bodies — perfectly fine as a transform
- *   origin since CSS allows origins outside the element).
+ *   height of the body PNG = PREVIEW_W * (naturalH / naturalW).  Feet CSS Y
+ *   is that height times feetYFrac.
  * - ReplacesHead bodies use `background-size: contain; background-position:
- *   top center`, which fits the whole body inside the PREVIEW_W x PREVIEW_H
- *   box.  A body taller than the box (aspect h/w > 1) fills the height, so
- *   feet land at PREVIEW_H.  A wider body fits by width, feet at
- *   PREVIEW_W * (naturalH / naturalW).
+ *   top center`, which fits the whole body inside PREVIEW_W x PREVIEW_H.
+ *   The rendered height is `min(PREVIEW_H, PREVIEW_W * aspect)`; feet CSS Y
+ *   is that height times feetYFrac.
  * - When no body PNG is loaded (face-only librarians), fall back to the
  *   bottom of the preview box so scaling still behaves reasonably.
  */
@@ -357,21 +401,47 @@ const feetYCss = computed(() => {
   if (!bd || !props.fashionBook) return previewH;
 
   const aspect = bd.h / bd.w;
-  if (fashionReplacesHead.value) {
+  const feetFrac = props.fashionBook.feetYFrac ?? 1;
+  const renderedH = fashionReplacesHead.value
     // `contain` fits the image fully inside the box while preserving aspect.
-    const boxAspect = previewH / previewW;
-    return aspect >= boxAspect
-      ? previewH // image fills height, feet at preview bottom
-      : previewW * aspect; // image fits by width, feet at scaled bottom
-  }
-  // Non-replacesHead: width pinned to previewW, height scales with aspect.
-  return previewW * aspect;
+    ? (aspect >= previewH / previewW ? previewH : previewW * aspect)
+    // Non-replacesHead: width pinned to previewW, height scales with aspect.
+    : previewW * aspect;
+  return renderedH * feetFrac;
+});
+
+/**
+ * Explicit CSS pixel height for non-replacesHead body/skin/front layer divs.
+ * Without this, `inset: 0` constrains the div to PREVIEW_H while the PNG
+ * painted via `background-size: 100% auto` has natural rendered height
+ * `PREVIEW_W * aspect`.  When aspect > 1 (body PNG taller than wide — common
+ * when the book has a tall hat or a feet-at-PNG-bottom layout with no weapon
+ * extending below), the background image is clipped at the element's border
+ * box *before* the feet-anchored transform applies, chopping off the feet.
+ * Extending the layer height to the PNG's natural rendered height keeps the
+ * full body painted so the feet land correctly on the shared floor line after
+ * the transform.  Returns null for replacesHead bodies (those use
+ * `background-size: contain` which never exceeds the element's bounds).
+ */
+const fashionBodyHeightCss = computed<number | null>(() => {
+  if (fashionReplacesHead.value) return null;
+  const bd = fashionBodyDims.value;
+  if (!bd) return null;
+  const aspect = bd.h / bd.w;
+  return PREVIEW_W.value * aspect;
 });
 
 /** Z-index per position so overlapping gifts layer in a natural order. */
 const POSITION_Z: Record<string, number> = {
-  Helmet: 10, Nose: 11, Cheek: 11, Mouth: 11, Eye: 12, Ear: 12,
-  Mask: 13, HairAccessory: 14, Hood: 15,
+  Helmet: 10,
+  Nose: 11,
+  Cheek: 11,
+  Mouth: 11,
+  Eye: 12,
+  Ear: 12,
+  Mask: 13,
+  HairAccessory: 14,
+  Hood: 15,
 };
 
 /**
@@ -389,10 +459,16 @@ const visibleGifts = computed(() => {
 
 <template>
   <!--
-    White background required for background-blend-mode: multiply to work correctly:
-    white × tint-color = tint-color.
+    Preview backdrop sits visually "below" the surrounding surface.  The
+    tinted sprite layers compute their color entirely within their own
+    element (`background-image × background-color` via `background-blend-mode:
+    multiply`, clipped by `mask-image`), so the backdrop color only shows in
+    transparent regions and has no effect on the character tint.
   -->
-  <div class="preview-box" :style="{ width: `${PREVIEW_W}px`, height: `${PREVIEW_H}px` }">
+  <div
+    class="preview-box"
+    :style="{ width: `${PREVIEW_W}px`, height: `${PREVIEW_H}px` }"
+  >
     <!--
       Hidden <img> probes: detect 404 for each sprite URL. We can't attach @error
       directly to a CSS background-image, so these invisible elements act as sentinels.
@@ -414,159 +490,196 @@ const visibleGifts = computed(() => {
     <div
       class="scale-wrap"
       :style="{
-        transform: `scale(${heightScale})`,
+        transform: `translate(0, ${zoomCompensateY}px) scale(${heightScale})`,
         transformOrigin: `${PREVIEW_W / 2}px ${feetYCss}px`,
       }"
     >
-
-    <!--
+      <!--
       Back hair — rendered before the fashion body so it sits behind the body.
       For regular librarians: the generic back hair sprite with hair color tint.
       For patrons: the extracted rear-hair composite (no tint — source art has colors).
       Hidden when the fashion book has a Hood sprite (game hides all back hair).
     -->
-    <div
-      v-if="!hasPatronHead"
-      v-show="showFaceHairLayers && !failedSrcs.has(layers.backHair.src) && !fashionBook?.hidesBackHair"
-      class="layer-sprite"
-      :style="{
-        backgroundImage: `url(${layers.backHair.src})`,
-        backgroundColor: layers.backHair.tint,
-        maskImage: `url(${layers.backHair.src})`,
-        WebkitMaskImage: `url(${layers.backHair.src})`,
-        ...faceRotStyle,
-      }"
-    />
-    <div
-      v-if="hasPatronHead && patronRearUrl && !patronRearFailed && !fashionBook?.hidesBackHair"
-      class="layer-sprite body-layer"
-      :style="{ backgroundImage: `url(${patronRearUrl})`, ...faceRotStyle }"
-    />
-    <img
-      v-if="patronRearUrl"
-      :src="patronRearUrl"
-      class="probe"
-      alt=""
-      @error="patronRearFailed = true"
-    />
+      <div
+        v-if="!hasPatronHead"
+        v-show="
+          showFaceHairLayers &&
+          !failedSrcs.has(layers.backHair.src) &&
+          !fashionBook?.hidesBackHair
+        "
+        class="layer-sprite"
+        :style="{
+          backgroundImage: `url(${layers.backHair.src})`,
+          backgroundColor: layers.backHair.tint,
+          maskImage: `url(${layers.backHair.src})`,
+          WebkitMaskImage: `url(${layers.backHair.src})`,
+          ...faceRotStyle,
+        }"
+      />
+      <div
+        v-if="
+          hasPatronHead &&
+          patronRearUrl &&
+          !patronRearFailed &&
+          !fashionBook?.hidesBackHair
+        "
+        class="layer-sprite body-layer"
+        :style="{ backgroundImage: `url(${patronRearUrl})`, ...faceRotStyle }"
+      />
+      <img
+        v-if="patronRearUrl"
+        :src="patronRearUrl"
+        class="probe"
+        alt=""
+        @error="patronRearFailed = true"
+      />
 
-    <!--
+      <!--
       Fashion body skin layer: exposed skin areas (neck, collarbone) that are white
       silhouettes in the character model.  Tinted with the librarian's skin color via
       CSS multiply blend.  Rendered behind the main body composite so clothing covers
       the skin naturally.
     -->
-    <div
-      v-if="fashionBook && fashionSkinUrl && !fashionSkinFailed"
-      class="layer-sprite"
-      :style="{
-        backgroundImage: `url(${fashionSkinUrl})`,
-        backgroundColor: toRgb(appearance.skinColor),
-        maskImage: `url(${fashionSkinUrl})`,
-        WebkitMaskImage: `url(${fashionSkinUrl})`,
-      }"
-    />
-    <img
-      v-if="fashionSkinUrl"
-      :src="fashionSkinUrl"
-      class="probe"
-      alt=""
-      @error="fashionSkinFailed = true"
-    />
+      <div
+        v-if="fashionBook && fashionSkinUrl && !fashionSkinFailed"
+        class="layer-sprite"
+        :style="{
+          backgroundImage: `url(${fashionSkinUrl})`,
+          backgroundColor: toRgb(appearance.skinColor),
+          maskImage: `url(${fashionSkinUrl})`,
+          WebkitMaskImage: `url(${fashionSkinUrl})`,
+          ...(fashionBodyHeightCss != null
+            ? { height: `${fashionBodyHeightCss}px`, bottom: 'auto' }
+            : {}),
+        }"
+      />
+      <img
+        v-if="fashionSkinUrl"
+        :src="fashionSkinUrl"
+        class="probe"
+        alt=""
+        @error="fashionSkinFailed = true"
+        @load="
+          (e) => {
+            if (fashionBodyDims) return;
+            const el = e.target as HTMLImageElement;
+            fashionBodyDims = { w: el.naturalWidth, h: el.naturalHeight };
+          }
+        "
+      />
 
-    <!--
+      <!--
       Fashion body composite: replaces the generic body when a fashion skin is active.
       Rendered as a plain background-image (no tinting) since body sprites already carry
       their own colors from the source art.  Falls back to face/hair-only display if the
       composite hasn't been extracted yet (fashionBodyFailed).
     -->
-    <div
-      v-if="fashionBook && fashionBodyUrl && !fashionBodyFailed"
-      class="layer-sprite body-layer"
-      :class="{ 'body-layer--replaces-head': fashionReplacesHead }"
-      :style="{ backgroundImage: `url(${fashionBodyUrl})` }"
-    />
-    <img
-      v-if="fashionBook && fashionBodyUrl"
-      :src="fashionBodyUrl"
-      class="probe"
-      alt=""
-      @error="fashionBodyFailed = true"
-      @load="(e) => {
-        const el = e.target as HTMLImageElement;
-        fashionBodyDims = { w: el.naturalWidth, h: el.naturalHeight };
-      }"
-    />
+      <div
+        v-if="fashionBook && fashionBodyUrl && !fashionBodyFailed"
+        class="layer-sprite body-layer"
+        :class="{ 'body-layer--replaces-head': fashionReplacesHead }"
+        :style="{
+          backgroundImage: `url(${fashionBodyUrl})`,
+          ...(fashionBodyHeightCss != null
+            ? { height: `${fashionBodyHeightCss}px`, bottom: 'auto' }
+            : {}),
+        }"
+      />
+      <img
+        v-if="fashionBook && fashionBodyUrl"
+        :src="fashionBodyUrl"
+        class="probe"
+        alt=""
+        @error="fashionBodyFailed = true"
+        @load="
+          (e) => {
+            const el = e.target as HTMLImageElement;
+            fashionBodyDims = { w: el.naturalWidth, h: el.naturalHeight };
+          }
+        "
+      />
 
-    <!--
+      <!--
       Patron front composite: head, face, and front hair for patron librarians.
       Rendered above the fashion body, replacing the generic face/hair layers.
     -->
-    <div
-      v-if="hasPatronHead && patronFrontUrl"
-      class="layer-sprite body-layer"
-      :style="{ backgroundImage: `url(${patronFrontUrl})`, ...faceRotStyle }"
-    />
-    <img
-      v-if="patronFrontUrl"
-      :src="patronFrontUrl"
-      class="probe"
-      alt=""
-      @error="patronFrontFailed = true"
-    />
+      <div
+        v-if="hasPatronHead && patronFrontUrl"
+        class="layer-sprite body-layer"
+        :style="{ backgroundImage: `url(${patronFrontUrl})`, ...faceRotStyle }"
+      />
+      <img
+        v-if="patronFrontUrl"
+        :src="patronFrontUrl"
+        class="probe"
+        alt=""
+        @error="patronFrontFailed = true"
+      />
 
-    <!--
+      <!--
       Remaining face/hair layers (head, eyes, brows, mouth, fronthair) rendered on top
       of the fashion body so the librarian's face shows through the body composite.
       Hidden when a patron head composite is active.
     -->
-    <div
-      v-for="(layer, i) in layers.face"
-      :key="`face-${i}`"
-      v-show="showFaceHairLayers && !failedSrcs.has(layer.src)"
-      class="layer-sprite"
-      :style="{
-        backgroundImage: `url(${layer.src})`,
-        backgroundColor: layer.tint,
-        maskImage: `url(${layer.src})`,
-        WebkitMaskImage: `url(${layer.src})`,
-        ...faceRotStyle,
-      }"
-    />
+      <div
+        v-for="(layer, i) in layers.face"
+        :key="`face-${i}`"
+        v-show="showFaceHairLayers && !failedSrcs.has(layer.src)"
+        class="layer-sprite"
+        :style="{
+          backgroundImage: `url(${layer.src})`,
+          backgroundColor: layer.tint,
+          maskImage: `url(${layer.src})`,
+          WebkitMaskImage: `url(${layer.src})`,
+          ...faceRotStyle,
+        }"
+      />
 
-    <!--
+      <!--
       Fashion front layer: body sprites whose sortingOrder was at or above the face
       overlay threshold in-game (e.g. ribbons, collars, hats that sit in front of the
       face).  Rendered above all face/hair layers.
     -->
-    <div
-      v-if="fashionBook && fashionFrontUrl && !fashionFrontFailed"
-      class="layer-sprite body-layer"
-      :style="{ backgroundImage: `url(${fashionFrontUrl})` }"
-    />
-    <img
-      v-if="fashionBook && fashionFrontUrl"
-      :src="fashionFrontUrl"
-      class="probe"
-      alt=""
-      @error="fashionFrontFailed = true"
-    />
+      <div
+        v-if="fashionBook && fashionFrontUrl && !fashionFrontFailed"
+        class="layer-sprite body-layer"
+        :style="{
+          backgroundImage: `url(${fashionFrontUrl})`,
+          ...(fashionBodyHeightCss != null
+            ? { height: `${fashionBodyHeightCss}px`, bottom: 'auto' }
+            : {}),
+        }"
+      />
+      <img
+        v-if="fashionBook && fashionFrontUrl"
+        :src="fashionFrontUrl"
+        class="probe"
+        alt=""
+        @error="fashionFrontFailed = true"
+        @load="
+          (e) => {
+            if (fashionBodyDims) return;
+            const el = e.target as HTMLImageElement;
+            fashionBodyDims = { w: el.naturalWidth, h: el.naturalHeight };
+          }
+        "
+      />
 
-    <!--
+      <!--
       Gift sprite overlays — each PNG is rendered onto the same shared canvas as
       face/hair sprites, so they use the same CSS stacking (inset: 0, 100% auto).
     -->
-    <div
-      v-for="gift in visibleGifts"
-      :key="`gift-${gift.id}`"
-      v-show="showFaceHairLayers"
-      class="layer-sprite gift-layer"
-      :style="{
-        backgroundImage: `url(/assets/gifts/gift_${gift.id}.png${cacheBust})`,
-        zIndex: gift.z,
-        ...faceRotStyle,
-      }"
-    />
+      <div
+        v-for="gift in visibleGifts"
+        :key="`gift-${gift.id}`"
+        v-show="showFaceHairLayers"
+        class="layer-sprite gift-layer"
+        :style="{
+          backgroundImage: `url(/assets/gifts/gift_${gift.id}.png${cacheBust})`,
+          zIndex: gift.z,
+          ...faceRotStyle,
+        }"
+      />
     </div>
   </div>
 </template>
@@ -574,7 +687,13 @@ const visibleGifts = computed(() => {
 <style scoped>
 .preview-box {
   position: relative;
-  background: #fff;
+  /* One step "below" the surrounding surface: matches the deepest app
+   * background so the preview reads as an inset panel rather than the
+   * bright white tile that previously clashed with the dark UI.  A subtle
+   * border keeps the inset visible even when the parent is `--bg` too
+   * (e.g. CustomizePanel). */
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: 4px;
   overflow: hidden;
   flex-shrink: 0;
