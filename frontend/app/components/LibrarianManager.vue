@@ -965,6 +965,18 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
 }
 
 /*
+ * Narrow viewports: the librarian name takes priority over the key-page
+ * info.  The key-page name hides alongside the stat/resist strip (which
+ * also hides below 700px) so the row collapses cleanly to just the name
+ * before the name itself has to truncate.
+ */
+@media (max-width: 699px) {
+  .row-page {
+    display: none;
+  }
+}
+
+/*
  * Stat strip: HP / stagger gauge / speed, each icon paired with its
  * numeric value. Icons match the assets KeyPageDetail uses so the roster
  * reads consistently with the detail panel. Hidden at narrow widths along
