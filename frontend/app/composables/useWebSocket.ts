@@ -253,14 +253,6 @@ export function useWebSocket() {
     return sendAction({ type: "removeAttributedPassive", floorIndex, unitIndex, sourceInstanceId, passiveId, passivePackageId });
   }
 
-  function setGifts(
-    floorIndex: number,
-    unitIndex: number,
-    slots: Record<string, number>,
-  ): Promise<ActionResult> {
-    return sendAction({ type: "setGifts", floorIndex, unitIndex, ...slots });
-  }
-
   onMounted(connect);
 
   onBeforeUnmount(() => {
@@ -288,6 +280,5 @@ export function useWebSocket() {
     unequipSourceBook,
     attributePassive,
     removeAttributedPassive,
-    setGifts,
   };
 }

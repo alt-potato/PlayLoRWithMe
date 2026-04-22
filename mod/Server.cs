@@ -147,14 +147,6 @@ namespace PlayLoRWithMe
         {
             try
             {
-                if (ctx.Request.HttpMethod == "OPTIONS")
-                {
-                    WriteCorsHeaders(ctx.Response);
-                    ctx.Response.StatusCode = 204;
-                    ctx.Response.Close();
-                    return;
-                }
-
                 string path = ctx.Request.Url.AbsolutePath;
                 string method = ctx.Request.HttpMethod;
 
@@ -1544,11 +1536,5 @@ namespace PlayLoRWithMe
             }
         }
 
-        private static void WriteCorsHeaders(HttpListenerResponse response)
-        {
-            response.Headers.Add("Access-Control-Allow-Origin", "*");
-            response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-            response.Headers.Add("Access-Control-Allow-Headers", "Content-Type");
-        }
     }
 }

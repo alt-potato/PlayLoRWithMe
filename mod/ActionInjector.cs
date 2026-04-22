@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Threading;
 using HarmonyLib;
 using UnityEngine;
 
@@ -26,19 +25,9 @@ namespace PlayLoRWithMe
             public bool Ok;
             public string Error;
 
-            // Sync path (EnqueueAndWait): set when execution completes.
-            public readonly ManualResetEventSlim Done;
-
-            // Async path (EnqueueWithCallback): invoked on the Unity main thread
-            // after execution so the response can be sent back via WebSocket.
+            // Invoked on the Unity main thread after execution so the response
+            // can be sent back via WebSocket.
             public readonly Action<bool, string> Callback;
-
-            /// <summary>Sync constructor — used by the SSE/HTTP POST path.</summary>
-            public PendingAction(string json)
-            {
-                Json = json;
-                Done = new ManualResetEventSlim(false);
-            }
 
             /// <summary>Async constructor — used by the WebSocket path.</summary>
             public PendingAction(string json, Action<bool, string> callback)
@@ -50,32 +39,6 @@ namespace PlayLoRWithMe
 
         private static readonly ConcurrentQueue<PendingAction> _queue =
             new ConcurrentQueue<PendingAction>();
-
-        /// <summary>
-        /// Max milliseconds the HTTP thread waits for the Unity main thread to
-        /// process an action before returning a timeout error.
-        /// </summary>
-        public static int TimeoutMs = 500;
-
-        /// <summary>
-        /// Called from the HTTP server background thread. Blocks until the Unity main
-        /// thread executes the action (or <see cref="TimeoutMs"/> timeout). Returns (ok, error).
-        /// </summary>
-        public static (bool ok, string error) EnqueueAndWait(string actionJson)
-        {
-            var pending = new PendingAction(actionJson);
-            _queue.Enqueue(pending);
-            try
-            {
-                if (!pending.Done.Wait(TimeoutMs))
-                    return (false, "Action timed out");
-                return (pending.Ok, pending.Error);
-            }
-            finally
-            {
-                pending.Done.Dispose();
-            }
-        }
 
         /// <summary>
         /// Called from the WebSocket receive thread. Non-blocking; returns immediately.
@@ -107,8 +70,6 @@ namespace PlayLoRWithMe
                 }
                 finally
                 {
-                    // Exactly one of Done/Callback is set depending on which path enqueued this.
-                    pending.Done?.Set();
                     pending.Callback?.Invoke(pending.Ok, pending.Error);
                 }
             }
