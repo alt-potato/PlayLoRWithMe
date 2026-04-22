@@ -129,29 +129,53 @@ watch(assetsReady, (ready) => {
   });
 });
 
-/** Convert a [r, g, b] byte tuple (0–255) to a CSS rgb() string. */
-function toRgb(c: [number, number, number]): string {
-  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+/**
+ * Build a CSS `filter` value that multiplies an image's RGB channels by the
+ * given byte tuple, leaving its alpha channel untouched.  Mirrors Unity's
+ * `SpriteRenderer.color` exactly.
+ *
+ * Why not `background-color` + `background-blend-mode: multiply` + `mask-image`?
+ * That technique fills the element with the tint color and masks to the sprite
+ * shape — but at anti-aliased edges (sprite α<1) the source-over composite
+ * leaves `(1−α)·tint` showing through, producing a tint-coloured halo.  An
+ * SVG `feColorMatrix` filter operates on the rendered image pixels directly,
+ * so partial-alpha edges are tinted at their actual alpha with no halo.
+ */
+function tintFilter(c: [number, number, number]): string {
+  const r = c[0] / 255;
+  const g = c[1] / 255;
+  const b = c[2] / 255;
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg'>` +
+    `<filter id='t' color-interpolation-filters='sRGB'>` +
+    `<feColorMatrix type='matrix' values='` +
+    `${r} 0 0 0 0 ` +
+    `0 ${g} 0 0 0 ` +
+    `0 0 ${b} 0 0 ` +
+    `0 0 0 1 0'/></filter></svg>`;
+  return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}#t")`;
 }
 
 /**
- * Ordered sprite layers with associated tint colors.
- * Back hair renders first so it sits behind the head; front hair renders last.
+ * Ordered sprite layers with their tint filters.  Back hair renders first so
+ * it sits behind the head; front hair renders last.  A `filter: null` entry
+ * paints the PNG directly (mouth — the source already carries its own colors;
+ * the game renders mouths with `Color.white` i.e. no tint).
  */
 const layers = computed(() => {
   const a = props.appearance;
-  const hair = toRgb(a.hairColor);
-  const skin = toRgb(a.skinColor);
-  const eye = toRgb(a.eyeColor);
+  const hair = tintFilter(a.hairColor);
+  const skin = tintFilter(a.skinColor);
+  const eye = tintFilter(a.eyeColor);
   const cb = cacheBust.value;
   return {
-    backHair: { src: `${BASE}backhair_${a.backHairID}.png${cb}`, tint: hair },
+    backHair: { src: `${BASE}backhair_${a.backHairID}.png${cb}`, filter: hair },
     face: [
-      { src: `${BASE}head_${a.headID ?? 0}.png${cb}`, tint: skin },
-      { src: `${BASE}eyes_${a.eyeID}.png${cb}`, tint: eye },
-      { src: `${BASE}brows_${a.browID}.png${cb}`, tint: hair },
-      { src: `${BASE}mouths_${a.mouthID}.png${cb}`, tint: skin },
-      { src: `${BASE}fronthair_${a.frontHairID}.png${cb}`, tint: hair },
+      { src: `${BASE}head_${a.headID ?? 0}.png${cb}`, filter: skin },
+      { src: `${BASE}eyes_${a.eyeID}.png${cb}`, filter: eye },
+      { src: `${BASE}brows_${a.browID}.png${cb}`, filter: hair },
+      { src: `${BASE}mouths_${a.mouthID}.png${cb}`, filter: null as string | null },
+      { src: `${BASE}fronthair_${a.frontHairID}.png${cb}`, filter: hair },
     ],
   };
 });
@@ -507,12 +531,10 @@ const visibleGifts = computed(() => {
           !failedSrcs.has(layers.backHair.src) &&
           !fashionBook?.hidesBackHair
         "
-        class="layer-sprite"
+        class="layer-sprite body-layer"
         :style="{
           backgroundImage: `url(${layers.backHair.src})`,
-          backgroundColor: layers.backHair.tint,
-          maskImage: `url(${layers.backHair.src})`,
-          WebkitMaskImage: `url(${layers.backHair.src})`,
+          filter: layers.backHair.filter,
           ...faceRotStyle,
         }"
       />
@@ -542,12 +564,10 @@ const visibleGifts = computed(() => {
     -->
       <div
         v-if="fashionBook && fashionSkinUrl && !fashionSkinFailed"
-        class="layer-sprite"
+        class="layer-sprite body-layer"
         :style="{
           backgroundImage: `url(${fashionSkinUrl})`,
-          backgroundColor: toRgb(appearance.skinColor),
-          maskImage: `url(${fashionSkinUrl})`,
-          WebkitMaskImage: `url(${fashionSkinUrl})`,
+          filter: tintFilter(appearance.skinColor),
           ...(fashionBodyHeightCss != null
             ? { height: `${fashionBodyHeightCss}px`, bottom: 'auto' }
             : {}),
@@ -620,17 +640,21 @@ const visibleGifts = computed(() => {
       Remaining face/hair layers (head, eyes, brows, mouth, fronthair) rendered on top
       of the fashion body so the librarian's face shows through the body composite.
       Hidden when a patron head composite is active.
+
+      All layers paint the PNG directly via `body-layer` (no background-color,
+      no mask).  Tinted layers apply an SVG `feColorMatrix` filter that
+      multiplies image RGB by the tint and preserves source alpha — see
+      `tintFilter()` for why this is used instead of the
+      multiply-blend + mask-image technique (which haloed anti-aliased edges).
     -->
       <div
         v-for="(layer, i) in layers.face"
         :key="`face-${i}`"
         v-show="showFaceHairLayers && !failedSrcs.has(layer.src)"
-        class="layer-sprite"
+        class="layer-sprite body-layer"
         :style="{
           backgroundImage: `url(${layer.src})`,
-          backgroundColor: layer.tint,
-          maskImage: `url(${layer.src})`,
-          WebkitMaskImage: `url(${layer.src})`,
+          ...(layer.filter != null ? { filter: layer.filter } : {}),
           ...faceRotStyle,
         }"
       />
