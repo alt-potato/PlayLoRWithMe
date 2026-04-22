@@ -322,14 +322,10 @@ namespace PlayLoRWithMe
                         bool claimed = _sessionManager.ClaimUnit(client.SessionId, claimUnitId);
                         if (claimed)
                             Interlocked.Exchange(ref _pendingBroadcast, 1);
-                        if (reqId != null)
-                            client.Send(
-                                BuildActionResult(
-                                    reqId,
-                                    claimed,
-                                    claimed ? null : "Unit already claimed by another player"
-                                )
-                            );
+                        SendResult(
+                            client, reqId, claimed,
+                            claimed ? null : "Unit already claimed by another player"
+                        );
                     }
                     break;
 
@@ -338,8 +334,7 @@ namespace PlayLoRWithMe
                     {
                         _sessionManager.ReleaseUnit(client.SessionId, releaseUnitId);
                         Interlocked.Exchange(ref _pendingBroadcast, 1);
-                        if (reqId != null)
-                            client.Send(BuildActionResult(reqId, true, null));
+                        SendResult(client, reqId, true, null);
                     }
                     break;
 
@@ -348,8 +343,7 @@ namespace PlayLoRWithMe
                     if (!string.IsNullOrWhiteSpace(newName))
                     {
                         _sessionManager.RenameSession(client.SessionId, newName.Trim());
-                        if (reqId != null)
-                            client.Send(BuildActionResult(reqId, true, null));
+                        SendResult(client, reqId, true, null);
                     }
                     break;
 
@@ -363,14 +357,10 @@ namespace PlayLoRWithMe
                         bool locked = _sessionManager.TryLockLibrarian(lockKey, client.SessionId);
                         if (locked)
                             StateBroadcaster.Broadcast();
-                        if (reqId != null)
-                            client.Send(
-                                BuildActionResult(
-                                    reqId,
-                                    locked,
-                                    locked ? null : "Librarian is being edited by another player"
-                                )
-                            );
+                        SendResult(
+                            client, reqId, locked,
+                            locked ? null : "Librarian is being edited by another player"
+                        );
                     }
                     break;
 
@@ -382,8 +372,7 @@ namespace PlayLoRWithMe
                     {
                         _sessionManager.UnlockLibrarian(LockKey(ulFi, ulUi), client.SessionId);
                         StateBroadcaster.Broadcast();
-                        if (reqId != null)
-                            client.Send(BuildActionResult(reqId, true, null));
+                        SendResult(client, reqId, true, null);
                     }
                     break;
 
@@ -470,18 +459,13 @@ namespace PlayLoRWithMe
                 && !_sessionManager.IsAuthorized(client.SessionId, unitId)
             )
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Not authorized for this unit"));
+                SendResult(client, reqId, false, "Not authorized for this unit");
                 return;
             }
 
             ActionInjector.EnqueueWithCallback(
                 json,
-                (ok, error) =>
-                {
-                    if (reqId != null)
-                        client.Send(BuildActionResult(reqId, ok, error));
-                }
+                (ok, error) => SendResult(client, reqId, ok, error)
             );
         }
 
@@ -498,18 +482,14 @@ namespace PlayLoRWithMe
             string newName = r.GetString("name");
             if (string.IsNullOrWhiteSpace(newName))
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Name cannot be empty"));
+                SendResult(client, reqId, false, "Name cannot be empty");
                 return;
             }
 
             string key = LockKey(fi, ui);
             if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
             {
-                if (reqId != null)
-                    client.Send(
-                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
-                    );
+                SendResult(client, reqId, false, "Not authorized — acquire lock first");
                 return;
             }
 
@@ -520,8 +500,7 @@ namespace PlayLoRWithMe
             var unit = GetLibrarianUnit(fi, ui);
             if (unit == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
+                SendResult(client, reqId, false, "Librarian not found");
                 return;
             }
 
@@ -529,16 +508,13 @@ namespace PlayLoRWithMe
             // come from CharactersNameXmlList and are fixed in the base game.
             if (unit.isSephirah)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Patron librarians cannot be renamed"));
+                SendResult(client, reqId, false, "Patron librarians cannot be renamed");
                 return;
             }
 
             unit.SetCustomName(newName.Trim());
-            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
-            StateBroadcaster.Broadcast();
-            if (reqId != null)
-                client.Send(BuildActionResult(reqId, true, null));
+            SaveAndBroadcast();
+            SendResult(client, reqId, true, null);
         }
 
         /// <summary>
@@ -553,18 +529,14 @@ namespace PlayLoRWithMe
 
             if (!r.TryGetInt("bookInstanceId", out int bookInstanceId))
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Missing bookInstanceId"));
+                SendResult(client, reqId, false, "Missing bookInstanceId");
                 return;
             }
 
-            var book = BookInventoryModel
-                .Instance?.GetBookList_equip()
-                ?.Find(b => b?.instanceId == bookInstanceId);
+            var book = FindEquippedBook(bookInstanceId);
             if (book == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Key page not found in inventory"));
+                SendResult(client, reqId, false, "Key page not found in inventory");
                 return;
             }
 
@@ -574,8 +546,7 @@ namespace PlayLoRWithMe
             // by inspecting unit.bookItem afterward.
             if (book.owner != null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Key page is already in use"));
+                SendResult(client, reqId, false, "Key page is already in use");
                 return;
             }
 
@@ -584,8 +555,7 @@ namespace PlayLoRWithMe
             bool equipped = unit.bookItem?.instanceId == bookInstanceId;
             if (!equipped)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Equip was blocked by game state"));
+                SendResult(client, reqId, false, "Equip was blocked by game state");
                 return;
             }
 
@@ -594,10 +564,8 @@ namespace PlayLoRWithMe
                 unit, unit.OwnerSephirah, FloorListSlotBase + ui,
                 refreshCardInventory: true);
 
-            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
-            StateBroadcaster.Broadcast();
-            if (reqId != null)
-                client.Send(BuildActionResult(reqId, true, null));
+            SaveAndBroadcast();
+            SendResult(client, reqId, true, null);
         }
 
         /// <summary>
@@ -619,8 +587,7 @@ namespace PlayLoRWithMe
             var deck = unit.bookItem?.GetDeckAll_nocopy()?[0];
             if (deck == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Deck not found"));
+                SendResult(client, reqId, false, "Deck not found");
                 return;
             }
 
@@ -631,13 +598,9 @@ namespace PlayLoRWithMe
             bool ok = result == CardEquipState.Equippable;
 
             if (ok)
-            {
-                Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
-                StateBroadcaster.Broadcast();
-            }
+                SaveAndBroadcast();
 
-            if (reqId != null)
-                client.Send(BuildActionResult(reqId, ok, ok ? null : result.ToString()));
+            SendResult(client, reqId, ok, ok ? null : result.ToString());
         }
 
         /// <summary>
@@ -658,8 +621,7 @@ namespace PlayLoRWithMe
             var deck = unit.bookItem?.GetDeckAll_nocopy()?[0];
             if (deck == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Deck not found"));
+                SendResult(client, reqId, false, "Deck not found");
                 return;
             }
 
@@ -669,15 +631,9 @@ namespace PlayLoRWithMe
             bool removed = deck.MoveCardToInventory(lorId);
 
             if (removed)
-            {
-                Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
-                StateBroadcaster.Broadcast();
-            }
+                SaveAndBroadcast();
 
-            if (reqId != null)
-                client.Send(
-                    BuildActionResult(reqId, removed, removed ? null : "Card not found in deck")
-                );
+            SendResult(client, reqId, removed, removed ? null : "Card not found in deck");
         }
 
         /// <summary>
@@ -708,6 +664,26 @@ namespace PlayLoRWithMe
         }
 
         /// <summary>
+        /// Persists the librarian-edit mutation to disk and pushes a state snapshot
+        /// to all connected clients. Called after every successful librarian edit.
+        /// </summary>
+        private static void SaveAndBroadcast()
+        {
+            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
+            StateBroadcaster.Broadcast();
+        }
+
+        /// <summary>
+        /// Finds an equipped-inventory book by instance ID, or returns null if the
+        /// inventory is unavailable or the book is not found.
+        /// </summary>
+        private static BookModel FindEquippedBook(int instanceId)
+        {
+            return BookInventoryModel.Instance?.GetBookList_equip()
+                ?.Find(b => b?.instanceId == instanceId);
+        }
+
+        /// <summary>
         /// Equips a key page as a passive source for the librarian's current key page.
         /// The source book's passives become available for attribution to the target.
         /// Limited to 4 source books per target key page.
@@ -719,25 +695,21 @@ namespace PlayLoRWithMe
 
             if (!r.TryGetInt("bookInstanceId", out int bookInstanceId))
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Missing bookInstanceId"));
+                SendResult(client, reqId, false, "Missing bookInstanceId");
                 return;
             }
 
             var targetBook = unit.bookItem;
             if (targetBook == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian has no key page equipped"));
+                SendResult(client, reqId, false, "Librarian has no key page equipped");
                 return;
             }
 
-            var sourceBook = BookInventoryModel.Instance?.GetBookList_equip()
-                ?.Find(b => b?.instanceId == bookInstanceId);
+            var sourceBook = FindEquippedBook(bookInstanceId);
             if (sourceBook == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Source key page not found in inventory"));
+                SendResult(client, reqId, false, "Source key page not found in inventory");
                 return;
             }
 
@@ -745,8 +717,7 @@ namespace PlayLoRWithMe
             if (sourceBook.originData?.equipedPassiveBookInstanceId != -1
                 && sourceBook.originData.equipedPassiveBookInstanceId != targetBook.instanceId)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Source key page is already attributed elsewhere"));
+                SendResult(client, reqId, false, "Source key page is already attributed elsewhere");
                 return;
             }
 
@@ -757,18 +728,15 @@ namespace PlayLoRWithMe
             bool ok = targetBook.EquipGivePassiveBook(sourceBook);
             if (!ok)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Cannot equip source — 4-book limit reached"));
+                SendResult(client, reqId, false, "Cannot equip source — 4-book limit reached");
                 return;
             }
 
             targetBook.ApplyPassiveSuccession();
             sourceBook.ApplyPassiveSuccession();
 
-            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
-            StateBroadcaster.Broadcast();
-            if (reqId != null)
-                client.Send(BuildActionResult(reqId, true, null));
+            SaveAndBroadcast();
+            SendResult(client, reqId, true, null);
         }
 
         /// <summary>
@@ -782,25 +750,21 @@ namespace PlayLoRWithMe
 
             if (!r.TryGetInt("bookInstanceId", out int bookInstanceId))
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Missing bookInstanceId"));
+                SendResult(client, reqId, false, "Missing bookInstanceId");
                 return;
             }
 
             var targetBook = unit.bookItem;
             if (targetBook == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian has no key page equipped"));
+                SendResult(client, reqId, false, "Librarian has no key page equipped");
                 return;
             }
 
-            var sourceBook = BookInventoryModel.Instance?.GetBookList_equip()
-                ?.Find(b => b?.instanceId == bookInstanceId);
+            var sourceBook = FindEquippedBook(bookInstanceId);
             if (sourceBook == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Source key page not found in inventory"));
+                SendResult(client, reqId, false, "Source key page not found in inventory");
                 return;
             }
 
@@ -808,8 +772,7 @@ namespace PlayLoRWithMe
             if (targetBook.originData?.equipedBookIdListInPassive == null
                 || !targetBook.originData.equipedBookIdListInPassive.Contains(bookInstanceId))
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Source key page is not equipped on this target"));
+                SendResult(client, reqId, false, "Source key page is not equipped on this target");
                 return;
             }
 
@@ -820,10 +783,8 @@ namespace PlayLoRWithMe
             targetBook.ApplyPassiveSuccession();
             sourceBook.ApplyPassiveSuccession();
 
-            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
-            StateBroadcaster.Broadcast();
-            if (reqId != null)
-                client.Send(BuildActionResult(reqId, true, null));
+            SaveAndBroadcast();
+            SendResult(client, reqId, true, null);
         }
 
         /// <summary>
@@ -839,8 +800,7 @@ namespace PlayLoRWithMe
             if (!r.TryGetInt("sourceInstanceId", out int sourceInstanceId)
                 || !r.TryGetInt("passiveId", out int passiveId))
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Missing sourceInstanceId or passiveId"));
+                SendResult(client, reqId, false, "Missing sourceInstanceId or passiveId");
                 return;
             }
 
@@ -849,18 +809,15 @@ namespace PlayLoRWithMe
             var targetBook = unit.bookItem;
             if (targetBook == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian has no key page equipped"));
+                SendResult(client, reqId, false, "Librarian has no key page equipped");
                 return;
             }
 
             // find the source book and the passive on it
-            var sourceBook = BookInventoryModel.Instance?.GetBookList_equip()
-                ?.Find(b => b?.instanceId == sourceInstanceId);
+            var sourceBook = FindEquippedBook(sourceInstanceId);
             if (sourceBook == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Source key page not found"));
+                SendResult(client, reqId, false, "Source key page not found");
                 return;
             }
 
@@ -873,8 +830,7 @@ namespace PlayLoRWithMe
                 p => p.originpassive?.id == passiveLorId);
             if (sourcePassive == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Passive not found on source key page"));
+                SendResult(client, reqId, false, "Passive not found on source key page");
                 return;
             }
 
@@ -894,8 +850,7 @@ namespace PlayLoRWithMe
             }
             if (targetSlot == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "No empty passive slot available"));
+                SendResult(client, reqId, false, "No empty passive slot available");
                 return;
             }
 
@@ -903,16 +858,14 @@ namespace PlayLoRWithMe
             GivePassiveState state;
             if (!targetBook.CanSuccessionPassive(sourcePassive, out state))
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Cannot attribute passive: " + state));
+                SendResult(client, reqId, false, "Cannot attribute passive: " + state);
                 return;
             }
 
             // validate: cost budget
             if (!targetBook.CanSuccessionPassiveByCost(targetSlot, sourcePassive))
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Insufficient passive cost budget"));
+                SendResult(client, reqId, false, "Insufficient passive cost budget");
                 return;
             }
 
@@ -920,10 +873,8 @@ namespace PlayLoRWithMe
             targetBook.ApplyPassiveSuccession();
             sourceBook.ApplyPassiveSuccession();
 
-            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
-            StateBroadcaster.Broadcast();
-            if (reqId != null)
-                client.Send(BuildActionResult(reqId, true, null));
+            SaveAndBroadcast();
+            SendResult(client, reqId, true, null);
         }
 
         /// <summary>
@@ -938,8 +889,7 @@ namespace PlayLoRWithMe
             if (!r.TryGetInt("sourceInstanceId", out int sourceInstanceId)
                 || !r.TryGetInt("passiveId", out int passiveId))
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Missing sourceInstanceId or passiveId"));
+                SendResult(client, reqId, false, "Missing sourceInstanceId or passiveId");
                 return;
             }
 
@@ -948,8 +898,7 @@ namespace PlayLoRWithMe
             var targetBook = unit.bookItem;
             if (targetBook == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian has no key page equipped"));
+                SendResult(client, reqId, false, "Librarian has no key page equipped");
                 return;
             }
 
@@ -972,14 +921,12 @@ namespace PlayLoRWithMe
             }
             if (toRemove == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Attributed passive not found"));
+                SendResult(client, reqId, false, "Attributed passive not found");
                 return;
             }
 
             // also init reserved data on the source book so the give-side is released cleanly
-            var sourceBook = BookInventoryModel.Instance?.GetBookList_equip()
-                ?.Find(b => b?.instanceId == sourceInstanceId);
+            var sourceBook = FindEquippedBook(sourceInstanceId);
             if (sourceBook != null)
                 InitReserved(sourceBook);
 
@@ -988,10 +935,8 @@ namespace PlayLoRWithMe
             if (sourceBook != null)
                 sourceBook.ApplyPassiveSuccession();
 
-            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
-            StateBroadcaster.Broadcast();
-            if (reqId != null)
-                client.Send(BuildActionResult(reqId, true, null));
+            SaveAndBroadcast();
+            SendResult(client, reqId, true, null);
         }
 
         /// <summary>
@@ -1176,10 +1121,21 @@ namespace PlayLoRWithMe
 
             RefreshCharacterRenderer(unit, unit.OwnerSephirah, FloorListSlotBase + ui);
 
-            Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
-            StateBroadcaster.Broadcast();
-            if (reqId != null)
-                client.Send(BuildActionResult(reqId, true, null));
+            SaveAndBroadcast();
+            SendResult(client, reqId, true, null);
+        }
+
+        /// <summary>
+        /// Returns the currently equipped gift at <paramref name="pos"/>, or null if
+        /// the slot is empty. Shared helper for the visibility and unequip branches
+        /// of <see cref="HandleSetGifts"/>.
+        /// </summary>
+        private static GiftModel FindEquippedGiftAt(GiftInventory inv, GiftPosition pos)
+        {
+            foreach (var g in inv.GetEquippedList())
+                if (g.ClassInfo.Position == pos)
+                    return g;
+            return null;
         }
 
         /// <summary>
@@ -1197,8 +1153,7 @@ namespace PlayLoRWithMe
             var inv = unit.giftInventory;
             if (inv == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Gift inventory not available"));
+                SendResult(client, reqId, false, "Gift inventory not available");
                 return;
             }
 
@@ -1213,17 +1168,7 @@ namespace PlayLoRWithMe
                 // currently equipped gift at this position (not the incoming one).
                 if (r.TryGetInt("vis" + pos, out int vis))
                 {
-                    // Find the currently equipped gift at this position, if any.
-                    GiftModel equipped = null;
-                    foreach (var g in inv.GetEquippedList())
-                    {
-                        if (g.ClassInfo.Position == giftPos)
-                        {
-                            equipped = g;
-                            break;
-                        }
-                    }
-
+                    var equipped = FindEquippedGiftAt(inv, giftPos);
                     if (equipped != null)
                     {
                         equipped.isShowEquipGift = (vis != 0);
@@ -1235,17 +1180,7 @@ namespace PlayLoRWithMe
                 {
                     if (giftId < 0)
                     {
-                        // Unequip: find the currently equipped gift at this position.
-                        GiftModel toUnequip = null;
-                        foreach (var g in inv.GetEquippedList())
-                        {
-                            if (g.ClassInfo.Position == giftPos)
-                            {
-                                toUnequip = g;
-                                break;
-                            }
-                        }
-
+                        var toUnequip = FindEquippedGiftAt(inv, giftPos);
                         if (toUnequip != null)
                         {
                             inv.UnEquip(toUnequip);
@@ -1281,12 +1216,10 @@ namespace PlayLoRWithMe
             if (changed)
             {
                 RefreshCharacterRenderer(unit, unit.OwnerSephirah, FloorListSlotBase + ui);
-                Singleton<GameSave.SaveManager>.Instance?.SavePlayData(1);
-                StateBroadcaster.Broadcast();
+                SaveAndBroadcast();
             }
 
-            if (reqId != null)
-                client.Send(BuildActionResult(reqId, true, null));
+            SendResult(client, reqId, true, null);
         }
 
         // Applies one dialogue field: empty/absent = restore random; non-empty = set custom.
@@ -1330,18 +1263,14 @@ namespace PlayLoRWithMe
             string key = LockKey(floorIndex, unitIndex);
             if (!_sessionManager.IsLibrarianLockHolder(key, client.SessionId))
             {
-                if (reqId != null)
-                    client.Send(
-                        BuildActionResult(reqId, false, "Not authorized — acquire lock first")
-                    );
+                SendResult(client, reqId, false, "Not authorized — acquire lock first");
                 return null;
             }
 
             var unit = GetLibrarianUnit(floorIndex, unitIndex);
             if (unit == null)
             {
-                if (reqId != null)
-                    client.Send(BuildActionResult(reqId, false, "Librarian not found"));
+                SendResult(client, reqId, false, "Librarian not found");
                 return null;
             }
 
@@ -1467,6 +1396,17 @@ namespace PlayLoRWithMe
             if (!ok && error != null)
                 w.Add("error", error);
             return w.Build();
+        }
+
+        /// <summary>
+        /// Sends an actionResult frame back to <paramref name="client"/> if a reqId is
+        /// present. All handler call sites can use this directly instead of guarding
+        /// <c>client.Send(BuildActionResult(...))</c> with <c>if (reqId != null)</c>.
+        /// </summary>
+        private static void SendResult(WebSocketClient client, string reqId, bool ok, string error)
+        {
+            if (reqId != null)
+                client.Send(BuildActionResult(reqId, ok, error));
         }
 
         // -------------------------------------------------------------------------
