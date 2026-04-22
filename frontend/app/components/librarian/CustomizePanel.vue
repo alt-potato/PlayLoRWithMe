@@ -27,7 +27,6 @@ import type {
   AppearanceData,
   CustomizePayload,
   ActionResult,
-  FashionBook,
 } from "~/types/game";
 
 const props = defineProps<{
@@ -131,52 +130,9 @@ const previewAppearance = computed<AppearanceData>(() => ({
 const customizeOptions = computed(() => props.state.customizeOptions);
 
 /** The fashion book currently selected in the draft, or null if none. */
-const activeFashionBook = computed(() => {
-  // Workshop skin (cloth overlay) takes priority when active.
-  if (draft.workshopSkin) {
-    const skin = customizeOptions.value?.workshopSkins?.find(
-      (s) => s.contentFolderIdx === draft.workshopSkin
-    );
-    if (skin) {
-      return {
-        id: 0,
-        fileStem: `ws_${skin.contentFolderIdx}`,
-        name: skin.name,
-        rangeType: "Hybrid",
-        replacesHead: skin.replacesHead ?? false,
-        hasFrontLayer: skin.hasFrontLayer,
-        headTiltDeg: skin.headTiltDeg,
-        pivotFracX: skin.pivotFracX,
-        pivotFracY: skin.pivotFracY,
-        feetYFrac: skin.feetYFrac,
-      } as FashionBook;
-    }
-  }
-
-  if (draft.customBookId >= 0)
-    return customizeOptions.value?.fashionBooks?.find(
-      (b) => b.id === draft.customBookId && (b.packageId ?? "") === draft.customBookPackageId
-    ) ?? null;
-
-  // No explicit fashion selection — use the equipped key page's body as the default
-  // so the preview shows the librarian's actual appearance rather than a blank body.
-  const kp = props.lib.keyPage;
-  if (kp.bookId == null) return null;
-  return {
-    id: kp.bookId,
-    packageId: kp.bookPackageId,
-    name: kp.name,
-    rangeType: kp.equipRangeType ?? "Hybrid",
-    replacesHead: props.lib.keyPageReplacesHead ?? false,
-    hasFrontLayer: props.lib.keyPageHasFrontLayer,
-    headTiltDeg: props.lib.keyPageHeadTiltDeg,
-    pivotFracX: props.lib.keyPagePivotFracX,
-    pivotFracY: props.lib.keyPagePivotFracY,
-    hidesBackHair: props.lib.keyPageHidesBackHair,
-    skinGender: props.lib.keyPageSkinGender,
-    feetYFrac: props.lib.keyPageFeetYFrac,
-  };
-});
+const activeFashionBook = computed(() =>
+  resolveFashionBook(draft, props.lib, customizeOptions.value),
+);
 
 /**
  * SkinGender of the active body source: from the selected fashion book if one

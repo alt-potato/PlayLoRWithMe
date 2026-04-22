@@ -113,60 +113,9 @@ async function onRemoveCard(card: DeckCardPreview) {
   catch { /* network errors handled by useWebSocket reconnect */ }
 }
 
-/**
- * Active fashion book for the appearance preview.  Custom book projection takes priority;
- * when none is active, falls back to the key page's own body composite so the librarian's
- * default in-game appearance is reflected without needing to open the customize panel.
- */
-const activeFashionBook = computed<FashionBook | null>(() => {
-  // Workshop skin (cloth overlay) takes priority when active.
-  const wsId = props.lib.workshopSkin;
-  if (wsId) {
-    const skin = (props.state.customizeOptions?.workshopSkins ?? []).find(
-      (s) => s.contentFolderIdx === wsId
-    );
-    if (skin) {
-      return {
-        id: 0,
-        fileStem: `ws_${skin.contentFolderIdx}`,
-        name: skin.name,
-        rangeType: "Hybrid",
-        replacesHead: skin.replacesHead ?? false,
-        hasFrontLayer: skin.hasFrontLayer,
-        headTiltDeg: skin.headTiltDeg,
-        pivotFracX: skin.pivotFracX,
-        pivotFracY: skin.pivotFracY,
-        feetYFrac: skin.feetYFrac,
-      };
-    }
-  }
-
-  const projId = props.lib.customBookId;
-  if (projId != null && projId >= 0) {
-    const projPkg = props.lib.customBookPackageId ?? "";
-    const found = (props.state.customizeOptions?.fashionBooks ?? []).find(
-      (fb) => fb.id === projId && (fb.packageId ?? "") === projPkg
-    );
-    if (found) return found;
-  }
-  // Fall back to the key page's own body composite.
-  const bookId = props.lib.keyPage.bookId;
-  if (bookId == null) return null;
-  return {
-    id: bookId,
-    packageId: props.lib.keyPage.bookPackageId,
-    name: props.lib.keyPage.name,
-    rangeType: props.lib.keyPage.equipRangeType ?? "",
-    replacesHead: props.lib.keyPageReplacesHead ?? false,
-    hasFrontLayer: props.lib.keyPageHasFrontLayer,
-    headTiltDeg: props.lib.keyPageHeadTiltDeg,
-    pivotFracX: props.lib.keyPagePivotFracX,
-    pivotFracY: props.lib.keyPagePivotFracY,
-    hidesBackHair: props.lib.keyPageHidesBackHair,
-    skinGender: props.lib.keyPageSkinGender,
-    feetYFrac: props.lib.keyPageFeetYFrac,
-  };
-});
+const activeFashionBook = computed<FashionBook | null>(() =>
+  resolveFashionBook(props.lib, props.lib, props.state.customizeOptions),
+);
 
 // Customize panel state
 const showCustomize = ref(false);

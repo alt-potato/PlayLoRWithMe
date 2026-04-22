@@ -97,57 +97,9 @@ function floorIconUrl(floorIdx: number): string {
 
 const floors = computed(() => props.state.floors ?? []);
 
-/**
- * Resolves the active fashion book (workshop skin > custom projection > key
- * page default) for a librarian, mirroring EditPanel's `activeFashionBook`
- * logic so the roster thumbnail matches the in-game appearance without the
- * user opening the customize panel.
- */
+/** Active fashion book for the librarian's current in-game appearance. */
 function fashionBookFor(lib: LibrarianEntry): FashionBook | null {
-  const wsId = lib.workshopSkin;
-  if (wsId) {
-    const skin = (props.state.customizeOptions?.workshopSkins ?? []).find(
-      (s) => s.contentFolderIdx === wsId,
-    );
-    if (skin) {
-      return {
-        id: 0,
-        fileStem: `ws_${skin.contentFolderIdx}`,
-        name: skin.name,
-        rangeType: "Hybrid",
-        replacesHead: skin.replacesHead ?? false,
-        hasFrontLayer: skin.hasFrontLayer,
-        headTiltDeg: skin.headTiltDeg,
-        pivotFracX: skin.pivotFracX,
-        pivotFracY: skin.pivotFracY,
-        feetYFrac: skin.feetYFrac,
-      };
-    }
-  }
-  const projId = lib.customBookId;
-  if (projId != null && projId >= 0) {
-    const projPkg = lib.customBookPackageId ?? "";
-    const found = (props.state.customizeOptions?.fashionBooks ?? []).find(
-      (fb) => fb.id === projId && (fb.packageId ?? "") === projPkg,
-    );
-    if (found) return found;
-  }
-  const bookId = lib.keyPage.bookId;
-  if (bookId == null) return null;
-  return {
-    id: bookId,
-    packageId: lib.keyPage.bookPackageId,
-    name: lib.keyPage.name,
-    rangeType: lib.keyPage.equipRangeType ?? "",
-    replacesHead: lib.keyPageReplacesHead ?? false,
-    hasFrontLayer: lib.keyPageHasFrontLayer,
-    headTiltDeg: lib.keyPageHeadTiltDeg,
-    pivotFracX: lib.keyPagePivotFracX,
-    pivotFracY: lib.keyPagePivotFracY,
-    hidesBackHair: lib.keyPageHidesBackHair,
-    skinGender: lib.keyPageSkinGender,
-    feetYFrac: lib.keyPageFeetYFrac,
-  };
+  return resolveFashionBook(lib, lib, props.state.customizeOptions);
 }
 
 /** Currently selected floor index. Defaults to the first available floor. */
