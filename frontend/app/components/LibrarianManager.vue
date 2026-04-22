@@ -53,43 +53,6 @@ const props = defineProps<{
 
 const actions = inject(LIBRARIAN_ACTIONS)!;
 
-// ── setCustomization callback ──────────────────────────────────────────────
-
-/**
- * Sends a setCustomization action for the currently editing librarian.
- * Uses the generic sendAction dispatcher since this action is not a common
- * enough operation to warrant a dedicated composable method.
- */
-async function onSetCustomization(
-  payload: Omit<CustomizePayload, "floorIndex" | "unitIndex">,
-): Promise<ActionResult> {
-  const lib = editingLibrarian.value;
-  if (!lib) return { ok: false, error: "No librarian selected" };
-  return await actions.sendAction({
-    type: "setCustomization",
-    floorIndex: lib.floorIndex,
-    unitIndex: lib.unitIndex,
-    ...payload,
-  });
-}
-
-/**
- * Sends a setGifts action for the currently editing librarian.
- * Uses the generic sendAction dispatcher, same pattern as setCustomization.
- */
-async function onSetGifts(
-  slots: Record<string, number>,
-): Promise<ActionResult> {
-  const lib = editingLibrarian.value;
-  if (!lib) return { ok: false, error: "No librarian selected" };
-  return await actions.sendAction({
-    type: "setGifts",
-    floorIndex: lib.floorIndex,
-    unitIndex: lib.unitIndex,
-    ...slots,
-  });
-}
-
 function floorIconUrl(floorIdx: number): string {
   // SephirahType is 1-indexed; floorIndex is 0-indexed.
   return `/assets/stageicons/${floorIdx + 1}.png`;
@@ -153,69 +116,103 @@ watch(
 
 // ── EditPanel action callbacks ─────────────────────────────────────────────
 
-async function onLock(): Promise<ActionResult> {
-  const lib = editingLibrarian.value;
-  if (!lib) return { ok: false, error: "No librarian selected" };
-  return actions.lockLibrarian(lib.floorIndex, lib.unitIndex);
-}
-
-async function onUnlock(): Promise<ActionResult> {
-  const lib = editingLibrarian.value;
-  if (!lib) return { ok: false, error: "No librarian selected" };
-  return actions.unlockLibrarian(lib.floorIndex, lib.unitIndex);
-}
-
-async function onRename(name: string): Promise<ActionResult> {
-  const lib = editingLibrarian.value;
-  if (!lib) return { ok: false, error: "No librarian selected" };
-  return actions.renameLibrarian(lib.floorIndex, lib.unitIndex, name);
-}
-
-async function onEquipPage(kp: AvailableKeyPage): Promise<void> {
+/**
+ * Invokes `fn` with the currently editing librarian's floorIndex and
+ * unitIndex. No-op when no librarian is open in the panel.
+ */
+async function forEditing(
+  fn: (floorIndex: number, unitIndex: number) => Promise<unknown>,
+): Promise<void> {
   const lib = editingLibrarian.value;
   if (!lib) return;
-  await actions.equipKeyPage(lib.floorIndex, lib.unitIndex, kp.instanceId);
+  await fn(lib.floorIndex, lib.unitIndex);
 }
 
-async function onAddCard(card: AvailableCard): Promise<void> {
+/**
+ * Like forEditing, but returns ActionResult so the EditPanel can surface
+ * errors. Returns a synthetic failure when no librarian is open so the
+ * caller's promise contract is preserved.
+ */
+function forEditingResult(
+  fn: (floorIndex: number, unitIndex: number) => Promise<ActionResult>,
+): Promise<ActionResult> {
   const lib = editingLibrarian.value;
-  if (!lib) return;
-  await actions.addCardToDeck(lib.floorIndex, lib.unitIndex, card.cardId.id, card.cardId.packageId);
+  if (!lib) return Promise.resolve({ ok: false, error: "No librarian selected" });
+  return fn(lib.floorIndex, lib.unitIndex);
 }
 
-async function onRemoveCard(card: DeckCardPreview): Promise<void> {
-  const lib = editingLibrarian.value;
-  if (!lib || !card.cardId) return;
-  await actions.removeCardFromDeck(
-    lib.floorIndex,
-    lib.unitIndex,
-    card.cardId.id,
-    card.cardId.packageId,
+function onLock(): Promise<ActionResult> {
+  return forEditingResult((fi, ui) => actions.lockLibrarian(fi, ui));
+}
+
+function onUnlock(): Promise<ActionResult> {
+  return forEditingResult((fi, ui) => actions.unlockLibrarian(fi, ui));
+}
+
+function onRename(name: string): Promise<ActionResult> {
+  return forEditingResult((fi, ui) => actions.renameLibrarian(fi, ui, name));
+}
+
+function onEquipPage(kp: AvailableKeyPage): Promise<void> {
+  return forEditing((fi, ui) => actions.equipKeyPage(fi, ui, kp.instanceId));
+}
+
+function onAddCard(card: AvailableCard): Promise<void> {
+  return forEditing((fi, ui) =>
+    actions.addCardToDeck(fi, ui, card.cardId.id, card.cardId.packageId),
   );
 }
 
-async function onEquipSourceBook(bookInstanceId: number): Promise<void> {
-  const lib = editingLibrarian.value;
-  if (!lib) return;
-  await actions.equipSourceBook(lib.floorIndex, lib.unitIndex, bookInstanceId);
+function onRemoveCard(card: DeckCardPreview): Promise<void> {
+  // DeckCardPreview.cardId is nullable; skip the action if the preview
+  // doesn't carry a concrete card reference.
+  if (!card.cardId) return Promise.resolve();
+  const cardId = card.cardId;
+  return forEditing((fi, ui) =>
+    actions.removeCardFromDeck(fi, ui, cardId.id, cardId.packageId),
+  );
 }
 
-async function onUnequipSourceBook(bookInstanceId: number): Promise<void> {
-  const lib = editingLibrarian.value;
-  if (!lib) return;
-  await actions.unequipSourceBook(lib.floorIndex, lib.unitIndex, bookInstanceId);
+function onEquipSourceBook(bookInstanceId: number): Promise<void> {
+  return forEditing((fi, ui) => actions.equipSourceBook(fi, ui, bookInstanceId));
 }
 
-async function onAttributePassive(sourceInstanceId: number, passiveId: number, passivePackageId: string): Promise<void> {
-  const lib = editingLibrarian.value;
-  if (!lib) return;
-  await actions.attributePassive(lib.floorIndex, lib.unitIndex, sourceInstanceId, passiveId, passivePackageId);
+function onUnequipSourceBook(bookInstanceId: number): Promise<void> {
+  return forEditing((fi, ui) => actions.unequipSourceBook(fi, ui, bookInstanceId));
 }
 
-async function onRemoveAttributedPassive(sourceInstanceId: number, passiveId: number, passivePackageId: string): Promise<void> {
-  const lib = editingLibrarian.value;
-  if (!lib) return;
-  await actions.removeAttributedPassive(lib.floorIndex, lib.unitIndex, sourceInstanceId, passiveId, passivePackageId);
+function onAttributePassive(
+  sourceInstanceId: number,
+  passiveId: number,
+  passivePackageId: string,
+): Promise<void> {
+  return forEditing((fi, ui) =>
+    actions.attributePassive(fi, ui, sourceInstanceId, passiveId, passivePackageId),
+  );
+}
+
+function onRemoveAttributedPassive(
+  sourceInstanceId: number,
+  passiveId: number,
+  passivePackageId: string,
+): Promise<void> {
+  return forEditing((fi, ui) =>
+    actions.removeAttributedPassive(fi, ui, sourceInstanceId, passiveId, passivePackageId),
+  );
+}
+
+function onSetCustomization(
+  payload: Omit<CustomizePayload, "floorIndex" | "unitIndex">,
+): Promise<ActionResult> {
+  return forEditingResult((fi, ui) =>
+    actions.sendAction({ type: "setCustomization", floorIndex: fi, unitIndex: ui, ...payload }),
+  );
+}
+
+function onSetGifts(slots: Record<string, number>): Promise<ActionResult> {
+  return forEditingResult((fi, ui) =>
+    actions.sendAction({ type: "setGifts", floorIndex: fi, unitIndex: ui, ...slots }),
+  );
 }
 
 // ── Abnormality / EGO sections ─────────────────────────────────────────────
