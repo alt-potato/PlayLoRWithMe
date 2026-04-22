@@ -1,8 +1,11 @@
 import type { Ref } from "vue";
 
 /**
- * Toggle membership of `value` in a reactive Set ref. If present, removes it;
- * otherwise adds it. Always reassigns .value with a new Set so Vue reactivity fires.
+ * Toggles `value` in a reactive Set ref.
+ *
+ * Reassigns .value with a new Set rather than mutating in place: Vue's
+ * reactivity tracks Set identity, not internal mutation, so `ref.value.add(x)`
+ * alone would not trigger dependent re-renders.
  */
 export function toggleSet<T>(ref: Ref<Set<T>>, value: T): void {
   const next = new Set(ref.value);

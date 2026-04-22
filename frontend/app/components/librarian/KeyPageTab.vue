@@ -14,6 +14,7 @@
 <script setup lang="ts">
 import type { LibrarianEntry, AvailableKeyPage, GameState } from "~/types/game";
 import type { AnyKeyPage } from "~/components/librarian/KeyPageDetail.vue";
+import { toggleSet } from "~/utils/setReactive";
 
 const props = defineProps<{
   lib: LibrarianEntry;

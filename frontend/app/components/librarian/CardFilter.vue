@@ -12,6 +12,7 @@
 -->
 <script setup lang="ts">
 import type { AvailableCard } from "~/types/game";
+import { toggleSet } from "~/utils/setReactive";
 
 const props = defineProps<{ cards: AvailableCard[] }>();
 const emit = defineEmits<{ filtered: [cards: AvailableCard[]] }>();

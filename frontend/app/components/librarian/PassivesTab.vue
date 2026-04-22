@@ -24,6 +24,7 @@ import type {
   Passive,
   AttributedPassive,
 } from "~/types/game";
+import { toggleSet } from "~/utils/setReactive";
 
 const props = defineProps<{
   lib: LibrarianEntry;
