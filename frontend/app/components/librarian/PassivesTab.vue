@@ -195,22 +195,8 @@ const KEYWORD_LABELS = [
   "Damage",
 ];
 
-// Direct togglers — passing a ref through a function argument doesn't work in
-// Vue 3 templates (refs are auto-unwrapped at the call site), so each filter
-// needs its own function that mutates its own ref.
-function toggleCost(value: string) {
-  const next = new Set(costFilter.value);
-  if (next.has(value)) next.delete(value);
-  else next.add(value);
-  costFilter.value = next;
-}
-
-function toggleKeyword(value: string) {
-  const next = new Set(keywordFilter.value);
-  if (next.has(value)) next.delete(value);
-  else next.add(value);
-  keywordFilter.value = next;
-}
+const toggleCost = (v: string) => toggleSet(costFilter, v);
+const toggleKeyword = (v: string) => toggleSet(keywordFilter, v);
 
 function matchesPassiveCost(p: Passive, selection: Set<string>): boolean {
   if (selection.size === 0) return true;
@@ -280,27 +266,14 @@ const groupedPages = computed((): BookGroup[] => {
 
 const collapsedGroups = ref(new Set<string>());
 
-function toggleGroup(bookIcon: string) {
-  const next = new Set(collapsedGroups.value);
-  if (next.has(bookIcon)) next.delete(bookIcon);
-  else next.add(bookIcon);
-  collapsedGroups.value = next;
-}
+const toggleGroup = (bookIcon: string) => toggleSet(collapsedGroups, bookIcon);
 
 // ── Expanded source key pages ───────────────────────────────────────────────
 
 /** Set of instanceIds currently expanded in the left column. */
 const expandedSources = ref(new Set<number>());
 
-function toggleSourceExpansion(kp: AvailableKeyPage) {
-  const next = new Set(expandedSources.value);
-  if (next.has(kp.instanceId)) {
-    next.delete(kp.instanceId);
-  } else {
-    next.add(kp.instanceId);
-  }
-  expandedSources.value = next;
-}
+const toggleSourceExpansion = (kp: AvailableKeyPage) => toggleSet(expandedSources, kp.instanceId);
 
 function isSource(kp: AvailableKeyPage): boolean {
   return sourceKeyPageIds.value.has(kp.instanceId);

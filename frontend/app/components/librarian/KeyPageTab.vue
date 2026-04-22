@@ -78,12 +78,7 @@ const groupedPages = computed((): BookGroup[] => {
 /** Tracks which book groups are collapsed by bookIcon. */
 const collapsedGroups = ref(new Set<string>());
 
-function toggleGroup(bookIcon: string) {
-  const next = new Set(collapsedGroups.value);
-  if (next.has(bookIcon)) next.delete(bookIcon);
-  else next.add(bookIcon);
-  collapsedGroups.value = next;
-}
+const toggleGroup = (bookIcon: string) => toggleSet(collapsedGroups, bookIcon);
 
 /** Selected key page for the detail view. Default = current equipped page from inventory. */
 const selectedInstanceId = ref<number | null>(null);

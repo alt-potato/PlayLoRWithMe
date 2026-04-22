@@ -58,33 +58,10 @@ const diceTypes = computed(() => {
 const COST_LABELS = ["0", "1", "2", "3", "4", "5+"];
 const DICE_COUNT_LABELS = ["0", "1", "2", "3", "4+"];
 
-// Direct togglers — Vue auto-unwraps refs in template expressions, so passing
-// a ref as a function argument delivers the unwrapped value, not the ref.
-// Each filter needs its own toggler that mutates its own ref.
-function toggleRarity(value: string) {
-  const next = new Set(rarityFilter.value);
-  if (next.has(value)) next.delete(value);
-  else next.add(value);
-  rarityFilter.value = next;
-}
-function toggleCost(value: string) {
-  const next = new Set(costFilter.value);
-  if (next.has(value)) next.delete(value);
-  else next.add(value);
-  costFilter.value = next;
-}
-function toggleDiceCount(value: string) {
-  const next = new Set(diceCountFilter.value);
-  if (next.has(value)) next.delete(value);
-  else next.add(value);
-  diceCountFilter.value = next;
-}
-function toggleDiceType(value: string) {
-  const next = new Set(diceTypeFilter.value);
-  if (next.has(value)) next.delete(value);
-  else next.add(value);
-  diceTypeFilter.value = next;
-}
+const toggleRarity = (v: string) => toggleSet(rarityFilter, v);
+const toggleCost = (v: string) => toggleSet(costFilter, v);
+const toggleDiceCount = (v: string) => toggleSet(diceCountFilter, v);
+const toggleDiceType = (v: string) => toggleSet(diceTypeFilter, v);
 
 /** "5+" matches cost >= 5; all other labels match exact numeric cost. */
 function matchesCost(card: AvailableCard, selection: Set<string>): boolean {
