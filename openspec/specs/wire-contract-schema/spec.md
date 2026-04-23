@@ -1,3 +1,8 @@
+# wire-contract-schema Specification
+
+## Purpose
+TBD - created by archiving change wire-contract-schema. Update Purpose after archive.
+## Requirements
 ### Requirement: The WebSocket wire format SHALL have a single canonical machine-checkable schema
 
 The JSON payload of every `ServerMessage` and `ClientAction` MUST be describable by a Zod schema authored in `frontend/app/types/game.ts`. The set of schemas MUST collectively cover every field the mod emits and every field the frontend emits. Every TypeScript type currently exported from `frontend/app/types/game.ts` (including but not limited to `Die`, `Card`, `Unit`, `AllyUnit`, `SessionState`, `GameState`, `ServerMessage`, `ClientAction`) MUST be derived from its corresponding Zod schema via `z.infer<>` rather than hand-written as a standalone `interface` or `type` declaration.
@@ -100,3 +105,4 @@ Drift between the mod's emitted JSON and the canonical schema is treated as a bu
 - **WHEN** `GameStateSerializer.cs` is edited to emit a payload that no longer matches the Zod schema, and a developer runs the mod with `npm run dev` in the frontend
 - **THEN** the browser console shows a `[wire-contract]` structured error on the first WebSocket message that carries the drifted shape
 - **AND** the frontend continues to function (no crash, no disconnect)
+
