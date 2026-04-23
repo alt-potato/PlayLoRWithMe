@@ -1,0 +1,273 @@
+{
+  "_comment": "Hand-curated reference GameState payloads exercised by frontend/scripts/referenceState.test.ts. Must parse cleanly against GameStateSchema. Update when adding fields by re-capturing from a live mod session or extending the relevant case below.",
+  "cases": {
+    "title": {
+      "scene": "title"
+    },
+
+    "main_librarianManager": {
+      "scene": "main",
+      "phase": "MainMenuPhase",
+      "stageState": "Default",
+      "assetsReady": true,
+      "floors": [
+        {
+          "floorIndex": 1,
+          "officialName": "Malkuth",
+          "realizationLevel": 3,
+          "egoCards": [],
+          "emotionCards": [
+            {
+              "level": 3,
+              "name": "Awakening I",
+              "state": "Positive",
+              "targetType": "All",
+              "emotionLevel": 3,
+              "abnormalityName": "Big Bird"
+            }
+          ],
+          "librarians": [
+            {
+              "floorIndex": 1,
+              "unitIndex": 0,
+              "name": "Malkuth",
+              "keyPage": {
+                "name": "Malkuth's Page",
+                "speedDiceCount": 3,
+                "speedMin": 3,
+                "speedMax": 7,
+                "hp": 100,
+                "breakGauge": 80,
+                "equipRangeType": "Hybrid"
+              },
+              "passives": [
+                {
+                  "id": { "id": 100001, "packageId": 0 },
+                  "name": "Strong Will",
+                  "desc": "+1 power on first die.",
+                  "cost": 1
+                }
+              ],
+              "deckPreview": [
+                {
+                  "cardId": { "id": 200001, "packageId": "core" },
+                  "name": "Strike",
+                  "cost": 2,
+                  "range": "Near",
+                  "rarity": "Common",
+                  "count": 3
+                }
+              ],
+              "lockedBy": null
+            }
+          ]
+        }
+      ],
+      "availableKeyPages": [
+        {
+          "instanceId": 1,
+          "name": "Spare Page",
+          "speedMin": 2,
+          "speedMax": 6,
+          "bookId": { "id": 300001, "packageId": "core" },
+          "chapter": 1,
+          "bookIcon": "Chapter1",
+          "bookGroupName": "The Stray Dogs",
+          "hp": 80,
+          "breakGauge": 70,
+          "equipRangeType": "Melee",
+          "resistances": {
+            "slashHp": "Normal",
+            "pierceHp": "Weak",
+            "bluntHp": "Resistant"
+          },
+          "passives": []
+        }
+      ],
+      "availableCards": [
+        {
+          "cardId": { "id": 200001, "packageId": "core" },
+          "name": "Strike",
+          "cost": 2,
+          "range": "Near",
+          "rarity": "Common",
+          "count": 5
+        }
+      ]
+    },
+
+    "main_battleSetting": {
+      "scene": "main",
+      "uiPhase": "BattleSetting",
+      "stageState": "BattleSetting",
+      "allies": [
+        {
+          "id": 0,
+          "name": "Ally One",
+          "hp": 100,
+          "maxHp": 100,
+          "staggerGauge": 80,
+          "maxStaggerGauge": 80,
+          "staggerThreshold": 40,
+          "targetable": true,
+          "turnState": "WAIT_TURN",
+          "speedDice": [],
+          "slottedCards": [],
+          "passives": [],
+          "buffs": [],
+          "abnormalities": [],
+          "emotionLevel": 0,
+          "emotionCoins": { "positive": 0, "negative": 0, "max": 5 },
+          "enabled": true,
+          "light": 3,
+          "maxLight": 3,
+          "reservedLight": 0
+        }
+      ]
+    },
+
+    "battle_normal": {
+      "scene": "battle",
+      "phase": "ApplyLibrarianCardPhase",
+      "stage": {
+        "floor": 1,
+        "chapter": 1,
+        "wave": 1,
+        "round": 1
+      },
+      "allies": [
+        {
+          "id": 1,
+          "name": "Ally Normal",
+          "hp": 80,
+          "maxHp": 100,
+          "staggerGauge": 70,
+          "maxStaggerGauge": 80,
+          "staggerThreshold": 40,
+          "targetable": true,
+          "turnState": "WAIT_CARD",
+          "speedDice": [
+            { "slot": 0, "value": 5, "type": "Atk", "detail": "Slash" }
+          ],
+          "slottedCards": [],
+          "passives": [],
+          "buffs": [
+            {
+              "keywordId": "buf_paralysis",
+              "name": "Paralysis",
+              "stacks": 2,
+              "positive": "Negative"
+            }
+          ],
+          "abnormalities": [],
+          "emotionLevel": 1,
+          "emotionCoins": { "positive": 1, "negative": 0, "max": 5 },
+          "light": 2,
+          "maxLight": 3,
+          "reservedLight": 1,
+          "hand": [
+            {
+              "id": { "id": 200001, "packageId": 0 },
+              "index": 0,
+              "name": "Strike",
+              "cost": 2,
+              "range": "Near",
+              "rarity": "Common",
+              "abilityDesc": "Hits the target hard.",
+              "dice": [
+                { "type": "Atk", "detail": "Slash", "min": 3, "max": 5 }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "name": "Ally Broken",
+          "hp": 50,
+          "maxHp": 100,
+          "staggerGauge": 0,
+          "maxStaggerGauge": 80,
+          "staggerThreshold": 40,
+          "targetable": true,
+          "turnState": "BREAK",
+          "speedDice": [
+            { "slot": 0, "value": 0, "type": "Atk", "detail": "Slash", "staggered": true }
+          ],
+          "slottedCards": [],
+          "passives": [],
+          "buffs": [],
+          "abnormalities": [],
+          "emotionLevel": 0,
+          "emotionCoins": { "positive": 0, "negative": 0, "max": 5 },
+          "light": 0,
+          "maxLight": 3,
+          "reservedLight": 0
+        }
+      ],
+      "enemies": [
+        {
+          "id": 10,
+          "name": "Enemy One",
+          "hp": 60,
+          "maxHp": 80,
+          "staggerGauge": 40,
+          "maxStaggerGauge": 60,
+          "staggerThreshold": 30,
+          "targetable": true,
+          "turnState": "WAIT_CARD",
+          "speedDice": [
+            { "slot": 0, "value": 4, "type": "Atk", "detail": "Pierce" }
+          ],
+          "slottedCards": [
+            {
+              "cardIndex": 0,
+              "slot": 0,
+              "name": "Lunge",
+              "cost": 1,
+              "targetUnitId": 1,
+              "targetSlot": 0,
+              "clash": true,
+              "range": "Near"
+            }
+          ],
+          "passives": [],
+          "buffs": [],
+          "abnormalities": [],
+          "emotionLevel": 0,
+          "emotionCoins": { "positive": 0, "negative": 0, "max": 5 }
+        }
+      ]
+    },
+
+    "battle_abnormalitySelection": {
+      "scene": "battle",
+      "phase": "AbnormalitySelectionPhase",
+      "abnormalitySelection": {
+        "choices": [
+          {
+            "id": 1,
+            "name": "Big Bird I",
+            "emotionLevel": 3,
+            "targetType": "All",
+            "state": "Positive",
+            "desc": "Restore 4 HP to all allies."
+          },
+          {
+            "id": 2,
+            "name": "Punishing Bird I",
+            "emotionLevel": 3,
+            "targetType": "SelectOne",
+            "state": "Negative"
+          }
+        ],
+        "teamEmotionLevel": 3,
+        "teamCoin": 4,
+        "teamCoinMax": 8,
+        "teamPositiveCoins": 3,
+        "teamNegativeCoins": 1
+      },
+      "allies": [],
+      "enemies": []
+    }
+  }
+}

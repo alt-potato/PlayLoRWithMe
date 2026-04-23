@@ -1,4 +1,5 @@
 import type { GameState, SessionState, PlayerInfo, ActionResult, ServerMessage, ClientAction } from "~/types/game";
+import { ServerMessageSchema } from "~/types/game";
 import { applyDelta } from "~/utils/deltaApply";
 
 const SESSION_STORAGE_KEY = "plwm_session";
@@ -53,7 +54,17 @@ export function useWebSocket() {
 
     ws.onmessage = (ev: MessageEvent) => {
       try {
-        handleMessage(JSON.parse(ev.data as string));
+        const raw = JSON.parse(ev.data as string);
+        // dev-only schema check: log structured drift to the console without
+        // throwing, so the developer keeps working while the mismatch is
+        // diagnosed. tree-shaken from production by `import.meta.dev`.
+        if (import.meta.dev) {
+          const result = ServerMessageSchema.safeParse(raw);
+          if (!result.success) {
+            console.error("[wire-contract] WebSocket payload violates schema:", result.error.issues);
+          }
+        }
+        handleMessage(raw);
       } catch {
         // malformed message — ignore
       }

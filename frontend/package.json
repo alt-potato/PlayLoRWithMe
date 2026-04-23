@@ -10,12 +10,17 @@
     "postinstall": "nuxt prepare",
     "format": "npx prettier --write . --ignore-path .gitignore",
     "check": "npx nuxi typecheck",
-    "test": "vitest run"
+    "test": "vitest run",
+    "generate-schema": "node scripts/generate-schema.ts",
+    "prebuild": "npm run generate-schema",
+    "pregenerate": "npm run generate-schema",
+    "pretest": "npm run generate-schema"
   },
   "dependencies": {
     "nuxt": "^4.3.1",
     "vue": "^3.5.29",
-    "vue-router": "^5.0.3"
+    "vue-router": "^5.0.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "prettier": "^3.8.1",
