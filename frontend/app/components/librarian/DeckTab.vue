@@ -164,7 +164,12 @@ function availableToCard(c: AvailableCard, i: number): Card {
 }
 
 .card-grid {
-  overflow-y: auto;
+  /* explicit shorthand: horizontal is clipped (no scrollbar even when a
+     hovered card's absolute-positioned detail overlay extends past the
+     grid); vertical scrolls as before. without explicit overflow-x the
+     browser promotes it to `auto` alongside overflow-y, producing a
+     horizontal scrollbar whenever the overlay pokes out. */
+  overflow: hidden auto;
   scrollbar-gutter: stable;
   display: flex;
   flex-wrap: wrap;

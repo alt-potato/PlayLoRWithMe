@@ -286,6 +286,7 @@ const detailsLabel = computed(() => {
                 v-for="(c, i) in ally.ego"
                 :key="c.id.id + c.id.packageId"
                 :card="c"
+                display-mode="full"
                 :selected="
                   selectingTargetFor?.unitId === unit.id &&
                   selectingTargetFor?.cardIndex === i &&
@@ -302,6 +303,7 @@ const detailsLabel = computed(() => {
                 v-for="(c, i) in ally.hand"
                 :key="c.id.id + c.id.packageId"
                 :card="c"
+                display-mode="full"
                 :selected="
                   selectingTargetFor?.unitId === unit.id &&
                   selectingTargetFor?.cardIndex === i &&

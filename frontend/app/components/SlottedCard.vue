@@ -19,6 +19,7 @@ defineProps<{
   <div class="sc-card">
     <div class="sc-top">
       <span class="sc-name">{{ card.name }}</span>
+      <CardRangeIcon :range="card.range" class="sc-range" />
       <span v-if="targetLabel" class="sc-target">{{ targetLabel }}</span>
     </div>
     <div v-if="card.dice?.length" class="sc-dice">
@@ -62,6 +63,11 @@ defineProps<{
   font-size: 0.68rem;
   color: var(--text-1);
   font-family: var(--font-body);
+}
+
+.sc-range {
+  flex-shrink: 0;
+  font-size: 0.7rem;
 }
 
 .sc-target {

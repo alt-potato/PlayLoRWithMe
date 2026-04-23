@@ -30,7 +30,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
     <!-- Header -->
     <div class="sheet-header" :style="{ borderTopColor: borderColor }">
       <div class="header-top">
-        <span class="card-range">{{ card.range }}</span>
+        <CardRangeIcon :range="card.range" class="card-range" />
         <span class="cost-badge" :style="costStyle(card) ?? {}">{{
           card.cost
         }}</span>
@@ -136,12 +136,9 @@ const borderColor = computed(() => cardBorderColor(props.card));
 }
 
 .card-range {
-  font-family: var(--font-body);
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-2);
-  flex: 1;
+  /* push cost-badge and close-btn to the right of the header row */
+  margin-right: auto;
+  font-size: 1.1rem;
 }
 
 .cost-badge {
