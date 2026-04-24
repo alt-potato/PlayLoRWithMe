@@ -61,7 +61,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
         </div>
       </div>
 
-      <p v-if="card.abilityDesc" class="ability-desc">{{ card.abilityDesc }}</p>
+      <p v-if="card.abilityDesc" class="ability-desc"><KeywordText :text="card.abilityDesc" /></p>
 
       <div v-if="card.dice?.length" class="dice-list">
         <div
@@ -83,7 +83,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
             <span class="die-range" :style="{ color: dieTypeColor(d.type) }">
               {{ d.min }}–{{ d.max }}
             </span>
-            <span v-if="d.desc" class="die-desc">{{ d.desc }}</span>
+            <span v-if="d.desc" class="die-desc"><KeywordText :text="d.desc" /></span>
           </div>
         </div>
       </div>

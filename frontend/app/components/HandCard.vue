@@ -194,7 +194,7 @@ function handleClick() {
     -->
     <div class="hcard-detail" @click.stop>
       <p v-if="card.abilityDesc" class="hcard-detail-ability">
-        {{ card.abilityDesc }}
+        <KeywordText :text="card.abilityDesc" />
       </p>
       <div v-if="card.dice?.length" class="hcard-detail-dice">
         <div
@@ -224,7 +224,7 @@ function handleClick() {
             class="hcard-die-desc"
             :class="`hcard-die-desc--${d.type.toLowerCase()}`"
           >
-            {{ d.desc }}
+            <KeywordText :text="d.desc" />
           </p>
           <span v-else aria-hidden="true"></span>
         </div>
