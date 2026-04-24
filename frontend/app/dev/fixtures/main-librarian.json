@@ -1,0 +1,258 @@
+{
+  "_comment": "Main scene with the librarian manager — exercises locked/unlocked states, minimal vs fully-equipped key pages, and a mixed-rarity inventory.",
+  "scene": "main",
+  "phase": "MainMenuPhase",
+  "stageState": "Default",
+  "assetsReady": true,
+  "floors": [
+    {
+      "floorIndex": 1,
+      "officialName": "Malkuth",
+      "realizationLevel": 3,
+      "egoCards": [],
+      "emotionCards": [
+        {
+          "level": 3,
+          "name": "Awakening I",
+          "state": "Positive",
+          "targetType": "All",
+          "emotionLevel": 3,
+          "abnormalityName": "Big Bird",
+          "desc": "Restore 4 HP to all allies."
+        },
+        {
+          "level": 3,
+          "name": "Breakdown I",
+          "state": "Negative",
+          "targetType": "SelectOne",
+          "emotionLevel": 3,
+          "abnormalityName": "Small Bird",
+          "desc": "Deal 5 damage to a chosen enemy."
+        }
+      ],
+      "librarians": [
+        {
+          "floorIndex": 1,
+          "unitIndex": 0,
+          "name": "Malkuth",
+          "keyPage": {
+            "instanceId": 101,
+            "name": "Malkuth's Page",
+            "speedDiceCount": 3,
+            "speedMin": 3,
+            "speedMax": 7,
+            "hp": 110,
+            "breakGauge": 80,
+            "equipRangeType": "Hybrid",
+            "resistances": {
+              "slashHp": "Normal",
+              "pierceHp": "Weak",
+              "bluntHp": "Resistant"
+            }
+          },
+          "passives": [
+            {
+              "id": { "id": 100001, "packageId": 0 },
+              "name": "Strong Will",
+              "desc": "+1 power on the first die.",
+              "cost": 1
+            }
+          ],
+          "deckPreview": [
+            {
+              "cardId": { "id": 200001, "packageId": "core" },
+              "name": "Jab",
+              "cost": 2,
+              "range": "Near",
+              "rarity": "Common",
+              "count": 3
+            },
+            {
+              "cardId": { "id": 200004, "packageId": "core" },
+              "name": "Sanguine Rite",
+              "cost": 4,
+              "range": "Special",
+              "rarity": "Unique",
+              "count": 1
+            }
+          ],
+          "lockedBy": null,
+          "isSephirah": true
+        },
+        {
+          "floorIndex": 1,
+          "unitIndex": 1,
+          "name": "Adelaide",
+          "keyPage": {
+            "instanceId": 102,
+            "name": "Regret Page",
+            "speedDiceCount": 3,
+            "speedMin": 2,
+            "speedMax": 6,
+            "hp": 90,
+            "breakGauge": 70,
+            "equipRangeType": "Melee",
+            "resistances": {
+              "slashHp": "Weak",
+              "pierceHp": "Normal",
+              "bluntHp": "Normal"
+            }
+          },
+          "passives": [],
+          "deckPreview": [
+            {
+              "cardId": { "id": 200001, "packageId": "core" },
+              "name": "Jab",
+              "cost": 2,
+              "range": "Near",
+              "rarity": "Common",
+              "count": 2
+            }
+          ],
+          "lockedBy": "another-session"
+        },
+        {
+          "floorIndex": 1,
+          "unitIndex": 2,
+          "name": "Celeste",
+          "keyPage": {
+            "name": "(No Page Equipped)"
+          },
+          "passives": [],
+          "deckPreview": [],
+          "lockedBy": null
+        }
+      ]
+    }
+  ],
+  "availableKeyPages": [
+    {
+      "instanceId": 201,
+      "name": "Spare Page",
+      "speedMin": 2,
+      "speedMax": 6,
+      "bookId": { "id": 300001, "packageId": "core" },
+      "chapter": 1,
+      "bookIcon": "Chapter1",
+      "bookGroupName": "The Stray Dogs",
+      "hp": 80,
+      "breakGauge": 70,
+      "equipRangeType": "Melee",
+      "resistances": {
+        "slashHp": "Normal",
+        "pierceHp": "Weak",
+        "bluntHp": "Resistant"
+      },
+      "passives": []
+    },
+    {
+      "instanceId": 202,
+      "name": "Flintlock Page",
+      "speedMin": 3,
+      "speedMax": 7,
+      "bookId": { "id": 300002, "packageId": "core" },
+      "chapter": 2,
+      "bookIcon": "Chapter2",
+      "bookGroupName": "Urban Legend",
+      "hp": 95,
+      "breakGauge": 75,
+      "equipRangeType": "Range",
+      "resistances": {
+        "slashHp": "Resistant",
+        "pierceHp": "Normal",
+        "bluntHp": "Normal"
+      },
+      "passives": [
+        {
+          "id": { "id": 100002, "packageId": 0 },
+          "name": "Sharpshooter",
+          "desc": "Ranged dice gain +1 power.",
+          "cost": 2
+        }
+      ]
+    },
+    {
+      "instanceId": 203,
+      "name": "Myo Artisan Page",
+      "speedMin": 3,
+      "speedMax": 8,
+      "bookId": { "id": 300003, "packageId": "core" },
+      "chapter": 3,
+      "bookIcon": "Chapter3",
+      "bookGroupName": "Myo Artisan",
+      "hp": 120,
+      "breakGauge": 90,
+      "equipRangeType": "Hybrid",
+      "resistances": {
+        "slashHp": "Resistant",
+        "pierceHp": "Resistant",
+        "bluntHp": "Weak"
+      },
+      "passives": []
+    }
+  ],
+  "availableCards": [
+    {
+      "cardId": { "id": 200001, "packageId": "core" },
+      "name": "Jab",
+      "cost": 2,
+      "range": "Near",
+      "rarity": "Common",
+      "count": 5,
+      "abilityDesc": "Basic melee strike.",
+      "dice": [{ "type": "Atk", "detail": "Slash", "min": 3, "max": 5 }]
+    },
+    {
+      "cardId": { "id": 200002, "packageId": "core" },
+      "name": "Warning Shot",
+      "cost": 3,
+      "range": "Far",
+      "rarity": "Uncommon",
+      "count": 4,
+      "abilityDesc": "[Clash Win] Inflict 2 Bleed.",
+      "dice": [{ "type": "Atk", "detail": "Pierce", "min": 4, "max": 6 }]
+    },
+    {
+      "cardId": { "id": 200003, "packageId": "core" },
+      "name": "Meditate",
+      "cost": 0,
+      "range": "Instance",
+      "rarity": "Rare",
+      "count": 2,
+      "abilityDesc": "Draw 1 card and recover 1 Light at the start of next Scene."
+    },
+    {
+      "cardId": { "id": 200004, "packageId": "core" },
+      "name": "Sanguine Rite",
+      "cost": 4,
+      "range": "Special",
+      "rarity": "Unique",
+      "count": 1,
+      "abilityDesc": "Pay 5 HP. If this attack hits, gain 3 Strength until end of Scene.",
+      "dice": [
+        { "type": "Atk", "detail": "Slash", "min": 5, "max": 9 },
+        { "type": "Standby", "detail": "Guard", "min": 2, "max": 4 }
+      ]
+    },
+    {
+      "cardId": { "id": 200005, "packageId": "core" },
+      "name": "Sweeping Arc",
+      "cost": 3,
+      "range": "FarArea",
+      "rarity": "Rare",
+      "count": 3,
+      "abilityDesc": "Strikes the target and both neighbouring enemies once each.",
+      "dice": [{ "type": "Atk", "detail": "Pierce", "min": 3, "max": 5 }]
+    },
+    {
+      "cardId": { "id": 200006, "packageId": "core" },
+      "name": "Scattershot",
+      "cost": 3,
+      "range": "FarAreaEach",
+      "rarity": "Uncommon",
+      "count": 3,
+      "abilityDesc": "Roll once per enemy — each result is resolved independently.",
+      "dice": [{ "type": "Atk", "detail": "Pierce", "min": 2, "max": 4 }]
+    }
+  ]
+}

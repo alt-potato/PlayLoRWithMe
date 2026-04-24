@@ -2,6 +2,14 @@
 import { LIBRARIAN_ACTIONS } from "~/composables/useLibrarianActions";
 import { ASSETS_READY } from "~/composables/useAssetsReady";
 
+// Vite replaces `import.meta.dev` with a literal boolean at build time; in
+// production the ternary collapses to `null` and the `import()` call lives
+// in a dead branch, so Rollup never emits the dev-picker chunk and every
+// module reachable through ~/dev/ tree-shakes out of the production bundle.
+const DevPicker = import.meta.dev
+  ? defineAsyncComponent(() => import("./dev/DevFixturePicker.vue"))
+  : null;
+
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
 const statusTitle: Record<ConnectionStatus, string> = {
@@ -166,6 +174,10 @@ const rawJson = computed(() =>
       <summary><span class="chevron">▸</span>debug info</summary>
       <pre>{{ rawJson }}</pre>
     </details>
+
+    <ClientOnly v-if="DevPicker">
+      <component :is="DevPicker" />
+    </ClientOnly>
   </div>
 </template>
 

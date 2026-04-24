@@ -1,0 +1,301 @@
+{
+  "_comment": "Battle scene covering CardRange x rarity combinatorics, broken/dead units, subTargets, overflow-prone descriptions. Impossible game states (e.g. a card appearing in both hand[] and a slottedCard entry) are intentional — the fixture exists to exercise every UI branch, not to simulate realistic play.",
+  "scene": "battle",
+  "phase": "ApplyLibrarianCardPhase",
+  "stageState": "Battle",
+  "assetsReady": true,
+  "stage": {
+    "floor": 3,
+    "chapter": 1,
+    "wave": 2,
+    "round": 4,
+    "name": "Urban Plague District"
+  },
+  "allies": [
+    {
+      "id": 1,
+      "name": "Daphnes",
+      "hp": 82,
+      "maxHp": 110,
+      "staggerGauge": 58,
+      "maxStaggerGauge": 80,
+      "staggerThreshold": 40,
+      "targetable": true,
+      "turnState": "WAIT_CARD",
+      "speedDice": [
+        { "slot": 0, "value": 6, "type": "Atk", "detail": "Slash" },
+        { "slot": 1, "value": 4, "type": "Atk", "detail": "Pierce" },
+        { "slot": 2, "value": 3, "type": "Def", "detail": "Guard" }
+      ],
+      "slottedCards": [
+        {
+          "cardIndex": 4,
+          "slot": 1,
+          "name": "Sweeping Arc",
+          "cost": 3,
+          "targetUnitId": 10,
+          "targetSlot": 0,
+          "clash": false,
+          "range": "FarArea",
+          "subTargets": [
+            { "targetUnitId": 11, "targetSlot": 0 },
+            { "targetUnitId": 12, "targetSlot": 0 }
+          ],
+          "dice": [
+            { "type": "Atk", "detail": "Pierce", "min": 3, "max": 5 }
+          ]
+        }
+      ],
+      "passives": [
+        {
+          "id": { "id": 100001, "packageId": 0 },
+          "name": "Strong Will",
+          "desc": "+1 power on the first die every scene."
+        }
+      ],
+      "buffs": [
+        {
+          "keywordId": "buf_paralysis",
+          "type": "Paralysis",
+          "name": "Paralysis",
+          "stacks": 2,
+          "positive": "Negative"
+        }
+      ],
+      "abnormalities": [],
+      "emotionLevel": 2,
+      "emotionCoins": { "positive": 3, "negative": 1, "max": 8 },
+      "light": 3,
+      "maxLight": 4,
+      "reservedLight": 1,
+      "hand": [
+        {
+          "id": { "id": 200001, "packageId": 0 },
+          "index": 0,
+          "name": "Jab",
+          "cost": 2,
+          "range": "Near",
+          "rarity": "Common",
+          "abilityDesc": "Basic melee strike.",
+          "dice": [
+            { "type": "Atk", "detail": "Slash", "min": 3, "max": 5 }
+          ]
+        },
+        {
+          "id": { "id": 200002, "packageId": 0 },
+          "index": 1,
+          "name": "Warning Shot",
+          "cost": 3,
+          "range": "Far",
+          "rarity": "Uncommon",
+          "abilityDesc": "[Clash Win] Inflict 2 Bleed.",
+          "dice": [
+            { "type": "Atk", "detail": "Pierce", "min": 4, "max": 6, "desc": "[Clash Win] Inflict 2 Bleed on target." }
+          ]
+        },
+        {
+          "id": { "id": 200003, "packageId": 0 },
+          "index": 2,
+          "name": "Meditate",
+          "cost": 0,
+          "range": "Instance",
+          "rarity": "Rare",
+          "abilityDesc": "Draw 1 card and recover 1 Light at the start of next Scene.",
+          "dice": []
+        },
+        {
+          "id": { "id": 200004, "packageId": 0 },
+          "index": 3,
+          "name": "Sanguine Rite",
+          "cost": 4,
+          "range": "Special",
+          "rarity": "Unique",
+          "abilityDesc": "Pay 5 HP. If this attack hits, gain 3 Strength until end of Scene. [On Clash Win] Restore the HP paid and reduce opponent's die power by 2 for the rest of the clash.",
+          "dice": [
+            { "type": "Atk", "detail": "Slash", "min": 5, "max": 9, "desc": "[On Clash Win] Restore HP paid and reduce opponent die power by 2 for the rest of this clash." },
+            { "type": "Standby", "detail": "Guard", "min": 2, "max": 4, "desc": "[Counter] If this die survives, inflict 3 Bleed." }
+          ]
+        },
+        {
+          "id": { "id": 200005, "packageId": 0 },
+          "index": 4,
+          "name": "Sweeping Arc",
+          "cost": 3,
+          "range": "FarArea",
+          "rarity": "Rare",
+          "abilityDesc": "Strikes the target and both neighbouring enemies once each.",
+          "dice": [
+            { "type": "Atk", "detail": "Pierce", "min": 3, "max": 5 }
+          ]
+        },
+        {
+          "id": { "id": 200006, "packageId": 0 },
+          "index": 5,
+          "name": "Scattershot",
+          "cost": 3,
+          "range": "FarAreaEach",
+          "rarity": "Uncommon",
+          "abilityDesc": "Roll once per enemy — each result is resolved independently.",
+          "dice": [
+            { "type": "Atk", "detail": "Pierce", "min": 2, "max": 4 }
+          ]
+        },
+        {
+          "id": { "id": 200007, "packageId": 0 },
+          "index": 6,
+          "name": "Twilight Edict",
+          "cost": 5,
+          "range": "Near",
+          "rarity": "Unique",
+          "abilityDesc": "A long-winded rite: reduce your current Light by 2; for every point spent this way, add one die to this card's pool rolling for [3-5] Slash damage. At the end of this Scene, if no enemy is Staggered, gain 1 Positive Emotion Coin; otherwise gain 2 Negative Emotion Coins. This text is long enough to trigger vertical scrolling in the detail pane so we can validate overflow handling.",
+          "dice": [
+            { "type": "Atk", "detail": "Slash", "min": 4, "max": 7, "desc": "[On Hit] Inflict 1 Fairy for each Light point spent. [On Clash Lose] Restore 1 Light. These per-die descriptions are intentionally long so that the detail-pane die list exercises its wrapping path." },
+            { "type": "Standby", "detail": "Guard", "min": 3, "max": 5, "desc": "[Counter] Survives clashes with non-Unique cards. Inflicts 1 Charge on the user at round end." },
+            { "type": "Def", "detail": "Evasion", "min": 2, "max": 5, "desc": "[Evade Success] Gain 1 Protection on the user and every adjacent ally." }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Morta",
+      "hp": 28,
+      "maxHp": 90,
+      "staggerGauge": 0,
+      "maxStaggerGauge": 70,
+      "staggerThreshold": 35,
+      "targetable": true,
+      "turnState": "BREAK",
+      "speedDice": [
+        { "slot": 0, "value": 0, "type": "Atk", "detail": "Slash", "staggered": true },
+        { "slot": 1, "value": 0, "type": "Def", "detail": "Guard", "staggered": true }
+      ],
+      "slottedCards": [],
+      "passives": [],
+      "buffs": [
+        {
+          "keywordId": "buf_stagger",
+          "type": "Stagger",
+          "name": "Staggered",
+          "stacks": 1,
+          "positive": "Negative"
+        }
+      ],
+      "abnormalities": [],
+      "emotionLevel": 1,
+      "emotionCoins": { "positive": 1, "negative": 2, "max": 8 },
+      "light": 0,
+      "maxLight": 4,
+      "reservedLight": 0,
+      "handCount": 3,
+      "deckCount": 12,
+      "egoCount": 1
+    },
+    {
+      "id": 3,
+      "name": "Wint",
+      "hp": 0,
+      "maxHp": 80,
+      "staggerGauge": 0,
+      "maxStaggerGauge": 60,
+      "staggerThreshold": 30,
+      "targetable": false,
+      "turnState": "BREAK",
+      "speedDice": [],
+      "slottedCards": [],
+      "passives": [],
+      "buffs": [],
+      "abnormalities": [],
+      "emotionLevel": 0,
+      "emotionCoins": { "positive": 0, "negative": 0, "max": 8 },
+      "light": 0,
+      "maxLight": 3,
+      "reservedLight": 0
+    }
+  ],
+  "enemies": [
+    {
+      "id": 10,
+      "name": "Plague Doctor",
+      "hp": 95,
+      "maxHp": 120,
+      "staggerGauge": 45,
+      "maxStaggerGauge": 60,
+      "staggerThreshold": 30,
+      "targetable": true,
+      "turnState": "WAIT_CARD",
+      "speedDice": [
+        { "slot": 0, "value": 5, "type": "Atk", "detail": "Pierce" },
+        { "slot": 1, "value": 3, "type": "Standby", "detail": "Counter" }
+      ],
+      "slottedCards": [
+        {
+          "cardIndex": 0,
+          "slot": 0,
+          "name": "Lunge",
+          "cost": 1,
+          "targetUnitId": 1,
+          "targetSlot": 0,
+          "clash": true,
+          "range": "Near",
+          "dice": [
+            { "type": "Atk", "detail": "Pierce", "min": 3, "max": 5 }
+          ]
+        }
+      ],
+      "passives": [],
+      "buffs": [
+        {
+          "keywordId": "buf_strength",
+          "type": "Strength",
+          "name": "Strength",
+          "stacks": 2,
+          "positive": "Positive"
+        }
+      ],
+      "abnormalities": [],
+      "emotionLevel": 0,
+      "emotionCoins": { "positive": 0, "negative": 0, "max": 5 }
+    },
+    {
+      "id": 11,
+      "name": "Plague Cultist",
+      "hp": 54,
+      "maxHp": 70,
+      "staggerGauge": 25,
+      "maxStaggerGauge": 45,
+      "staggerThreshold": 22,
+      "targetable": true,
+      "turnState": "WAIT_CARD",
+      "speedDice": [
+        { "slot": 0, "value": 4, "type": "Def", "detail": "Evasion" }
+      ],
+      "slottedCards": [],
+      "passives": [],
+      "buffs": [],
+      "abnormalities": [],
+      "emotionLevel": 0,
+      "emotionCoins": { "positive": 0, "negative": 0, "max": 5 }
+    },
+    {
+      "id": 12,
+      "name": "Plague Rat",
+      "hp": 38,
+      "maxHp": 50,
+      "staggerGauge": 10,
+      "maxStaggerGauge": 30,
+      "staggerThreshold": 15,
+      "targetable": true,
+      "turnState": "WAIT_CARD",
+      "speedDice": [
+        { "slot": 0, "value": 2, "type": "Atk", "detail": "Blunt" }
+      ],
+      "slottedCards": [],
+      "passives": [],
+      "buffs": [],
+      "abnormalities": [],
+      "emotionLevel": 0,
+      "emotionCoins": { "positive": 0, "negative": 0, "max": 5 }
+    }
+  ]
+}

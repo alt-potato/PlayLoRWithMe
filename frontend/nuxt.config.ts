@@ -3,6 +3,20 @@ export default defineNuxtConfig({
   compatibilityDate: "2026-03-12",
   devtools: { enabled: true },
 
+  vite: {
+    // Pre-bundle runtime deps Vite would otherwise discover mid-session and
+    // trigger a full-page reload for. zod lands here because types/game.ts
+    // imports it for wire-contract validation; the devtools modules are
+    // pulled in by Nuxt devtools when any dev-only page opens them.
+    optimizeDeps: {
+      include: [
+        "@vue/devtools-core",
+        "@vue/devtools-kit",
+        "zod",
+      ],
+    },
+  },
+
   nitro: {
     // Nuxt nitro websocket proxy does not work T-T
     experimental: {

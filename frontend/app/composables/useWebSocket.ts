@@ -1,6 +1,8 @@
 import type { GameState, SessionState, PlayerInfo, ActionResult, ServerMessage, ClientAction } from "~/types/game";
 import { ServerMessageSchema } from "~/types/game";
 import { applyDelta } from "~/utils/deltaApply";
+import { resolveMockFixture } from "~/dev/resolveMockFixture";
+import { useMockBackend } from "~/dev/useMockBackend";
 
 const SESSION_STORAGE_KEY = "plwm_session";
 const RECONNECT_DELAY_MS = 2000;
@@ -16,6 +18,15 @@ type Status = "connecting" | "connected" | "disconnected";
  * Usage: call once in app.vue; pass the returned refs/functions down.
  */
 export function useWebSocket() {
+  // dev-only fixture mode — when a fixture name is resolvable from the URL
+  // or localStorage, hand back a mock backend and never open a socket. The
+  // `import.meta.dev` guard collapses to `if (false)` in production, which
+  // lets Rollup tree-shake this branch (and every symbol it references).
+  if (import.meta.dev) {
+    const mockName = resolveMockFixture();
+    if (mockName) return useMockBackend(mockName);
+  }
+
   const gameState = ref<GameState | null>(null);
   const session = ref<SessionState | null>(null);
   const status = ref<Status>("connecting");

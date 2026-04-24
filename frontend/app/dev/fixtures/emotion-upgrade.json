@@ -1,0 +1,112 @@
+{
+  "_comment": "Battle scene frozen on the abnormality-selection overlay. Three emotion-level-3 choices including one ally-targeting card.",
+  "scene": "battle",
+  "phase": "AbnormalitySelectionPhase",
+  "stageState": "Battle",
+  "assetsReady": true,
+  "stage": {
+    "floor": 3,
+    "chapter": 1,
+    "wave": 2,
+    "round": 5,
+    "name": "Urban Plague District"
+  },
+  "abnormalitySelection": {
+    "choices": [
+      {
+        "id": 1,
+        "name": "Big Bird I",
+        "emotionLevel": 3,
+        "targetType": "All",
+        "state": "Positive",
+        "desc": "Restore 4 HP to all allies.",
+        "flavorText": "You have done well."
+      },
+      {
+        "id": 2,
+        "name": "Punishing Bird I",
+        "emotionLevel": 3,
+        "targetType": "SelectOne",
+        "state": "Negative",
+        "desc": "Deal 6 damage to a chosen enemy."
+      },
+      {
+        "id": 3,
+        "name": "Long Bird I",
+        "emotionLevel": 3,
+        "targetType": "Ally",
+        "state": "Positive",
+        "desc": "Grant the chosen ally 2 Protection and draw 1 card."
+      }
+    ],
+    "teamEmotionLevel": 3,
+    "teamCoin": 5,
+    "teamCoinMax": 8,
+    "teamPositiveCoins": 4,
+    "teamNegativeCoins": 1
+  },
+  "allies": [
+    {
+      "id": 1,
+      "name": "Daphnes",
+      "hp": 82,
+      "maxHp": 110,
+      "staggerGauge": 58,
+      "maxStaggerGauge": 80,
+      "staggerThreshold": 40,
+      "targetable": true,
+      "turnState": "WAIT_CARD",
+      "speedDice": [],
+      "slottedCards": [],
+      "passives": [],
+      "buffs": [],
+      "abnormalities": [],
+      "emotionLevel": 2,
+      "emotionCoins": { "positive": 3, "negative": 1, "max": 8 },
+      "light": 3,
+      "maxLight": 4,
+      "reservedLight": 0
+    },
+    {
+      "id": 2,
+      "name": "Morta",
+      "hp": 60,
+      "maxHp": 90,
+      "staggerGauge": 40,
+      "maxStaggerGauge": 70,
+      "staggerThreshold": 35,
+      "targetable": true,
+      "turnState": "WAIT_CARD",
+      "speedDice": [],
+      "slottedCards": [],
+      "passives": [],
+      "buffs": [],
+      "abnormalities": [],
+      "emotionLevel": 1,
+      "emotionCoins": { "positive": 1, "negative": 0, "max": 8 },
+      "light": 2,
+      "maxLight": 4,
+      "reservedLight": 0
+    }
+  ],
+  "enemies": [
+    {
+      "id": 10,
+      "name": "Plague Doctor",
+      "hp": 95,
+      "maxHp": 120,
+      "staggerGauge": 45,
+      "maxStaggerGauge": 60,
+      "staggerThreshold": 30,
+      "targetable": true,
+      "turnState": "WAIT_CARD",
+      "speedDice": [],
+      "slottedCards": [],
+      "passives": [],
+      "buffs": [],
+      "abnormalities": [],
+      "emotionLevel": 0,
+      "emotionCoins": { "positive": 0, "negative": 0, "max": 5 }
+    }
+  ]
+}

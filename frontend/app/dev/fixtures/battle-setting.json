@@ -1,0 +1,155 @@
+{
+  "_comment": "Pre-battle formation phase (main scene, uiPhase=BattleSetting). One ally claimed, one unclaimed so the claim board exercises both states.",
+  "scene": "main",
+  "uiPhase": "BattleSetting",
+  "stageState": "BattleSetting",
+  "assetsReady": true,
+  "stage": {
+    "floor": 1,
+    "chapter": 1,
+    "wave": 1,
+    "round": 1,
+    "name": "Reception Hall"
+  },
+  "allies": [
+    {
+      "id": 0,
+      "name": "Malkuth",
+      "hp": 110,
+      "maxHp": 110,
+      "staggerGauge": 80,
+      "maxStaggerGauge": 80,
+      "staggerThreshold": 40,
+      "targetable": true,
+      "turnState": "WAIT_TURN",
+      "speedDice": [],
+      "slottedCards": [],
+      "passives": [
+        {
+          "id": { "id": 100001, "packageId": 0 },
+          "name": "Strong Will",
+          "desc": "+1 power on the first die.",
+          "cost": 1
+        }
+      ],
+      "buffs": [],
+      "abnormalities": [],
+      "emotionLevel": 0,
+      "emotionCoins": { "positive": 0, "negative": 0, "max": 8 },
+      "enabled": true,
+      "light": 4,
+      "maxLight": 4,
+      "reservedLight": 0,
+      "keyPage": {
+        "instanceId": 101,
+        "name": "Malkuth's Page",
+        "speedDiceCount": 3,
+        "speedMin": 3,
+        "speedMax": 7,
+        "hp": 110,
+        "breakGauge": 80,
+        "equipRangeType": "Hybrid",
+        "resistances": {
+          "slashHp": "Normal",
+          "pierceHp": "Weak",
+          "bluntHp": "Resistant"
+        }
+      },
+      "deckPreview": [
+        {
+          "cardId": { "id": 200001, "packageId": "core" },
+          "name": "Jab",
+          "cost": 2,
+          "range": "Near",
+          "rarity": "Common",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "name": "Adelaide",
+      "hp": 90,
+      "maxHp": 90,
+      "staggerGauge": 70,
+      "maxStaggerGauge": 70,
+      "staggerThreshold": 35,
+      "targetable": true,
+      "turnState": "WAIT_TURN",
+      "speedDice": [],
+      "slottedCards": [],
+      "passives": [],
+      "buffs": [],
+      "abnormalities": [],
+      "emotionLevel": 0,
+      "emotionCoins": { "positive": 0, "negative": 0, "max": 8 },
+      "enabled": true,
+      "light": 3,
+      "maxLight": 3,
+      "reservedLight": 0,
+      "keyPage": {
+        "instanceId": 102,
+        "name": "Regret Page",
+        "speedDiceCount": 3,
+        "speedMin": 2,
+        "speedMax": 6,
+        "hp": 90,
+        "breakGauge": 70,
+        "equipRangeType": "Melee",
+        "resistances": {
+          "slashHp": "Weak",
+          "pierceHp": "Normal",
+          "bluntHp": "Normal"
+        }
+      },
+      "deckPreview": [
+        {
+          "cardId": { "id": 200001, "packageId": "core" },
+          "name": "Jab",
+          "cost": 2,
+          "range": "Near",
+          "rarity": "Common",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "id": 10,
+      "name": "Plague Doctor",
+      "hp": 120,
+      "maxHp": 120,
+      "staggerGauge": 60,
+      "maxStaggerGauge": 60,
+      "staggerThreshold": 30,
+      "targetable": true,
+      "turnState": "WAIT_TURN",
+      "speedDice": [],
+      "slottedCards": [],
+      "passives": [],
+      "buffs": [],
+      "abnormalities": [],
+      "emotionLevel": 0,
+      "emotionCoins": { "positive": 0, "negative": 0, "max": 5 }
+    },
+    {
+      "id": 11,
+      "name": "Plague Cultist",
+      "hp": 70,
+      "maxHp": 70,
+      "staggerGauge": 45,
+      "maxStaggerGauge": 45,
+      "staggerThreshold": 22,
+      "targetable": true,
+      "turnState": "WAIT_TURN",
+      "speedDice": [],
+      "slottedCards": [],
+      "passives": [],
+      "buffs": [],
+      "abnormalities": [],
+      "emotionLevel": 0,
+      "emotionCoins": { "positive": 0, "negative": 0, "max": 5 }
+    }
+  ]
+}
