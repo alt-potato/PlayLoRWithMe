@@ -1,6 +1,11 @@
+# dev-mock-backend Specification
+
+## Purpose
+TBD - created by archiving change dev-mock-backend. Update Purpose after archive.
+## Requirements
 ### Requirement: Frontend SHALL support a dev-only mock mode that drives `gameState` from a static fixture instead of the WebSocket
 
-When the frontend is built with `import.meta.dev === true`, a mock mode becomes available. Mock mode is activated when a fixture name is resolved from either the `mock` query-string parameter on `location.search` or the `plwm_mock_fixture` key in `localStorage`. The query parameter takes precedence and, when present and non-empty, overwrites the localStorage value. When the query parameter is present and empty, both the query parameter and the localStorage value are cleared.
+The frontend MUST expose a dev-only mock mode when built with `import.meta.dev === true`. Mock mode MUST activate whenever a fixture name is resolved from either the `mock` query-string parameter on `location.search` or the `plwm_mock_fixture` key in `localStorage`. The query parameter MUST take precedence and, when present and non-empty, MUST overwrite the localStorage value. When the query parameter is present and empty, both the query parameter and the localStorage value MUST be cleared.
 
 When mock mode is active, `useWebSocket` MUST NOT open a WebSocket connection. Instead, it MUST return an object whose public shape is identical to the non-mock `useWebSocket` return (same reactive refs, same action functions, same return-value types), with the following behavioural changes:
 
@@ -75,3 +80,4 @@ The fixture catalog MUST include at least the following named fixtures, each a s
 - **WHEN** the `emotion-upgrade` fixture is loaded
 - **THEN** `gameState.scene === "battle"` and `gameState.abnormalitySelection` is non-null with at least 3 `choices[]`
 - **AND** `EmotionUpgradePicker` is the mounted overlay
+
