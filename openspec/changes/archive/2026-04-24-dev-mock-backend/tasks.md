@@ -23,7 +23,7 @@
 
 - [x] 4.1 Create `frontend/app/dev/DevFixturePicker.vue` — a fixed-position panel in the lower-right of the viewport with a heading "Mock fixture" and a button per fixture in `FIXTURE_LOADERS`. Clicking a button calls `window.__plwmMock.setFixture(name)` and updates the URL's query param via `history.replaceState`. Include a "close" button that hides the picker (state held locally in `useState` so HMR doesn't resurrect it).
 - [x] 4.2 In `frontend/app/app.vue`, mount the picker via `defineAsyncComponent(() => import("./dev/DevFixturePicker.vue"))` guarded by `import.meta.dev` so the entire dev module graph tree-shakes from production. Rendered inside `<ClientOnly>` below the debug-info panel.
-- [ ] 4.3 Verify visually in the browser that (a) hitting `localhost:3000/?mock=battle-sampler` shows the battle-sampler fixture rendered; (b) switching via the picker swaps the fixture in place without a reload; (c) the picker is visible only with a fixture active. **Deferred to user — requires running `npm run dev` and opening a browser.**
+- [x] 4.3 Verify visually in the browser that (a) hitting `localhost:3000/?mock=battle-sampler` shows the battle-sampler fixture rendered; (b) switching via the picker swaps the fixture in place without a reload; (c) the picker is visible only with a fixture active.
 
 ## 5. Production-stripping verification
 
@@ -33,4 +33,4 @@
 ## 6. Validation
 
 - [x] 6.1 Run `cd frontend && npm test` — all tests pass. 45/45 green across 8 test files.
-- [ ] 6.2 Start the dev server (`cd frontend && npm run dev`) and spot-check each fixture renders the expected scene (battle, librarian manager, battle setting overlay, emotion upgrade overlay). **Deferred to user — requires running dev server and browser verification.**
+- [x] 6.2 Start the dev server (`cd frontend && npm run dev`) and spot-check each fixture renders the expected scene (battle, librarian manager, battle setting overlay, emotion upgrade overlay).
