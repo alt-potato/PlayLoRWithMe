@@ -804,5 +804,67 @@ export const ClientActionSchema = z.discriminatedUnion("type", [
     cardId: z.number(),
     targetUnitId: z.number().optional(),
   }),
+  // setCustomization carries the full appearance/dialogue/title payload for
+  // a single librarian (floorIndex + unitIndex address it). Field list mirrors
+  // CustomizePayloadSchema exactly — kept inline here (rather than via
+  // `.extend()`) so the discriminated union remains a plain ZodObject.
+  z.object({
+    type: z.literal("setCustomization"),
+    floorIndex: z.number(),
+    unitIndex: z.number(),
+    frontHairID: z.number(),
+    backHairID: z.number(),
+    eyeID: z.number(),
+    browID: z.number(),
+    mouthID: z.number(),
+    height: z.number(),
+    hairR: z.number(),
+    hairG: z.number(),
+    hairB: z.number(),
+    skinR: z.number(),
+    skinG: z.number(),
+    skinB: z.number(),
+    eyeR: z.number(),
+    eyeG: z.number(),
+    eyeB: z.number(),
+    dlgStartBattle: z.string().nullable(),
+    dlgVictory: z.string().nullable(),
+    dlgDeath: z.string().nullable(),
+    dlgColleagueDeath: z.string().nullable(),
+    dlgKillsOpponent: z.string().nullable(),
+    prefixID: z.number(),
+    postfixID: z.number(),
+    customBookId: z.number(),
+    customBookPackageId: z.string().optional(),
+    workshopSkin: z.string().optional(),
+    appearanceType: z.string(),
+  }),
+  // setGifts is a sparse batch update — callers send only the (position, key)
+  // pairs that changed (see BattleSymbolsTab: one key per click). The server
+  // reads keys `gift0`–`gift8` (id, or -1 to unequip) and `vis0`–`vis8`
+  // (visibility, non-zero = shown). Every slot is optional; absent = no change.
+  z.object({
+    type: z.literal("setGifts"),
+    floorIndex: z.number(),
+    unitIndex: z.number(),
+    gift0: z.number().optional(),
+    gift1: z.number().optional(),
+    gift2: z.number().optional(),
+    gift3: z.number().optional(),
+    gift4: z.number().optional(),
+    gift5: z.number().optional(),
+    gift6: z.number().optional(),
+    gift7: z.number().optional(),
+    gift8: z.number().optional(),
+    vis0: z.number().optional(),
+    vis1: z.number().optional(),
+    vis2: z.number().optional(),
+    vis3: z.number().optional(),
+    vis4: z.number().optional(),
+    vis5: z.number().optional(),
+    vis6: z.number().optional(),
+    vis7: z.number().optional(),
+    vis8: z.number().optional(),
+  }),
 ]);
 export type ClientAction = z.infer<typeof ClientActionSchema>;

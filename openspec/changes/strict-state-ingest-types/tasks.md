@@ -2,8 +2,8 @@
 
 ## 1. Audit ClientActionSchema for librarian-escape-hatch payloads
 
-- [ ] 1.1 Inspect `ClientActionSchema` in `frontend/app/types/game.ts` and confirm `setCustomization` and `setGifts` entries exist with fields matching the call sites at `LibrarianManager.vue:208` and `LibrarianManager.vue:214`.
-- [ ] 1.2 If either entry is missing or does not match the caller's literal, extend `ClientActionSchema` to cover it. Regenerate `schema/gamestate.schema.json` via `npm run generate-schema` and verify the drift test passes.
+- [x] 1.1 Inspect `ClientActionSchema` in `frontend/app/types/game.ts` and confirm `setCustomization` and `setGifts` entries exist with fields matching the call sites at `LibrarianManager.vue:208` and `LibrarianManager.vue:214`.
+- [x] 1.2 If either entry is missing or does not match the caller's literal, extend `ClientActionSchema` to cover it. Regenerate `schema/gamestate.schema.json` via `npm run generate-schema` and verify the drift test passes.
 
 ## 2. Dev fixtures → GameStateSchema.parse
 

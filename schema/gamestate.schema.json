@@ -6056,6 +6056,239 @@
             "cardId"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "setCustomization"
+            },
+            "floorIndex": {
+              "type": "number"
+            },
+            "unitIndex": {
+              "type": "number"
+            },
+            "frontHairID": {
+              "type": "number"
+            },
+            "backHairID": {
+              "type": "number"
+            },
+            "eyeID": {
+              "type": "number"
+            },
+            "browID": {
+              "type": "number"
+            },
+            "mouthID": {
+              "type": "number"
+            },
+            "height": {
+              "type": "number"
+            },
+            "hairR": {
+              "type": "number"
+            },
+            "hairG": {
+              "type": "number"
+            },
+            "hairB": {
+              "type": "number"
+            },
+            "skinR": {
+              "type": "number"
+            },
+            "skinG": {
+              "type": "number"
+            },
+            "skinB": {
+              "type": "number"
+            },
+            "eyeR": {
+              "type": "number"
+            },
+            "eyeG": {
+              "type": "number"
+            },
+            "eyeB": {
+              "type": "number"
+            },
+            "dlgStartBattle": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dlgVictory": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dlgDeath": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dlgColleagueDeath": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dlgKillsOpponent": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "prefixID": {
+              "type": "number"
+            },
+            "postfixID": {
+              "type": "number"
+            },
+            "customBookId": {
+              "type": "number"
+            },
+            "customBookPackageId": {
+              "type": "string"
+            },
+            "workshopSkin": {
+              "type": "string"
+            },
+            "appearanceType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "floorIndex",
+            "unitIndex",
+            "frontHairID",
+            "backHairID",
+            "eyeID",
+            "browID",
+            "mouthID",
+            "height",
+            "hairR",
+            "hairG",
+            "hairB",
+            "skinR",
+            "skinG",
+            "skinB",
+            "eyeR",
+            "eyeG",
+            "eyeB",
+            "dlgStartBattle",
+            "dlgVictory",
+            "dlgDeath",
+            "dlgColleagueDeath",
+            "dlgKillsOpponent",
+            "prefixID",
+            "postfixID",
+            "customBookId",
+            "appearanceType"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "setGifts"
+            },
+            "floorIndex": {
+              "type": "number"
+            },
+            "unitIndex": {
+              "type": "number"
+            },
+            "gift0": {
+              "type": "number"
+            },
+            "gift1": {
+              "type": "number"
+            },
+            "gift2": {
+              "type": "number"
+            },
+            "gift3": {
+              "type": "number"
+            },
+            "gift4": {
+              "type": "number"
+            },
+            "gift5": {
+              "type": "number"
+            },
+            "gift6": {
+              "type": "number"
+            },
+            "gift7": {
+              "type": "number"
+            },
+            "gift8": {
+              "type": "number"
+            },
+            "vis0": {
+              "type": "number"
+            },
+            "vis1": {
+              "type": "number"
+            },
+            "vis2": {
+              "type": "number"
+            },
+            "vis3": {
+              "type": "number"
+            },
+            "vis4": {
+              "type": "number"
+            },
+            "vis5": {
+              "type": "number"
+            },
+            "vis6": {
+              "type": "number"
+            },
+            "vis7": {
+              "type": "number"
+            },
+            "vis8": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "type",
+            "floorIndex",
+            "unitIndex"
+          ],
+          "additionalProperties": false
         }
       ]
     }
