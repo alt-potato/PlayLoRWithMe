@@ -7,9 +7,9 @@
 
 ## 2. Dev fixtures → GameStateSchema.parse
 
-- [ ] 2.1 Replace the four `as unknown as GameState` casts in `frontend/app/dev/fixtures/index.ts:21-24` with `GameStateSchema.parse(<fixture>)` calls. Import `GameStateSchema` from `~/types/game`.
-- [ ] 2.2 Run `cd frontend && npm test`. If any fixture throws a `ZodError`, fix the fixture JSON to match the schema — DO NOT loosen the schema.
-- [ ] 2.3 Add a unit test under `frontend/app/dev/fixtures/index.test.ts` that iterates every entry in the exported fixtures map and asserts each returns without throwing. This locks the contract for future fixture additions.
+- [x] 2.1 Replace the four `as unknown as GameState` casts in `frontend/app/dev/fixtures/index.ts:21-24` with `GameStateSchema.parse(<fixture>)` calls. Import `GameStateSchema` from `~/types/game`.
+- [x] 2.2 Run `cd frontend && npm test`. If any fixture throws a `ZodError`, fix the fixture JSON to match the schema — DO NOT loosen the schema.
+- [x] 2.3 Add a unit test under `frontend/app/dev/fixtures/index.test.ts` that iterates every entry in the exported fixtures map and asserts each returns without throwing. This locks the contract for future fixture additions.
 
 ## 3. applyDelta → dev-mode schema check
 

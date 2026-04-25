@@ -7,19 +7,20 @@
  * out of production because every call-site is gated by `import.meta.dev`.
  */
 
-import type { GameState } from "../../types/game";
+import { GameStateSchema, type GameState } from "../../types/game";
 
 import battleSampler from "./battle-sampler.json";
 import mainLibrarian from "./main-librarian.json";
 import battleSetting from "./battle-setting.json";
 import emotionUpgrade from "./emotion-upgrade.json";
 
-// json-import types do not flow into z.infer<> shapes (enums widen to string),
-// so a double-cast is required. Schema conformance is enforced by the test
-// at `fixtures.test.ts`, which parses every registered fixture.
+// Each loader runs the JSON through `GameStateSchema.parse` so a fixture that
+// drifts from the wire contract throws with a Zod path at load time rather
+// than producing a silent shape mismatch deep inside a component render. The
+// fixture-parse test in `index.test.ts` locks this contract for new fixtures.
 export const FIXTURE_LOADERS: Record<string, () => GameState> = {
-  "battle-sampler": () => battleSampler as unknown as GameState,
-  "main-librarian": () => mainLibrarian as unknown as GameState,
-  "battle-setting": () => battleSetting as unknown as GameState,
-  "emotion-upgrade": () => emotionUpgrade as unknown as GameState,
+  "battle-sampler": () => GameStateSchema.parse(battleSampler),
+  "main-librarian": () => GameStateSchema.parse(mainLibrarian),
+  "battle-setting": () => GameStateSchema.parse(battleSetting),
+  "emotion-upgrade": () => GameStateSchema.parse(emotionUpgrade),
 };
