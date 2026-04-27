@@ -1,5 +1,5 @@
 import type { InjectionKey } from "vue";
-import type { ActionResult } from "~/types/game";
+import type { ActionResult, ClientAction } from "~/types/game";
 
 /**
  * Actions available on the librarian management screen, provided by app.vue
@@ -7,7 +7,7 @@ import type { ActionResult } from "~/types/game";
  * callbacks through multiple component layers.
  */
 export interface LibrarianActions {
-  sendAction: (action: Record<string, unknown>) => Promise<ActionResult>;
+  sendAction: (action: ClientAction) => Promise<ActionResult>;
   lockLibrarian: (floorIndex: number, unitIndex: number) => Promise<ActionResult>;
   unlockLibrarian: (floorIndex: number, unitIndex: number) => Promise<ActionResult>;
   renameLibrarian: (floorIndex: number, unitIndex: number, name: string) => Promise<ActionResult>;

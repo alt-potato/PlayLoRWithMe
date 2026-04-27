@@ -27,6 +27,7 @@ import type {
   AppearanceData,
   CustomizePayload,
   ActionResult,
+  SetGiftsPayload,
 } from "~/types/game";
 
 const props = defineProps<{
@@ -36,7 +37,7 @@ const props = defineProps<{
   busy: boolean;
   onRename: (name: string) => Promise<ActionResult>;
   onSave: (payload: Omit<CustomizePayload, "floorIndex" | "unitIndex">) => Promise<ActionResult>;
-  onSetGifts: (slots: Record<string, number>) => Promise<ActionResult>;
+  onSetGifts: (slots: SetGiftsPayload) => Promise<ActionResult>;
   onClose: () => void;
 }>();
 

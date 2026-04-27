@@ -20,9 +20,9 @@
 
 ## 4. LibrarianActions.sendAction → ClientAction
 
-- [ ] 4.1 In `frontend/app/composables/useLibrarianActions.ts:10`, change `sendAction: (action: Record<string, unknown>) => Promise<ActionResult>` to `sendAction: (action: ClientAction) => Promise<ActionResult>`. Add the `ClientAction` import from `~/types/game`.
-- [ ] 4.2 Run `cd frontend && npm run typecheck` (or `nuxi typecheck`). Fix any call-site errors — if task 1.2 was needed, this should now compile. Confirm the `LibrarianManager.vue:208,214` call sites still typecheck.
-- [ ] 4.3 In `app.vue` (the provider), verify the provided `sendAction` implementation remains compatible with the narrowed type.
+- [x] 4.1 In `frontend/app/composables/useLibrarianActions.ts:10`, change `sendAction: (action: Record<string, unknown>) => Promise<ActionResult>` to `sendAction: (action: ClientAction) => Promise<ActionResult>`. Add the `ClientAction` import from `~/types/game`.
+- [x] 4.2 Run `cd frontend && npm run typecheck` (or `nuxi typecheck`). Fix any call-site errors — if task 1.2 was needed, this should now compile. Confirm the `LibrarianManager.vue:208,214` call sites still typecheck.
+- [x] 4.3 In `app.vue` (the provider), verify the provided `sendAction` implementation remains compatible with the narrowed type.
 
 ## 5. Validation
 

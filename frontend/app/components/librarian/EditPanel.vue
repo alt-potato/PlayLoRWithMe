@@ -32,6 +32,7 @@ import type {
   CustomizePayload,
   ActionResult,
   FashionBook,
+  SetGiftsPayload,
 } from "~/types/game";
 
 const props = defineProps<{
@@ -49,7 +50,7 @@ const props = defineProps<{
   onSetCustomization: (
     payload: Omit<CustomizePayload, "floorIndex" | "unitIndex">,
   ) => Promise<ActionResult>;
-  onSetGifts: (slots: Record<string, number>) => Promise<ActionResult>;
+  onSetGifts: (slots: SetGiftsPayload) => Promise<ActionResult>;
   onEquipSourceBook: (bookInstanceId: number) => Promise<void>;
   onUnequipSourceBook: (bookInstanceId: number) => Promise<void>;
   onAttributePassive: (sourceInstanceId: number, passiveId: number, passivePackageId: string) => Promise<void>;

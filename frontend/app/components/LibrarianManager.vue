@@ -39,6 +39,7 @@ import type {
   DeckCardPreview,
   CustomizePayload,
   FashionBook,
+  SetGiftsPayload,
 } from "~/types/game";
 import { LIBRARIAN_ACTIONS, floorColor } from "~/composables/useLibrarianActions";
 
@@ -209,7 +210,7 @@ function onSetCustomization(
   );
 }
 
-function onSetGifts(slots: Record<string, number>): Promise<ActionResult> {
+function onSetGifts(slots: SetGiftsPayload): Promise<ActionResult> {
   return forEditingResult((fi, ui) =>
     actions.sendAction({ type: "setGifts", floorIndex: fi, unitIndex: ui, ...slots }),
   );

@@ -11,12 +11,12 @@
   payload.
 -->
 <script setup lang="ts">
-import type { LibrarianEntry, GiftSlot, GiftOption, GiftStat, ActionResult } from "~/types/game";
+import type { LibrarianEntry, GiftSlot, GiftOption, GiftStat, ActionResult, SetGiftsPayload } from "~/types/game";
 
 const props = defineProps<{
   lib: LibrarianEntry;
   busy: boolean;
-  onSetGifts: (slots: Record<string, number>) => Promise<ActionResult>;
+  onSetGifts: (slots: SetGiftsPayload) => Promise<ActionResult>;
 }>();
 
 // ── Position definitions ──────────────────────────────────────────────────────
@@ -26,7 +26,10 @@ const props = defineProps<{
  * The GiftPosition enum: Eye=0, Nose=1, Cheek=2, Mouth=3, Ear=4,
  * HairAccessory=5, Hood=6, Mask=7, Helmet=8
  */
-const POSITIONS: { name: string; idx: number }[] = [
+/** Gift position index — one value per grid cell, 0–8. */
+type GiftIdx = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+const POSITIONS: { name: string; idx: GiftIdx }[] = [
   { name: "Eye",            idx: 0 },
   { name: "Nose",           idx: 1 },
   { name: "Cheek",          idx: 2 },
@@ -73,7 +76,7 @@ const isBusy = computed(() => props.busy || actionBusy.value);
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Returns the equipped GiftSlot for a position index, or null. */
-function equippedAt(idx: number): GiftSlot | null {
+function equippedAt(idx: GiftIdx): GiftSlot | null {
   return props.lib.gifts?.equipped?.[idx] ?? null;
 }
 
@@ -115,7 +118,7 @@ function toggleOpen(positionName: string): void {
   openPosition.value = openPosition.value === positionName ? null : positionName;
 }
 
-async function equip(idx: number, giftId: number): Promise<void> {
+async function equip(idx: GiftIdx, giftId: number): Promise<void> {
   if (isBusy.value) return;
   actionBusy.value = true;
   try {
@@ -126,7 +129,7 @@ async function equip(idx: number, giftId: number): Promise<void> {
   }
 }
 
-async function unequip(idx: number): Promise<void> {
+async function unequip(idx: GiftIdx): Promise<void> {
   if (isBusy.value) return;
   actionBusy.value = true;
   try {
@@ -137,7 +140,7 @@ async function unequip(idx: number): Promise<void> {
   }
 }
 
-async function toggleVisibility(idx: number, currentlyVisible: boolean): Promise<void> {
+async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promise<void> {
   if (isBusy.value) return;
   actionBusy.value = true;
   try {

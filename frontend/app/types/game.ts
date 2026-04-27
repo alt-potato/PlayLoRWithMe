@@ -868,3 +868,15 @@ export const ClientActionSchema = z.discriminatedUnion("type", [
   }),
 ]);
 export type ClientAction = z.infer<typeof ClientActionSchema>;
+
+/**
+ * The sparse key/value pairs sent in a `setGifts` action — everything except
+ * the routing fields (`type`, `floorIndex`, `unitIndex`). Used as the parameter
+ * type for `onSetGifts` callbacks throughout the librarian component tree so
+ * that the discriminated-union variant can be reconstructed without spreading
+ * an untyped `Record<string, number>`.
+ */
+export type SetGiftsPayload = Omit<
+  Extract<ClientAction, { type: "setGifts" }>,
+  "type" | "floorIndex" | "unitIndex"
+>;
