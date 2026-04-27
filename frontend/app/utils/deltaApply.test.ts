@@ -17,7 +17,7 @@ import type { GameState } from "~/types/game";
 
 /** Returns a deep-cloned valid battle GameState from the battle-sampler fixture. */
 function battleBase(): GameState {
-  return FIXTURE_LOADERS["battle-sampler"]();
+  return FIXTURE_LOADERS["battle-sampler"]!();
 }
 
 // ---------------------------------------------------------------------------
@@ -50,24 +50,24 @@ describe("applyDelta – unit merging", () => {
 
   it("replaces an ally by id when the delta contains an updated version", () => {
     const base = battleBase();
-    const firstAllyId = base.allies![0].id;
+    const firstAlly = base.allies![0]!;
     const result = applyDelta(base, {
-      allies: [{ ...base.allies![0], hp: 1 }],
+      allies: [{ ...firstAlly, hp: 1 }],
     });
-    const updated = result.allies!.find((a) => a.id === firstAllyId);
+    const updated = result.allies!.find((a) => a.id === firstAlly.id);
     expect(updated?.hp).toBe(1);
   });
 
   it("removes an ally listed in _removed_allies", () => {
     const base = battleBase();
-    const firstAllyId = base.allies![0].id;
+    const firstAllyId = base.allies![0]!.id;
     const result = applyDelta(base, { _removed_allies: [firstAllyId] });
     expect(result.allies!.find((a) => a.id === firstAllyId)).toBeUndefined();
   });
 
   it("appends a new ally not present in the base", () => {
     const base = battleBase();
-    const newAlly = { ...base.allies![0], id: SYNTHETIC_ALLY_ID };
+    const newAlly = { ...base.allies![0]!, id: SYNTHETIC_ALLY_ID };
     const result = applyDelta(base, { allies: [newAlly] });
     expect(result.allies!.some((a) => a.id === SYNTHETIC_ALLY_ID)).toBe(true);
   });
@@ -77,7 +77,7 @@ describe("applyDelta – unit merging", () => {
     // The battle-sampler fixture must contain at least one enemy for this test
     // to exercise the removal branch. Fail loudly rather than silently pass.
     expect(base.enemies?.length).toBeGreaterThan(0);
-    const firstEnemyId = base.enemies![0].id;
+    const firstEnemyId = base.enemies![0]!.id;
     const result = applyDelta(base, { _removed_enemies: [firstEnemyId] });
     expect(result.enemies!.find((e) => e.id === firstEnemyId)).toBeUndefined();
   });
@@ -108,7 +108,7 @@ describe("applyDelta – dev-mode contract check", () => {
     // Inject an invalid turnState into the first ally via a delta.
     // INVALID_TURN_STATE is not a member of BattleUnitTurnStateSchema, so the
     // merged result fails GameStateSchema.safeParse and triggers the error log.
-    const badAlly = { ...base.allies![0], turnState: INVALID_TURN_STATE };
+    const badAlly = { ...base.allies![0]!, turnState: INVALID_TURN_STATE };
     const result = applyDelta(base, { allies: [badAlly] });
 
     expect(errSpy).toHaveBeenCalledWith(
