@@ -470,7 +470,7 @@ const detailsLabel = computed(() => {
   font-size: 0.6rem;
   padding: 0.08rem 0.25rem 0.08rem 0.15rem;
   background: var(--bg-gold);
-  border: 1px solid #4a2800;
+  border: 1px solid var(--border-gold-buff);
   color: var(--orange);
   font-family: var(--font-body);
   cursor: pointer;
@@ -478,12 +478,12 @@ const detailsLabel = computed(() => {
 }
 .buff-tag--positive {
   background: var(--bg-green);
-  border-color: #2e5c2e;
+  border-color: var(--green-hi);
   color: var(--text-green);
 }
 .buff-tag--negative {
-  background: #1a0808;
-  border-color: #5c1a1a;
+  background: var(--bg-crimson-deep);
+  border-color: var(--border-crimson-buff);
   color: var(--text-red);
 }
 .buff-icon {

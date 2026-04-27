@@ -157,9 +157,9 @@ function dieState(
   font-family: var(--font-display);
   font-size: 0.58rem;
   padding: 0.1rem 0.4rem;
-  background: #2a0e00;
-  border: 1px solid #8b3500;
-  color: #ff7043;
+  background: var(--bg-mass);
+  border: 1px solid var(--border-mass);
+  color: var(--text-mass);
   white-space: nowrap;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -241,13 +241,13 @@ function dieState(
   padding: 0;
 }
 .die-hex-outer.die-incoming {
-  background: #2a0a0a;
+  background: var(--bg-incoming);
 }
 .die-hex-outer.die-incoming:hover:not(:disabled) {
-  background: #7a1010;
+  background: var(--bg-incoming-hover);
 }
 .die-hex-outer.die-clash {
-  background: #3d2e00;
+  background: var(--bg-clash);
 }
 .die-hex-outer.die-clash:hover:not(:disabled) {
   background: var(--gold-dim);
@@ -281,15 +281,15 @@ function dieState(
     color 0.12s;
 }
 .die-hex-outer.die-incoming:hover:not(:disabled) .die-hex-inner {
-  background: #1a0505;
+  background: var(--bg-crimson-deep);
   color: #fff;
 }
 .die-hex-outer.die-clash:hover:not(:disabled) .die-hex-inner {
-  background: #261c00;
+  background: var(--bg-clash-hover);
   color: #fff;
 }
 .die-hex-outer.staggered .die-hex-inner {
-  background: #220808;
+  background: var(--bg-stagger);
   color: var(--crimson-hi);
 }
 .die-hex-outer.staggered:hover:not(:disabled) .die-hex-inner {

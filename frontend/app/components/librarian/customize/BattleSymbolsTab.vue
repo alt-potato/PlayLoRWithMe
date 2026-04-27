@@ -430,8 +430,8 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
 }
 
 .stat-chip.positive {
-  color: #81c784;
-  border-color: #81c784;
+  color: var(--text-green);
+  border-color: var(--text-green);
 }
 
 .stat-chip.negative {

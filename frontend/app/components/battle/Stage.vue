@@ -458,7 +458,7 @@ provide(BATTLE_CTX, {
   padding: 0.3rem 0.75rem;
   font-size: 0.72rem;
   font-family: var(--font-body);
-  background: #180808;
+  background: var(--bg-crimson-deep);
   border: 1px solid var(--crimson);
   color: var(--text-red);
   margin-left: 0.5em;

@@ -208,6 +208,9 @@ const rawJson = computed(() =>
   /* faint gold hairline for ornamental dividers */
   --border-gold: rgba(201, 162, 39, 0.28);
   --border-gold-hi: rgba(232, 194, 71, 0.5);
+  /* solid buff borders for status-chip outlines */
+  --border-gold-buff: #4a2800;
+  --border-crimson-buff: #5c1a1a;
 
   /* ── Primary accent: antique gold ── */
   --gold: #c9a227;
@@ -221,10 +224,21 @@ const rawJson = computed(() =>
   --crimson-hi: #c62828;
   --crimson-dim: #3d0a0a;
 
+  /* Deeper crimson surface for ego-tag and error-banner backgrounds */
+  --bg-crimson-deep: #1a0505;
+
   /* ── Text: warm parchment hierarchy ── */
   --text-1: #e8dfc6;
   --text-2: #8b7f68;
   --text-3: #4a4338;
+
+  /* ── Die-type description text tints ── */
+  --text-atk: #f0c2c2;      /* light red, mirrors in-game atk card text */
+  --text-def: #c2d8f0;      /* light blue, mirrors in-game def card text */
+  --text-standby: #f0d8a0;  /* light gold, mirrors in-game counter card text */
+
+  /* Page-level reading text (warmer/brighter than --text-1 body) */
+  --text-page: #f5efde;
 
   /* ── State colors ── */
   --green: #4caf50;
@@ -239,6 +253,17 @@ const rawJson = computed(() =>
   --orange: #ff9800;
   --orange-dim: #a05000;
   --bg-gold: #1a1400;
+
+  /* ── Gold panel/slot deeper shades ── */
+  --bg-gold-deep: #0d0d00;    /* ab-header background in EmotionUpgradePicker */
+  --bg-gold-hover: #141000;   /* available slot hover fill in DieRow */
+  --bg-gold-mid: #3a2c00;     /* hex-beckon animation midpoint in DieRow */
+  --text-gold-deep: #4a3800;  /* idle available-slot text colour in DieRow */
+
+  /* ── Mass-target damage badge ── */
+  --bg-mass: #2a0e00;      /* fill for the MASS badge in TargetPicker */
+  --border-mass: #8b3500;  /* border for the MASS badge in TargetPicker */
+  --text-mass: #ff7043;    /* text for the MASS badge in TargetPicker */
 
   /* ── Info (card tokens, status chips) ── */
   --bg-info: #0d1a2e;
@@ -316,6 +341,16 @@ const rawJson = computed(() =>
   --incoming: var(--crimson-hi);
   --clash: var(--gold);
   --outgoing: var(--cyan);
+
+  /* ── Combat hex backgrounds ── */
+  --bg-incoming: #2a0a0a;        /* incoming die outer hex fill */
+  --bg-incoming-hover: #7a1010;  /* incoming die outer hex hover fill */
+  --bg-clash: #3d2e00;           /* clash die outer hex fill */
+  --bg-clash-hover: #261c00;     /* clash die inner hex hover fill */
+  --bg-stagger: #220808;         /* staggered die inner hex fill */
+
+  /* Broken die inner hex fill (distinct from --crimson-dim outer) */
+  --bg-broken: #230808;
 }
 
 *,

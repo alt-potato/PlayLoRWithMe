@@ -198,7 +198,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
 .ego-tag {
   color: var(--crimson-hi);
   border-color: var(--crimson-hi);
-  background: #1a0505;
+  background: var(--bg-crimson-deep);
 }
 .emotion-tag {
   color: var(--gold);

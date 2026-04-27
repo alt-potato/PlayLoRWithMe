@@ -202,7 +202,7 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
 .ab-header {
   padding: 0.5rem 0.9rem;
   border-bottom: 1px solid var(--gold-dim);
-  background: #0d0d00;
+  background: var(--bg-gold-deep);
   flex-shrink: 0;
   display: flex;
   align-items: center;

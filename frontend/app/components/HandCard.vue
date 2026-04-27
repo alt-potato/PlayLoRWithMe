@@ -399,7 +399,7 @@ function handleClick() {
   font-family: var(--font-body);
   font-size: 0.68rem;
   /* page-level text — near-white per in-game styling */
-  color: #f5efde;
+  color: var(--text-page);
   line-height: 1.1;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -451,13 +451,13 @@ function handleClick() {
 /* per-die desc colour tints, mirroring in-game card text styling.
    atk = light red, def = light blue, standby (counter) = light gold. */
 .hcard-die-desc--atk {
-  color: #f0c2c2;
+  color: var(--text-atk);
 }
 .hcard-die-desc--def {
-  color: #c2d8f0;
+  color: var(--text-def);
 }
 .hcard-die-desc--standby {
-  color: #f0d8a0;
+  color: var(--text-standby);
 }
 
 /* ── Detail pane visibility per displayMode ──

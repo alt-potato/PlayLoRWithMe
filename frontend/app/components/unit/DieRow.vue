@@ -298,7 +298,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
   cursor: pointer;
 }
 .slot-available .slot-empty {
-  color: #4a3800;
+  color: var(--text-gold-deep);
   transition: color 0.15s;
 }
 .slot-available:hover .slot-empty {
@@ -346,7 +346,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
   background: var(--gold-dim);
 }
 .hex-wrap.available:hover .hex-inner {
-  background: #141000;
+  background: var(--bg-gold-hover);
   color: var(--gold);
 }
 @keyframes hex-beckon {
@@ -355,7 +355,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
     background: var(--border-mid);
   }
   50% {
-    background: #3a2c00;
+    background: var(--bg-gold-mid);
   }
 }
 /* open */
@@ -413,7 +413,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
   background: var(--crimson-dim);
 }
 .hex-wrap.broken .hex-inner {
-  background: #230808;
+  background: var(--bg-broken);
   color: var(--crimson-hi);
 }
 /* invalid */
