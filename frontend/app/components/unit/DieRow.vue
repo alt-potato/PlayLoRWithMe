@@ -355,7 +355,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
     background: var(--border-mid);
   }
   50% {
-    background: var(--bg-gold-mid);
+    background: var(--bg-gold-beacon);
   }
 }
 /* open */

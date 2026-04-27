@@ -285,7 +285,7 @@ function dieState(
   color: #fff;
 }
 .die-hex-outer.die-clash:hover:not(:disabled) .die-hex-inner {
-  background: var(--bg-clash-hover);
+  background: var(--bg-clash-inner-hover);
   color: #fff;
 }
 .die-hex-outer.staggered .die-hex-inner {

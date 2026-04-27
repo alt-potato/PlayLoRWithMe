@@ -384,7 +384,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
 }
 
 .customize-panel {
-  background: var(--bg, #1a1a1a);
+  background: var(--bg);
   border: 1px solid var(--border-mid);
   border-radius: 10px 10px 0 0;
   width: 100%;

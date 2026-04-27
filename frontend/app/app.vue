@@ -257,13 +257,13 @@ const rawJson = computed(() =>
   /* ── Gold panel/slot deeper shades ── */
   --bg-gold-deep: #0d0d00;    /* ab-header background in EmotionUpgradePicker */
   --bg-gold-hover: #141000;   /* available slot hover fill in DieRow */
-  --bg-gold-mid: #3a2c00;     /* hex-beckon animation midpoint in DieRow */
+  --bg-gold-beacon: #3a2c00;  /* hex-beckon animation midpoint in DieRow */
   --text-gold-deep: #4a3800;  /* idle available-slot text colour in DieRow */
 
   /* ── Mass-target damage badge ── */
   --bg-mass: #2a0e00;      /* fill for the MASS badge in TargetPicker */
   --border-mass: #8b3500;  /* border for the MASS badge in TargetPicker */
-  --text-mass: #ff7043;    /* text for the MASS badge in TargetPicker */
+  --text-mass: #ff7043;    /* text for the MASS badge in TargetPicker (intentionally redder than --orange) */
 
   /* ── Info (card tokens, status chips) ── */
   --bg-info: #0d1a2e;
@@ -346,7 +346,7 @@ const rawJson = computed(() =>
   --bg-incoming: #2a0a0a;        /* incoming die outer hex fill */
   --bg-incoming-hover: #7a1010;  /* incoming die outer hex hover fill */
   --bg-clash: #3d2e00;           /* clash die outer hex fill */
-  --bg-clash-hover: #261c00;     /* clash die inner hex hover fill */
+  --bg-clash-inner-hover: #261c00; /* clash die inner hex on hover (not a sibling of --bg-clash; the outer hover uses --gold-dim) */
   --bg-stagger: #220808;         /* staggered die inner hex fill */
 
   /* Broken die inner hex fill (distinct from --crimson-dim outer) */
