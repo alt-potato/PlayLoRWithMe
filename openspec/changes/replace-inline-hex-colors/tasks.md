@@ -26,4 +26,4 @@ For each replacement, swap the inline `#hex` literal with `var(--token)`. Do NOT
 - [x] 3.4 `cd mod && dotnet build` — clean.
 - [x] 3.5 `openspec validate replace-inline-hex-colors` — valid.
 - [x] 3.6 `grep -rEn "#[0-9a-fA-F]{3,6}" frontend/app/components/ --include="*.vue"` (excluding JS expressions and `HslColorPicker.vue`) — only `#fff` and `#000` literals remain. **One unrelated finding logged for separate follow-up:** `CustomizePanel.vue:387` has `background: var(--bg, #1a1a1a)` (a `var()` fallback hex the audit missed); this is out of scope for this slice.
-- [ ] 3.7 Manual visual smoke: launch frontend dev mode, load `battle-sampler` fixture, eyeball that HandCard, DieRow, TargetPicker, DisplayCard, and EmotionUpgradePicker render visually identically to before this change.
+- [x] 3.7 Manual visual smoke: launch frontend dev mode, load `battle-sampler` fixture, eyeball that HandCard, DieRow, TargetPicker, DisplayCard, and EmotionUpgradePicker render visually identically to before this change.
