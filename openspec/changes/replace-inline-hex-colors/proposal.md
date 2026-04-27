@@ -8,9 +8,9 @@ The audit (top-3 codebase finding #2) flagged this as the single largest surface
 
 ## What Changes
 
-- Add 19 new CSS custom properties to the `:root` block in `frontend/app/app.vue`, grouped by semantic family (die-text tints, mass-target badge, combat hex states with `-hover` siblings, gold-panel/slot states, buff borders, crimson surfaces, broken state).
-- Replace 23 of the 25 inline hex literals across 12 component files with `var(--token)` references. The 2 remaining inline literals are `#fff` (used 6× in hover text states) and `#000` (used 1× in a button hover), kept inline per scoping decision — pure black/white are universal enough that tokenizing them adds noise without value.
-- Reuse 3 existing tokens where semantics align: `--text-green` (exact match for `#81c784`), `--green-hi` (close enough for `#2e5c2e` buff border), and the new `--bg-crimson-deep` consolidates two near-identical literals (`#1a0505` and `#180808`).
+- Add 20 new CSS custom properties to the `:root` block in `frontend/app/app.vue`, grouped by semantic family (die-text tints, mass-target badge, combat hex states with `-hover` siblings, gold-panel/slot states, buff borders, crimson surfaces, broken state).
+- Replace 23 of the 25 inline hex literals across 8 component files with `var(--token)` references. The remaining inline literals are `#fff` (used 6× in hover text states) and `#000` (used 2× in button hover and a tag overlay), kept inline per scoping decision — pure black/white are universal enough that tokenizing them adds noise without value.
+- Reuse 3 existing tokens where semantics align: `--text-green` (exact match for `#81c784`), `--green-hi` (close enough for `#2e5c2e` buff border), and the new `--bg-crimson-deep` consolidates three near-identical literals (`#1a0505`, `#180808`, `#1a0808`).
 
 Out of scope:
 - Inline hex in JS/TS files (e.g. `useBattleDisplay.ts` ally-color array, `useLibrarianActions.ts` `FLOOR_COLORS` map). These are data, not theme.

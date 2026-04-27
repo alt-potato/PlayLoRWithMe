@@ -27,12 +27,13 @@ Per scoping decision (a), hover-state colours get their own `--token-hover` sibl
 - Computed values obscure the actual colour from the developer reading the stylesheet.
 - The 5 hover variants in scope are stable design choices, not derived computations.
 
-### Decision 2: Collapse two near-identical hexes
+### Decision 2: Collapse near-identical hexes
 
 `#180808` (error banner bg, used 1×) → `--bg-crimson-deep` (#1a0505). RGB delta of (2, 0, -3), imperceptible.
 `#2e5c2e` (green buff border, used 1×) → `--green-hi` (#2e7d32). RGB delta of (0, 33, -2), perceptible but both are mid-dark green and the buff border is a 1px line — the visual mismatch is below the threshold of notice.
+`#1a0808` (DisplayCard.vue ego-tag bg, used 1×) → `--bg-crimson-deep` (#1a0505). RGB delta of (0, 3, 3), imperceptible. Discovered during implementation when the actual file content differed from the audit's transcription; rolled into the same `--bg-crimson-deep` token rather than minted as a one-off `--bg-crimson-very-deep`.
 
-These are the only collapses. Every other hex maps 1:1 to a fresh token.
+Every other hex maps 1:1 to a fresh token.
 
 ### Decision 3: Token naming follows existing prefix conventions
 
@@ -47,7 +48,7 @@ The token additions and the literal replacements ship in a single commit. Splitt
 
 ## Token Mapping
 
-### New tokens (19)
+### New tokens (20)
 
 ```css
 /* Die-type description text tints */
