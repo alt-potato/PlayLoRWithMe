@@ -13,10 +13,10 @@
 
 ## 3. applyDelta → dev-mode schema check
 
-- [ ] 3.1 In `frontend/app/utils/deltaApply.ts`, wrap the return statement with a dev-gated `GameStateSchema.safeParse` call. On failure, `console.error` with the `[wire-contract]` prefix and the formatted Zod error. Return the merged result unchanged regardless of validation outcome.
-- [ ] 3.2 Update the comment above the return to reflect the new dev-time safety net while explaining the prod-side cast remains justified (upstream validation in `useWebSocket`).
-- [ ] 3.3 Extend `frontend/app/utils/deltaApply.test.ts` with a dev-mode test: stub `import.meta.dev = true`, merge a delta that injects an invalid enum value into an ally, assert `console.error` is called with the `[wire-contract]` prefix and the merged result is still returned.
-- [ ] 3.4 Build with `cd frontend && npm run build`, grep the generated bundle under `.output/public/_nuxt/*.js` for `applyDelta produced invalid`, and confirm zero matches (tree-shake check).
+- [x] 3.1 In `frontend/app/utils/deltaApply.ts`, wrap the return statement with a dev-gated `GameStateSchema.safeParse` call. On failure, `console.error` with the `[wire-contract]` prefix and the formatted Zod error. Return the merged result unchanged regardless of validation outcome.
+- [x] 3.2 Update the comment above the return to reflect the new dev-time safety net while explaining the prod-side cast remains justified (upstream validation in `useWebSocket`).
+- [x] 3.3 Extend `frontend/app/utils/deltaApply.test.ts` with a dev-mode test: stub `import.meta.dev = true`, merge a delta that injects an invalid enum value into an ally, assert `console.error` is called with the `[wire-contract]` prefix and the merged result is still returned.
+- [x] 3.4 Build with `cd frontend && npm run build`, grep the generated bundle under `.output/public/_nuxt/*.js` for `applyDelta produced invalid`, and confirm zero matches (tree-shake check).
 
 ## 4. LibrarianActions.sendAction → ClientAction
 

@@ -1,4 +1,5 @@
 import type { GameState, AllyUnit, Unit } from "~/types/game";
+import { GameStateSchema } from "~/types/game";
 
 /**
  * Merges a delta payload (from a {"type":"delta"} WebSocket message) into
@@ -42,9 +43,17 @@ export function applyDelta(base: GameState, delta: Record<string, unknown>): Gam
     );
   }
 
-  // Double cast required: Record<string, unknown> doesn't structurally overlap
-  // with GameState, but we know the result is valid because it was built from
-  // a valid GameState base with only targeted field replacements.
+  // dev-only contract check: catches server-side regressions that slip an
+  // invalid enum value or wrong shape through a delta patch. Tree-shaken from
+  // production by `import.meta.dev`. The cast below is still justified in prod
+  // because upstream validation in `useWebSocket` already guards the `state`
+  // message, so incremental delta patches from a conforming server stay valid.
+  if (import.meta.dev) {
+    const parsed = GameStateSchema.safeParse(result);
+    if (!parsed.success) {
+      console.error("[wire-contract] applyDelta produced invalid GameState", parsed.error.format());
+    }
+  }
   return result as unknown as GameState;
 }
 
