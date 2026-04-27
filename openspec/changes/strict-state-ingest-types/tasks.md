@@ -26,8 +26,8 @@
 
 ## 5. Validation
 
-- [ ] 5.1 `cd frontend && npm test` — all tests pass including the new fixture and delta tests.
-- [ ] 5.2 `cd frontend && npm run build` — build succeeds.
-- [ ] 5.3 `cd mod && dotnet build` — build is clean (`0 Warning(s) 0 Error(s)`).
-- [ ] 5.4 `openspec validate strict-state-ingest-types` — change is valid.
+- [x] 5.1 `cd frontend && npm test` — all tests pass including the new fixture and delta tests.
+- [x] 5.2 `cd frontend && npm run build` — build succeeds.
+- [x] 5.3 `cd mod && dotnet build` — build is clean (`0 Warning(s) 0 Error(s)`).
+- [x] 5.4 `openspec validate strict-state-ingest-types` — change is valid.
 - [ ] 5.5 Manual smoke: launch frontend in dev mode, load each of the four fixtures via `useMockBackend`, confirm no `[wire-contract]` errors in the console.
