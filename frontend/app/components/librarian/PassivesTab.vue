@@ -411,7 +411,10 @@ async function saveChanges() {
       await props.onRemoveAttributedPassive(
         ap.sourceInstanceId,
         ap.passive.id.id,
-        ap.passive.id.packageId,
+        // EntryId.packageId is numeric on the wire, but the C# handler reads
+        // passivePackageId as a string (JsonReader stringifies all scalars
+        // anyway, so this just makes the contract explicit).
+        String(ap.passive.id.packageId),
       );
     }
     for (const id of pendingSourceRemoves.value) {
@@ -424,7 +427,7 @@ async function saveChanges() {
       await props.onAttributePassive(
         ap.sourceInstanceId,
         ap.passive.id.id,
-        ap.passive.id.packageId,
+        String(ap.passive.id.packageId),
       );
     }
   } catch (e) {
