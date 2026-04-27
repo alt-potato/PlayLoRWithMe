@@ -30,4 +30,4 @@
 - [x] 5.2 `cd frontend && npm run build` — build succeeds.
 - [x] 5.3 `cd mod && dotnet build` — build is clean (`0 Warning(s) 0 Error(s)`).
 - [x] 5.4 `openspec validate strict-state-ingest-types` — change is valid.
-- [ ] 5.5 Manual smoke: launch frontend in dev mode, load each of the four fixtures via `useMockBackend`, confirm no `[wire-contract]` errors in the console.
+- [x] 5.5 Manual smoke: launch frontend in dev mode, load each of the four fixtures via `useMockBackend`, confirm no `[wire-contract]` errors in the console.
