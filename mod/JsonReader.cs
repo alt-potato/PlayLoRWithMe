@@ -10,6 +10,16 @@ namespace PlayLoRWithMe
     ///
     /// Example input: {"type":"playCard","unitId":3,"cardIndex":0,"diceSlot":0}
     /// </summary>
+    /// <remarks>
+    /// Hard limitation: nested objects and arrays are NOT supported.  The regex
+    /// parser flattens any document into top-level key/value pairs, so a payload
+    /// like <c>{"outer":{"inner":1}}</c> silently captures only the inner
+    /// <c>"inner":1</c> entry and drops the structural context.  If a future
+    /// action type requires a nested payload, replace this with a real JSON
+    /// parser (e.g. <c>System.Text.Json</c> or <c>Newtonsoft.Json</c>) rather
+    /// than extending the regex — the regex strategy cannot be made nest-aware
+    /// without becoming a full tokenizer.
+    /// </remarks>
     public sealed class JsonReader
     {
         // Matches "key":"string-value" (with escaped quotes) or "key":<scalar>.
