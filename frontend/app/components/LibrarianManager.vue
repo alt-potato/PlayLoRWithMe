@@ -421,14 +421,23 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
               />
             </div>
             <div class="row-body">
-              <span class="row-name" :title="lib.name">{{ lib.name }}</span>
+              <div class="row-title">
+                <span class="row-name" :title="lib.name">{{ lib.name }}</span>
+                <span
+                  v-if="lib.lockedBy"
+                  class="row-lock"
+                  :title="`Being edited by ${lib.lockedBy}`"
+                >
+                  ✎ {{ lib.lockedBy }}
+                </span>
+              </div>
               <span class="row-page" :title="lib.keyPage.name">{{ lib.keyPage.name }}</span>
             </div>
 
             <!--
-              Stat strip (HP / stagger gauge / speed). Lives on the right
-              next to the resistances grid and hides at the same narrow
-              breakpoint so compact viewports show just name + lock status.
+              Stat strip (HP / stagger gauge / speed). Hides below the stat
+              breakpoint; resistances hide at a wider breakpoint, so as the
+              row narrows the order is: resists drop first, then stats.
             -->
             <div class="row-stats">
               <span v-if="lib.keyPage.hp != null" class="stat">
@@ -505,14 +514,6 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
                 </span>
               </div>
             </div>
-
-            <span
-              v-if="lib.lockedBy"
-              class="row-lock"
-              :title="`Being edited by ${lib.lockedBy}`"
-            >
-              ✎ {{ lib.lockedBy }}
-            </span>
           </div>
         </div>
       </div>
@@ -889,7 +890,20 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
   min-width: 0;
 }
 
+/*
+ * Top line of the row body: librarian name with the lock chip inline.
+ * Both shrink (flex: 0 1 auto) so a long session name can't push the
+ * name out of the row — each truncates with ellipsis instead.
+ */
+.row-title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
 .row-name {
+  flex: 0 1 auto;
   font-family: var(--font-display);
   font-size: var(--fs-lg);
   font-weight: 700;
@@ -913,18 +927,6 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-}
-
-/*
- * Narrow viewports: the librarian name takes priority over the key-page
- * info.  The key-page name hides alongside the stat/resist strip (which
- * also hides below 700px) so the row collapses cleanly to just the name
- * before the name itself has to truncate.
- */
-@media (max-width: 699px) {
-  .row-page {
-    display: none;
-  }
 }
 
 /*
@@ -970,6 +972,10 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
  * each with HP on top and BP on the bottom. Cells inherit their text
  * color from resistColor() so weaknesses (red) and immunities (green) are
  * immediately legible.
+ *
+ * Resists are the lowest-priority row element, so they hide at a wider
+ * breakpoint than the stat strip — when space gets tight the resists
+ * drop first, then the stats, leaving name + lock + key page intact.
  */
 .row-resists {
   flex: 0 0 auto;
@@ -980,7 +986,7 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
   border-left: 1px solid var(--border);
 }
 
-@media (min-width: 700px) {
+@media (min-width: 900px) {
   .row-resists {
     display: flex;
   }
@@ -1010,14 +1016,19 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
 }
 
 /*
- * Lock indicator. The entire row is already clickable — no separate Edit
- * button — so the lock chip stands alone as the right-side status.
+ * Lock indicator. Inline with the librarian name (after it) so the
+ * "being edited by …" status reads as part of the title. flex: 0 1 auto
+ * lets a long session name truncate via ellipsis rather than push the
+ * librarian name out of the row.
  */
 .row-lock {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: var(--fs-xs);
   color: var(--gold);
   letter-spacing: 0.04em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
