@@ -28,14 +28,48 @@ export function buildAllyColors(allies: { id: number }[]): Record<number, string
   return m;
 }
 
-/** Maps resistance tier name → display colour. */
-export const RESIST_COLORS: Record<string, string> = {
-  Weak: "#e53935",
-  Vulnerable: "#bf360c",
-  Normal: "#555",
-  Endure: "#2e7d32",
-  Resist: "#1565c0",
-  Immune: "#6a1b9a",
+/**
+ * Resistance kind — `hp` cells use the health-red token, `bp` cells use the
+ * stagger-yellow token. The brightness gradient (per tier, below) provides
+ * the danger signal; hue stays in the same red/yellow palette as the rest
+ * of the UI so the resistance strip doesn't introduce extra colour vocabulary.
+ */
+export type ResistKind = "hp" | "bp";
+const RESIST_HUE: Record<ResistKind, string> = {
+  hp: "var(--health-bar)",
+  bp: "var(--stagger-bar)",
+};
+
+/**
+ * Resistance tier display info, keyed by the wire enum value (`AtkResist.ToString()`).
+ *
+ * The enum names diverge from the in-game player-facing labels:
+ *   enum Weak       → player "Fatal"        (2.0× damage)
+ *   enum Vulnerable → player "Weak"         (1.5×)
+ *   enum Normal     → player "Normal"       (1.0×)
+ *   enum Endure     → player "Endured"      (0.5×)
+ *   enum Resist     → player "Ineffective"  (0.25×)
+ *   enum Immune     → player "Immune"       (0×)
+ *
+ * `symbol` is the compact display token; `label` is the accessible / hover text.
+ *
+ * `opacity`, `glow`, and `flat` mirror the in-game brightness gradient: Fatal
+ * glows at full intensity, mid tiers dim progressively in the kind hue, and
+ * Immune drops to a flat dark grey (`flat: true` overrides the kind hue). The
+ * symbol carries the meaning textually, so dimming doesn't hurt legibility —
+ * opacity is floor-clamped at ~0.45 so cells stay above the dark-panel
+ * contrast threshold.
+ */
+const RESIST_TIER: Record<
+  string,
+  { symbol: string; label: string; opacity: number; glow?: boolean; flat?: boolean }
+> = {
+  Weak:       { symbol: "++", label: "Fatal (2.0×)",        opacity: 1.0,  glow: true },
+  Vulnerable: { symbol: "+",  label: "Weak (1.5×)",         opacity: 0.95 },
+  Normal:     { symbol: "·",  label: "Normal (1.0×)",       opacity: 0.7 },
+  Endure:     { symbol: "−",  label: "Endured (0.5×)",      opacity: 0.55 },
+  Resist:     { symbol: "−−", label: "Ineffective (0.25×)", opacity: 0.45 },
+  Immune:     { symbol: "∅",  label: "Immune (0×)",         opacity: 0.55, flat: true },
 };
 
 /** Arrow / die highlight colours shared between ArrowOverlay and unit components. */
@@ -74,9 +108,38 @@ export const TURNSTATE_COLORS: Record<string, string> = {
   BREAK: "#e53935",
 };
 
-/** CSS colour for a resistance tier label. */
-export function resistColor(val: string | undefined) {
-  return (val && RESIST_COLORS[val]) ?? "#555";
+/**
+ * Inline style object for a resistance cell — sets `color`, `opacity`, and
+ * optional `textShadow` (the in-game-style "glow" on Fatal). Intended for
+ * `:style` binding on the cell wrapper so both the type icon and the symbol
+ * dim/brighten in unison.
+ *
+ * `kind` selects the hue: `hp` cells use the health-red token, `bp` cells
+ * use the stagger-yellow token. Immune ignores `kind` and renders as flat grey.
+ */
+export function resistStyle(
+  val: string | undefined,
+  kind: ResistKind,
+): Record<string, string | number> {
+  const tier = val ? RESIST_TIER[val] : undefined;
+  if (!tier) return {};
+  const hue = RESIST_HUE[kind];
+  const style: Record<string, string | number> = {
+    color: tier.flat ? "#666" : hue,
+    opacity: tier.opacity,
+  };
+  if (tier.glow) style.textShadow = `0 0 6px ${hue}`;
+  return style;
+}
+
+/** Compact symbol for a resistance tier (`++`, `+`, `·`, `−`, `−−`, `∅`). Empty string when unknown. */
+export function resistSymbol(val: string | undefined): string {
+  return (val && RESIST_TIER[val]?.symbol) ?? "";
+}
+
+/** Player-facing label for a resistance tier (e.g. "Fatal (2.0×)"). Used as accessible / hover text. */
+export function resistLabel(val: string | undefined): string {
+  return (val && RESIST_TIER[val]?.label) ?? "—";
 }
 
 /** CSS colour for a turn-state badge. */

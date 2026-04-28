@@ -461,56 +461,70 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
 
             <!--
               Compact resistances strip: 3 damage types × 2 defenses (HP, BP).
-              Cells inherit their color from resistColor() so weaknesses and
-              immunities are visible at a glance without labels.
+              Renders icon + tier symbol (++ / + / · / − / −− / ∅); the full
+              player-facing label is on aria-label / title for accessibility.
+              resistStyle() applies the in-game-style brightness gradient —
+              weaknesses glow, mid tiers dim progressively, Immune is flat grey.
             -->
             <div v-if="lib.keyPage.resistances" class="row-resists">
               <div class="resist-col">
                 <span
                   class="resist-cell"
-                  :style="{ color: resistColor(lib.keyPage.resistances.slashHp) }"
+                  :style="resistStyle(lib.keyPage.resistances.slashHp, 'hp')"
+                  :aria-label="`Slash damage: ${resistLabel(lib.keyPage.resistances.slashHp)}`"
+                  :title="resistLabel(lib.keyPage.resistances.slashHp)"
                 >
-                  <img src="/assets/stats/sHpResist.png" class="resist-icon" alt="Slash HP" />
-                  {{ lib.keyPage.resistances.slashHp }}
+                  <img src="/assets/stats/sHpResist.png" class="resist-icon" alt="" />
+                  <span class="resist-symbol">{{ resistSymbol(lib.keyPage.resistances.slashHp) }}</span>
                 </span>
                 <span
                   class="resist-cell"
-                  :style="{ color: resistColor(lib.keyPage.resistances.slashBp) }"
+                  :style="resistStyle(lib.keyPage.resistances.slashBp, 'bp')"
+                  :aria-label="`Slash stagger: ${resistLabel(lib.keyPage.resistances.slashBp)}`"
+                  :title="resistLabel(lib.keyPage.resistances.slashBp)"
                 >
-                  <img src="/assets/stats/sBpResist.png" class="resist-icon" alt="Slash BP" />
-                  {{ lib.keyPage.resistances.slashBp }}
-                </span>
-              </div>
-              <div class="resist-col">
-                <span
-                  class="resist-cell"
-                  :style="{ color: resistColor(lib.keyPage.resistances.pierceHp) }"
-                >
-                  <img src="/assets/stats/pHpResist.png" class="resist-icon" alt="Pierce HP" />
-                  {{ lib.keyPage.resistances.pierceHp }}
-                </span>
-                <span
-                  class="resist-cell"
-                  :style="{ color: resistColor(lib.keyPage.resistances.pierceBp) }"
-                >
-                  <img src="/assets/stats/pBpResist.png" class="resist-icon" alt="Pierce BP" />
-                  {{ lib.keyPage.resistances.pierceBp }}
+                  <img src="/assets/stats/sBpResist.png" class="resist-icon" alt="" />
+                  <span class="resist-symbol">{{ resistSymbol(lib.keyPage.resistances.slashBp) }}</span>
                 </span>
               </div>
               <div class="resist-col">
                 <span
                   class="resist-cell"
-                  :style="{ color: resistColor(lib.keyPage.resistances.bluntHp) }"
+                  :style="resistStyle(lib.keyPage.resistances.pierceHp, 'hp')"
+                  :aria-label="`Pierce damage: ${resistLabel(lib.keyPage.resistances.pierceHp)}`"
+                  :title="resistLabel(lib.keyPage.resistances.pierceHp)"
                 >
-                  <img src="/assets/stats/bHpResist.png" class="resist-icon" alt="Blunt HP" />
-                  {{ lib.keyPage.resistances.bluntHp }}
+                  <img src="/assets/stats/pHpResist.png" class="resist-icon" alt="" />
+                  <span class="resist-symbol">{{ resistSymbol(lib.keyPage.resistances.pierceHp) }}</span>
                 </span>
                 <span
                   class="resist-cell"
-                  :style="{ color: resistColor(lib.keyPage.resistances.bluntBp) }"
+                  :style="resistStyle(lib.keyPage.resistances.pierceBp, 'bp')"
+                  :aria-label="`Pierce stagger: ${resistLabel(lib.keyPage.resistances.pierceBp)}`"
+                  :title="resistLabel(lib.keyPage.resistances.pierceBp)"
                 >
-                  <img src="/assets/stats/bBpResist.png" class="resist-icon" alt="Blunt BP" />
-                  {{ lib.keyPage.resistances.bluntBp }}
+                  <img src="/assets/stats/pBpResist.png" class="resist-icon" alt="" />
+                  <span class="resist-symbol">{{ resistSymbol(lib.keyPage.resistances.pierceBp) }}</span>
+                </span>
+              </div>
+              <div class="resist-col">
+                <span
+                  class="resist-cell"
+                  :style="resistStyle(lib.keyPage.resistances.bluntHp, 'hp')"
+                  :aria-label="`Blunt damage: ${resistLabel(lib.keyPage.resistances.bluntHp)}`"
+                  :title="resistLabel(lib.keyPage.resistances.bluntHp)"
+                >
+                  <img src="/assets/stats/bHpResist.png" class="resist-icon" alt="" />
+                  <span class="resist-symbol">{{ resistSymbol(lib.keyPage.resistances.bluntHp) }}</span>
+                </span>
+                <span
+                  class="resist-cell"
+                  :style="resistStyle(lib.keyPage.resistances.bluntBp, 'bp')"
+                  :aria-label="`Blunt stagger: ${resistLabel(lib.keyPage.resistances.bluntBp)}`"
+                  :title="resistLabel(lib.keyPage.resistances.bluntBp)"
+                >
+                  <img src="/assets/stats/bBpResist.png" class="resist-icon" alt="" />
+                  <span class="resist-symbol">{{ resistSymbol(lib.keyPage.resistances.bluntBp) }}</span>
                 </span>
               </div>
             </div>
@@ -969,9 +983,9 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
 
 /*
  * Compact resistances column. Three sub-columns (slash / pierce / blunt),
- * each with HP on top and BP on the bottom. Cells inherit their text
- * color from resistColor() so weaknesses (red) and immunities (green) are
- * immediately legible.
+ * each with HP on top and BP on the bottom. Cells get their colour and
+ * brightness from resistStyle() so the in-game gradient (Fatal glows,
+ * Immune is flat grey) is immediately legible at a glance.
  *
  * Resists are the lowest-priority row element, so they hide at a wider
  * breakpoint than the stat strip — when space gets tight the resists
@@ -1002,17 +1016,30 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: var(--fs-2xs);
   font-family: var(--font-body);
   font-weight: 700;
   line-height: 1.1;
 }
 
 .resist-icon {
-  width: 0.95rem;
-  height: 0.95rem;
+  width: 1.1rem;
+  height: 1.1rem;
   object-fit: contain;
   opacity: 0.9;
+}
+
+/*
+ * Fixed-width tier symbol slot. min-width keeps the column consistent
+ * across rows whether a 1-char (`+`, `−`, `·`, `∅`) or 2-char (`++`, `−−`)
+ * symbol is rendered. Left-aligned so the lead character lines up vertically
+ * across stacked cells regardless of symbol width.
+ */
+.resist-symbol {
+  display: inline-block;
+  min-width: 1.2rem;
+  text-align: left;
+  font-size: var(--fs-xs);
+  line-height: 1;
 }
 
 /*

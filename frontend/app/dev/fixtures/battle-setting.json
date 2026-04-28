@@ -52,7 +52,7 @@
         "resistances": {
           "slashHp": "Normal",
           "pierceHp": "Weak",
-          "bluntHp": "Resistant"
+          "bluntHp": "Resist"
         }
       },
       "deckPreview": [
