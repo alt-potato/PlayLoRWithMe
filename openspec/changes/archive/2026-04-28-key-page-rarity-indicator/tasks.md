@@ -35,7 +35,7 @@
   outlines without needing the live game.
 - [x] 2.5 Run `cd frontend && npm run check` and `npm test` — expect 0 type
   errors, all existing tests pass.
-- [ ] 2.6 Manual smoke test in dev mode (`?dev`): open a librarian's
+- [x] 2.6 Manual smoke test in dev mode (`?dev`): open a librarian's
   EditPanel, confirm picker tiles and detail pane show the five distinct
   outline colors. Confirm an equipped tile shows gold left + rarity
   three-sides. Confirm `SettingDetailPanel.vue` is unchanged.
@@ -44,6 +44,6 @@
 
 - [x] 3.1 Run `cd mod && dotnet build` end-to-end — `0 Warning(s) 0 Error(s)`.
 - [x] 3.2 `openspec validate key-page-rarity-indicator --strict` passes.
-- [ ] 3.3 Manual sign-off in the live game (or against a fresh fixture
+- [x] 3.3 Manual sign-off in the live game (or against a fresh fixture
   payload), then archive the change with
   `openspec archive key-page-rarity-indicator`.
