@@ -453,6 +453,10 @@ namespace PlayLoRWithMe
                                                         .Add("hp", unit.MaxHp)
                                                         .Add("breakGauge", book.Break)
                                                         .Add("equipRangeType", book.ClassInfo.RangeType.ToString())
+                                                        // Rarity is emitted only on librarian-owned key pages so
+                                                        // customization surfaces can render the colored outline.
+                                                        // Battle-context emission sites omit this field.
+                                                        .Add("rarity", book.ClassInfo.Rarity.ToString())
                                                         .AddObject(
                                                             "resistances",
                                                             r =>
@@ -991,6 +995,7 @@ namespace PlayLoRWithMe
                                 .Add("hp", book.HP)
                                 .Add("breakGauge", book.Break)
                                 .Add("equipRangeType", book.ClassInfo.RangeType.ToString())
+                                .Add("rarity", book.ClassInfo.Rarity.ToString())
                                 .AddObject(
                                     "resistances",
                                     r =>
@@ -1362,7 +1367,9 @@ namespace PlayLoRWithMe
                 if (book == null)
                     return;
 
-                // Key page: speed range and resistances (no dice count — display uses range only)
+                // Key page: speed range and resistances (no dice count — display uses range only).
+                // Rarity is intentionally omitted here so the BattleSetting preview shows no
+                // rarity outline — rarity is a customization concern, not a tactical one.
                 o.AddObject(
                     "keyPage",
                     k =>
@@ -1653,6 +1660,11 @@ namespace PlayLoRWithMe
         /// <summary>
         /// Writes a JSON object representing an equipped key page.
         /// </summary>
+        /// <remarks>
+        /// Rarity is intentionally omitted from this battle-context payload so combat
+        /// surfaces never display a rarity outline. Rarity is only emitted on
+        /// librarian-owned and inventory key page emission sites.
+        /// </remarks>
         private static void WriteKeyPage(JsonWriter w, BattleUnitModel unit)
         {
             var book = unit.Book;

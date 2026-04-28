@@ -408,6 +408,9 @@
                   },
                   "bookPackageId": {
                     "type": "string"
+                  },
+                  "rarity": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -1408,6 +1411,9 @@
                   },
                   "bookPackageId": {
                     "type": "string"
+                  },
+                  "rarity": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -1790,6 +1796,9 @@
                           "type": "number"
                         },
                         "bookPackageId": {
+                          "type": "string"
+                        },
+                        "rarity": {
                           "type": "string"
                         }
                       },
@@ -2594,6 +2603,9 @@
               },
               "passiveGivenTo": {
                 "type": "string"
+              },
+              "rarity": {
+                "type": "string"
               }
             },
             "required": [
@@ -3343,6 +3355,9 @@
                             "type": "number"
                           },
                           "bookPackageId": {
+                            "type": "string"
+                          },
+                          "rarity": {
                             "type": "string"
                           }
                         },
@@ -4344,6 +4359,9 @@
                           },
                           "bookPackageId": {
                             "type": "string"
+                          },
+                          "rarity": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -4726,6 +4744,9 @@
                                   "type": "number"
                                 },
                                 "bookPackageId": {
+                                  "type": "string"
+                                },
+                                "rarity": {
                                   "type": "string"
                                 }
                               },
@@ -5529,6 +5550,9 @@
                         "type": "boolean"
                       },
                       "passiveGivenTo": {
+                        "type": "string"
+                      },
+                      "rarity": {
                         "type": "string"
                       }
                     },

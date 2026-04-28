@@ -222,6 +222,12 @@ export const KeyPageSchema = z.object({
   bookId: z.number().optional(),
   /** Non-empty for workshop (mod) key pages; used with bookId to construct the body PNG URL. */
   bookPackageId: z.string().optional(),
+  /**
+   * BookXmlInfo.Rarity: "Common" | "Uncommon" | "Rare" | "Unique" | "Special".
+   * Emitted on librarian-owned key pages only — battle-context emission sites
+   * intentionally omit this so combat surfaces never display a rarity outline.
+   */
+  rarity: z.string().optional(),
 });
 export type KeyPage = z.infer<typeof KeyPageSchema>;
 
@@ -516,6 +522,8 @@ export const AvailableKeyPageSchema = z.object({
   canGivePassive: z.boolean().optional(),
   /** Name of the librarian this key page's passives are attributed to. */
   passiveGivenTo: z.string().optional(),
+  /** BookXmlInfo.Rarity: "Common" | "Uncommon" | "Rare" | "Unique" | "Special". */
+  rarity: z.string().optional(),
 });
 export type AvailableKeyPage = z.infer<typeof AvailableKeyPageSchema>;
 
