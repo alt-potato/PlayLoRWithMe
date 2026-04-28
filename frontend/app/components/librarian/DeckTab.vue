@@ -55,6 +55,14 @@ function cardLimit(rarity: string): number {
   return rarity === "Unique" ? 1 : 3;
 }
 
+/**
+ * Maximum cards a deck can hold. Mirrors `DeckModel.maxDeckCount` in the
+ * game DLL — slots beyond what the player explicitly equips are filled
+ * with default cards before combat starts, so we surface them visually
+ * as placeholder tiles.
+ */
+const DECK_MAX = 9;
+
 /** Map of "cardId_packageId" → copies already in the deck. */
 const deckCardCounts = computed(() => {
   const map = new Map<string, number>();
@@ -65,6 +73,23 @@ const deckCardCounts = computed(() => {
   }
   return map;
 });
+
+/**
+ * Expands the grouped `deckPreview` (one entry per unique card with a `count`)
+ * into one tile per physical copy. The deck-editor surface mirrors the
+ * 9-slot deck the game actually equips, so duplicates need to occupy
+ * distinct visible slots rather than collapse behind a ×N badge.
+ */
+const expandedDeck = computed(() =>
+  props.lib.deckPreview.flatMap((entry) =>
+    Array.from({ length: entry.count }, () => entry),
+  ),
+);
+
+/** Empty slots remaining; auto-filled with default cards before combat. Clamped at 0. */
+const emptySlotCount = computed(() =>
+  Math.max(0, DECK_MAX - expandedDeck.value.length),
+);
 
 function isAtLimit(card: AvailableCard): boolean {
   const key = `${card.cardId.id}_${card.cardId.packageId}`;
@@ -107,21 +132,30 @@ function availableToCard(c: AvailableCard, i: number): Card {
       </div>
     </div>
 
-    <!-- Right: equipped deck — click a card to remove one copy -->
+    <!-- Right: equipped deck — click a card to remove one copy. Empty slots
+         are surfaced as placeholders to communicate the 9-card cap and the
+         fact that the engine will auto-fill them with default cards. -->
     <div class="deck-col deck-col--equipped">
-      <div class="col-header">Deck</div>
+      <div class="col-header">
+        Deck
+        <span class="deck-count">{{ expandedDeck.length }} / {{ DECK_MAX }}</span>
+      </div>
       <LibrarianKeyPageDetail class="deck-keypage" :key-page="lib.keyPage" :compact="true" />
-      <div v-if="!lib.deckPreview.length" class="col-empty">No cards equipped.</div>
-      <div v-else class="card-grid">
+      <div class="card-grid">
         <HandCard
-          v-for="(card, i) in lib.deckPreview"
-          :key="(card.cardId?.id ?? i) + '_' + (card.cardId?.packageId ?? i)"
+          v-for="(card, i) in expandedDeck"
+          :key="`copy-${i}`"
           :card="previewToCard(card, i)"
-          :count="card.count"
           :unusable="editBusy || !card.cardId"
           @click="onRemoveCard(card)"
           @detail="detailCard = previewToCard(card, i)"
         />
+        <div
+          v-for="i in emptySlotCount"
+          :key="`placeholder-${i}`"
+          class="deck-placeholder"
+          :title="`Empty slot ${expandedDeck.length + i} — auto-filled with a default card before combat.`"
+        ></div>
       </div>
     </div>
 
@@ -155,6 +189,19 @@ function availableToCard(c: AvailableCard, i: number): Card {
   letter-spacing: 0.08em;
   color: var(--gold-bright);
   flex-shrink: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+/* Compact "N / MAX" indicator next to the Deck header. Muted so the
+   header text remains the focal element and the count reads as metadata. */
+.deck-count {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-3);
 }
 
 .col-empty {
@@ -183,6 +230,28 @@ function availableToCard(c: AvailableCard, i: number): Card {
   flex-shrink: 0;
   padding-top: 0;
   padding-bottom: var(--sp-1);
+}
+
+/*
+ * Empty deck slot tile. Shape and width match HandCard's preview pane
+ * (5.5rem wide, 5:7 aspect ratio) so equipped cards and placeholders
+ * line up on a shared baseline grid. Dashed border + muted fill mark
+ * the tile as a non-card slot rather than an unusable card.
+ */
+.deck-placeholder {
+  flex-shrink: 0;
+  width: 5.5rem;
+  aspect-ratio: 5 / 7;
+  border: 1px dashed var(--border-mid);
+  background: var(--bg-card-2);
+  opacity: 0.55;
+  cursor: default;
+  user-select: none;
+  /* HandCard's border wraps the 5.5rem preview from outside, so the visible
+     card occupies 5.5rem + 2px. Opting into content-box makes the dashed
+     border sit outside the 5.5rem box too, matching the card footprint
+     instead of shrinking 2px under the global border-box default. */
+  box-sizing: content-box;
 }
 
 /*
