@@ -1,23 +1,23 @@
 ## 1. Wire contract
 
-- [ ] 1.1 Add optional `rarity?: string` to `KeyPageSchema` and
+- [x] 1.1 Add optional `rarity?: string` to `KeyPageSchema` and
   `AvailableKeyPageSchema` in `frontend/app/types/game.ts`. Document via JSDoc
   that the field is omitted on combat-context payloads.
-- [ ] 1.2 Add `.Add("rarity", book.ClassInfo.Rarity.ToString())` to the
+- [x] 1.2 Add `.Add("rarity", book.ClassInfo.Rarity.ToString())` to the
   librarian-owned `keyPage` writer in `mod/GameStateSerializer.cs`
   (around line 484, just before the closing `});` of the `keyPage` object
   inside the librarian floor loop).
-- [ ] 1.3 Add `.Add("rarity", book.ClassInfo.Rarity.ToString())` to the
+- [x] 1.3 Add `.Add("rarity", book.ClassInfo.Rarity.ToString())` to the
   `availableKeyPages` entry writer in `mod/GameStateSerializer.cs`
   (around line 993, alongside `equipRangeType`).
-- [ ] 1.4 Verify that the BattleSetting `keyPage` writer
+- [x] 1.4 Verify that the BattleSetting `keyPage` writer
   (`GameStateSerializer.cs` ~line 1366) and the in-battle `WriteKeyPage`
   helper (~line 1656) do NOT emit `rarity`. Add a one-line comment at each
   combat site stating that rarity is intentionally omitted.
-- [ ] 1.5 Run `cd mod && dotnet build` — expect `0 Warning(s) 0 Error(s)`
+- [x] 1.5 Run `cd mod && dotnet build` — expect `0 Warning(s) 0 Error(s)`
   and a regenerated `schema/gamestate.schema.json` containing the two new
   optional fields.
-- [ ] 1.6 Run `cd frontend && npm run check` and `npm test` — expect 0 type
+- [x] 1.6 Run `cd frontend && npm run check` and `npm test` — expect 0 type
   errors, all existing tests pass.
 
 ## 2. Frontend rendering
