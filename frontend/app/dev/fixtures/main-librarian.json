@@ -44,6 +44,7 @@
             "hp": 110,
             "breakGauge": 80,
             "equipRangeType": "Hybrid",
+            "rarity": "Unique",
             "resistances": {
               "slashHp": "Normal",
               "pierceHp": "Weak",
@@ -92,6 +93,7 @@
             "hp": 90,
             "breakGauge": 70,
             "equipRangeType": "Melee",
+            "rarity": "Rare",
             "resistances": {
               "slashHp": "Weak",
               "pierceHp": "Normal",
@@ -138,6 +140,7 @@
       "hp": 80,
       "breakGauge": 70,
       "equipRangeType": "Melee",
+      "rarity": "Common",
       "resistances": {
         "slashHp": "Normal",
         "pierceHp": "Weak",
@@ -157,6 +160,7 @@
       "hp": 95,
       "breakGauge": 75,
       "equipRangeType": "Range",
+      "rarity": "Uncommon",
       "resistances": {
         "slashHp": "Resistant",
         "pierceHp": "Normal",
@@ -183,6 +187,7 @@
       "hp": 120,
       "breakGauge": 90,
       "equipRangeType": "Hybrid",
+      "rarity": "Special",
       "resistances": {
         "slashHp": "Resistant",
         "pierceHp": "Resistant",

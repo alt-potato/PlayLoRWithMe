@@ -538,6 +538,7 @@ function hasEmptySlots(): boolean {
                   'source-tile--expanded': isExpanded(kp),
                   'source-tile--pending-add': isPendingSourceAdd(kp),
                 }"
+                :style="rarityBorderStyle(kp.rarity)"
                 @click="toggleSourceExpansion(kp)"
               >
                 <span class="source-tile-chevron">{{ isExpanded(kp) ? "▾" : "▸" }}</span>
@@ -949,7 +950,9 @@ function hasEmptySlots(): boolean {
   align-items: center;
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
+  /* --rarity-border is set via :style when the key page has a rarity field; */
+  /* falls back to the default border colour for combat-context payloads. */
+  border: 1px solid var(--rarity-border, var(--border));
   background: var(--bg-card);
   color: var(--text-1);
   cursor: pointer;

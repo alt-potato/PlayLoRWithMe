@@ -145,6 +145,20 @@ export function rarityColor(rarity: string): string {
 }
 
 /**
+ * Returns an inline-style object that sets `--rarity-border` to the rarity colour,
+ * or `{}` when no rarity is provided. Surfaces that opt into the rarity outline
+ * (key page tiles, key page detail pane, passive-source tiles) read the variable
+ * via `border-color: var(--rarity-border, ...)` so the outline appears only when
+ * the wire payload carries `rarity`. Combat-context payloads omit the field, so
+ * the surface falls back to its default border colour.
+ */
+export function rarityBorderStyle(
+  rarity: string | undefined,
+): Record<string, string> {
+  return rarity ? { "--rarity-border": rarityColor(rarity) } : {};
+}
+
+/**
  * Returns inline style overrides for a cost badge based on cost delta.
  * Returns null when cost equals base (no override needed).
  */
