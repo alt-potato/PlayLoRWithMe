@@ -50,6 +50,40 @@ const allAvailableCards = computed(() => {
 });
 const filteredCards = ref<AvailableCard[]>([]);
 
+/**
+ * In-flight deck edit waiting for the server to broadcast the matching
+ * deckPreview mutation. Each entry stands in for one optimistic copy
+ * change (add or remove) for a given (cardId, packageId) pair. Reconciliation
+ * is FIFO by `addedAt`, so the oldest pending edit for a key clears first
+ * when the matching delta lands.
+ */
+type PendingDeckEdit = { cardId: number; packageId: string; addedAt: number };
+
+const pendingAdds = ref<PendingDeckEdit[]>([]);
+const pendingRemoves = ref<PendingDeckEdit[]>([]);
+
+/** Compose the (cardId, packageId) FIFO key used by pending edits and deckCardCounts. */
+function pendingKey(cardId: number, packageId: string): string {
+  return `${cardId}_${packageId}`;
+}
+
+/**
+ * Removes the oldest pending edit whose key matches. Mutates in place
+ * because pending arrays are FIFO; entries are appended on tap and
+ * removed front-to-back as deltas arrive. Returns true if a match was
+ * found and dropped.
+ */
+function dropOldest(arr: PendingDeckEdit[], key: string): boolean {
+  for (let i = 0; i < arr.length; i++) {
+    const e = arr[i];
+    if (e && pendingKey(e.cardId, e.packageId) === key) {
+      arr.splice(i, 1);
+      return true;
+    }
+  }
+  return false;
+}
+
 /** Maximum copies of a card allowed in a deck, by rarity. */
 function cardLimit(rarity: string): number {
   return rarity === "Unique" ? 1 : 3;
