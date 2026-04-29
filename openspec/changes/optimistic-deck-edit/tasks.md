@@ -6,10 +6,10 @@
 
 ## 2. Optimistic add path
 
-- [ ] 2.1 Wrap `onAddCard` to push a new `PendingDeckEdit` onto `pendingAdds` *before* awaiting the action promise.
-- [ ] 2.2 On promise resolution with `success: false`, remove the oldest pending-add for that key (silent failure per spec).
-- [ ] 2.3 Render pending-add tiles after `expandedDeck` in the equipped column, using `HandCard` (or a thin wrapper) styled with `opacity: 0.5` and a small spinner overlay.
-- [ ] 2.4 Validate: `cd mod && dotnet build` clean; manual smoke: tap an inventory card, pending tile appears immediately at end of deck and clears when delta lands.
+- [x] 2.1 Wrap `onAddCard` to push a new `PendingDeckEdit` onto `pendingAdds` *before* awaiting the action promise.
+- [x] 2.2 On promise resolution with `success: false`, remove the oldest pending-add for that key (silent failure per spec).
+- [x] 2.3 Render pending-add tiles after `expandedDeck` in the equipped column, using `HandCard` (or a thin wrapper) styled with `opacity: 0.5` and a small spinner overlay.
+- [x] 2.4 Validate: `cd mod && dotnet build` clean; manual smoke: tap an inventory card, pending tile appears immediately at end of deck and clears when delta lands. *(Build clean; manual smoke deferred to final validation pass — pending-tile lifecycle requires the diff watcher in Group 4 to actually clear, so a single integrated smoke happens after that group.)*
 
 ## 3. Optimistic remove path
 

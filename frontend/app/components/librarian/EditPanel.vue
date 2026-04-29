@@ -45,8 +45,8 @@ const props = defineProps<{
   onUnlock: () => Promise<{ ok: boolean; error?: string }>;
   onRename: (name: string) => Promise<{ ok: boolean; error?: string }>;
   onEquipPage: (kp: AvailableKeyPage) => Promise<void>;
-  onAddCard: (card: AvailableCard) => Promise<void>;
-  onRemoveCard: (card: DeckCardPreview) => Promise<void>;
+  onAddCard: (card: AvailableCard) => Promise<ActionResult>;
+  onRemoveCard: (card: DeckCardPreview) => Promise<ActionResult>;
   onSetCustomization: (
     payload: Omit<CustomizePayload, "floorIndex" | "unitIndex">,
   ) => Promise<ActionResult>;
@@ -104,14 +104,14 @@ async function onEquipPage(kp: AvailableKeyPage) {
   catch { /* network errors handled by useWebSocket reconnect */ }
 }
 
-async function onAddCard(card: AvailableCard) {
-  try { await props.onAddCard(card); }
-  catch { /* network errors handled by useWebSocket reconnect */ }
+async function onAddCard(card: AvailableCard): Promise<ActionResult> {
+  try { return await props.onAddCard(card); }
+  catch { return { ok: false, error: "Network error" }; }
 }
 
-async function onRemoveCard(card: DeckCardPreview) {
-  try { await props.onRemoveCard(card); }
-  catch { /* network errors handled by useWebSocket reconnect */ }
+async function onRemoveCard(card: DeckCardPreview): Promise<ActionResult> {
+  try { return await props.onRemoveCard(card); }
+  catch { return { ok: false, error: "Network error" }; }
 }
 
 const activeFashionBook = computed<FashionBook | null>(() =>

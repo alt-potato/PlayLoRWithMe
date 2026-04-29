@@ -158,18 +158,21 @@ function onEquipPage(kp: AvailableKeyPage): Promise<void> {
   return forEditing((fi, ui) => actions.equipKeyPage(fi, ui, kp.instanceId));
 }
 
-function onAddCard(card: AvailableCard): Promise<void> {
-  return forEditing((fi, ui) =>
+// returns ActionResult so DeckTab can react to failures (drops the
+// optimistic pending tile silently on `ok: false`).
+function onAddCard(card: AvailableCard): Promise<ActionResult> {
+  return forEditingResult((fi, ui) =>
     actions.addCardToDeck(fi, ui, card.cardId.id, card.cardId.packageId),
   );
 }
 
-function onRemoveCard(card: DeckCardPreview): Promise<void> {
+function onRemoveCard(card: DeckCardPreview): Promise<ActionResult> {
   // DeckCardPreview.cardId is nullable; skip the action if the preview
   // doesn't carry a concrete card reference.
-  if (!card.cardId) return Promise.resolve();
+  if (!card.cardId)
+    return Promise.resolve({ ok: false, error: "No card reference" });
   const cardId = card.cardId;
-  return forEditing((fi, ui) =>
+  return forEditingResult((fi, ui) =>
     actions.removeCardFromDeck(fi, ui, cardId.id, cardId.packageId),
   );
 }

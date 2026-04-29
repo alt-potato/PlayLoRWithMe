@@ -13,14 +13,14 @@
     onRemoveCard     – callback to remove one copy from the deck
 -->
 <script setup lang="ts">
-import type { LibrarianEntry, GameState, AvailableCard, DeckCardPreview, Card } from "~/types/game";
+import type { LibrarianEntry, GameState, AvailableCard, DeckCardPreview, Card, ActionResult } from "~/types/game";
 
 const props = defineProps<{
   lib: LibrarianEntry;
   state: GameState;
   editBusy: boolean;
-  onAddCard: (card: AvailableCard) => Promise<void>;
-  onRemoveCard: (card: DeckCardPreview) => Promise<void>;
+  onAddCard: (card: AvailableCard) => Promise<ActionResult>;
+  onRemoveCard: (card: DeckCardPreview) => Promise<ActionResult>;
 }>();
 
 /**
@@ -56,8 +56,16 @@ const filteredCards = ref<AvailableCard[]>([]);
  * change (add or remove) for a given (cardId, packageId) pair. Reconciliation
  * is FIFO by `addedAt`, so the oldest pending edit for a key clears first
  * when the matching delta lands.
+ *
+ * `card` carries the pre-converted Card payload so pending-add tiles can
+ * render without re-looking-up the source AvailableCard / DeckCardPreview.
  */
-type PendingDeckEdit = { cardId: number; packageId: string; addedAt: number };
+type PendingDeckEdit = {
+  cardId: number;
+  packageId: string;
+  card: Card;
+  addedAt: number;
+};
 
 const pendingAdds = ref<PendingDeckEdit[]>([]);
 const pendingRemoves = ref<PendingDeckEdit[]>([]);
@@ -144,6 +152,27 @@ function availableToCard(c: AvailableCard, i: number): Card {
     abilityDesc: c.abilityDesc,
   };
 }
+
+/**
+ * Optimistic add: pushes a pending-add entry before awaiting the server
+ * response so the deck-editor reflects the change in the same render
+ * cycle as the tap. On `ok: false` the oldest matching pending-add is
+ * dropped silently. Successes are cleared by the deckPreview-diff
+ * watcher once the matching delta lands.
+ */
+async function handleAddCard(card: AvailableCard) {
+  const entry: PendingDeckEdit = {
+    cardId: card.cardId.id,
+    packageId: card.cardId.packageId,
+    card: availableToCard(card, pendingAdds.value.length),
+    addedAt: Date.now(),
+  };
+  pendingAdds.value.push(entry);
+  const result = await props.onAddCard(card);
+  if (!result.ok) {
+    dropOldest(pendingAdds.value, pendingKey(entry.cardId, entry.packageId));
+  }
+}
 </script>
 
 <template>
@@ -160,7 +189,7 @@ function availableToCard(c: AvailableCard, i: number): Card {
           :card="availableToCard(card, i)"
           :count="card.count"
           :unusable="editBusy || card.count <= 0 || isAtLimit(card)"
-          @click="onAddCard(card)"
+          @click="handleAddCard(card)"
           @detail="detailCard = availableToCard(card, i)"
         />
       </div>
@@ -184,6 +213,21 @@ function availableToCard(c: AvailableCard, i: number): Card {
           @click="onRemoveCard(card)"
           @detail="detailCard = previewToCard(card, i)"
         />
+        <!-- pending-add tiles render after the confirmed deck so the user
+             sees the new card "land" at the end of the deck while waiting
+             for the server's deckPreview delta. -->
+        <div
+          v-for="(p, i) in pendingAdds"
+          :key="`pending-add-${i}-${p.addedAt}`"
+          class="pending-tile"
+        >
+          <HandCard
+            :card="p.card"
+            :readonly="true"
+            @detail="detailCard = p.card"
+          />
+          <span class="pending-spinner" aria-label="Adding card" />
+        </div>
         <div
           v-for="i in emptySlotCount"
           :key="`placeholder-${i}`"
@@ -264,6 +308,36 @@ function availableToCard(c: AvailableCard, i: number): Card {
   flex-shrink: 0;
   padding-top: 0;
   padding-bottom: var(--sp-1);
+}
+
+/*
+ * Pending-add tile wrapper. The inner HandCard renders normally; the
+ * wrapper provides reduced opacity and a corner spinner so the user
+ * sees the card while it's being committed. `pointer-events: none` on
+ * the spinner keeps long-press detail open (HandCard handles its own
+ * touch events through its root div).
+ */
+.pending-tile {
+  position: relative;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.pending-spinner {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 2px solid var(--gold-bright);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: pending-spin 0.7s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes pending-spin {
+  to { transform: rotate(360deg); }
 }
 
 /*
