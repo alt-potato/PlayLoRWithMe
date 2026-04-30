@@ -8,6 +8,15 @@ const SESSION_STORAGE_KEY = "plwm_session";
 const RECONNECT_DELAY_MS = 2000;
 const ACTION_TIMEOUT_MS = 5000;
 
+// Watchdog tunables — defense-in-depth against future stuck-in-flight
+// failures of the same shape as the spam-induced lockup. The pair is
+// generous enough that normal bursts (where most entries resolve well
+// inside the per-request timeout) never trip it; only systemic stalls
+// where many requests sit unanswered past their own timeout do.
+const LOCKUP_THRESHOLD = 20;
+const LOCKUP_TIMEOUT_MS = 5000;
+const WATCHDOG_INTERVAL_MS = 1000;
+
 type Status = "connecting" | "connected" | "disconnected";
 
 /**
@@ -51,10 +60,16 @@ export function useWebSocket() {
   let closing = false;
 
   // Pending action promises keyed by reqId. Each entry holds a resolve
-  // callback and a safety timeout so callers never hang indefinitely.
+  // callback, a safety timeout so callers never hang indefinitely, and
+  // the enqueue timestamp so the watchdog can detect entries stalled
+  // past LOCKUP_TIMEOUT_MS.
   const pending = new Map<
     string,
-    { resolve: (r: ActionResult) => void; timer: ReturnType<typeof setTimeout> }
+    {
+      resolve: (r: ActionResult) => void;
+      timer: ReturnType<typeof setTimeout>;
+      enqueuedAt: number;
+    }
   >();
 
   // -------------------------------------------------------------------------
@@ -201,7 +216,7 @@ export function useWebSocket() {
         inflightCount.value = pending.size;
         resolve({ ok: false, error: "Action timed out" });
       }, ACTION_TIMEOUT_MS);
-      pending.set(reqId, { resolve, timer });
+      pending.set(reqId, { resolve, timer, enqueuedAt: Date.now() });
       inflightCount.value = pending.size;
       send({ ...action, reqId });
     });
@@ -299,8 +314,40 @@ export function useWebSocket() {
 
   onMounted(connect);
 
+  // Watchdog: if many requests are stalled past their own per-request
+  // timeout, force-resolve them with ok:false and request a resync.
+  // The receive-loop crash that motivated this change is fixed
+  // (server-side handlers now marshal to the Unity main thread), so
+  // this is purely defense-in-depth — a regression of the same shape,
+  // or any other systemic stall, surfaces visibly rather than leaving
+  // the deck editor unresponsive.
+  const watchdogTimer = setInterval(() => {
+    if (pending.size <= LOCKUP_THRESHOLD) return;
+    const now = Date.now();
+    let oldest = Number.POSITIVE_INFINITY;
+    for (const entry of pending.values()) {
+      if (entry.enqueuedAt < oldest) oldest = entry.enqueuedAt;
+    }
+    if (now - oldest <= LOCKUP_TIMEOUT_MS) return;
+
+    console.warn(
+      `[deck-edit-watchdog] stalled: inflight=${pending.size} ` +
+        `oldestAgeMs=${now - oldest} lastSeq=${lastSeq} status=${status.value}`,
+    );
+    for (const [id, p] of pending) {
+      clearTimeout(p.timer);
+      p.resolve({ ok: false, error: "watchdog: requests stalled" });
+      pending.delete(id);
+    }
+    inflightCount.value = pending.size;
+    send({ type: "resync" });
+    resyncCount.value += 1;
+    lastResyncAt.value = now;
+  }, WATCHDOG_INTERVAL_MS);
+
   onBeforeUnmount(() => {
     closing = true;
+    clearInterval(watchdogTimer);
     if (reconnectTimer) clearTimeout(reconnectTimer);
     ws?.close();
   });
