@@ -275,23 +275,31 @@ const pendingRemoveCounts = computed(() => {
 });
 
 /**
- * Walks `expandedDeck` and marks the first N tiles per key as
- * `pendingRemove`, where N is the in-flight pending-remove count for
- * that key. Tiles for the same cardId are interchangeable, so picking
- * the leftmost ones is purely a visual choice.
+ * Walks `expandedDeck` and filters out one tile per pending-remove for
+ * each key (leftmost-first). This is the optimistic-hide model: the
+ * tapped tile vanishes immediately, remaining tiles shift to close the
+ * gap, and tapping the same physical position again hits the next card.
+ * Tiles for the same cardId are visually interchangeable, so picking
+ * the leftmost matches per key gives a stable "leftmost copy disappears"
+ * cascade across rapid taps.
  */
 const renderedDeck = computed(() => {
   const remaining = new Map(pendingRemoveCounts.value);
-  return expandedDeck.value.map((preview) => {
-    if (!preview.cardId) return { preview, pendingRemove: false };
+  const out: DeckCardPreview[] = [];
+  for (const preview of expandedDeck.value) {
+    if (!preview.cardId) {
+      out.push(preview);
+      continue;
+    }
     const key = pendingKey(preview.cardId.id, preview.cardId.packageId);
     const left = remaining.get(key) ?? 0;
     if (left > 0) {
       remaining.set(key, left - 1);
-      return { preview, pendingRemove: true };
+      continue; // tile is pending-remove and hidden
     }
-    return { preview, pendingRemove: false };
-  });
+    out.push(preview);
+  }
+  return out;
 });
 
 /**
@@ -357,26 +365,21 @@ async function handleRemoveCard(preview: DeckCardPreview) {
       </div>
       <LibrarianKeyPageDetail class="deck-keypage" :key-page="lib.keyPage" :compact="true" />
       <div class="card-grid">
-        <div
-          v-for="(entry, i) in renderedDeck"
+        <HandCard
+          v-for="(preview, i) in renderedDeck"
           :key="`copy-${i}`"
-          class="deck-tile"
-          :class="{ 'is-pending-remove': entry.pendingRemove }"
-        >
-          <HandCard
-            :card="previewToCard(entry.preview, i)"
-            :unusable="editBusy || !entry.preview.cardId"
-            @click="handleRemoveCard(entry.preview)"
-            @detail="detailCard = previewToCard(entry.preview, i)"
-          />
-        </div>
+          :card="previewToCard(preview, i)"
+          :unusable="editBusy || !preview.cardId"
+          @click="handleRemoveCard(preview)"
+          @detail="detailCard = previewToCard(preview, i)"
+        />
         <!-- pending-add tiles render after the confirmed deck so the user
              sees the new card "land" at the end of the deck while waiting
              for the server's deckPreview delta. -->
         <div
           v-for="(p, i) in pendingAdds"
           :key="`pending-add-${i}-${p.addedAt}`"
-          class="pending-tile deck-tile"
+          class="pending-tile"
         >
           <HandCard
             :card="p.card"
@@ -478,20 +481,6 @@ async function handleRemoveCard(preview: DeckCardPreview) {
   position: relative;
   opacity: 0.5;
   flex-shrink: 0;
-}
-
-/*
- * Pending-remove tile wrapper. Dims the existing HandCard in place
- * without a spinner — the user already targeted this specific tile,
- * so a spinner would just clutter. The wrapper exists so the dim
- * effect doesn't compose with HandCard's own opacity-driven states
- * (e.g. .hcard--unusable) in surprising ways during edge cases.
- */
-.deck-tile {
-  flex-shrink: 0;
-}
-.deck-tile.is-pending-remove {
-  opacity: 0.4;
 }
 
 .pending-spinner {

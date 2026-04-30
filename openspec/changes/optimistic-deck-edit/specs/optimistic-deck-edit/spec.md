@@ -16,21 +16,32 @@ When the user taps an inventory tile in `DeckTab.vue` to add a card, the deck ed
 - **THEN** the pending tile displays the same card name, cost, range, and dice as the inventory tile
 - **AND** the tile is visually distinguishable from confirmed deck tiles (opacity ≤ 0.5 and spinner overlay present)
 
-### Requirement: Tap to remove SHALL render an immediate pending-remove dimming
+### Requirement: Tap to remove SHALL hide the tapped tile immediately
 
-When the user taps a tile in the equipped-deck column to remove a card, that tile SHALL be marked pending-remove (dimmed in place) before the server response arrives. The tile SHALL remain visible in its current position until reconciliation drops it.
+When the user taps a tile in the equipped-deck column to remove a card, that tile SHALL be hidden from the rendered deck before the server response arrives, and remaining tiles SHALL shift to fill the gap. This mirrors the in-game UX where tapping a card removes it instantly and the rest of the deck slides forward, allowing the user to clear multiple cards by tapping the same physical position repeatedly.
 
-#### Scenario: Pending-remove dimming appears on tap
+#### Scenario: Tapped tile vanishes from the rendered deck
 
-- **WHEN** the user taps an equipped-deck tile that is not already pending-remove
-- **THEN** the tile receives a pending-remove visual state (reduced opacity, no spinner) within the same render cycle as the tap
+- **WHEN** the user taps an equipped-deck tile for cardId `X`
+- **THEN** that tile is removed from the rendered deck within the same render cycle as the tap
+- **AND** the remaining equipped-deck tiles shift left/up to close the gap
 - **AND** the deck-count badge decrements to reflect the pending change
 
-#### Scenario: Repeated tap on a pending-remove tile is a no-op
+#### Scenario: Repeated taps in the same physical position cascade through different cards
 
-- **WHEN** the user taps an equipped-deck tile that is already in pending-remove state
+- **WHEN** the user has 2 confirmed copies of cardId `X` followed by 1 confirmed copy of cardId `Y` in deck positions 0, 1, 2
+- **AND** the user taps deck position 0 three times in rapid succession
+- **THEN** the first tap queues a pending-remove for `X` and the renderedDeck shifts so position 0 is the second `X` copy
+- **AND** the second tap queues a second pending-remove for `X` and the renderedDeck shifts so position 0 is the `Y` copy
+- **AND** the third tap queues a pending-remove for `Y`
+- **AND** all three taps register distinct `removeCardFromDeck` requests
+
+#### Scenario: Tap is suppressed when no remaining confirmed copies exist for the cardId
+
+- **WHEN** the user has 1 confirmed copy of cardId `X` and 1 pending-remove for `X` already in flight
+- **AND** the user tries to tap a tile for cardId `X` (e.g. via a stale render before the renderedDeck shifts)
 - **THEN** no additional `removeCardFromDeck` request is sent
-- **AND** the tile's visual state is unchanged
+- **AND** the renderedDeck remains unchanged
 
 ### Requirement: Pending tiles SHALL count toward deck cap and per-card copy limits
 
@@ -44,8 +55,9 @@ Pending-add and pending-remove tiles SHALL participate in the same cap and limit
 
 #### Scenario: Pending removes free placeholder slots
 
-- **WHEN** the equipped deck has 9 confirmed tiles and 1 pending-remove tile
-- **THEN** the empty-slot placeholder count is `9 - (9 - 1) = 1`
+- **WHEN** the equipped deck has 9 confirmed tiles and 1 pending-remove
+- **THEN** the renderedDeck shows 8 tiles (the pending-remove is hidden)
+- **AND** the empty-slot placeholder count is `9 - 8 = 1`
 - **AND** the deck-count badge displays `8 / 9`
 
 #### Scenario: Cap blocks queueing past 9
@@ -109,7 +121,7 @@ When a request resolves with `success: false`, the oldest pending tile matching 
 #### Scenario: Server rejects a remove
 
 - **WHEN** a `removeCardFromDeck` request resolves with `success: false`
-- **THEN** the oldest pending-remove tile for that `cardId+packageId` is removed (the tile returns to its confirmed visual state)
+- **THEN** the oldest pending-remove for that `cardId+packageId` is dropped (the previously-hidden tile reappears in the renderedDeck and remaining tiles shift back to accommodate it)
 - **AND** no toast, banner, shake animation, or error message is displayed
 
 ### Requirement: Connection reset SHALL clear all pending state

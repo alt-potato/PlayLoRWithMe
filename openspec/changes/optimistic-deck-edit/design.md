@@ -45,9 +45,13 @@ The bookkeeping is small (two arrays of `{cardId, packageId, addedAt}`) and only
 
 Pending state lives long enough to survive a single request lifetime. If the user closes `EditPanel` mid-flight, the pending state dies with the unmounted component — acceptable, because the panel close also drops the user's view of the affected librarian.
 
-### Decision: Pending tile shape — opacity + spinner badge
+### Decision: Pending-add gets a dimmed tile + spinner; pending-remove hides the tile entirely
 
-Pending-add tiles render at the end of `expandedDeck` with `opacity: 0.5` and a small spinner SVG overlaid in a corner. Pending-remove dimming applies the same opacity to the existing tile in place, no spinner (the user already targeted a specific tile; a spinner would clutter).
+Pending-add tiles render at the end of `expandedDeck` with `opacity: 0.5` and a small spinner SVG overlaid in a corner — a brand-new tile needs a clear "in flight" affordance.
+
+Pending-remove takes the opposite approach: the tapped tile vanishes from the rendered deck immediately (the renderedDeck filters out one tile per pending-remove for that cardId, leftmost-first), and remaining tiles shift to fill the gap. The disappearing tile is the feedback. This mirrors the in-game UX where tapping a card removes it instantly and lets the user spam-tap a single physical position to clear multiple cards in sequence (each tap finds whatever tile slid into that position next).
+
+**Alternative considered**: dim the tapped tile in place + show a corner spinner, like pending-add. Rejected because (a) tiles for the same cardId are visually interchangeable, so reliably dimming the *exact* tapped tile vs. an arbitrary other copy of the same cardId is awkward to express in the data model, and (b) the dim/spinner combo blocks the in-game spam-tap-to-clear UX, which the user explicitly relies on.
 
 ### Decision: Cap and limit checks include pending state
 
