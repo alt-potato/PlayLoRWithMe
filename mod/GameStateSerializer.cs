@@ -1080,6 +1080,12 @@ namespace PlayLoRWithMe
                         // they appear in that book's EquipEffect.OnlyCard list.
                         if (item.ClassInfo.IsPersonal() || item.ClassInfo.IsOnlyPage())
                             continue;
+                        // Skip cards whose XML wasn't found at load time
+                        // (e.g. saved-state cards from a since-uninstalled mod).
+                        // Surfacing them lets a client request an add, which
+                        // would lodge an unremovable sentinel in the deck.
+                        if (item.ClassInfo.isError)
+                            continue;
                         var xml = item.ClassInfo;
                         var spec = xml.Spec;
                         arr.AddObject(o =>

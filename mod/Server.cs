@@ -600,6 +600,23 @@ namespace PlayLoRWithMe
             var lorId = string.IsNullOrEmpty(packageId)
                 ? new LorId(cardId)
                 : new LorId(packageId, cardId);
+
+            // Reject cards whose XML wasn't loaded — without errNull,
+            // GetCardItem returns a fresh isError sentinel that would
+            // pass AddCardFromInventory's checks if the inventory has
+            // a count for the LorId, and end up unremovable from the
+            // deck (see DeckModel.MoveCardToInventory: Remove uses
+            // reference equality, but each GetCardItem call mints a
+            // new sentinel instance). We deliberately do NOT scrub
+            // existing error cards in the deck — the vanilla startup
+            // dialog already offers that, and a user may keep them
+            // pending the mod's reinstall.
+            if (ItemXmlDataList.instance.GetCardItem(lorId, errNull: true) == null)
+            {
+                SendResult(client, reqId, false, "Card XML not found (likely from an uninstalled mod)");
+                return;
+            }
+
             var result = deck.AddCardFromInventory(lorId);
             bool ok = result == CardEquipState.Equippable;
 
