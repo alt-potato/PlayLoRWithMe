@@ -44,5 +44,5 @@
 - [x] 7.1 Pin the pending-add spinner to the corner of the tile using `position: absolute` over the existing `HandCard` preview pane; ensure it doesn't hijack pointer events. *(Done in Group 2: spinner uses `position: absolute; top: 0.2rem; right: 0.2rem; pointer-events: none` on the `.pending-tile` wrapper.)*
 - [x] 7.2 Confirm the pending-add tile remains tappable for `@detail` (long-press) so users can still inspect a card mid-flight. *(Pending-add tile passes `@detail="detailCard = p.card"` and uses `:readonly="true"` on the inner HandCard, which suppresses click but allows long-press detail.)*
 - [x] 7.3 Run `npm test` in `frontend/` to confirm no existing tests regressed. *(All 11 test files / 68 tests pass.)*
-- [ ] 7.4 Final manual smoke pass against scenarios listed in the spec (each `#### Scenario:` should be exercisable in <30 s of interaction). *(Awaiting user; cannot be exercised without running the game.)*
+- [x] 7.4 Final manual smoke pass against scenarios listed in the spec (each `#### Scenario:` should be exercisable in <30 s of interaction). *(User confirmed smoke pass after the optimistic-hide rework. Lockup-under-spam is a separate observed issue, tracked in `deck-edit-spam-lockup-investigation`.)*
 - [x] 7.5 Validate: `cd mod && dotnet build` clean.
