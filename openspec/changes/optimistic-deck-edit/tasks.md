@@ -13,11 +13,11 @@
 
 ## 3. Optimistic remove path
 
-- [ ] 3.1 Wrap `onRemoveCard` to push a `PendingDeckEdit` onto `pendingRemoves` *before* awaiting the action promise.
-- [ ] 3.2 Short-circuit the handler if a pending-remove already exists matching the tapped tile's `cardId+packageId` count beyond confirmed copies (prevents duplicate requests on multi-tap).
-- [ ] 3.3 Mark equipped tiles whose pending-remove count exceeds available confirmed copies-minus-rendered-pending-removes as `is-pending-remove` (CSS class with `opacity: 0.4`, no spinner).
-- [ ] 3.4 On promise resolution with `success: false`, remove the oldest pending-remove for that key.
-- [ ] 3.5 Validate: `cd mod && dotnet build` clean; manual smoke: tap an equipped card, tile dims immediately and clears when delta lands.
+- [x] 3.1 Wrap `onRemoveCard` to push a `PendingDeckEdit` onto `pendingRemoves` *before* awaiting the action promise.
+- [x] 3.2 Short-circuit the handler if a pending-remove already exists matching the tapped tile's `cardId+packageId` count beyond confirmed copies (prevents duplicate requests on multi-tap).
+- [x] 3.3 Mark equipped tiles whose pending-remove count exceeds available confirmed copies-minus-rendered-pending-removes as `is-pending-remove` (CSS class with `opacity: 0.4`, no spinner).
+- [x] 3.4 On promise resolution with `success: false`, remove the oldest pending-remove for that key.
+- [x] 3.5 Validate: `cd mod && dotnet build` clean; manual smoke: tap an equipped card, tile dims immediately and clears when delta lands. *(Build clean; integrated manual smoke deferred to final pass — pending-remove clearing requires the Group 4 watcher.)*
 
 ## 4. Delta-driven reconciliation
 
