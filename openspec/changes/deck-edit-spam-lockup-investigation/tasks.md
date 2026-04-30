@@ -2,21 +2,21 @@
 
 - [x] 1.1 Add a dev-only diagnostic panel (gated by `import.meta.dev`) showing live values of in-flight action count, `lastSeq`, last `resync` time, and WebSocket `status`. *(Also exposes a resync count, since the suspect-1 signature is "resyncs climbing".)*
 - [x] 1.2 Add a dev-only spam-tap harness in `frontend/app/dev/` that programmatically drives `actions.addCardToDeck` / `actions.removeCardFromDeck` for the currently-edited librarian. Expose it as `window.__spamDeck(count, intervalMs)` for ad-hoc browser-console invocation.
-- [ ] 1.3 Reproduce the lockup with the harness; capture diagnostic-panel screenshots and any console errors at the moment of lockup.
+- [x] 1.3 Reproduce the lockup with the harness; capture diagnostic-panel screenshots and any console errors at the moment of lockup. *(User reproduced manually — Player.log smoking gun: "Collection was modified; enumeration operation may not execute" in the WebSocket receive loop, then disconnect.)*
 - [x] 1.4 Validate: `cd mod && dotnet build` clean.
 
 ## 2. Diagnose root cause
 
-- [ ] 2.1 With diagnostic data in hand, walk the four suspects from the proposal in order. For each: run the harness, observe whether the suspect's smoking-gun signature appears (e.g. resync count climbing for suspect 1, in-flight count climbing without resolution for suspect 2).
-- [ ] 2.2 Document confirmed and ruled-out causes inline in `design.md` under a new "Findings" section. (No code change in this task.)
+- [x] 2.1 With diagnostic data in hand, walk the four suspects from the proposal in order. For each: run the harness, observe whether the suspect's smoking-gun signature appears (e.g. resync count climbing for suspect 1, in-flight count climbing without resolution for suspect 2). *(Player.log error short-circuited the walk: confirmed a refined variant of suspect 3 — non-thread-safe Unity collection access from the receive thread, not raw blocking. Suspects 1, 2, 4 ruled out.)*
+- [x] 2.2 Document confirmed and ruled-out causes inline in `design.md` under a new "Findings" section. (No code change in this task.)
 
 ## 3. Fix root cause(s)
 
-- [ ] 3.1 If suspect 1 (delta-gap → resync loop) is confirmed: in `useWebSocket.handleMessage`, queue/buffer deltas with seq > expected and apply them in order once the gap is closed by the resync's state message, instead of demanding strict-successor-or-resync.
-- [ ] 3.2 If suspect 2 (timeout pileup) is confirmed: distinguish "request acknowledged with ok:false" from "request timed out" in `ActionResult`, and adjust `DeckTab.handleAddCard` / `handleRemoveCard` to retry-or-reconcile rather than silently drop the optimistic state on timeout.
-- [ ] 3.3 If suspect 3 (Unity-thread blocking on broadcast) is confirmed: in `mod/Server.cs` (or `StateBroadcaster.cs`), coalesce broadcasts that fall within a single Unity frame so a burst of N adds produces ≤ N + 1 broadcasts but ≥ ceil(N/frame) — preserving per-change `seq` while eliminating duplicate full-state serialization.
-- [ ] 3.4 If suspect 4 (stuck `editBusy` / lock contention) is confirmed: pin down the stuck-state path in `EditPanel.vue` and reset the flag at the right edge.
-- [ ] 3.5 Validate after each fix: `cd mod && dotnet build` clean; `npm test` clean.
+- [x] 3.1 ~~If suspect 1 (delta-gap → resync loop) is confirmed~~: ruled out — see Findings. No fix needed.
+- [x] 3.2 ~~If suspect 2 (timeout pileup) is confirmed~~: ruled out — see Findings. No fix needed.
+- [x] 3.3 If suspect 3 (Unity-thread blocking on broadcast) is confirmed: ~~coalesce broadcasts~~ refined to: marshal each librarian-edit dispatch in `Server.cs` `OnWebSocketMessage` onto the Unity main thread via `StateBroadcaster.RunOnMainThread`. Receive thread enqueues and returns; all Unity-collection access stays on the main thread. Mirrors `HandleWsAction`'s use of `ActionInjector` for battle actions.
+- [x] 3.4 ~~If suspect 4 (stuck `editBusy` / lock contention) is confirmed~~: ruled out — see Findings. No fix needed.
+- [x] 3.5 Validate after each fix: `cd mod && dotnet build` clean; `npm test` clean. *(Both clean post-3.3.)*
 
 ## 4. Watchdog
 

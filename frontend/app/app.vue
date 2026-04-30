@@ -65,23 +65,22 @@ const {
   removeAttributedPassive,
 } = useWebSocket();
 
-// Runtime debug-tools flag — set via `?debug=1` (persisted in localStorage)
-// or `?debug=0` to clear. Survives the production build; the mod's HTTP
+// Runtime debug-tools flag — opt-in per page load via `?debug=1` in the URL.
+// Intentionally NOT persisted, so debug tooling is never on by accident on
+// a normal play session. Survives the production build; the mod's HTTP
 // server only ships the static SPA, so `import.meta.dev` would never be
 // true at play-time. Drives the diagnostic panel + spam harness on demand.
 const debugEnabled = ref(false);
 onMounted(() => {
   const params = new URLSearchParams(window.location.search);
-  const flag = params.get("debug");
-  if (flag === "1") localStorage.setItem("plwm_debug", "1");
-  else if (flag === "0") localStorage.removeItem("plwm_debug");
-  debugEnabled.value = localStorage.getItem("plwm_debug") === "1";
+  debugEnabled.value = params.get("debug") === "1";
 
   if (debugEnabled.value) {
     import("~/dev/useSpamHarness").then(({ installSpamHarness }) => {
       installSpamHarness({
         gameState,
         session,
+        players,
         addCardToDeck,
         removeCardFromDeck,
       });

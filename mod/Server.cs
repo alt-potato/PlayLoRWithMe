@@ -376,44 +376,50 @@ namespace PlayLoRWithMe
                     }
                     break;
 
+                // Librarian-edit handlers touch Unity model collections
+                // (BookInventoryModel, BookModel, deck/passive lists) that
+                // are not thread-safe. Marshal each onto the Unity main
+                // thread so concurrent receive-thread dispatches under
+                // load can't enumerate-while-mutating and crash the
+                // WebSocket receive loop with InvalidOperationException.
                 case "renameLibrarian":
-                    HandleRenameLibrarian(client, r, reqId);
+                    StateBroadcaster.RunOnMainThread(() => HandleRenameLibrarian(client, r, reqId));
                     break;
 
                 case "equipKeyPage":
-                    HandleEquipKeyPage(client, r, reqId);
+                    StateBroadcaster.RunOnMainThread(() => HandleEquipKeyPage(client, r, reqId));
                     break;
 
                 case "addCardToDeck":
-                    HandleAddCardToDeck(client, r, reqId);
+                    StateBroadcaster.RunOnMainThread(() => HandleAddCardToDeck(client, r, reqId));
                     break;
 
                 case "removeCardFromDeck":
-                    HandleRemoveCardFromDeck(client, r, reqId);
+                    StateBroadcaster.RunOnMainThread(() => HandleRemoveCardFromDeck(client, r, reqId));
                     break;
 
                 case "equipSourceBook":
-                    HandleEquipSourceBook(client, r, reqId);
+                    StateBroadcaster.RunOnMainThread(() => HandleEquipSourceBook(client, r, reqId));
                     break;
 
                 case "unequipSourceBook":
-                    HandleUnequipSourceBook(client, r, reqId);
+                    StateBroadcaster.RunOnMainThread(() => HandleUnequipSourceBook(client, r, reqId));
                     break;
 
                 case "attributePassive":
-                    HandleAttributePassive(client, r, reqId);
+                    StateBroadcaster.RunOnMainThread(() => HandleAttributePassive(client, r, reqId));
                     break;
 
                 case "removeAttributedPassive":
-                    HandleRemoveAttributedPassive(client, r, reqId);
+                    StateBroadcaster.RunOnMainThread(() => HandleRemoveAttributedPassive(client, r, reqId));
                     break;
 
                 case "setCustomization":
-                    HandleSetCustomization(client, r, reqId);
+                    StateBroadcaster.RunOnMainThread(() => HandleSetCustomization(client, r, reqId));
                     break;
 
                 case "setGifts":
-                    HandleSetGifts(client, r, reqId);
+                    StateBroadcaster.RunOnMainThread(() => HandleSetGifts(client, r, reqId));
                     break;
 
                 case "resync":

@@ -1,5 +1,5 @@
 import type { Ref } from "vue";
-import type { GameState, SessionState, ActionResult } from "~/types/game";
+import type { GameState, SessionState, PlayerInfo, ActionResult } from "~/types/game";
 
 /**
  * Spam-tap harness for reproducing deck-edit lockups under sustained
@@ -23,6 +23,7 @@ import type { GameState, SessionState, ActionResult } from "~/types/game";
 export function installSpamHarness(deps: {
   gameState: Ref<GameState | null>;
   session: Ref<SessionState | null>;
+  players: Ref<PlayerInfo[]>;
   addCardToDeck: (
     floorIndex: number,
     unitIndex: number,
@@ -43,7 +44,18 @@ export function installSpamHarness(deps: {
       console.warn("[__spamDeck] no game state or session yet");
       return;
     }
-    // find the librarian whose edit lock is held by this session.
+    // The serializer emits `lockedBy` as the player's display *name*, not
+    // their session ID, so resolve our own display name first via the
+    // players list.
+    const me = deps.players.value.find((p) => p.sessionId === sess.sessionId);
+    const myName = me?.name;
+    if (!myName) {
+      console.warn(
+        "[__spamDeck] could not resolve own display name — players list not yet populated",
+      );
+      return;
+    }
+    // find the librarian whose edit lock display-name matches mine.
     const myLib = state.floors
       ?.flatMap((f) =>
         f.librarians.map((l) => ({
@@ -53,7 +65,7 @@ export function installSpamHarness(deps: {
           deckPreview: l.deckPreview,
         })),
       )
-      .find((l) => l.lockedBy === sess.sessionId);
+      .find((l) => l.lockedBy === myName);
     if (!myLib) {
       console.warn(
         "[__spamDeck] no librarian locked by this session — open the EditPanel for a librarian first",

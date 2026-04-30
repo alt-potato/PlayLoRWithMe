@@ -46,6 +46,29 @@ Even after the specific bug is fixed, a watchdog timer in `useWebSocket` catches
 
 The threshold is generous enough that normal bursts pass through; it only fires when something has gone systemically wrong.
 
+## Findings
+
+User reproduced the lockup with the diagnostic panel installed and surfaced the smoking gun in `Player.log`:
+
+```
+[PlayLoRWithMe] WebSocket receive error (<sessionId>): Collection was modified; enumeration operation may not execute.
+[PlayLoRWithMe] WebSocket disconnected: <sessionId>
+```
+
+This is a `.NET InvalidOperationException` thrown when iterating a non-concurrent collection that's mutated mid-enumeration. The frontend symptom — status briefly flips to `disconnected`, stats reset, then `connected` returns but actions silently fail — is what reconnection looks like when the server has dropped the receive loop and lost the edit lock.
+
+**Confirmed cause** (originally captured as suspect 3 but more precise than "blocking"): the librarian-edit handlers (`HandleAddCardToDeck`, `HandleRemoveCardFromDeck`, `HandleEquipKeyPage`, `HandleEquipSourceBook`, `HandleUnequipSourceBook`, `HandleAttributePassive`, `HandleRemoveAttributedPassive`, `HandleRenameLibrarian`, `HandleSetCustomization`, `HandleSetGifts`) all execute synchronously on the WebSocket receive thread (one thread per client). They reach into Unity model collections (`BookInventoryModel`, `BookModel.GetDeckAll_nocopy()`, deck/passive lists) and mutate them. Those collections are not thread-safe. Under sustained taps the Unity main thread enumerates the same collections during a frame update (or another client's receive thread mutates them) and the iterating party throws `Collection was modified`. The exception bubbles out of `WebSocketClient.ReceiveLoop`, the `finally` block calls `Close()`, the connection drops, and any in-flight edit lock dies with the `Detach`.
+
+**Ruled out**:
+
+- *Suspect 1 (delta-gap → resync loop)*: not observed as a primary cause. The client does enter a resync after the disconnect, but that is a downstream effect of the receive-loop crash, not the trigger.
+- *Suspect 2 (timeout pileup)*: not observed. In-flight count never grew past a few entries before the lockup — the receive loop crashed and short-circuited everything.
+- *Suspect 4 (stuck `editBusy`)*: not observed. `editBusy` only tracks lock-acquire and rename, neither of which spam-tap touches.
+
+**Fix shape**: marshal each librarian-edit dispatch onto the Unity main thread via the existing `StateBroadcaster.RunOnMainThread` queue. The receive thread enqueues and returns; all Unity-collection access happens on the main thread (the only thread that mutates them in the regular game flow), eliminating the concurrent-enumeration crash. This mirrors how `HandleWsAction` already routes battle actions through `ActionInjector` for the same reason.
+
+The watchdog from group 4 remains a worthwhile defense-in-depth so a future regression of the same shape (or a different stall pattern) surfaces visibly rather than silently.
+
 ## Risks / Trade-offs
 
 - **The lockup may be hard to reproduce reliably**, which would make the diagnosis phase open-ended.
