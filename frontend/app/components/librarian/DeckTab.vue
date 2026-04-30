@@ -14,6 +14,7 @@
 -->
 <script setup lang="ts">
 import type { LibrarianEntry, GameState, AvailableCard, DeckCardPreview, Card, ActionResult } from "~/types/game";
+import { STATE_GENERATION } from "~/composables/useStateGeneration";
 
 const props = defineProps<{
   lib: LibrarianEntry;
@@ -154,6 +155,21 @@ watch(
   },
   { deep: true },
 );
+
+/**
+ * Connection-reset cleanup: a fresh full-state replacement (initial
+ * connect, reconnect, or resync) bumps STATE_GENERATION. Any pending
+ * edits queued before the bump may have been lost server-side, so we
+ * discard them rather than leave phantom tiles. The new full state is
+ * the new authoritative baseline; the diff watcher resets to it on the
+ * next deckPreview tick.
+ */
+const stateGeneration = inject(STATE_GENERATION, ref(0));
+watch(stateGeneration, () => {
+  pendingAdds.value = [];
+  pendingRemoves.value = [];
+  prevDeckCounts = countDeckPreview(props.lib.deckPreview);
+});
 
 /**
  * Expands the grouped `deckPreview` (one entry per unique card with a `count`)

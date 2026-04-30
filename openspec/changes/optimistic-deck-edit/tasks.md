@@ -35,9 +35,9 @@
 
 ## 6. Connection-reset cleanup
 
-- [ ] 6.1 Identify the cleanest reactive trigger for "fresh full state replaced previous state" — likely a watcher on `useWebSocket`'s `status` ref (or expose a counter that bumps on each `hello`).
-- [ ] 6.2 In `DeckTab.vue`, watch that trigger and clear both `pendingAdds` and `pendingRemoves` whenever a fresh hello lands.
-- [ ] 6.3 Validate: `cd mod && dotnet build` clean; manual smoke: kill the mod mid-edit, restart it, reconnect — pending tiles are gone, deck reflects the fresh state.
+- [x] 6.1 Identify the cleanest reactive trigger for "fresh full state replaced previous state" — likely a watcher on `useWebSocket`'s `status` ref (or expose a counter that bumps on each `hello`). *(Chose: counter bumped on `case "state"` in `useWebSocket`, exposed via `STATE_GENERATION` injection from `app.vue`. Mock backend exposes a stable 0.)*
+- [x] 6.2 In `DeckTab.vue`, watch that trigger and clear both `pendingAdds` and `pendingRemoves` whenever a fresh hello lands.
+- [x] 6.3 Validate: `cd mod && dotnet build` clean; manual smoke: kill the mod mid-edit, restart it, reconnect — pending tiles are gone, deck reflects the fresh state. *(Build clean; manual smoke deferred to final pass.)*
 
 ## 7. Visual polish and smoke
 

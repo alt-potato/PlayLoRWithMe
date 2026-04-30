@@ -31,6 +31,11 @@ export function useWebSocket() {
   const session = ref<SessionState | null>(null);
   const status = ref<Status>("connecting");
   const players = ref<PlayerInfo[]>([]);
+  // bumps each time a fresh full-state payload arrives (initial connect,
+  // reconnect, resync). consumers with optimistic UI state watch this and
+  // discard pending edits when it changes — those edits would be phantoms
+  // against the new authoritative state.
+  const stateGeneration = ref(0);
 
   let ws: WebSocket | null = null;
   let lastSeq = 0;
@@ -116,6 +121,7 @@ export function useWebSocket() {
       case "state":
         lastSeq = msg.seq;
         gameState.value = msg.data;
+        stateGeneration.value += 1;
         break;
 
       case "delta": {
@@ -288,6 +294,7 @@ export function useWebSocket() {
     session,
     status,
     players,
+    stateGeneration,
     sendAction,
     claimUnit,
     releaseUnit,

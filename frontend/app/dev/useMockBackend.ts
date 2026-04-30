@@ -147,6 +147,9 @@ export function useMockBackend(fixtureName: string) {
     session,
     status,
     players,
+    // mock backend never reconnects, so the generation never bumps.
+    // exposed only to keep the return shape parity with useWebSocket.
+    stateGeneration: ref(0),
     sendAction,
     claimUnit,
     releaseUnit,

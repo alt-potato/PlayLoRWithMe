@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { LIBRARIAN_ACTIONS } from "~/composables/useLibrarianActions";
 import { ASSETS_READY } from "~/composables/useAssetsReady";
+import { STATE_GENERATION } from "~/composables/useStateGeneration";
 
 // Vite replaces `import.meta.dev` with a literal boolean at build time; in
 // production the ternary collapses to `null` and the `import()` call lives
@@ -34,6 +35,7 @@ const {
   session,
   status,
   players,
+  stateGeneration,
   sendAction,
   claimUnit,
   releaseUnit,
@@ -70,6 +72,11 @@ provide(LIBRARIAN_ACTIONS, {
 // the server finishes extracting appearance sprites — clearing cached 404s.
 const assetsReady = computed(() => gameState.value?.assetsReady === true);
 provide(ASSETS_READY, assetsReady);
+
+// Provide stateGeneration so descendants holding optimistic UI state (e.g.
+// DeckTab's pending-add/remove tiles) can drop phantoms when a fresh full
+// state replaces the previous one (initial connect, reconnect, or resync).
+provide(STATE_GENERATION, stateGeneration);
 
 // SessionPanel is hoisted into the global header so it is reachable from
 // every scene (title, main/librarian manager, battle setup, battle).
