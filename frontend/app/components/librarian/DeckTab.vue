@@ -105,16 +105,55 @@ function cardLimit(rarity: string): number {
  */
 const DECK_MAX = 9;
 
-/** Map of "cardId_packageId" → copies already in the deck. */
-const deckCardCounts = computed(() => {
+/** Builds a key → count map from a deckPreview list. Pure helper so it
+ * can be shared between the reactive `deckCardCounts` and the
+ * reconciliation watcher's snapshot. */
+function countDeckPreview(preview: DeckCardPreview[]): Map<string, number> {
   const map = new Map<string, number>();
-  for (const entry of props.lib.deckPreview) {
+  for (const entry of preview) {
     if (!entry.cardId) continue;
-    const key = `${entry.cardId.id}_${entry.cardId.packageId}`;
+    const key = pendingKey(entry.cardId.id, entry.cardId.packageId);
     map.set(key, (map.get(key) ?? 0) + entry.count);
   }
   return map;
-});
+}
+
+/** Map of "cardId_packageId" → copies already in the deck. */
+const deckCardCounts = computed(() => countDeckPreview(props.lib.deckPreview));
+
+/**
+ * Mutable snapshot of the previous deckPreview counts, used by the
+ * reconciliation watcher to compute per-key deltas. Initialized from the
+ * current preview so the first mutation after mount diffs against the
+ * mounted state, not an empty map.
+ */
+let prevDeckCounts = countDeckPreview(props.lib.deckPreview);
+
+/**
+ * Reconciliation watcher: every deckPreview mutation produces per-key
+ * count deltas, which clear pending edits FIFO. A positive delta on key
+ * `K` (server confirmed an add) drops the oldest pending-add for `K`;
+ * a negative delta drops the oldest pending-remove. The action-promise
+ * is intentionally not consulted here — the diff alone is the source of
+ * truth for "what the server actually did".
+ */
+watch(
+  () => props.lib.deckPreview,
+  (next) => {
+    const nextCounts = countDeckPreview(next);
+    const keys = new Set<string>([...prevDeckCounts.keys(), ...nextCounts.keys()]);
+    for (const key of keys) {
+      const delta = (nextCounts.get(key) ?? 0) - (prevDeckCounts.get(key) ?? 0);
+      if (delta > 0) {
+        for (let i = 0; i < delta; i++) dropOldest(pendingAdds.value, key);
+      } else if (delta < 0) {
+        for (let i = 0; i < -delta; i++) dropOldest(pendingRemoves.value, key);
+      }
+    }
+    prevDeckCounts = nextCounts;
+  },
+  { deep: true },
+);
 
 /**
  * Expands the grouped `deckPreview` (one entry per unique card with a `count`)

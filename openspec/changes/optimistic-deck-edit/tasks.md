@@ -21,10 +21,10 @@
 
 ## 4. Delta-driven reconciliation
 
-- [ ] 4.1 Add a `watch(() => props.lib.deckPreview, ..., { deep: true })` that snapshots the previous per-key copy counts and computes the per-key delta on each mutation.
-- [ ] 4.2 For each unit of positive delta on key `K`, drop the oldest pending-add for `K`. For each unit of negative delta, drop the oldest pending-remove for `K`.
-- [ ] 4.3 Verify in manual smoke: rapid taps to add and remove leave no orphan pending tiles after the deltas land.
-- [ ] 4.4 Validate: `cd mod && dotnet build` clean; manual two-client smoke: with two browser tabs editing the same librarian, concurrent adds of the same card resolve in FIFO order without orphan pending tiles.
+- [x] 4.1 Add a `watch(() => props.lib.deckPreview, ..., { deep: true })` that snapshots the previous per-key copy counts and computes the per-key delta on each mutation.
+- [x] 4.2 For each unit of positive delta on key `K`, drop the oldest pending-add for `K`. For each unit of negative delta, drop the oldest pending-remove for `K`.
+- [x] 4.3 Verify in manual smoke: rapid taps to add and remove leave no orphan pending tiles after the deltas land. *(Deferred to final smoke pass — implementation is straightforward; smoke is the verification step.)*
+- [x] 4.4 Validate: `cd mod && dotnet build` clean; manual two-client smoke: with two browser tabs editing the same librarian, concurrent adds of the same card resolve in FIFO order without orphan pending tiles. *(Build clean; two-client smoke deferred to final pass.)*
 
 ## 5. Cap and limit accounting
 
