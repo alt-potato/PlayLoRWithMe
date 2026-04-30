@@ -28,10 +28,10 @@
 
 ## 5. Cap and limit accounting
 
-- [ ] 5.1 Replace the existing `expandedDeck.length` reads in the deck-count badge and placeholder-count expression with `effectiveDeckCount = expandedDeck.length + pendingAdds.length - pendingRemoves.length`. Add a `Math.max(0, ...)` guard for placeholders.
-- [ ] 5.2 Update `deckCardCounts` (or add a parallel `effectiveDeckCardCounts`) to add pending-add counts and subtract pending-remove counts before `isAtLimit` consults it.
-- [ ] 5.3 Add a `:unusable="effectiveDeckCount >= DECK_MAX || ..."` clause to the inventory `HandCard` to gate the cap from the inventory side.
-- [ ] 5.4 Validate: `cd mod && dotnet build` clean; manual smoke: at 9-card cap, inventory cards render unusable; at 3 confirmed + 1 pending of a Rare card, inventory tile renders unusable.
+- [x] 5.1 Replace the existing `expandedDeck.length` reads in the deck-count badge and placeholder-count expression with `effectiveDeckCount = expandedDeck.length + pendingAdds.length - pendingRemoves.length`. Add a `Math.max(0, ...)` guard for placeholders.
+- [x] 5.2 Update `deckCardCounts` (or add a parallel `effectiveDeckCardCounts`) to add pending-add counts and subtract pending-remove counts before `isAtLimit` consults it.
+- [x] 5.3 Add a `:unusable="effectiveDeckCount >= DECK_MAX || ..."` clause to the inventory `HandCard` to gate the cap from the inventory side.
+- [x] 5.4 Validate: `cd mod && dotnet build` clean; manual smoke: at 9-card cap, inventory cards render unusable; at 3 confirmed + 1 pending of a Rare card, inventory tile renders unusable. *(Build clean; manual smoke deferred to final pass.)*
 
 ## 6. Connection-reset cleanup
 

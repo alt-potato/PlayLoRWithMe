@@ -167,14 +167,45 @@ const expandedDeck = computed(() =>
   ),
 );
 
-/** Empty slots remaining; auto-filled with default cards before combat. Clamped at 0. */
-const emptySlotCount = computed(() =>
-  Math.max(0, DECK_MAX - expandedDeck.value.length),
+/**
+ * Deck size the cap math reasons about — mirrors what the deck WILL be
+ * once pending edits reconcile. Confirmed tiles plus in-flight adds
+ * minus in-flight removes. Used by the deck-count badge, placeholder
+ * count, and the inventory cap gate so all three stay in sync with the
+ * user's intent rather than the lagging confirmed state.
+ */
+const effectiveDeckCount = computed(() =>
+  Math.max(0, expandedDeck.value.length + pendingAdds.value.length - pendingRemoves.value.length),
 );
 
+/** Empty slots remaining; auto-filled with default cards before combat. Clamped at 0. */
+const emptySlotCount = computed(() =>
+  Math.max(0, DECK_MAX - effectiveDeckCount.value),
+);
+
+/**
+ * Per-card copy count adjusted for in-flight edits — mirrors what the
+ * deck WILL hold of each card once pending adds/removes reconcile. The
+ * inventory's at-limit gate consults this rather than the raw confirmed
+ * counts so a user can't queue past the per-rarity cap by tapping
+ * faster than the server responds.
+ */
+const effectiveDeckCardCounts = computed(() => {
+  const map = new Map(deckCardCounts.value);
+  for (const p of pendingAdds.value) {
+    const k = pendingKey(p.cardId, p.packageId);
+    map.set(k, (map.get(k) ?? 0) + 1);
+  }
+  for (const p of pendingRemoves.value) {
+    const k = pendingKey(p.cardId, p.packageId);
+    map.set(k, (map.get(k) ?? 0) - 1);
+  }
+  return map;
+});
+
 function isAtLimit(card: AvailableCard): boolean {
-  const key = `${card.cardId.id}_${card.cardId.packageId}`;
-  return (deckCardCounts.value.get(key) ?? 0) >= cardLimit(card.rarity);
+  const key = pendingKey(card.cardId.id, card.cardId.packageId);
+  return (effectiveDeckCardCounts.value.get(key) ?? 0) >= cardLimit(card.rarity);
 }
 
 const detailCard = ref<Card | null>(null);
@@ -288,7 +319,12 @@ async function handleRemoveCard(preview: DeckCardPreview) {
           :key="card.cardId.id + '_' + card.cardId.packageId"
           :card="availableToCard(card, i)"
           :count="card.count"
-          :unusable="editBusy || card.count <= 0 || isAtLimit(card)"
+          :unusable="
+            editBusy ||
+            card.count <= 0 ||
+            isAtLimit(card) ||
+            effectiveDeckCount >= DECK_MAX
+          "
           @click="handleAddCard(card)"
           @detail="detailCard = availableToCard(card, i)"
         />
@@ -301,7 +337,7 @@ async function handleRemoveCard(preview: DeckCardPreview) {
     <div class="deck-col deck-col--equipped">
       <div class="col-header">
         Deck
-        <span class="deck-count">{{ expandedDeck.length }} / {{ DECK_MAX }}</span>
+        <span class="deck-count">{{ effectiveDeckCount }} / {{ DECK_MAX }}</span>
       </div>
       <LibrarianKeyPageDetail class="deck-keypage" :key-page="lib.keyPage" :compact="true" />
       <div class="card-grid">
