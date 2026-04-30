@@ -37,6 +37,14 @@ export function useWebSocket() {
   // against the new authoritative state.
   const stateGeneration = ref(0);
 
+  // Dev-time diagnostic mirrors. Updated alongside the closure variables
+  // they shadow so DiagnosticPanel can render them reactively. Tree-shakes
+  // out of production along with the panel that consumes them.
+  const inflightCount = ref(0);
+  const lastSeqRef = ref(0);
+  const resyncCount = ref(0);
+  const lastResyncAt = ref<number | null>(null);
+
   let ws: WebSocket | null = null;
   let lastSeq = 0;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -95,6 +103,7 @@ export function useWebSocket() {
         p.resolve({ ok: false, error: "Connection lost" });
         pending.delete(id);
       }
+      inflightCount.value = pending.size;
       if (!closing) reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
     };
 
@@ -120,6 +129,7 @@ export function useWebSocket() {
 
       case "state":
         lastSeq = msg.seq;
+        lastSeqRef.value = lastSeq;
         gameState.value = msg.data;
         stateGeneration.value += 1;
         break;
@@ -128,9 +138,12 @@ export function useWebSocket() {
         if (gameState.value && msg.seq === lastSeq + 1) {
           gameState.value = applyDelta(gameState.value, msg.data);
           lastSeq = msg.seq;
+          lastSeqRef.value = lastSeq;
         } else {
           // Gap detected — request a full resync.
           send({ type: "resync" });
+          resyncCount.value += 1;
+          lastResyncAt.value = Date.now();
         }
         break;
       }
@@ -153,6 +166,7 @@ export function useWebSocket() {
         if (p) {
           clearTimeout(p.timer);
           pending.delete(msg.reqId);
+          inflightCount.value = pending.size;
           p.resolve({ ok: msg.ok, error: msg.error });
         }
         break;
@@ -184,9 +198,11 @@ export function useWebSocket() {
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         pending.delete(reqId);
+        inflightCount.value = pending.size;
         resolve({ ok: false, error: "Action timed out" });
       }, ACTION_TIMEOUT_MS);
       pending.set(reqId, { resolve, timer });
+      inflightCount.value = pending.size;
       send({ ...action, reqId });
     });
   }
@@ -295,6 +311,10 @@ export function useWebSocket() {
     status,
     players,
     stateGeneration,
+    inflightCount,
+    lastSeqRef,
+    resyncCount,
+    lastResyncAt,
     sendAction,
     claimUnit,
     releaseUnit,

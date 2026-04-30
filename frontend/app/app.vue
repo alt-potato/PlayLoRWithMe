@@ -10,6 +10,9 @@ import { STATE_GENERATION } from "~/composables/useStateGeneration";
 const DevPicker = import.meta.dev
   ? defineAsyncComponent(() => import("./dev/DevFixturePicker.vue"))
   : null;
+const DiagnosticPanel = import.meta.dev
+  ? defineAsyncComponent(() => import("./dev/DiagnosticPanel.vue"))
+  : null;
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
@@ -36,6 +39,10 @@ const {
   status,
   players,
   stateGeneration,
+  inflightCount,
+  lastSeqRef,
+  resyncCount,
+  lastResyncAt,
   sendAction,
   claimUnit,
   releaseUnit,
@@ -51,6 +58,20 @@ const {
   attributePassive,
   removeAttributedPassive,
 } = useWebSocket();
+
+// Dev-only spam-tap harness for reproducing deck-edit lockups under load.
+// `import.meta.dev` collapses to false in production, so Rollup tree-shakes
+// installSpamHarness and its module out of the production bundle.
+if (import.meta.dev) {
+  import("~/dev/useSpamHarness").then(({ installSpamHarness }) => {
+    installSpamHarness({
+      gameState,
+      session,
+      addCardToDeck,
+      removeCardFromDeck,
+    });
+  });
+}
 
 // Provide librarian-specific action callbacks via injection so that
 // LibrarianManager and its descendants can access them without prop drilling.
@@ -184,6 +205,17 @@ const rawJson = computed(() =>
 
     <ClientOnly v-if="DevPicker">
       <component :is="DevPicker" />
+    </ClientOnly>
+
+    <ClientOnly v-if="DiagnosticPanel">
+      <component
+        :is="DiagnosticPanel"
+        :status="status"
+        :inflight-count="inflightCount"
+        :last-seq="lastSeqRef"
+        :resync-count="resyncCount"
+        :last-resync-at="lastResyncAt"
+      />
     </ClientOnly>
   </div>
 </template>

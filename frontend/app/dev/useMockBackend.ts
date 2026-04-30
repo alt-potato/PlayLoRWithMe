@@ -150,6 +150,12 @@ export function useMockBackend(fixtureName: string) {
     // mock backend never reconnects, so the generation never bumps.
     // exposed only to keep the return shape parity with useWebSocket.
     stateGeneration: ref(0),
+    // Diagnostic mirrors are static in mock mode (no real WebSocket
+    // pipeline); exposed only for return-shape parity with useWebSocket.
+    inflightCount: ref(0),
+    lastSeqRef: ref(0),
+    resyncCount: ref(0),
+    lastResyncAt: ref<number | null>(null),
     sendAction,
     claimUnit,
     releaseUnit,

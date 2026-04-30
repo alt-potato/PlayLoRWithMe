@@ -1,9 +1,9 @@
 ## 1. Instrument and reproduce
 
-- [ ] 1.1 Add a dev-only diagnostic panel (gated by `import.meta.dev`) showing live values of in-flight action count, `lastSeq`, last `resync` time, and WebSocket `status`.
-- [ ] 1.2 Add a dev-only spam-tap harness in `frontend/app/dev/` that programmatically drives `actions.addCardToDeck` / `actions.removeCardFromDeck` for the currently-edited librarian. Expose it as `window.__spamDeck(count, intervalMs)` for ad-hoc browser-console invocation.
+- [x] 1.1 Add a dev-only diagnostic panel (gated by `import.meta.dev`) showing live values of in-flight action count, `lastSeq`, last `resync` time, and WebSocket `status`. *(Also exposes a resync count, since the suspect-1 signature is "resyncs climbing".)*
+- [x] 1.2 Add a dev-only spam-tap harness in `frontend/app/dev/` that programmatically drives `actions.addCardToDeck` / `actions.removeCardFromDeck` for the currently-edited librarian. Expose it as `window.__spamDeck(count, intervalMs)` for ad-hoc browser-console invocation.
 - [ ] 1.3 Reproduce the lockup with the harness; capture diagnostic-panel screenshots and any console errors at the moment of lockup.
-- [ ] 1.4 Validate: `cd mod && dotnet build` clean.
+- [x] 1.4 Validate: `cd mod && dotnet build` clean.
 
 ## 2. Diagnose root cause
 
