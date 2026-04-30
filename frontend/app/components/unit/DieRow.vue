@@ -201,8 +201,8 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
     @mouseup="onSlotPressEnd"
     @mouseleave="onSlotPressEnd"
     @touchstart.passive="onSlotPressStart(card)"
-    @touchend="onSlotPressEnd"
-    @touchmove="onSlotPressEnd"
+    @touchend.passive="onSlotPressEnd"
+    @touchmove.passive="onSlotPressEnd"
   >
     <!-- Hexagonal die (data-die used by ArrowOverlay for coordinate lookup) -->
     <span

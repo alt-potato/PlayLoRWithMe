@@ -10,9 +10,15 @@ import { STATE_GENERATION } from "~/composables/useStateGeneration";
 const DevPicker = import.meta.dev
   ? defineAsyncComponent(() => import("./dev/DevFixturePicker.vue"))
   : null;
-const DiagnosticPanel = import.meta.dev
-  ? defineAsyncComponent(() => import("./dev/DiagnosticPanel.vue"))
-  : null;
+
+// DiagnosticPanel ships in every build (mod's HTTP server only serves the
+// production SPA, so a build-flag gate would never enable it). Toggled at
+// runtime via `?debug=1` (persisted in localStorage) — see debugEnabled
+// below. defineAsyncComponent keeps the chunk lazy: the module isn't loaded
+// until the panel actually renders, so no runtime cost when toggled off.
+const DiagnosticPanel = defineAsyncComponent(
+  () => import("./dev/DiagnosticPanel.vue"),
+);
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
@@ -59,19 +65,29 @@ const {
   removeAttributedPassive,
 } = useWebSocket();
 
-// Dev-only spam-tap harness for reproducing deck-edit lockups under load.
-// `import.meta.dev` collapses to false in production, so Rollup tree-shakes
-// installSpamHarness and its module out of the production bundle.
-if (import.meta.dev) {
-  import("~/dev/useSpamHarness").then(({ installSpamHarness }) => {
-    installSpamHarness({
-      gameState,
-      session,
-      addCardToDeck,
-      removeCardFromDeck,
+// Runtime debug-tools flag — set via `?debug=1` (persisted in localStorage)
+// or `?debug=0` to clear. Survives the production build; the mod's HTTP
+// server only ships the static SPA, so `import.meta.dev` would never be
+// true at play-time. Drives the diagnostic panel + spam harness on demand.
+const debugEnabled = ref(false);
+onMounted(() => {
+  const params = new URLSearchParams(window.location.search);
+  const flag = params.get("debug");
+  if (flag === "1") localStorage.setItem("plwm_debug", "1");
+  else if (flag === "0") localStorage.removeItem("plwm_debug");
+  debugEnabled.value = localStorage.getItem("plwm_debug") === "1";
+
+  if (debugEnabled.value) {
+    import("~/dev/useSpamHarness").then(({ installSpamHarness }) => {
+      installSpamHarness({
+        gameState,
+        session,
+        addCardToDeck,
+        removeCardFromDeck,
+      });
     });
-  });
-}
+  }
+});
 
 // Provide librarian-specific action callbacks via injection so that
 // LibrarianManager and its descendants can access them without prop drilling.
@@ -207,7 +223,7 @@ const rawJson = computed(() =>
       <component :is="DevPicker" />
     </ClientOnly>
 
-    <ClientOnly v-if="DiagnosticPanel">
+    <ClientOnly v-if="debugEnabled">
       <component
         :is="DiagnosticPanel"
         :status="status"

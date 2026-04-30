@@ -150,8 +150,8 @@ function handleClick() {
     @mouseup="onPressEnd"
     @mouseleave="onPressEnd"
     @touchstart.passive="onPressStart"
-    @touchend="onPressEnd"
-    @touchmove="onPressEnd"
+    @touchend.passive="onPressEnd"
+    @touchmove.passive="onPressEnd"
   >
     <!-- preview pane: always rendered -->
     <div class="hcard-preview">

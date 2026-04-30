@@ -2,9 +2,15 @@ import type { Ref } from "vue";
 import type { GameState, SessionState, ActionResult } from "~/types/game";
 
 /**
- * Dev-only spam-tap harness for reproducing deck-edit lockups under
- * sustained load. Exposes `window.__spamDeck(count, intervalMs?)` for
- * ad-hoc browser-console invocation.
+ * Spam-tap harness for reproducing deck-edit lockups under sustained
+ * load. Exposes `window.__spamDeck(count, intervalMs?)` for ad-hoc
+ * browser-console invocation.
+ *
+ * Gating: app.vue installs this only when the runtime debug flag is on
+ * (URL `?debug=1` once, persisted via localStorage). The flag exists
+ * because the mod's HTTP server only ever serves the production-generated
+ * SPA, so `import.meta.dev` is always false at play-time and a build-flag
+ * gate would never enable the harness.
  *
  * Prerequisites: the user must have already opened the EditPanel for a
  * librarian (so the lock is held by this session). The harness picks
@@ -13,8 +19,6 @@ import type { GameState, SessionState, ActionResult } from "~/types/game";
  * call goes through the real WebSocket pipeline; no callsite-level
  * batching, no client-side throttling — the goal is to stress the
  * pipeline.
- *
- * Tree-shakes from production via `import.meta.dev`.
  */
 export function installSpamHarness(deps: {
   gameState: Ref<GameState | null>;
@@ -32,8 +36,6 @@ export function installSpamHarness(deps: {
     packageId: string,
   ) => Promise<ActionResult>;
 }) {
-  if (!import.meta.dev) return;
-
   async function spamDeck(count: number, intervalMs = 50) {
     const state = deps.gameState.value;
     const sess = deps.session.value;
