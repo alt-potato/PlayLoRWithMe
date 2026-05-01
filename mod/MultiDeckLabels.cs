@@ -1,46 +1,56 @@
 using System;
-using System.Collections.Generic;
 
 namespace PlayLoRWithMe
 {
     /// <summary>
-    /// Resolves deck labels for known multi-deck key pages.
+    /// Resolves localized deck labels for multi-deck key pages.
     ///
-    /// The deck-editor tab labels in vanilla are configured on Unity
-    /// prefabs via <c>UITextDataLoader.key</c> + <c>TextDataModel.GetText</c>,
-    /// so there is no public mapping from a key page id to the
-    /// <c>TextDataModel</c> keys driving its tab bar. The buf keyword ids
-    /// (e.g. <c>StanceSlash</c>) round-trip through
-    /// <see cref="BattleEffectTextsXmlList"/> but resolve to the buf names
-    /// ("Slashing Stance" etc.) — not the short deck-editor labels.
+    /// Vanilla bakes four <see cref="UITextDataLoader"/> components onto
+    /// the deck-editor prefab — one per tab — with hardcoded keys
+    /// <c>ui_slash_form</c>, <c>ui_penetrate_form</c>, <c>ui_hit_form</c>,
+    /// <c>ui_defense_form</c>. <see cref="TextDataModel.GetText"/> resolves
+    /// each to the player's-language string (in English: Slash / Pierce /
+    /// Blunt / Guard). The keys are universal across vanilla multi-deck
+    /// books, since the deck-editor prefab is shared.
     ///
-    /// Until we identify the right <c>TextDataModel</c> keys (or scan the
-    /// loaded text dictionary at runtime to discover them), the labels
-    /// here are authored as English literals matching the in-game UI.
-    /// Mods that author additional multi-deck books and want labels can
-    /// add an entry here without a frontend change.
+    /// Mods that want custom per-book labels (e.g. Binah's "Philosophy" /
+    /// "Arbiter") accomplish that by Harmony-patching
+    /// <c>UIEquipDeckCardList.SetDeckLayout</c> to overwrite the
+    /// <c>TabName.text</c> on each tab button — the in-game UI then
+    /// shows the patched strings. The wire labels we emit reflect the
+    /// vanilla generic keys; books with mod-side label overrides will
+    /// appear with the generic stance names in the web UI but the custom
+    /// names in-game. Surfacing the patched strings would require reading
+    /// runtime tab text after each mod's <c>SetDeckLayout</c> postfix
+    /// runs, which we avoid as too prefab-state dependent.
     /// </summary>
     public static class MultiDeckLabels
     {
-        // Maps (packageId, bookId) -> deck labels in deck-index order 0..3.
-        // Strings here mirror the labels shown on the in-game deck-editor's
-        // tab bar (English) for the corresponding stance.
-        private static readonly Dictionary<KpKey, string[]> Labels =
-            new Dictionary<KpKey, string[]>
-            {
-                // The Purple Tear (PurpleStance enum: Slash, Penetrate, Hit, Defense).
-                // In-game tab labels: Slash / Pierce / Blunt / Guard.
-                {
-                    new KpKey("", 250035),
-                    new[] { "Slash", "Pierce", "Blunt", "Guard" }
-                },
-            };
+        // TextDataModel keys baked into the vanilla deck-editor prefab.
+        // Order matches the in-game tab order which mirrors the
+        // PurpleStance enum on PassiveAbility_250127 (Slash, Penetrate,
+        // Hit, Defense).
+        private static readonly string[] LabelKeys =
+        {
+            "ui_slash_form",
+            "ui_penetrate_form",
+            "ui_hit_form",
+            "ui_defense_form",
+        };
+
+        // English fallback used when localization hasn't been loaded yet
+        // (very early title-scene snapshots before TextDataModel.InitTextData
+        // runs). Matches the values returned by GetText against the keys
+        // above when language is "en".
+        private static readonly string[] EnglishFallback =
+            { "Slash", "Pierce", "Blunt", "Guard" };
 
         /// <summary>
         /// Resolves the four deck labels for the given book. Returns false
-        /// when the book is not a known multi-deck page; on false the caller
-        /// SHOULD omit <c>label</c> from the wire payload so the frontend's
-        /// generic fallback handles the slot.
+        /// for non-multi-deck books so the caller omits <c>label</c> from
+        /// the wire payload. Multi-deck books always get four labels —
+        /// localized via <see cref="TextDataModel"/> in normal play, English
+        /// fallback if the dictionary hasn't loaded yet.
         /// </summary>
         public static bool TryGetLabels(BookModel book, out string[] labels)
         {
@@ -48,43 +58,27 @@ namespace PlayLoRWithMe
             if (book == null || !book.IsMultiDeck())
                 return false;
 
-            var lid = book.GetBookClassInfoId();
-            var key = new KpKey(lid.packageId ?? "", lid.id);
-            if (!Labels.TryGetValue(key, out var entry))
-                return false;
-
-            // Defensive copy so callers can't mutate the cached array.
-            labels = (string[])entry.Clone();
-            return true;
-        }
-
-        // Tuples as keys would need .NET 4.7+ ValueTuple; the mod targets
-        // 4.8 but pinning a custom struct keeps the dictionary usage
-        // self-contained and avoids depending on the framework's tuple impl.
-        private struct KpKey : IEquatable<KpKey>
-        {
-            public readonly string PackageId;
-            public readonly int BookId;
-
-            public KpKey(string packageId, int bookId)
+            var resolved = new string[4];
+            for (int i = 0; i < 4; i++)
             {
-                PackageId = packageId ?? "";
-                BookId = bookId;
-            }
-
-            public bool Equals(KpKey other) =>
-                BookId == other.BookId && PackageId == other.PackageId;
-
-            public override bool Equals(object obj) =>
-                obj is KpKey k && Equals(k);
-
-            public override int GetHashCode()
-            {
-                unchecked
+                string text = null;
+                try
                 {
-                    return (PackageId.GetHashCode() * 397) ^ BookId;
+                    // GetText returns "" for unknown keys but throws
+                    // NullReferenceException if its backing dictionary
+                    // hasn't been initialised yet (very early startup).
+                    text = TextDataModel.GetText(LabelKeys[i]);
                 }
+                catch
+                {
+                    // fall through to English fallback
+                }
+                if (string.IsNullOrEmpty(text))
+                    text = EnglishFallback[i];
+                resolved[i] = text;
             }
+            labels = resolved;
+            return true;
         }
     }
 }
