@@ -457,6 +457,10 @@ namespace PlayLoRWithMe
                                                         // customization surfaces can render the colored outline.
                                                         // Battle-context emission sites omit this field.
                                                         .Add("rarity", book.ClassInfo.Rarity.ToString())
+                                                        // Multi-deck signal — true when the key page has the
+                                                        // BookOption.MultiDeck flag (e.g. The Purple Tear). Drives
+                                                        // the editor's tab strip; battle-context emission omits this.
+                                                        .Add("isMultiDeck", book.IsMultiDeck())
                                                         .AddObject(
                                                             "resistances",
                                                             r =>
@@ -617,65 +621,84 @@ namespace PlayLoRWithMe
                                                 }
                                             }
 
-                                            // Deck preview — collapse duplicate copies into one entry
-                                            // with a count field.  GetCardListFromCurrentDeck returns one
-                                            // entry per copy, so we aggregate here.
-                                            var rawCards = book.GetCardListFromCurrentDeck();
+                                            // Per-deck-slot card lists. Single-deck books emit a length-1
+                                            // array (just slot 0). Multi-deck books (e.g. The Purple Tear)
+                                            // emit length-4 covering all stance slots. Labels are resolved
+                                            // frontend-side and intentionally not part of the wire payload.
+                                            //
+                                            // Card order: GetCardListByIndex sorts via SortUtil.CardInfoCompByCost
+                                            // (matches GetCardListFromCurrentDeck's behavior); using GetCardList_nocopy
+                                            // would emit cards in raw deck order and break the cost-grouped layout.
                                             o.AddArray(
-                                                "deckPreview",
-                                                darr =>
+                                                "decks",
+                                                decksArr =>
                                                 {
-                                                    if (rawCards == null)
-                                                        return;
-                                                    var counts = new Dictionary<string, int>();
-                                                    var firstSeen =
-                                                        new Dictionary<
-                                                            string,
-                                                            LOR_DiceSystem.DiceCardXmlInfo
-                                                        >();
-                                                    var order = new List<string>();
-                                                    foreach (var xml in rawCards)
+                                                    bool isMulti = book.IsMultiDeck();
+                                                    int deckCount = isMulti ? 4 : 1;
+                                                    for (int di = 0; di < deckCount; di++)
                                                     {
-                                                        if (xml == null)
-                                                            continue;
-                                                        var key = xml._id + "_" + xml.workshopID;
-                                                        if (!counts.ContainsKey(key))
+                                                        int idx = di;
+                                                        var rawCards = book.GetCardListByIndex(idx);
+                                                        decksArr.AddObject(deckObj =>
                                                         {
-                                                            counts[key] = 0;
-                                                            firstSeen[key] = xml;
-                                                            order.Add(key);
-                                                        }
-                                                        counts[key]++;
-                                                    }
-                                                    foreach (var key in order)
-                                                    {
-                                                        var xml = firstSeen[key];
-                                                        var spec = xml.Spec;
-                                                        darr.AddObject(c =>
-                                                        {
-                                                            // cardId lets the frontend identify the
-                                                            // card for deck-editing actions.
-                                                            AddLorId(c, "cardId", xml.id);
-                                                            c.Add("name", xml.Name)
-                                                                .Add("cost", spec.Cost)
-                                                                .Add(
-                                                                    "range",
-                                                                    spec.Ranged.ToString()
-                                                                )
-                                                                .Add(
-                                                                    "rarity",
-                                                                    xml.Rarity.ToString()
-                                                                )
-                                                                .Add("count", counts[key]);
+                                                            deckObj.Add("index", idx);
+                                                            deckObj.AddArray(
+                                                                "cards",
+                                                                darr =>
+                                                                {
+                                                                    if (rawCards == null)
+                                                                        return;
+                                                                    var counts = new Dictionary<string, int>();
+                                                                    var firstSeen =
+                                                                        new Dictionary<
+                                                                            string,
+                                                                            LOR_DiceSystem.DiceCardXmlInfo
+                                                                        >();
+                                                                    var order = new List<string>();
+                                                                    foreach (var xml in rawCards)
+                                                                    {
+                                                                        if (xml == null)
+                                                                            continue;
+                                                                        var key = xml._id + "_" + xml.workshopID;
+                                                                        if (!counts.ContainsKey(key))
+                                                                        {
+                                                                            counts[key] = 0;
+                                                                            firstSeen[key] = xml;
+                                                                            order.Add(key);
+                                                                        }
+                                                                        counts[key]++;
+                                                                    }
+                                                                    foreach (var key in order)
+                                                                    {
+                                                                        var xml = firstSeen[key];
+                                                                        var spec = xml.Spec;
+                                                                        darr.AddObject(c =>
+                                                                        {
+                                                                            AddLorId(c, "cardId", xml.id);
+                                                                            c.Add("name", xml.Name)
+                                                                                .Add("cost", spec.Cost)
+                                                                                .Add(
+                                                                                    "range",
+                                                                                    spec.Ranged.ToString()
+                                                                                )
+                                                                                .Add(
+                                                                                    "rarity",
+                                                                                    xml.Rarity.ToString()
+                                                                                )
+                                                                                .Add("count", counts[key]);
 
-                                                            WriteDiceBehaviours(c, xml.DiceBehaviourList, abilityDescList);
+                                                                            WriteDiceBehaviours(c, xml.DiceBehaviourList, abilityDescList);
 
-                                                            var abilityDesc =
-                                                                abilityDescList?.GetAbilityDescString(
-                                                                    xml
-                                                                ) ?? "";
-                                                            if (!string.IsNullOrEmpty(abilityDesc))
-                                                                c.Add("abilityDesc", abilityDesc);
+                                                                            var abilityDesc =
+                                                                                abilityDescList?.GetAbilityDescString(
+                                                                                    xml
+                                                                                ) ?? "";
+                                                                            if (!string.IsNullOrEmpty(abilityDesc))
+                                                                                c.Add("abilityDesc", abilityDesc);
+                                                                        });
+                                                                    }
+                                                                }
+                                                            );
                                                         });
                                                     }
                                                 }

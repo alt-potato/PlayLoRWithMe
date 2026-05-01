@@ -590,10 +590,25 @@ namespace PlayLoRWithMe
             // packageId is an empty string for vanilla cards and a workshop ID for mods.
             string packageId = r.GetString("packageId") ?? "";
 
-            var deck = unit.bookItem?.GetDeckAll_nocopy()?[0];
-            if (deck == null)
+            var book = unit.bookItem;
+            if (book == null)
             {
                 SendResult(client, reqId, false, "Deck not found");
+                return;
+            }
+
+            // Multi-deck addressing: optional deckIndex (0..3), defaults to active slot.
+            // Index range and IsMultiDeck are validated before any state mutation so
+            // a bad request can't transiently swap the active deck.
+            int deckIndex = r.TryGetInt("deckIndex", out int parsedIdx) ? parsedIdx : 0;
+            if (deckIndex < 0 || deckIndex >= 4)
+            {
+                SendResult(client, reqId, false, "deckIndex out of range");
+                return;
+            }
+            if (deckIndex != 0 && !book.IsMultiDeck())
+            {
+                SendResult(client, reqId, false, "key page is not multi-deck");
                 return;
             }
 
@@ -617,7 +632,25 @@ namespace PlayLoRWithMe
                 return;
             }
 
-            var result = deck.AddCardFromInventory(lorId);
+            // Switch active deck transiently so the existing add path
+            // (which operates on `_deck`) targets the requested slot.
+            // Restored in `finally` so a stance-change passive in battle
+            // observes only the user's intended active deck. Both this
+            // handler and any battle-thread code run on the Unity main
+            // thread, so no observer can interleave.
+            int prevIdx = book.GetCurrentDeckIndex();
+            CardEquipState result;
+            try
+            {
+                if (deckIndex != prevIdx)
+                    book.ChangeDeck(deckIndex);
+                result = book.AddCardFromInventoryToCurrentDeck(lorId);
+            }
+            finally
+            {
+                if (book.GetCurrentDeckIndex() != prevIdx)
+                    book.ChangeDeck(prevIdx);
+            }
             bool ok = result == CardEquipState.Equippable;
 
             if (ok)
@@ -641,17 +674,42 @@ namespace PlayLoRWithMe
 
             string packageId = r.GetString("packageId") ?? "";
 
-            var deck = unit.bookItem?.GetDeckAll_nocopy()?[0];
-            if (deck == null)
+            var book = unit.bookItem;
+            if (book == null)
             {
                 SendResult(client, reqId, false, "Deck not found");
+                return;
+            }
+
+            int deckIndex = r.TryGetInt("deckIndex", out int parsedIdx) ? parsedIdx : 0;
+            if (deckIndex < 0 || deckIndex >= 4)
+            {
+                SendResult(client, reqId, false, "deckIndex out of range");
+                return;
+            }
+            if (deckIndex != 0 && !book.IsMultiDeck())
+            {
+                SendResult(client, reqId, false, "key page is not multi-deck");
                 return;
             }
 
             var lorId = string.IsNullOrEmpty(packageId)
                 ? new LorId(cardId)
                 : new LorId(packageId, cardId);
-            bool removed = deck.MoveCardToInventory(lorId);
+
+            int prevIdx = book.GetCurrentDeckIndex();
+            bool removed;
+            try
+            {
+                if (deckIndex != prevIdx)
+                    book.ChangeDeck(deckIndex);
+                removed = book.MoveCardFromCurrentDeckToInventory(lorId);
+            }
+            finally
+            {
+                if (book.GetCurrentDeckIndex() != prevIdx)
+                    book.ChangeDeck(prevIdx);
+            }
 
             if (removed)
                 SaveAndBroadcast();
