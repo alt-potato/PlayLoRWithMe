@@ -49,12 +49,15 @@ namespace PlayLoRWithMe
         /// Records the tab labels observed for a book by
         /// <see cref="MultiDeckLabelHook"/>. <paramref name="tabLabels"/> may
         /// be shorter than <see cref="LabelCount"/> or contain null/empty
-        /// entries for hidden tabs; both are preserved as-is.
+        /// entries for hidden tabs; both are preserved as-is. Returns true
+        /// when the cache contents changed, so the caller can trigger a
+        /// state broadcast — without that, the just-cached labels would
+        /// only reach connected clients on the next unrelated state push.
         /// </summary>
-        public static void RecordLabels(BookModel book, string[] tabLabels)
+        public static bool RecordLabels(BookModel book, string[] tabLabels)
         {
             if (book == null || tabLabels == null)
-                return;
+                return false;
             var lid = book.GetBookClassInfoId();
             var k = new KpKey(lid.packageId ?? "", lid.id);
 
@@ -63,7 +66,54 @@ namespace PlayLoRWithMe
                 snapshot[i] = tabLabels[i];
 
             lock (CacheLock)
+            {
+                if (Cache.TryGetValue(k, out var existing) && SameContents(existing, snapshot))
+                    return false;
                 Cache[k] = snapshot;
+            }
+            return true;
+        }
+
+        private static bool SameContents(string[] a, string[] b)
+        {
+            if (a == null || b == null || a.Length != b.Length)
+                return false;
+            for (int i = 0; i < a.Length; i++)
+                if (!string.Equals(a[i], b[i], StringComparison.Ordinal))
+                    return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Effective deck count for a multi-deck book — the number of slots
+        /// the in-game editor actually exposes. Cache hits return
+        /// "highest non-null label index + 1" so books that hide unused
+        /// tabs (e.g. Binah Multi-Deck's 2-deck override) don't surface
+        /// empty trailing slots on the wire. Without a cache hit returns
+        /// <see cref="LabelCount"/> as a conservative default.
+        /// </summary>
+        public static int GetEffectiveDeckCount(BookModel book)
+        {
+            if (book == null || !book.IsMultiDeck())
+                return 1;
+
+            var lid = book.GetBookClassInfoId();
+            var k = new KpKey(lid.packageId ?? "", lid.id);
+
+            string[] cached;
+            lock (CacheLock)
+                Cache.TryGetValue(k, out cached);
+            if (cached == null)
+                return LabelCount;
+
+            int last = -1;
+            for (int i = 0; i < cached.Length; i++)
+                if (!string.IsNullOrEmpty(cached[i]))
+                    last = i;
+            // Always expose at least one slot; a book that's flagged
+            // multi-deck with zero visible tabs is malformed but not
+            // a reason to drop the librarian's deck editor entirely.
+            return last < 0 ? LabelCount : last + 1;
         }
 
         // The four TextDataModel ids the engine uses for the standard

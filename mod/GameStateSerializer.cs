@@ -622,31 +622,54 @@ namespace PlayLoRWithMe
                                             }
 
                                             // Per-deck-slot card lists. Single-deck books emit a length-1
-                                            // array (just slot 0). Multi-deck books (e.g. The Purple Tear)
-                                            // emit length-4 covering all stance slots. Labels — when known —
-                                            // come from MultiDeckLabels which resolves keyword ids through
-                                            // BattleEffectTextsXmlList, so the player sees stance names in
-                                            // their game language. Unknown books omit `label` and the frontend
-                                            // falls back to its generic "Deck 1-4" table.
+                                            // array (just slot 0). Multi-deck books emit one entry per
+                                            // exposed slot — that's <=4 for vanilla and may be fewer for
+                                            // mods that hide some of the tabs (e.g. Binah Multi-Deck's
+                                            // two-deck override).
                                             //
-                                            // Card order: GetCardListByIndex sorts via SortUtil.CardInfoCompByCost
-                                            // (matches GetCardListFromCurrentDeck's behavior); using GetCardList_nocopy
-                                            // would emit cards in raw deck order and break the cost-grouped layout.
+                                            // Per-deck cards: ChangeDeck(idx) followed by
+                                            // GetCardListFromCurrentDeck() so any mod's postfix on that
+                                            // method (the canonical extension point — Binah injects deck 1's
+                                            // cards there based on GetCurrentDeckIndex()) sees the right
+                                            // active index. GetCardListByIndex bypasses that postfix and
+                                            // would surface the raw _deckList[idx] contents, which for
+                                            // mods like Binah are empty until GetCardListFromCurrentDeck
+                                            // synthesizes them.
+                                            //
+                                            // Card order: GetCardListFromCurrentDeck sorts via
+                                            // SortUtil.CardInfoCompByCost; the prevIdx/finally restore
+                                            // mirrors the action-handler pattern so a transient ChangeDeck
+                                            // never leaks past the serializer.
                                             o.AddArray(
                                                 "decks",
                                                 decksArr =>
                                                 {
                                                     bool isMulti = book.IsMultiDeck();
-                                                    int deckCount = isMulti ? 4 : 1;
+                                                    int deckCount = isMulti
+                                                        ? MultiDeckLabels.GetEffectiveDeckCount(book)
+                                                        : 1;
                                                     string[] localizedLabels = null;
                                                     if (isMulti)
                                                         MultiDeckLabels.TryGetLabels(book, out localizedLabels);
-                                                    for (int di = 0; di < deckCount; di++)
+                                                    int prevIdx = isMulti ? book.GetCurrentDeckIndex() : 0;
+                                                    try
                                                     {
-                                                        int idx = di;
-                                                        var rawCards = book.GetCardListByIndex(idx);
-                                                        decksArr.AddObject(deckObj =>
+                                                        for (int di = 0; di < deckCount; di++)
                                                         {
+                                                            int idx = di;
+                                                            List<LOR_DiceSystem.DiceCardXmlInfo> rawCards;
+                                                            if (isMulti)
+                                                            {
+                                                                if (idx != book.GetCurrentDeckIndex())
+                                                                    book.ChangeDeck(idx);
+                                                                rawCards = book.GetCardListFromCurrentDeck();
+                                                            }
+                                                            else
+                                                            {
+                                                                rawCards = book.GetCardListFromCurrentDeck();
+                                                            }
+                                                            decksArr.AddObject(deckObj =>
+                                                            {
                                                             deckObj.Add("index", idx);
                                                             // Cache hits may have null/empty entries for tabs
                                                             // a mod hid; emit `label` only when we observed a
@@ -714,6 +737,12 @@ namespace PlayLoRWithMe
                                                                 }
                                                             );
                                                         });
+                                                        }
+                                                    }
+                                                    finally
+                                                    {
+                                                        if (isMulti && book.GetCurrentDeckIndex() != prevIdx)
+                                                            book.ChangeDeck(prevIdx);
                                                     }
                                                 }
                                             );
