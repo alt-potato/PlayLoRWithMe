@@ -623,8 +623,11 @@ namespace PlayLoRWithMe
 
                                             // Per-deck-slot card lists. Single-deck books emit a length-1
                                             // array (just slot 0). Multi-deck books (e.g. The Purple Tear)
-                                            // emit length-4 covering all stance slots. Labels are resolved
-                                            // frontend-side and intentionally not part of the wire payload.
+                                            // emit length-4 covering all stance slots. Labels — when known —
+                                            // come from MultiDeckLabels which resolves keyword ids through
+                                            // BattleEffectTextsXmlList, so the player sees stance names in
+                                            // their game language. Unknown books omit `label` and the frontend
+                                            // falls back to its generic "Deck 1-4" table.
                                             //
                                             // Card order: GetCardListByIndex sorts via SortUtil.CardInfoCompByCost
                                             // (matches GetCardListFromCurrentDeck's behavior); using GetCardList_nocopy
@@ -635,6 +638,9 @@ namespace PlayLoRWithMe
                                                 {
                                                     bool isMulti = book.IsMultiDeck();
                                                     int deckCount = isMulti ? 4 : 1;
+                                                    string[] localizedLabels = null;
+                                                    if (isMulti)
+                                                        MultiDeckLabels.TryGetLabels(book, out localizedLabels);
                                                     for (int di = 0; di < deckCount; di++)
                                                     {
                                                         int idx = di;
@@ -642,6 +648,8 @@ namespace PlayLoRWithMe
                                                         decksArr.AddObject(deckObj =>
                                                         {
                                                             deckObj.Add("index", idx);
+                                                            if (localizedLabels != null && idx < localizedLabels.Length)
+                                                                deckObj.Add("label", localizedLabels[idx]);
                                                             deckObj.AddArray(
                                                                 "cards",
                                                                 darr =>
