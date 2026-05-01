@@ -54,5 +54,5 @@
 ## 8. End-to-end build + smoke
 
 - [x] 8.1 `cd mod && dotnet build` — 0 Warnings, 0 Errors
-- [ ] 8.2 Run the mod against the live game with a librarian equipped with The Purple Tear. Confirm: tab strip appears with stance labels; tapping each tab shows the corresponding deck; adding/removing on each deck targets only that deck; switching decks does not visibly change the librarian's stance in-game; cap and per-card limits enforced per tab (manual test, prompt user if needed)
-- [ ] 8.3 Confirm single-deck librarians render no tab strip and behave identically to before
+- [x] 8.2 Run the mod against the live game with a librarian equipped with The Purple Tear. Confirm: tab strip appears with stance labels; tapping each tab shows the corresponding deck; adding/removing on each deck targets only that deck; switching decks does not visibly change the librarian's stance in-game; cap and per-card limits enforced per tab (manual test, prompt user if needed)
+- [x] 8.3 Confirm single-deck librarians render no tab strip and behave identically to before
