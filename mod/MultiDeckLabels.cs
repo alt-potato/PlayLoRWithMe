@@ -93,12 +93,6 @@ namespace PlayLoRWithMe
                 "SetDeckLayout",
                 BindingFlags.Instance | BindingFlags.NonPublic);
 
-        // Books we've already attempted to fill. Successful fills land in
-        // Cache; failed fills (panel not in scene yet, or any thrown
-        // exception) are recorded here so we don't busy-loop trying every
-        // broadcast. Cleared whenever Cache changes for the same key.
-        private static readonly HashSet<KpKey> Attempted = new HashSet<KpKey>();
-
         // True while we're inside a synthetic SetDeckLayout invocation. The
         // hook checks this so it doesn't trigger a broadcast from within
         // the serializer (which is already preparing one) — that would
@@ -106,6 +100,18 @@ namespace PlayLoRWithMe
         // first state push.
         private static bool _inSynthetic;
         public static bool InSyntheticInvoke => _inSynthetic;
+
+        // Diagnostic throttling: log each (book, message) outcome at most
+        // once per game session. Without this the per-broadcast retry
+        // would spam Player.log forever for any book whose panel isn't
+        // in the scene.
+        private static readonly HashSet<string> LoggedOnce = new HashSet<string>();
+        private static void LogOnce(string key, string msg)
+        {
+            if (!LoggedOnce.Add(key))
+                return;
+            Debug.Log(msg);
+        }
 
         /// <summary>
         /// Synthesizes the patch chain on <c>UIEquipDeckCardList.SetDeckLayout</c>
@@ -133,31 +139,46 @@ namespace PlayLoRWithMe
             {
                 if (Cache.ContainsKey(k))
                     return;
-                if (Attempted.Contains(k))
-                    return;
-                Attempted.Add(k);
             }
 
             if (SetDeckLayoutMethod == null)
                 return;
+            // Retry every broadcast until the panel is in the scene and
+            // we get a successful fill. The fast path is FindObjectsOfTypeAll
+            // returning empty / our cache hit short-circuit, so the cost
+            // is negligible during the title screen / pre-library phases.
 
             UIEquipDeckCardList panel = null;
+            UIEquipDeckCardList[] panels = null;
             try
             {
                 // FindObjectsOfTypeAll returns active+inactive scene objects
                 // and prefabs already loaded into memory. Either works for
                 // our purposes — we just need any instance whose private
                 // multiDeckLayout field has been wired up.
-                var panels = Resources.FindObjectsOfTypeAll<UIEquipDeckCardList>();
+                panels = Resources.FindObjectsOfTypeAll<UIEquipDeckCardList>();
                 if (panels != null && panels.Length > 0)
                     panel = panels[0];
             }
-            catch
+            catch (Exception e)
             {
+                LogOnce(
+                    "find-threw:" + lid.packageId + ":" + lid.id,
+                    "[multi-deck-labels] FindObjectsOfTypeAll threw: " + e.Message);
                 return;
             }
             if (panel == null)
+            {
+                // Common during early scene-load — log once per book so
+                // we can distinguish "panel not yet in scene" from
+                // invocation failures further down.
+                LogOnce(
+                    "no-panel:" + lid.packageId + ":" + lid.id,
+                    "[multi-deck-labels] no UIEquipDeckCardList instance for book=("
+                        + (lid.packageId ?? "") + "," + lid.id
+                        + "); foundCount=" + (panels?.Length ?? 0));
                 return;
+            }
 
             var saved = panel.currentunit;
             _inSynthetic = true;
@@ -165,13 +186,22 @@ namespace PlayLoRWithMe
             {
                 panel.currentunit = unitData;
                 SetDeckLayoutMethod.Invoke(panel, null);
+                LogOnce(
+                    "invoke-ok:" + lid.packageId + ":" + lid.id,
+                    "[multi-deck-labels] synthetic invoke ok for book=("
+                        + (lid.packageId ?? "") + "," + lid.id + ")");
             }
-            catch
+            catch (Exception e)
             {
                 // Best-effort: if invoking the patch chain throws (e.g.
-                // because some other mod's prefix/postfix can't handle the
-                // synthetic invocation), the Attempted entry blocks
-                // retries and the static fallback handles serialization.
+                // because some other mod's prefix/postfix can't handle
+                // the synthetic invocation), the cache stays empty and we
+                // retry on the next broadcast.
+                LogOnce(
+                    "invoke-threw:" + lid.packageId + ":" + lid.id,
+                    "[multi-deck-labels] synthetic invoke threw for book=("
+                        + (lid.packageId ?? "") + "," + lid.id + "): "
+                        + e.GetType().Name + ": " + e.Message);
             }
             finally
             {
@@ -182,11 +212,16 @@ namespace PlayLoRWithMe
 
         /// <summary>
         /// Effective deck count for a multi-deck book — the number of slots
-        /// the in-game editor actually exposes. Cache hits return
-        /// "highest non-null label index + 1" so books that hide unused
-        /// tabs (e.g. Binah Multi-Deck's 2-deck override) don't surface
-        /// empty trailing slots on the wire. Without a cache hit returns
-        /// <see cref="LabelCount"/> as a conservative default.
+        /// the in-game editor actually exposes. Resolution order:
+        ///
+        /// 1. Cache (populated by <see cref="MultiDeckLabelHook"/>): returns
+        ///    "highest non-null label index + 1" so observed mod overrides
+        ///    that hide unused tabs win immediately.
+        /// 2. <see cref="DeckCountOverrides"/> static table: lets known
+        ///    mod-multi-deck books surface the correct shape on the first
+        ///    state push, before the in-game panel has had a chance to
+        ///    populate the cache.
+        /// 3. <see cref="LabelCount"/> (4) as the conservative default.
         /// </summary>
         public static int GetEffectiveDeckCount(BookModel book)
         {
@@ -199,17 +234,22 @@ namespace PlayLoRWithMe
             string[] cached;
             lock (CacheLock)
                 Cache.TryGetValue(k, out cached);
-            if (cached == null)
-                return LabelCount;
+            if (cached != null)
+            {
+                int last = -1;
+                for (int i = 0; i < cached.Length; i++)
+                    if (!string.IsNullOrEmpty(cached[i]))
+                        last = i;
+                if (last >= 0)
+                    return last + 1;
+                // fall through if every slot is null/empty (rare; the
+                // static table or default still gives a sensible shape).
+            }
 
-            int last = -1;
-            for (int i = 0; i < cached.Length; i++)
-                if (!string.IsNullOrEmpty(cached[i]))
-                    last = i;
-            // Always expose at least one slot; a book that's flagged
-            // multi-deck with zero visible tabs is malformed but not
-            // a reason to drop the librarian's deck editor entirely.
-            return last < 0 ? LabelCount : last + 1;
+            if (DeckCountOverrides.TryGetValue(k, out var overrideCount))
+                return overrideCount;
+
+            return LabelCount;
         }
 
         // The four TextDataModel ids the engine uses for the standard
@@ -229,6 +269,17 @@ namespace PlayLoRWithMe
                 // The Purple Tear uses the engine's standard stance ids.
                 { new KpKey("", 250035), StanceFormTextIds },
             };
+
+        // Extension point for static deck-count overrides. Intentionally
+        // empty: we don't encode mod-specific knowledge here because
+        // mod-modified key pages share their LorId with the vanilla page
+        // they patch, so a hardcoded entry would also affect vanilla
+        // (where the same id is single-deck). Left as an entry point in
+        // case a future case turns up where a key page is universally
+        // multi-deck and the engine's UI never renders the right shape
+        // — until then deck count is detected from the cache alone.
+        private static readonly Dictionary<KpKey, int> DeckCountOverrides =
+            new Dictionary<KpKey, int>();
 
         /// <summary>
         /// Resolves the deck labels for the given book. Returns false when
