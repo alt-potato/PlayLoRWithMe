@@ -43,7 +43,13 @@ const nameInput = ref("");
 
 function startRename() {
   const me = props.players.find((p) => isMe(p));
-  nameInput.value = me?.name ?? "";
+  // Prefer the locally stored name over the server's view: the server
+  // may still be showing its auto-default "Player N" if the on-connect
+  // rename round-trip hasn't completed yet. If the user opened edit
+  // during that window, defaulting to the server view would let them
+  // commit "Player N" back over their stored name (the "swap" symptom).
+  const stored = loadStoredDisplayName();
+  nameInput.value = stored || me?.name || "";
   editingName.value = true;
   nextTick(() => {
     (document.querySelector(".rename-input") as HTMLInputElement)?.select();
@@ -52,7 +58,14 @@ function startRename() {
 
 async function commitRename() {
   const trimmed = nameInput.value.trim();
-  if (trimmed) await props.renamePlayer(trimmed);
+  if (trimmed) {
+    const result = await props.renamePlayer(trimmed);
+    // Only persist on confirmed success — caching a name the server
+    // rejected (or that we never delivered due to a dropped connection)
+    // would leak invalid state into future sessions where the auto-restore
+    // path would replay it.
+    if (result.ok) saveStoredDisplayName(trimmed);
+  }
   editingName.value = false;
 }
 

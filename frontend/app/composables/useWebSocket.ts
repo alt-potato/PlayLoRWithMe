@@ -5,8 +5,60 @@ import { resolveMockFixture } from "~/dev/resolveMockFixture";
 import { useMockBackend } from "~/dev/useMockBackend";
 
 const SESSION_STORAGE_KEY = "plwm_session";
+const DISPLAY_NAME_STORAGE_KEY = "plwm_display_name";
 const RECONNECT_DELAY_MS = 2000;
 const ACTION_TIMEOUT_MS = 5000;
+
+/**
+ * Reads the player's chosen display name from localStorage, returning an
+ * empty string if absent or if storage is unavailable (private mode, quota
+ * exceeded, disabled by policy). Callers should treat empty as "no stored
+ * name" — never send an empty rename on restore.
+ */
+export function loadStoredDisplayName(): string {
+  try {
+    return localStorage.getItem(DISPLAY_NAME_STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Persists the player's chosen display name to localStorage. Silently
+ * tolerates storage being unavailable — the feature degrades to the
+ * pre-feature behavior (server keeps its current name) rather than
+ * surfacing an error to the rename UI.
+ */
+export function saveStoredDisplayName(name: string): void {
+  try {
+    localStorage.setItem(DISPLAY_NAME_STORAGE_KEY, name);
+  } catch {
+    // intentionally swallowed — see jsdoc.
+  }
+}
+
+/**
+ * Pure decision helper for the on-connect restore path. Returns the name
+ * to send via `rename`, or `null` when no rename is required.
+ *
+ * - Returns `null` if no name is stored locally.
+ * - Returns `null` if the player list lacks an entry for this session
+ *   (defensive — should never happen in practice).
+ * - Returns `null` if the server already has the stored name (resumed
+ *   session — no redundant rename).
+ * - Otherwise returns the stored name so the caller can dispatch a rename.
+ */
+export function pickDisplayNameRestore(
+  stored: string,
+  sessionId: string,
+  players: PlayerInfo[],
+): string | null {
+  if (!stored) return null;
+  const me = players.find((p) => p.sessionId === sessionId);
+  if (!me) return null;
+  if (me.name === stored) return null;
+  return stored;
+}
 
 // Watchdog tunables — defense-in-depth against future stuck-in-flight
 // failures of the same shape as the spam-induced lockup. The pair is
@@ -58,6 +110,32 @@ export function useWebSocket() {
   let lastSeq = 0;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let closing = false;
+  // True once the per-connection display-name restore has been attempted
+  // (whether it sent a rename or skipped because the server already had
+  // the right name). Reset on disconnect so a reconnect that lands on a
+  // newly-created server-side session re-runs the check.
+  let nameRestoreAttempted = false;
+  // The server sends `playerList` BEFORE `hello` on connect (the attach
+  // step broadcasts the roster, then the per-client hello goes out), so
+  // the restore can't run from either handler in isolation — it has to
+  // wait until both have arrived. This flag closes the gap.
+  let playerListReceived = false;
+
+  // Runs the on-connect display-name restore once both prerequisites are
+  // satisfied: we know our session id (from `hello`) and we have the
+  // server's view of our current name (from `playerList`). Idempotent —
+  // safe to call from either handler regardless of arrival order.
+  function tryRestoreDisplayName() {
+    if (nameRestoreAttempted) return;
+    if (!session.value || !playerListReceived) return;
+    const restoreName = pickDisplayNameRestore(
+      loadStoredDisplayName(),
+      session.value.sessionId,
+      players.value,
+    );
+    if (restoreName) send({ type: "rename", name: restoreName });
+    nameRestoreAttempted = true;
+  }
 
   // Pending action promises keyed by reqId. Each entry holds a resolve
   // callback, a safety timeout so callers never hang indefinitely, and
@@ -112,6 +190,8 @@ export function useWebSocket() {
     ws.onclose = () => {
       status.value = "disconnected";
       ws = null;
+      nameRestoreAttempted = false;
+      playerListReceived = false;
       // Reject any outstanding action promises so callers don't hang.
       for (const [id, p] of pending) {
         clearTimeout(p.timer);
@@ -140,6 +220,9 @@ export function useWebSocket() {
           claimsEnabled: msg.claimsEnabled ?? true,
         };
         localStorage.setItem(SESSION_STORAGE_KEY, msg.sessionId);
+        // The post-attach playerList typically arrives before hello, so
+        // run the restore from here in case we're the second to arrive.
+        tryRestoreDisplayName();
         break;
 
       case "state":
@@ -174,6 +257,15 @@ export function useWebSocket() {
 
       case "playerList":
         players.value = msg.players ?? [];
+        playerListReceived = true;
+        // First playerList per connection carries this session's current
+        // server-side name. When the server's name differs from the
+        // locally stored one, the server is using its auto-assigned
+        // default ("Player N") — which means the session was freshly
+        // created (first visit, expiry, or server restart). Restore
+        // silently. Resumed sessions where the server already has the
+        // right name skip this — no redundant rename traffic on reload.
+        tryRestoreDisplayName();
         break;
 
       case "actionResult": {
