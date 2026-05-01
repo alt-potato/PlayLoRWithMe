@@ -1,17 +1,20 @@
 /**
- * Frontend-side label resolution for multi-deck key pages. Labels track the
- * in-game English UI text — for Purple Tear those come from
- * `BattleEffectTextsXmlList.GetEffectTextName(keywordId)` against the four
- * `StanceSlash` / `StancePenetrate` / `StanceHit` / `StanceDefense` keyword
- * IDs declared on the corresponding `BattleUnitBuf_purple*` classes. The
- * keyword *IDs* are internal C# names (Penetrate/Hit/Defense); the
- * *localized text* is what the player sees in the buf list (Pierce / Blunt
- * / Guard).
+ * Frontend-side fallback label resolution for multi-deck key pages.
+ *
+ * The mod normally resolves stance labels through `BattleEffectTextsXmlList`
+ * and ships them on the wire as `decks[i].label` in the player's game
+ * language. This table is the fallback when the wire payload has no label
+ * — either because the book is unknown to the mod-side `MultiDeckLabels`
+ * table, or because localization wasn't ready when the snapshot was
+ * serialized (rare; happens at the title screen before XML loads).
+ *
+ * Strings here are the English in-game labels for the books we know,
+ * matching what `GetEffectTextName` returns. Mod authors who add
+ * multi-deck books without updating either the C# helper or this table
+ * still get the generic `Deck 1–4` fallback.
  *
  * Lookup is keyed by `"<packageId>:<id>"` so workshop and base IDs never
- * collide. Unknown multi-deck key pages — including any future vanilla
- * additions and mod-authored books with the `BookOption.MultiDeck` flag —
- * fall back to generic "Deck 1–4" so the editor still functions.
+ * collide.
  */
 
 /** Label fallback when a multi-deck key page has no entry in `KNOWN_MULTI_DECK_LABELS`. */

@@ -54,15 +54,22 @@ const activeDeckCards = computed<DeckCardPreview[]>(
 );
 
 /**
- * Stance/deck labels, indexed by deck index 0..3. Resolved client-side via
- * the small `multiDeckLabels` table; multi-deck books not in the table fall
- * back to generic "Deck 1–4". Single-deck books never read this — the tab
- * strip is hidden — but we still expose it so the deck-count badge can
- * render a consistent label if any rendering path needs one.
+ * Fallback stance/deck labels, indexed by deck index 0..3. Resolved
+ * client-side via the small `multiDeckLabels` table when the wire payload
+ * omits a per-deck `label` (the mod resolves that through
+ * BattleEffectTextsXmlList for known books, so it carries the player's
+ * game-language strings; unknown books fall back here).
  */
-const deckLabels = computed(() =>
+const fallbackDeckLabels = computed(() =>
   resolveDeckLabels(props.lib.keyPage.bookPackageId, props.lib.keyPage.bookId),
 );
+
+/** Label for a given deck index — prefers the wire label, then the fallback. */
+function deckLabelFor(deckIndex: number): string {
+  const fromWire = decks.value.find((d) => d.index === deckIndex)?.label;
+  if (fromWire) return fromWire;
+  return fallbackDeckLabels.value[deckIndex] ?? `Deck ${deckIndex + 1}`;
+}
 
 /**
  * Cards compatible with this librarian's key page range type.
@@ -455,7 +462,7 @@ async function handleRemoveCard(preview: DeckCardPreview) {
           :aria-selected="d.index === activeDeckIndex"
           @click="activeDeckIndex = d.index"
         >
-          {{ deckLabels[d.index] ?? `Deck ${d.index + 1}` }}
+          {{ deckLabelFor(d.index) }}
         </button>
       </div>
       <div class="card-grid">
