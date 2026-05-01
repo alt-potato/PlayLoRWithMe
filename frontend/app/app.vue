@@ -213,7 +213,11 @@ const rawJson = computed(() =>
       </div>
     </main>
 
-    <details class="debug-info" @toggle="isDebugOpen = ($event.target as HTMLDetailsElement).open">
+    <details
+      v-if="debugEnabled"
+      class="debug-info"
+      @toggle="isDebugOpen = ($event.target as HTMLDetailsElement).open"
+    >
       <summary><span class="chevron">▸</span>debug info</summary>
       <pre>{{ rawJson }}</pre>
     </details>
