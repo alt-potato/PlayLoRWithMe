@@ -645,6 +645,16 @@ namespace PlayLoRWithMe
                                                 decksArr =>
                                                 {
                                                     bool isMulti = book.IsMultiDeck();
+                                                    if (isMulti)
+                                                    {
+                                                        // Synthesize a SetDeckLayout invocation if the player
+                                                        // hasn't opened the in-game deck editor for this book.
+                                                        // Without this, mod-supplied labels (Binah's
+                                                        // "Philosophy" / "Arbiter") and tab-deactivation
+                                                        // never reach the cache because their patches only
+                                                        // run when the in-game panel renders.
+                                                        MultiDeckLabels.EnsureLabelsCached(book, unit);
+                                                    }
                                                     int deckCount = isMulti
                                                         ? MultiDeckLabels.GetEffectiveDeckCount(book)
                                                         : 1;

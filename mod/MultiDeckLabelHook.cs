@@ -99,9 +99,11 @@ namespace PlayLoRWithMe
                 bool changed = MultiDeckLabels.RecordLabels(book, labels);
                 // Broadcast on first observation (or any later change) so
                 // open web-UI deck editors update without requiring a
-                // close+reopen. Cheap when nothing changed because we
-                // short-circuit before this point.
-                if (changed)
+                // close+reopen. Skip when we're inside a synthetic
+                // EnsureLabelsCached invocation — the serializer that
+                // triggered it is already preparing a broadcast and a
+                // recursive fan-out would multiply it per multi-deck book.
+                if (changed && !MultiDeckLabels.InSyntheticInvoke)
                     StateBroadcaster.Broadcast();
             }
             catch (Exception)

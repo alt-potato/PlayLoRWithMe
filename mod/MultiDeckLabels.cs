@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
+using UI;
+using UnityEngine;
 
 namespace PlayLoRWithMe
 {
@@ -82,6 +85,99 @@ namespace PlayLoRWithMe
                 if (!string.Equals(a[i], b[i], StringComparison.Ordinal))
                     return false;
             return true;
+        }
+
+        // Reflected once: SetDeckLayout is private on UIEquipDeckCardList.
+        private static readonly MethodInfo SetDeckLayoutMethod =
+            typeof(UIEquipDeckCardList).GetMethod(
+                "SetDeckLayout",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+
+        // Books we've already attempted to fill. Successful fills land in
+        // Cache; failed fills (panel not in scene yet, or any thrown
+        // exception) are recorded here so we don't busy-loop trying every
+        // broadcast. Cleared whenever Cache changes for the same key.
+        private static readonly HashSet<KpKey> Attempted = new HashSet<KpKey>();
+
+        // True while we're inside a synthetic SetDeckLayout invocation. The
+        // hook checks this so it doesn't trigger a broadcast from within
+        // the serializer (which is already preparing one) — that would
+        // recursively fan out one broadcast per multi-deck book on the
+        // first state push.
+        private static bool _inSynthetic;
+        public static bool InSyntheticInvoke => _inSynthetic;
+
+        /// <summary>
+        /// Synthesizes the patch chain on <c>UIEquipDeckCardList.SetDeckLayout</c>
+        /// for a multi-deck book that the player hasn't opened in-game yet.
+        /// Mods like Binah Multi-Deck only assign their custom tab labels via
+        /// Harmony postfixes on that method; without invoking it, the
+        /// <see cref="MultiDeckLabelHook"/> postfix has no event to attach
+        /// to and the cache stays empty. We swap the panel's
+        /// <c>currentunit</c> to <paramref name="unitData"/>, run the
+        /// private method via reflection to fire all postfixes (including
+        /// ours), then restore — visual flicker is bounded to the rare
+        /// case where the in-game panel happens to be visible at broadcast
+        /// time, and the panel's next natural <c>SetData</c> call resets it.
+        /// </summary>
+        public static void EnsureLabelsCached(BookModel book, UnitDataModel unitData)
+        {
+            if (book == null || unitData == null)
+                return;
+            if (!book.IsMultiDeck())
+                return;
+
+            var lid = book.GetBookClassInfoId();
+            var k = new KpKey(lid.packageId ?? "", lid.id);
+            lock (CacheLock)
+            {
+                if (Cache.ContainsKey(k))
+                    return;
+                if (Attempted.Contains(k))
+                    return;
+                Attempted.Add(k);
+            }
+
+            if (SetDeckLayoutMethod == null)
+                return;
+
+            UIEquipDeckCardList panel = null;
+            try
+            {
+                // FindObjectsOfTypeAll returns active+inactive scene objects
+                // and prefabs already loaded into memory. Either works for
+                // our purposes — we just need any instance whose private
+                // multiDeckLayout field has been wired up.
+                var panels = Resources.FindObjectsOfTypeAll<UIEquipDeckCardList>();
+                if (panels != null && panels.Length > 0)
+                    panel = panels[0];
+            }
+            catch
+            {
+                return;
+            }
+            if (panel == null)
+                return;
+
+            var saved = panel.currentunit;
+            _inSynthetic = true;
+            try
+            {
+                panel.currentunit = unitData;
+                SetDeckLayoutMethod.Invoke(panel, null);
+            }
+            catch
+            {
+                // Best-effort: if invoking the patch chain throws (e.g.
+                // because some other mod's prefix/postfix can't handle the
+                // synthetic invocation), the Attempted entry blocks
+                // retries and the static fallback handles serialization.
+            }
+            finally
+            {
+                panel.currentunit = saved;
+                _inSynthetic = false;
+            }
         }
 
         /// <summary>
