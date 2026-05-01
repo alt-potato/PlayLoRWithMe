@@ -101,18 +101,6 @@ namespace PlayLoRWithMe
         private static bool _inSynthetic;
         public static bool InSyntheticInvoke => _inSynthetic;
 
-        // Diagnostic throttling: log each (book, message) outcome at most
-        // once per game session. Without this the per-broadcast retry
-        // would spam Player.log forever for any book whose panel isn't
-        // in the scene.
-        private static readonly HashSet<string> LoggedOnce = new HashSet<string>();
-        private static void LogOnce(string key, string msg)
-        {
-            if (!LoggedOnce.Add(key))
-                return;
-            Debug.Log(msg);
-        }
-
         /// <summary>
         /// Synthesizes the patch chain on <c>UIEquipDeckCardList.SetDeckLayout</c>
         /// for a multi-deck book that the player hasn't opened in-game yet.
@@ -149,36 +137,22 @@ namespace PlayLoRWithMe
             // is negligible during the title screen / pre-library phases.
 
             UIEquipDeckCardList panel = null;
-            UIEquipDeckCardList[] panels = null;
             try
             {
                 // FindObjectsOfTypeAll returns active+inactive scene objects
                 // and prefabs already loaded into memory. Either works for
                 // our purposes — we just need any instance whose private
                 // multiDeckLayout field has been wired up.
-                panels = Resources.FindObjectsOfTypeAll<UIEquipDeckCardList>();
+                var panels = Resources.FindObjectsOfTypeAll<UIEquipDeckCardList>();
                 if (panels != null && panels.Length > 0)
                     panel = panels[0];
             }
-            catch (Exception e)
+            catch
             {
-                LogOnce(
-                    "find-threw:" + lid.packageId + ":" + lid.id,
-                    "[multi-deck-labels] FindObjectsOfTypeAll threw: " + e.Message);
                 return;
             }
             if (panel == null)
-            {
-                // Common during early scene-load — log once per book so
-                // we can distinguish "panel not yet in scene" from
-                // invocation failures further down.
-                LogOnce(
-                    "no-panel:" + lid.packageId + ":" + lid.id,
-                    "[multi-deck-labels] no UIEquipDeckCardList instance for book=("
-                        + (lid.packageId ?? "") + "," + lid.id
-                        + "); foundCount=" + (panels?.Length ?? 0));
                 return;
-            }
 
             var saved = panel.currentunit;
             _inSynthetic = true;
@@ -186,22 +160,13 @@ namespace PlayLoRWithMe
             {
                 panel.currentunit = unitData;
                 SetDeckLayoutMethod.Invoke(panel, null);
-                LogOnce(
-                    "invoke-ok:" + lid.packageId + ":" + lid.id,
-                    "[multi-deck-labels] synthetic invoke ok for book=("
-                        + (lid.packageId ?? "") + "," + lid.id + ")");
             }
-            catch (Exception e)
+            catch
             {
                 // Best-effort: if invoking the patch chain throws (e.g.
                 // because some other mod's prefix/postfix can't handle
                 // the synthetic invocation), the cache stays empty and we
                 // retry on the next broadcast.
-                LogOnce(
-                    "invoke-threw:" + lid.packageId + ":" + lid.id,
-                    "[multi-deck-labels] synthetic invoke threw for book=("
-                        + (lid.packageId ?? "") + "," + lid.id + "): "
-                        + e.GetType().Name + ": " + e.Message);
             }
             finally
             {

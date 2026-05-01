@@ -80,31 +80,6 @@ namespace PlayLoRWithMe
                     labels[i] = tn.text;
                 }
                 bool changed = MultiDeckLabels.RecordLabels(book, labels);
-                // Diagnostic: only log when the cache content changed for
-                // this book — synthetic invocations now retry every
-                // broadcast, and unconditional logging would spam
-                // Player.log with identical lines. Strip the diagnostic
-                // entirely once Binah-style mods are confirmed working.
-                if (changed)
-                {
-                    try
-                    {
-                        var lid = book.GetBookClassInfoId();
-                        var sb = new System.Text.StringBuilder();
-                        sb.Append("[multi-deck-labels] book=(").Append(lid.packageId).Append(",")
-                          .Append(lid.id).Append(") buttons=").Append(buttons.Length).Append(" labels=[");
-                        for (int i = 0; i < buttons.Length; i++)
-                        {
-                            if (i > 0) sb.Append(", ");
-                            var b = buttons[i];
-                            sb.Append("active=").Append(b?.gameObject?.activeSelf)
-                              .Append(" text='").Append(b?.TabName?.text).Append("'");
-                        }
-                        sb.Append("]");
-                        UnityEngine.Debug.Log(sb.ToString());
-                    }
-                    catch { /* logging-only failure */ }
-                }
                 // Broadcast on first observation (or any later change) so
                 // open web-UI deck editors update without requiring a
                 // close+reopen. Skip when we're inside a synthetic
