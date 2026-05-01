@@ -94,13 +94,31 @@ export function useMockBackend(fixtureName: string) {
     unitIndex: number,
     cardId: number,
     packageId: string,
-  ) => log({ type: "addCardToDeck", floorIndex, unitIndex, cardId, packageId });
+    deckIndex?: number,
+  ) =>
+    log({
+      type: "addCardToDeck",
+      floorIndex,
+      unitIndex,
+      cardId,
+      packageId,
+      ...(deckIndex != null ? { deckIndex } : {}),
+    });
   const removeCardFromDeck = (
     floorIndex: number,
     unitIndex: number,
     cardId: number,
     packageId: string,
-  ) => log({ type: "removeCardFromDeck", floorIndex, unitIndex, cardId, packageId });
+    deckIndex?: number,
+  ) =>
+    log({
+      type: "removeCardFromDeck",
+      floorIndex,
+      unitIndex,
+      cardId,
+      packageId,
+      ...(deckIndex != null ? { deckIndex } : {}),
+    });
   const equipSourceBook = (
     floorIndex: number,
     unitIndex: number,

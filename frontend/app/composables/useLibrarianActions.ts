@@ -12,8 +12,20 @@ export interface LibrarianActions {
   unlockLibrarian: (floorIndex: number, unitIndex: number) => Promise<ActionResult>;
   renameLibrarian: (floorIndex: number, unitIndex: number, name: string) => Promise<ActionResult>;
   equipKeyPage: (floorIndex: number, unitIndex: number, bookInstanceId: number) => Promise<ActionResult>;
-  addCardToDeck: (floorIndex: number, unitIndex: number, cardId: number, packageId: string) => Promise<ActionResult>;
-  removeCardFromDeck: (floorIndex: number, unitIndex: number, cardId: number, packageId: string) => Promise<ActionResult>;
+  addCardToDeck: (
+    floorIndex: number,
+    unitIndex: number,
+    cardId: number,
+    packageId: string,
+    deckIndex?: number,
+  ) => Promise<ActionResult>;
+  removeCardFromDeck: (
+    floorIndex: number,
+    unitIndex: number,
+    cardId: number,
+    packageId: string,
+    deckIndex?: number,
+  ) => Promise<ActionResult>;
   equipSourceBook: (floorIndex: number, unitIndex: number, bookInstanceId: number) => Promise<ActionResult>;
   unequipSourceBook: (floorIndex: number, unitIndex: number, bookInstanceId: number) => Promise<ActionResult>;
   attributePassive: (floorIndex: number, unitIndex: number, sourceInstanceId: number, passiveId: number, passivePackageId: string) => Promise<ActionResult>;

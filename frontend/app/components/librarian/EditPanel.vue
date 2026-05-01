@@ -45,8 +45,8 @@ const props = defineProps<{
   onUnlock: () => Promise<{ ok: boolean; error?: string }>;
   onRename: (name: string) => Promise<{ ok: boolean; error?: string }>;
   onEquipPage: (kp: AvailableKeyPage) => Promise<void>;
-  onAddCard: (card: AvailableCard) => Promise<ActionResult>;
-  onRemoveCard: (card: DeckCardPreview) => Promise<ActionResult>;
+  onAddCard: (card: AvailableCard, deckIndex: number) => Promise<ActionResult>;
+  onRemoveCard: (card: DeckCardPreview, deckIndex: number) => Promise<ActionResult>;
   onSetCustomization: (
     payload: Omit<CustomizePayload, "floorIndex" | "unitIndex">,
   ) => Promise<ActionResult>;
@@ -104,13 +104,13 @@ async function onEquipPage(kp: AvailableKeyPage) {
   catch { /* network errors handled by useWebSocket reconnect */ }
 }
 
-async function onAddCard(card: AvailableCard): Promise<ActionResult> {
-  try { return await props.onAddCard(card); }
+async function onAddCard(card: AvailableCard, deckIndex: number): Promise<ActionResult> {
+  try { return await props.onAddCard(card, deckIndex); }
   catch { return { ok: false, error: "Network error" }; }
 }
 
-async function onRemoveCard(card: DeckCardPreview): Promise<ActionResult> {
-  try { return await props.onRemoveCard(card); }
+async function onRemoveCard(card: DeckCardPreview, deckIndex: number): Promise<ActionResult> {
+  try { return await props.onRemoveCard(card, deckIndex); }
   catch { return { ok: false, error: "Network error" }; }
 }
 

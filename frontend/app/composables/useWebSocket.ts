@@ -263,8 +263,17 @@ export function useWebSocket() {
     unitIndex: number,
     cardId: number,
     packageId: string,
+    deckIndex?: number,
   ): Promise<ActionResult> {
-    return sendAction({ type: "addCardToDeck", floorIndex, unitIndex, cardId, packageId });
+    const payload: Record<string, unknown> = {
+      type: "addCardToDeck",
+      floorIndex,
+      unitIndex,
+      cardId,
+      packageId,
+    };
+    if (deckIndex != null) payload.deckIndex = deckIndex;
+    return sendAction(payload);
   }
 
   function removeCardFromDeck(
@@ -272,8 +281,17 @@ export function useWebSocket() {
     unitIndex: number,
     cardId: number,
     packageId: string,
+    deckIndex?: number,
   ): Promise<ActionResult> {
-    return sendAction({ type: "removeCardFromDeck", floorIndex, unitIndex, cardId, packageId });
+    const payload: Record<string, unknown> = {
+      type: "removeCardFromDeck",
+      floorIndex,
+      unitIndex,
+      cardId,
+      packageId,
+    };
+    if (deckIndex != null) payload.deckIndex = deckIndex;
+    return sendAction(payload);
   }
 
   function equipSourceBook(

@@ -160,20 +160,23 @@ function onEquipPage(kp: AvailableKeyPage): Promise<void> {
 
 // returns ActionResult so DeckTab can react to failures (drops the
 // optimistic pending tile silently on `ok: false`).
-function onAddCard(card: AvailableCard): Promise<ActionResult> {
+//
+// `deckIndex` addresses a specific deck slot for multi-deck key pages
+// (e.g. The Purple Tear); single-deck books always use index 0.
+function onAddCard(card: AvailableCard, deckIndex: number): Promise<ActionResult> {
   return forEditingResult((fi, ui) =>
-    actions.addCardToDeck(fi, ui, card.cardId.id, card.cardId.packageId),
+    actions.addCardToDeck(fi, ui, card.cardId.id, card.cardId.packageId, deckIndex),
   );
 }
 
-function onRemoveCard(card: DeckCardPreview): Promise<ActionResult> {
+function onRemoveCard(card: DeckCardPreview, deckIndex: number): Promise<ActionResult> {
   // DeckCardPreview.cardId is nullable; skip the action if the preview
   // doesn't carry a concrete card reference.
   if (!card.cardId)
     return Promise.resolve({ ok: false, error: "No card reference" });
   const cardId = card.cardId;
   return forEditingResult((fi, ui) =>
-    actions.removeCardFromDeck(fi, ui, cardId.id, cardId.packageId),
+    actions.removeCardFromDeck(fi, ui, cardId.id, cardId.packageId, deckIndex),
   );
 }
 
