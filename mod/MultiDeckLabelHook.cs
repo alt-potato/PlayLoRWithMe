@@ -31,6 +31,10 @@ namespace PlayLoRWithMe
 
         [HarmonyPostfix]
         [HarmonyPriority(Priority.Last)]
+        // Binah Multi-Deck (Harmony id "Binah") deactivates unused tabs in
+        // its postfix; without HarmonyAfter, Priority.Last alone has been
+        // observed to read tab state before that deactivation lands.
+        [HarmonyAfter(new[] { "Binah" })]
         public static void Postfix(UIEquipDeckCardList __instance)
         {
             try
@@ -60,13 +64,38 @@ namespace PlayLoRWithMe
                     var b = buttons[i];
                     if (b == null)
                         continue;
-                    if (!b.gameObject.activeSelf)
+                    // activeInHierarchy folds in the parent's active state too
+                    // — defensive against mods that deactivate the whole
+                    // multiDeckLayout instead of individual tabs.
+                    if (!b.gameObject.activeInHierarchy)
                         continue;
                     var tn = b.TabName;
                     if (tn == null)
                         continue;
                     labels[i] = tn.text;
                 }
+                // Diagnostic: log what we observed so the user can confirm
+                // whether mod overrides (e.g. Binah Multi-Deck's Philosophy/
+                // Arbiter literals + tab 2/3 deactivation) reached this
+                // postfix in the expected order. Strip once the cache
+                // shows the right shape across mods.
+                try
+                {
+                    var lid = book.GetBookClassInfoId();
+                    var sb = new System.Text.StringBuilder();
+                    sb.Append("[multi-deck-labels] book=(").Append(lid.packageId).Append(",")
+                      .Append(lid.id).Append(") buttons=").Append(buttons.Length).Append(" labels=[");
+                    for (int i = 0; i < buttons.Length; i++)
+                    {
+                        if (i > 0) sb.Append(", ");
+                        var b = buttons[i];
+                        sb.Append("active=").Append(b?.gameObject?.activeInHierarchy)
+                          .Append(" text='").Append(b?.TabName?.text).Append("'");
+                    }
+                    sb.Append("]");
+                    UnityEngine.Debug.Log(sb.ToString());
+                }
+                catch { /* logging-only failure */ }
                 bool changed = MultiDeckLabels.RecordLabels(book, labels);
                 // Broadcast on first observation (or any later change) so
                 // open web-UI deck editors update without requiring a
