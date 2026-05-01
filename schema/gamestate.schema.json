@@ -411,6 +411,9 @@
                   },
                   "rarity": {
                     "type": "string"
+                  },
+                  "isMultiDeck": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -1414,6 +1417,9 @@
                   },
                   "rarity": {
                     "type": "string"
+                  },
+                  "isMultiDeck": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -1800,6 +1806,9 @@
                         },
                         "rarity": {
                           "type": "string"
+                        },
+                        "isMultiDeck": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -1938,81 +1947,100 @@
                         "type": "number"
                       }
                     },
-                    "deckPreview": {
+                    "decks": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
-                          "cardId": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "number"
-                              },
-                              "packageId": {
-                                "type": "string"
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "packageId"
-                            ],
-                            "additionalProperties": false
-                          },
-                          "name": {
-                            "type": "string"
-                          },
-                          "cost": {
+                          "index": {
                             "type": "number"
                           },
-                          "range": {
+                          "label": {
                             "type": "string"
                           },
-                          "rarity": {
-                            "type": "string"
-                          },
-                          "count": {
-                            "type": "number"
-                          },
-                          "dice": {
+                          "cards": {
                             "type": "array",
                             "items": {
                               "type": "object",
                               "properties": {
-                                "type": {
+                                "cardId": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "number"
+                                    },
+                                    "packageId": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "packageId"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "name": {
                                   "type": "string"
                                 },
-                                "detail": {
+                                "cost": {
+                                  "type": "number"
+                                },
+                                "range": {
                                   "type": "string"
                                 },
-                                "min": {
+                                "rarity": {
+                                  "type": "string"
+                                },
+                                "count": {
                                   "type": "number"
                                 },
-                                "max": {
-                                  "type": "number"
+                                "dice": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string"
+                                      },
+                                      "detail": {
+                                        "type": "string"
+                                      },
+                                      "min": {
+                                        "type": "number"
+                                      },
+                                      "max": {
+                                        "type": "number"
+                                      },
+                                      "desc": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "type",
+                                      "detail",
+                                      "min",
+                                      "max"
+                                    ],
+                                    "additionalProperties": false
+                                  }
                                 },
-                                "desc": {
+                                "abilityDesc": {
                                   "type": "string"
                                 }
                               },
                               "required": [
-                                "type",
-                                "detail",
-                                "min",
-                                "max"
+                                "name",
+                                "cost",
+                                "range",
+                                "count"
                               ],
                               "additionalProperties": false
                             }
-                          },
-                          "abilityDesc": {
-                            "type": "string"
                           }
                         },
                         "required": [
-                          "name",
-                          "cost",
-                          "range",
-                          "count"
+                          "index",
+                          "cards"
                         ],
                         "additionalProperties": false
                       }
@@ -2455,7 +2483,7 @@
                     "name",
                     "keyPage",
                     "passives",
-                    "deckPreview",
+                    "decks",
                     "lockedBy"
                   ],
                   "additionalProperties": false
@@ -3359,6 +3387,9 @@
                           },
                           "rarity": {
                             "type": "string"
+                          },
+                          "isMultiDeck": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -4362,6 +4393,9 @@
                           },
                           "rarity": {
                             "type": "string"
+                          },
+                          "isMultiDeck": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -4748,6 +4782,9 @@
                                 },
                                 "rarity": {
                                   "type": "string"
+                                },
+                                "isMultiDeck": {
+                                  "type": "boolean"
                                 }
                               },
                               "required": [
@@ -4886,81 +4923,100 @@
                                 "type": "number"
                               }
                             },
-                            "deckPreview": {
+                            "decks": {
                               "type": "array",
                               "items": {
                                 "type": "object",
                                 "properties": {
-                                  "cardId": {
-                                    "type": "object",
-                                    "properties": {
-                                      "id": {
-                                        "type": "number"
-                                      },
-                                      "packageId": {
-                                        "type": "string"
-                                      }
-                                    },
-                                    "required": [
-                                      "id",
-                                      "packageId"
-                                    ],
-                                    "additionalProperties": false
-                                  },
-                                  "name": {
-                                    "type": "string"
-                                  },
-                                  "cost": {
+                                  "index": {
                                     "type": "number"
                                   },
-                                  "range": {
+                                  "label": {
                                     "type": "string"
                                   },
-                                  "rarity": {
-                                    "type": "string"
-                                  },
-                                  "count": {
-                                    "type": "number"
-                                  },
-                                  "dice": {
+                                  "cards": {
                                     "type": "array",
                                     "items": {
                                       "type": "object",
                                       "properties": {
-                                        "type": {
+                                        "cardId": {
+                                          "type": "object",
+                                          "properties": {
+                                            "id": {
+                                              "type": "number"
+                                            },
+                                            "packageId": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": [
+                                            "id",
+                                            "packageId"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        "name": {
                                           "type": "string"
                                         },
-                                        "detail": {
+                                        "cost": {
+                                          "type": "number"
+                                        },
+                                        "range": {
                                           "type": "string"
                                         },
-                                        "min": {
+                                        "rarity": {
+                                          "type": "string"
+                                        },
+                                        "count": {
                                           "type": "number"
                                         },
-                                        "max": {
-                                          "type": "number"
+                                        "dice": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "type": {
+                                                "type": "string"
+                                              },
+                                              "detail": {
+                                                "type": "string"
+                                              },
+                                              "min": {
+                                                "type": "number"
+                                              },
+                                              "max": {
+                                                "type": "number"
+                                              },
+                                              "desc": {
+                                                "type": "string"
+                                              }
+                                            },
+                                            "required": [
+                                              "type",
+                                              "detail",
+                                              "min",
+                                              "max"
+                                            ],
+                                            "additionalProperties": false
+                                          }
                                         },
-                                        "desc": {
+                                        "abilityDesc": {
                                           "type": "string"
                                         }
                                       },
                                       "required": [
-                                        "type",
-                                        "detail",
-                                        "min",
-                                        "max"
+                                        "name",
+                                        "cost",
+                                        "range",
+                                        "count"
                                       ],
                                       "additionalProperties": false
                                     }
-                                  },
-                                  "abilityDesc": {
-                                    "type": "string"
                                   }
                                 },
                                 "required": [
-                                  "name",
-                                  "cost",
-                                  "range",
-                                  "count"
+                                  "index",
+                                  "cards"
                                 ],
                                 "additionalProperties": false
                               }
@@ -5403,7 +5459,7 @@
                             "name",
                             "keyPage",
                             "passives",
-                            "deckPreview",
+                            "decks",
                             "lockedBy"
                           ],
                           "additionalProperties": false
@@ -6217,6 +6273,74 @@
             "postfixID",
             "customBookId",
             "appearanceType"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "addCardToDeck"
+            },
+            "floorIndex": {
+              "type": "number"
+            },
+            "unitIndex": {
+              "type": "number"
+            },
+            "cardId": {
+              "type": "number"
+            },
+            "packageId": {
+              "type": "string"
+            },
+            "deckIndex": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            }
+          },
+          "required": [
+            "type",
+            "floorIndex",
+            "unitIndex",
+            "cardId",
+            "packageId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "removeCardFromDeck"
+            },
+            "floorIndex": {
+              "type": "number"
+            },
+            "unitIndex": {
+              "type": "number"
+            },
+            "cardId": {
+              "type": "number"
+            },
+            "packageId": {
+              "type": "string"
+            },
+            "deckIndex": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            }
+          },
+          "required": [
+            "type",
+            "floorIndex",
+            "unitIndex",
+            "cardId",
+            "packageId"
           ],
           "additionalProperties": false
         },

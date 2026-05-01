@@ -45,6 +45,7 @@
             "breakGauge": 80,
             "equipRangeType": "Hybrid",
             "rarity": "Unique",
+            "isMultiDeck": false,
             "resistances": {
               "slashHp": "Normal",
               "pierceHp": "Weak",
@@ -59,22 +60,27 @@
               "cost": 1
             }
           ],
-          "deckPreview": [
+          "decks": [
             {
-              "cardId": { "id": 200001, "packageId": "core" },
-              "name": "Jab",
-              "cost": 2,
-              "range": "Near",
-              "rarity": "Common",
-              "count": 3
-            },
-            {
-              "cardId": { "id": 200004, "packageId": "core" },
-              "name": "Sanguine Rite",
-              "cost": 4,
-              "range": "Special",
-              "rarity": "Unique",
-              "count": 1
+              "index": 0,
+              "cards": [
+                {
+                  "cardId": { "id": 200001, "packageId": "core" },
+                  "name": "Jab",
+                  "cost": 2,
+                  "range": "Near",
+                  "rarity": "Common",
+                  "count": 3
+                },
+                {
+                  "cardId": { "id": 200004, "packageId": "core" },
+                  "name": "Sanguine Rite",
+                  "cost": 4,
+                  "range": "Special",
+                  "rarity": "Unique",
+                  "count": 1
+                }
+              ]
             }
           ],
           "lockedBy": null,
@@ -86,7 +92,7 @@
           "name": "Adelaide",
           "keyPage": {
             "instanceId": 102,
-            "name": "Regret Page",
+            "name": "The Purple Tear",
             "speedDiceCount": 3,
             "speedMin": 2,
             "speedMax": 6,
@@ -94,6 +100,9 @@
             "breakGauge": 70,
             "equipRangeType": "Melee",
             "rarity": "Rare",
+            "bookId": 250035,
+            "bookPackageId": "",
+            "isMultiDeck": true,
             "resistances": {
               "slashHp": "Weak",
               "pierceHp": "Normal",
@@ -101,15 +110,35 @@
             }
           },
           "passives": [],
-          "deckPreview": [
+          "decks": [
             {
-              "cardId": { "id": 200001, "packageId": "core" },
-              "name": "Jab",
-              "cost": 2,
-              "range": "Near",
-              "rarity": "Common",
-              "count": 2
-            }
+              "index": 0,
+              "cards": [
+                {
+                  "cardId": { "id": 200001, "packageId": "core" },
+                  "name": "Jab",
+                  "cost": 2,
+                  "range": "Near",
+                  "rarity": "Common",
+                  "count": 2
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "cards": [
+                {
+                  "cardId": { "id": 200004, "packageId": "core" },
+                  "name": "Sanguine Rite",
+                  "cost": 4,
+                  "range": "Special",
+                  "rarity": "Unique",
+                  "count": 1
+                }
+              ]
+            },
+            { "index": 2, "cards": [] },
+            { "index": 3, "cards": [] }
           ],
           "lockedBy": "another-session"
         },
@@ -118,10 +147,11 @@
           "unitIndex": 2,
           "name": "Celeste",
           "keyPage": {
-            "name": "(No Page Equipped)"
+            "name": "(No Page Equipped)",
+            "isMultiDeck": false
           },
           "passives": [],
-          "deckPreview": [],
+          "decks": [{ "index": 0, "cards": [] }],
           "lockedBy": null
         }
       ]

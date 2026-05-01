@@ -38,7 +38,8 @@
                 "speedMax": 7,
                 "hp": 100,
                 "breakGauge": 80,
-                "equipRangeType": "Hybrid"
+                "equipRangeType": "Hybrid",
+                "isMultiDeck": false
               },
               "passives": [
                 {
@@ -48,15 +49,43 @@
                   "cost": 1
                 }
               ],
-              "deckPreview": [
+              "decks": [
                 {
-                  "cardId": { "id": 200001, "packageId": "core" },
-                  "name": "Strike",
-                  "cost": 2,
-                  "range": "Near",
-                  "rarity": "Common",
-                  "count": 3
+                  "index": 0,
+                  "cards": [
+                    {
+                      "cardId": { "id": 200001, "packageId": "core" },
+                      "name": "Strike",
+                      "cost": 2,
+                      "range": "Near",
+                      "rarity": "Common",
+                      "count": 3
+                    }
+                  ]
                 }
+              ],
+              "lockedBy": null
+            },
+            {
+              "floorIndex": 1,
+              "unitIndex": 1,
+              "name": "Adelaide",
+              "keyPage": {
+                "name": "The Purple Tear",
+                "speedDiceCount": 3,
+                "speedMin": 2,
+                "speedMax": 6,
+                "hp": 90,
+                "breakGauge": 70,
+                "equipRangeType": "Melee",
+                "isMultiDeck": true
+              },
+              "passives": [],
+              "decks": [
+                { "index": 0, "cards": [] },
+                { "index": 1, "cards": [] },
+                { "index": 2, "cards": [] },
+                { "index": 3, "cards": [] }
               ],
               "lockedBy": null
             }

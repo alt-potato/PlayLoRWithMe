@@ -228,6 +228,13 @@ export const KeyPageSchema = z.object({
    * intentionally omit this so combat surfaces never display a rarity outline.
    */
   rarity: z.string().optional(),
+  /**
+   * True when the equipped key page has the `BookOption.MultiDeck` flag (e.g.
+   * The Purple Tear). Drives whether the deck editor exposes per-stance tabs.
+   * Emitted on librarian-owned key pages only — battle-context emission sites
+   * omit this for consistency with the other librarian-only fields.
+   */
+  isMultiDeck: z.boolean().optional(),
 });
 export type KeyPage = z.infer<typeof KeyPageSchema>;
 
@@ -255,6 +262,21 @@ export const DeckCardPreviewSchema = z.object({
   abilityDesc: z.string().optional(),
 });
 export type DeckCardPreview = z.infer<typeof DeckCardPreviewSchema>;
+
+/**
+ * One slot of a librarian's per-key-page deck list. Single-deck key pages emit
+ * a length-1 array (`index: 0`, no `label`). Multi-deck key pages
+ * (`KeyPage.isMultiDeck === true`, e.g. The Purple Tear) emit a length-4 array
+ * with `index` 0..3 in ascending order. The `label` field is intentionally
+ * absent on the wire — the frontend resolves stance/deck labels client-side via
+ * `utils/multiDeckLabels.ts` so localization stays out of the C# serializer.
+ */
+export const DeckPreviewSchema = z.object({
+  index: z.number(),
+  label: z.string().optional(),
+  cards: z.array(DeckCardPreviewSchema),
+});
+export type DeckPreview = z.infer<typeof DeckPreviewSchema>;
 
 export const EmotionCardEntrySchema = z.object({
   /** Floor realization level at which this card unlocks (1–6). */
@@ -577,7 +599,12 @@ export const LibrarianEntrySchema = z.object({
   maxPassiveCost: z.number().optional(),
   currentPassiveCost: z.number().optional(),
   sourceKeyPageIds: z.array(z.number()).optional(),
-  deckPreview: z.array(DeckCardPreviewSchema),
+  /**
+   * Per-deck-slot card lists for the librarian's equipped key page. Length 1
+   * for single-deck books (the entry's `index === 0`, no `label`); length 4 for
+   * multi-deck books (`keyPage.isMultiDeck === true`) with `index` 0..3.
+   */
+  decks: z.array(DeckPreviewSchema),
   /** Session ID of the player currently editing this librarian, or null. */
   lockedBy: z.string().nullable(),
   /**
@@ -857,6 +884,24 @@ export const ClientActionSchema = z.discriminatedUnion("type", [
     customBookPackageId: z.string().optional(),
     workshopSkin: z.string().optional(),
     appearanceType: z.string(),
+  }),
+  // Deck add/remove. Optional deckIndex (0..3) targets a specific slot on
+  // multi-deck key pages; omitted/0 targets the active deck on single-deck books.
+  z.object({
+    type: z.literal("addCardToDeck"),
+    floorIndex: z.number(),
+    unitIndex: z.number(),
+    cardId: z.number(),
+    packageId: z.string(),
+    deckIndex: z.number().int().min(0).max(3).optional(),
+  }),
+  z.object({
+    type: z.literal("removeCardFromDeck"),
+    floorIndex: z.number(),
+    unitIndex: z.number(),
+    cardId: z.number(),
+    packageId: z.string(),
+    deckIndex: z.number().int().min(0).max(3).optional(),
   }),
   // setGifts is a sparse batch update — callers send only the (position, key)
   // pairs that changed (see BattleSymbolsTab: one key per click). The server

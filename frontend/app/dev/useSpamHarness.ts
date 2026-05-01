@@ -62,7 +62,6 @@ export function installSpamHarness(deps: {
           floorIndex: f.floorIndex,
           unitIndex: l.unitIndex,
           lockedBy: l.lockedBy,
-          deckPreview: l.deckPreview,
         })),
       )
       .find((l) => l.lockedBy === myName);
