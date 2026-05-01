@@ -64,10 +64,15 @@ namespace PlayLoRWithMe
                     var b = buttons[i];
                     if (b == null)
                         continue;
-                    // activeInHierarchy folds in the parent's active state too
-                    // — defensive against mods that deactivate the whole
-                    // multiDeckLayout instead of individual tabs.
-                    if (!b.gameObject.activeInHierarchy)
+                    // activeSelf, not activeInHierarchy: the synthetic
+                    // invoke fires while the parent UIEquipDeckCardList
+                    // GameObject is typically inactive (player isn't
+                    // viewing the in-game editor). activeInHierarchy
+                    // would then be false for every tab regardless of
+                    // how the patch chain set the individual buttons —
+                    // we want the local intent ("did the post-patch
+                    // deactivate this tab"), not the rendered state.
+                    if (!b.gameObject.activeSelf)
                         continue;
                     var tn = b.TabName;
                     if (tn == null)
@@ -92,7 +97,7 @@ namespace PlayLoRWithMe
                         {
                             if (i > 0) sb.Append(", ");
                             var b = buttons[i];
-                            sb.Append("active=").Append(b?.gameObject?.activeInHierarchy)
+                            sb.Append("active=").Append(b?.gameObject?.activeSelf)
                               .Append(" text='").Append(b?.TabName?.text).Append("'");
                         }
                         sb.Append("]");
