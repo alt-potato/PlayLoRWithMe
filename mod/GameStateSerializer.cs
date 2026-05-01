@@ -648,7 +648,13 @@ namespace PlayLoRWithMe
                                                         decksArr.AddObject(deckObj =>
                                                         {
                                                             deckObj.Add("index", idx);
-                                                            if (localizedLabels != null && idx < localizedLabels.Length)
+                                                            // Cache hits may have null/empty entries for tabs
+                                                            // a mod hid; emit `label` only when we observed a
+                                                            // real string so the frontend's "Deck N" fallback
+                                                            // can take over for the hidden slots.
+                                                            if (localizedLabels != null
+                                                                && idx < localizedLabels.Length
+                                                                && !string.IsNullOrEmpty(localizedLabels[idx]))
                                                                 deckObj.Add("label", localizedLabels[idx]);
                                                             deckObj.AddArray(
                                                                 "cards",
