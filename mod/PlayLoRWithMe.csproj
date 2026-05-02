@@ -16,6 +16,26 @@
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
+
+  <!--
+    Locate the game's Managed/ DLL directory.
+
+    Resolution order:
+      1. The LOR_MANAGED_DIR environment variable, if set. Use this on machines
+         where Steam isn't installed in the default Program Files (x86) path
+         (e.g. a different drive, a Linux Proton install, or CI).
+      2. The default Steam install path, mirroring what the Steam client
+         creates on a stock Windows install.
+
+    Override locally with:
+      set LOR_MANAGED_DIR=D:\Games\Library Of Ruina\LibraryOfRuina_Data\Managed
+
+    Both ItemGroup HintPaths below and the AfterBuild Copy step read $(LorManagedDir).
+  -->
+  <PropertyGroup>
+    <LorManagedDir Condition=" '$(LOR_MANAGED_DIR)' != '' ">$(LOR_MANAGED_DIR)</LorManagedDir>
+    <LorManagedDir Condition=" '$(LorManagedDir)' == '' ">..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Library Of Ruina\LibraryOfRuina_Data\Managed</LorManagedDir>
+  </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
@@ -38,7 +58,7 @@
       <HintPath>packages\Lib.Harmony.2.3.3\lib\net48\0Harmony.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Library Of Ruina\LibraryOfRuina_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>$(LorManagedDir)\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -49,16 +69,16 @@
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
     <Reference Include="UnityEngine.ImageConversionModule">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Library Of Ruina\LibraryOfRuina_Data\Managed\UnityEngine.ImageConversionModule.dll</HintPath>
+      <HintPath>$(LorManagedDir)\UnityEngine.ImageConversionModule.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Library Of Ruina\LibraryOfRuina_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <HintPath>$(LorManagedDir)\UnityEngine.CoreModule.dll</HintPath>
     </Reference>
     <Reference Include="Unity.TextMeshPro">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Library Of Ruina\LibraryOfRuina_Data\Managed\Unity.TextMeshPro.dll</HintPath>
+      <HintPath>$(LorManagedDir)\Unity.TextMeshPro.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.UI">
-      <HintPath>..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Library Of Ruina\LibraryOfRuina_Data\Managed\UnityEngine.UI.dll</HintPath>
+      <HintPath>$(LorManagedDir)\UnityEngine.UI.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -101,13 +121,34 @@
     <FrontendDir>$(MSBuildProjectDirectory)\..\frontend</FrontendDir>
   </PropertyGroup>
 
-  <Target Name="AfterBuild">
-    <!-- Build the Vue frontend if it has been scaffolded -->
+  <!--
+    NpmInstall: skipped on incremental builds when node_modules is already in
+    sync with package-lock.json. The Inputs/Outputs gate uses MSBuild's
+    timestamp comparison: if `node_modules\.package-lock.json` (the marker npm
+    writes after a successful install) is newer than `package-lock.json`, the
+    target is up-to-date and `npm install` doesn't run. The install command
+    uses prefer-offline (reuse local cache) and no-audit / no-fund (strip
+    output we don't act on); see the Exec Command attribute below for the
+    flags.
+  -->
+  <Target
+    Name="NpmInstall"
+    Inputs="$(FrontendDir)\package.json;$(FrontendDir)\package-lock.json"
+    Outputs="$(FrontendDir)\node_modules\.package-lock.json"
+    Condition="Exists('$(FrontendDir)\package.json')"
+  >
     <Exec
-      Command="npm i"
+      Command="npm install --prefer-offline --no-audit --no-fund"
       WorkingDirectory="$(FrontendDir)"
-      Condition="Exists('$(FrontendDir)\package.json')"
     />
+  </Target>
+
+  <Target Name="AfterBuild" DependsOnTargets="NpmInstall">
+    <!-- Build the Vue frontend if it has been scaffolded. `npm run generate`
+         always runs because Nuxt's incremental build is faster than tracking
+         every frontend source file from MSBuild; the Copy step below uses
+         SkipUnchangedFiles to keep deploy-side I/O minimal when nothing
+         actually changed in the static output. -->
     <Exec
       Command="npm run generate --logLevel=silent"
       WorkingDirectory="$(FrontendDir)"
