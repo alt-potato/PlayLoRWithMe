@@ -282,7 +282,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
 
             <div class="tab-content">
               <!-- Name & Title -->
-              <LibrarianCustomizeNameTitleTab
+              <LazyLibrarianCustomizeNameTitleTab
                 v-if="activeTab === 'name'"
                 v-model:name="draft.name"
                 v-model:prefix-i-d="draft.prefixID"
@@ -296,7 +296,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
               <div v-else-if="activeTab === 'hairstyle' && hasPatronHead" class="tab-disabled-msg">
                 Patron librarians have a fixed appearance.
               </div>
-              <LibrarianCustomizeHairstyleTab
+              <LazyLibrarianCustomizeHairstyleTab
                 v-else-if="activeTab === 'hairstyle'"
                 v-model:front-hair-i-d="draft.frontHairID"
                 v-model:back-hair-i-d="draft.backHairID"
@@ -308,7 +308,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
               <div v-else-if="activeTab === 'face' && hasPatronHead" class="tab-disabled-msg">
                 Patron librarians have a fixed appearance.
               </div>
-              <LibrarianCustomizeFaceTab
+              <LazyLibrarianCustomizeFaceTab
                 v-else-if="activeTab === 'face'"
                 v-model:eye-i-d="draft.eyeID"
                 v-model:brow-i-d="draft.browID"
@@ -319,7 +319,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
               />
 
               <!-- Projection -->
-              <LibrarianCustomizeProjectionTab
+              <LazyLibrarianCustomizeProjectionTab
                 v-else-if="activeTab === 'projection'"
                 v-model:appearance-type="draft.appearanceType"
                 v-model:height="draft.height"
@@ -337,7 +337,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
               <div v-else-if="activeTab === 'dialogue' && disabledTabs.has('dialogue')" class="tab-disabled-msg">
                 Dialogue is not available for patron librarians.
               </div>
-              <LibrarianCustomizeDialogueTab
+              <LazyLibrarianCustomizeDialogueTab
                 v-else-if="activeTab === 'dialogue'"
                 v-model:start-battle="draft.dlgStartBattle"
                 v-model:victory="draft.dlgVictory"
@@ -349,7 +349,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
               />
 
               <!-- Battle Symbols -->
-              <LibrarianCustomizeBattleSymbolsTab
+              <LazyLibrarianCustomizeBattleSymbolsTab
                 v-else-if="activeTab === 'symbols'"
                 :lib="lib"
                 :busy="isBusy"

@@ -266,7 +266,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
   </Teleport>
 
   <!-- Customize overlay — stacks above EditPanel (z-index: 300) -->
-  <LibrarianCustomizePanel
+  <LazyLibrarianCustomizePanel
     v-if="showCustomize"
     :lib="lib"
     :state="state"

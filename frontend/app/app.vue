@@ -160,7 +160,7 @@ const rawJson = computed(() =>
         BattleSetting phase: pre-battle formation/claim screen shown while the
         main menu is in its BattleSetting UI phase (before the battle scene loads).
       -->
-      <BattleSettingView
+      <LazyBattleSettingView
         v-if="
           gameState?.scene === 'main' && gameState.uiPhase === 'BattleSetting'
         "
@@ -173,7 +173,7 @@ const rawJson = computed(() =>
         :rename-player="renamePlayer"
       />
 
-      <BattleStage
+      <LazyBattleStage
         v-else-if="gameState?.scene === 'battle'"
         :state="gameState"
         :session="session"
@@ -184,7 +184,7 @@ const rawJson = computed(() =>
         :rename-player="renamePlayer"
       />
 
-      <LibrarianManager
+      <LazyLibrarianManager
         v-else-if="gameState?.scene === 'main'"
         :state="gameState"
         :session="session"

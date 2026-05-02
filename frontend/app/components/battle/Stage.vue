@@ -346,7 +346,7 @@ provide(BATTLE_CTX, {
   />
 
   <!-- Emotion level-up selection overlay (key page or abnormality card) -->
-  <EmotionUpgradePicker
+  <LazyEmotionUpgradePicker
     v-if="state?.abnormalitySelection"
     :selection="state.abnormalitySelection"
     :allies="state?.allies ?? []"

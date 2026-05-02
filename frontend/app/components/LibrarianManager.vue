@@ -540,7 +540,7 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
     </template>
 
     <!-- Full-screen EditPanel overlay -->
-    <LibrarianEditPanel
+    <LazyLibrarianEditPanel
       v-if="editingLibrarian"
       :lib="editingLibrarian"
       :state="state"
