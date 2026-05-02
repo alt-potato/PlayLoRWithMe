@@ -51,8 +51,9 @@ function diePoint(
   unitId: number,
   slot: number,
   allyIds: Set<number>,
+  dieMap: Map<string, Element>,
 ): { x: number; y: number } | null {
-  const el = document.querySelector(`[data-die="${unitId}-${slot}"]`);
+  const el = dieMap.get(`${unitId}-${slot}`);
   if (!el) return null;
   const r = el.getBoundingClientRect();
   return {
@@ -68,6 +69,14 @@ async function recompute() {
   const allUnits = [...props.allies, ...props.enemies];
   const result: Arrow[] = [];
   const clashSeen = new Set<string>();
+
+  // single dom walk: cache every [data-die] element by its key so the inner
+  // loop avoids N+M repeated `querySelector` calls per pass.
+  const dieMap = new Map<string, Element>();
+  for (const el of document.querySelectorAll("[data-die]")) {
+    const k = el.getAttribute("data-die");
+    if (k) dieMap.set(k, el);
+  }
 
   for (const unit of allUnits) {
     if (unit.hp <= 0) continue;
@@ -89,8 +98,8 @@ async function recompute() {
         clashSeen.add(key);
       }
 
-      const src = diePoint(unit.id, sc.slot, allyIds);
-      const tgt = diePoint(sc.targetUnitId, sc.targetSlot!, allyIds);
+      const src = diePoint(unit.id, sc.slot, allyIds, dieMap);
+      const tgt = diePoint(sc.targetUnitId, sc.targetSlot!, allyIds, dieMap);
       if (src && tgt) {
         result.push({
           x1: src.x,
@@ -107,7 +116,7 @@ async function recompute() {
       // Sub-targets (mass attacks) — same source die, dashed stroke
       if (src) {
         for (const st of sc.subTargets ?? []) {
-          const stTgt = diePoint(st.targetUnitId, st.targetSlot, allyIds);
+          const stTgt = diePoint(st.targetUnitId, st.targetSlot, allyIds, dieMap);
           if (stTgt)
             result.push({
               x1: src.x,
@@ -139,16 +148,30 @@ function isDimmed(a: Arrow): boolean {
   return a.srcUnitId !== props.focusUnitId && a.tgtUnitId !== props.focusUnitId;
 }
 
+// scroll fires at 60+ Hz and ResizeObserver fires per layout change; both
+// would otherwise call `recompute` (which itself runs N getBoundingClientRect
+// reads → forced layout) on every event. Coalesce into a single rAF pass so
+// at most one recompute runs per frame.
+let rafId = 0;
+function scheduleRecompute() {
+  if (rafId) return;
+  rafId = requestAnimationFrame(() => {
+    rafId = 0;
+    recompute();
+  });
+}
+
 watch(() => [props.allies, props.enemies], recompute);
 
 onMounted(() => {
   recompute();
-  const ro = new ResizeObserver(recompute);
+  const ro = new ResizeObserver(scheduleRecompute);
   ro.observe(document.documentElement);
-  window.addEventListener("scroll", recompute, { passive: true });
+  window.addEventListener("scroll", scheduleRecompute, { passive: true });
   onUnmounted(() => {
     ro.disconnect();
-    window.removeEventListener("scroll", recompute);
+    window.removeEventListener("scroll", scheduleRecompute);
+    if (rafId) cancelAnimationFrame(rafId);
   });
 });
 
