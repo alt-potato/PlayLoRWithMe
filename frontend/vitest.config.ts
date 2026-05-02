@@ -28,5 +28,11 @@ export default defineConfig({
   },
   test: {
     include: ["app/**/*.test.ts", "scripts/**/*.test.ts"],
+    // Default environment stays `node` so tests that don't need the DOM keep
+    // running under the lighter, faster runtime (and don't pick up happy-dom's
+    // console shim, which interferes with `vi.spyOn(console, …)` in the
+    // applyDelta dev-mode contract test). Tests that need browser globals
+    // (e.g. localStorage in useWebSocket.test.ts) opt in per-file via the
+    // `@vitest-environment happy-dom` doc directive at the top of the file.
   },
 });

@@ -1,42 +1,26 @@
 /**
+ * @vitest-environment happy-dom
+ *
  * Storage helpers and the on-connect restore decision for the player's
  * persisted display name. The composable itself is not tested here — it
  * opens a real WebSocket on call and the integration is verified via the
  * manual smoke step in the change's tasks.md. These tests cover the
  * pure pieces that drive the feature's branching.
+ *
+ * Runs under the happy-dom environment (per-file, opted in above), so
+ * `localStorage` is a real Storage-spec implementation rather than a hand
+ * stub — the throw-tests temporarily replace methods on it to simulate
+ * private-mode / quota-exceeded behaviour.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import type { PlayerInfo } from "~/types/game";
 
-// Vitest defaults to a Node environment (no `localStorage`). Stub a minimal
-// in-memory Storage-shaped object before importing the module under test so
-// the helpers' `try`/`catch` blocks see real successes and real failures
-// (rather than always-throwing access errors that mask the happy path).
-const memStore: Record<string, string> = {};
-const stubStorage: Storage = {
-  get length() {
-    return Object.keys(memStore).length;
-  },
-  clear: () => {
-    for (const k of Object.keys(memStore)) delete memStore[k];
-  },
-  getItem: (key) => (key in memStore ? memStore[key]! : null),
-  key: (i) => Object.keys(memStore)[i] ?? null,
-  removeItem: (key) => {
-    delete memStore[key];
-  },
-  setItem: (key, value) => {
-    memStore[key] = String(value);
-  },
-};
-vi.stubGlobal("localStorage", stubStorage);
-
-const {
+import {
   loadStoredDisplayName,
   saveStoredDisplayName,
   pickDisplayNameRestore,
-} = await import("./useWebSocket");
+} from "./useWebSocket";
 
 const STORAGE_KEY = "plwm_display_name";
 
@@ -58,14 +42,14 @@ describe("loadStoredDisplayName", () => {
     // Simulate a hostile storage environment (private mode with quota
     // exceeded, disabled by policy, etc.). The helper must never let
     // the failure propagate into the WebSocket connect path.
-    const original = stubStorage.getItem;
-    stubStorage.getItem = () => {
+    const original = localStorage.getItem.bind(localStorage);
+    localStorage.getItem = () => {
       throw new Error("storage disabled");
     };
     try {
       expect(loadStoredDisplayName()).toBe("");
     } finally {
-      stubStorage.getItem = original;
+      localStorage.getItem = original;
     }
   });
 });
@@ -83,14 +67,14 @@ describe("saveStoredDisplayName", () => {
   it("swallows errors when localStorage throws", () => {
     // QuotaExceededError or storage-disabled environments must not break
     // the rename UI flow. The save call must return normally.
-    const original = stubStorage.setItem;
-    stubStorage.setItem = () => {
+    const original = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = () => {
       throw new Error("quota exceeded");
     };
     try {
       expect(() => saveStoredDisplayName("Ada")).not.toThrow();
     } finally {
-      stubStorage.setItem = original;
+      localStorage.setItem = original;
     }
   });
 
