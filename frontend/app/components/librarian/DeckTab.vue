@@ -325,6 +325,13 @@ function availableToCard(c: AvailableCard, i: number): Card {
   };
 }
 
+// Pre-build the Card view-model for each filtered tile once per filter change.
+// The grid template was previously calling availableToCard(card, i) twice per
+// row (`:card` and `@detail`), allocating two fresh objects per render and
+// defeating any memoization on `HandCard`. The aligned arrays let the template
+// hand the same object reference to both bindings.
+const filteredAsCards = computed(() => filteredCards.value.map(availableToCard));
+
 /**
  * Optimistic add: pushes a pending-add entry before awaiting the server
  * response so the deck-editor reflects the change in the same render
@@ -427,7 +434,15 @@ async function handleRemoveCard(preview: DeckCardPreview) {
         <HandCard
           v-for="(card, i) in filteredCards"
           :key="card.cardId.id + '_' + card.cardId.packageId"
-          :card="availableToCard(card, i)"
+          v-memo="[
+            card.cardId.id,
+            card.cardId.packageId,
+            card.count,
+            isAtLimit(card),
+            editBusy,
+            effectiveDeckCount >= DECK_MAX,
+          ]"
+          :card="filteredAsCards[i]!"
           :count="card.count"
           :unusable="
             editBusy ||
@@ -436,7 +451,7 @@ async function handleRemoveCard(preview: DeckCardPreview) {
             effectiveDeckCount >= DECK_MAX
           "
           @click="handleAddCard(card)"
-          @detail="detailCard = availableToCard(card, i)"
+          @detail="detailCard = filteredAsCards[i]!"
         />
       </div>
     </div>
