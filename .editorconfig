@@ -1,0 +1,26 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+# Frontend (TS, Vue SFC, JSON, YAML, CSS, Markdown) — 2-space indent matching
+# the existing source style and Prettier defaults.
+[*.{ts,tsx,js,jsx,vue,json,yml,yaml,css,scss,html,md}]
+indent_size = 2
+
+# C# mod code uses 4-space indentation throughout `mod/` (see SessionManager.cs,
+# Server.cs etc).
+[*.cs]
+indent_size = 4
+
+# .csproj is XML — also 2-space, matches the existing PlayLoRWithMe.csproj.
+[*.{csproj,targets,props,xml}]
+indent_size = 2
+
+# Markdown trailing whitespace can be meaningful (line break) — leave as-is.
+[*.md]
+trim_trailing_whitespace = false
