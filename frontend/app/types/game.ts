@@ -9,7 +9,7 @@
  * Schema 2020-12 artifact at `schema/gamestate.schema.json`.
  */
 
-import { z } from "zod";
+import { z } from "zod/mini";
 
 // ── Enums ────────────────────────────────────────────────────────────────────
 
@@ -58,16 +58,16 @@ export type StringEntryId = z.infer<typeof StringEntryIdSchema>;
 // ── Stage ────────────────────────────────────────────────────────────────────
 
 export const StageInfoSchema = z.object({
-  floor: z.number().optional(),
-  chapter: z.number().optional(),
-  wave: z.number().optional(),
-  round: z.number().optional(),
+  floor: z.optional(z.number()),
+  chapter: z.optional(z.number()),
+  wave: z.optional(z.number()),
+  round: z.optional(z.number()),
   /** Reception/stage name from StageClassInfo.stageName. */
-  name: z.string().optional(),
+  name: z.optional(z.string()),
   /** Story-chapter icon sprite ID; served at /assets/stageicons/<icon>.png. */
-  icon: z.string().optional(),
+  icon: z.optional(z.string()),
   /** Glow layer rendered behind the icon (same sprite set as icon). */
-  iconGlow: z.string().optional(),
+  iconGlow: z.optional(z.string()),
 });
 export type StageInfo = z.infer<typeof StageInfoSchema>;
 
@@ -79,7 +79,7 @@ export const DieSchema = z.object({
   detail: z.string(),
   min: z.number(),
   max: z.number(),
-  desc: z.string().optional(),
+  desc: z.optional(z.string()),
 });
 export type Die = z.infer<typeof DieSchema>;
 
@@ -87,7 +87,7 @@ export type Die = z.infer<typeof DieSchema>;
 export const CardTokenSchema = z.object({
   label: z.string(),
   stack: z.number(),
-  icon: z.string().optional(),
+  icon: z.optional(z.string()),
 });
 export type CardToken = z.infer<typeof CardTokenSchema>;
 
@@ -98,19 +98,19 @@ export const CardSchema = z.object({
   name: z.string(),
   cost: z.number(),
   /** Present when cost has been modified mid-round; used by costStyle(). */
-  baseCost: z.number().optional(),
+  baseCost: z.optional(z.number()),
   range: z.string(),
-  rarity: z.string().optional(),
-  options: z.array(z.string()).optional(),
-  allyTarget: z.boolean().optional(),
-  canUse: z.boolean().optional(),
-  emotionLimit: z.number().optional(),
-  desc: z.string().optional(),
-  flavorText: z.string().optional(),
-  abilityDesc: z.string().optional(),
-  dice: z.array(DieSchema).optional(),
-  bufs: z.array(CardTokenSchema).optional(),
-  icon: z.string().optional(),
+  rarity: z.optional(z.string()),
+  options: z.optional(z.array(z.string())),
+  allyTarget: z.optional(z.boolean()),
+  canUse: z.optional(z.boolean()),
+  emotionLimit: z.optional(z.number()),
+  desc: z.optional(z.string()),
+  flavorText: z.optional(z.string()),
+  abilityDesc: z.optional(z.string()),
+  dice: z.optional(z.array(DieSchema)),
+  bufs: z.optional(z.array(CardTokenSchema)),
+  icon: z.optional(z.string()),
 });
 export type Card = z.infer<typeof CardSchema>;
 
@@ -127,14 +127,14 @@ export const SlottedCardEntrySchema = z.object({
   slot: z.number(),
   name: z.string(),
   cost: z.number(),
-  targetUnitId: z.number().optional(),
-  targetSlot: z.number().optional(),
+  targetUnitId: z.optional(z.number()),
+  targetSlot: z.optional(z.number()),
   clash: z.boolean(),
-  subTargets: z.array(SubTargetSchema).optional(),
+  subTargets: z.optional(z.array(SubTargetSchema)),
   range: z.string(),
-  desc: z.string().optional(),
-  flavorText: z.string().optional(),
-  dice: z.array(DieSchema).optional(),
+  desc: z.optional(z.string()),
+  flavorText: z.optional(z.string()),
+  dice: z.optional(z.array(DieSchema)),
 });
 export type SlottedCardEntry = z.infer<typeof SlottedCardEntrySchema>;
 
@@ -145,7 +145,7 @@ export const SpeedDieSchema = z.object({
   type: z.string(),
   detail: z.string(),
   /** True when the die is staggered (shown as ✕). */
-  staggered: z.boolean().optional(),
+  staggered: z.optional(z.boolean()),
 });
 export type SpeedDie = z.infer<typeof SpeedDieSchema>;
 
@@ -162,13 +162,13 @@ export type EmotionCoins = z.infer<typeof EmotionCoinsSchema>;
 export const PassiveSchema = z.object({
   id: EntryIdSchema,
   name: z.string(),
-  desc: z.string().optional(),
-  icon: z.string().optional(),
-  isNegative: z.boolean().optional(),
-  rare: z.string().optional(),
-  cost: z.number().optional(),
+  desc: z.optional(z.string()),
+  icon: z.optional(z.string()),
+  isNegative: z.optional(z.boolean()),
+  rare: z.optional(z.string()),
+  cost: z.optional(z.number()),
   /** False when the passive cannot be attributed to another key page (unique). Absent = true. */
-  canTransfer: z.boolean().optional(),
+  canTransfer: z.optional(z.boolean()),
 });
 export type Passive = z.infer<typeof PassiveSchema>;
 
@@ -176,13 +176,13 @@ export type Passive = z.infer<typeof PassiveSchema>;
 export const BuffSchema = z.object({
   keywordId: z.string(),
   /** Internal engine key used as Vue list key. */
-  type: z.string().optional(),
+  type: z.optional(z.string()),
   name: z.string(),
-  desc: z.string().optional(),
-  stacks: z.number().optional(),
-  icon: z.string().optional(),
+  desc: z.optional(z.string()),
+  stacks: z.optional(z.number()),
+  icon: z.optional(z.string()),
   /** "Positive" | "Negative" — controls chip colour. */
-  positive: z.string().optional(),
+  positive: z.optional(z.string()),
 });
 export type Buff = z.infer<typeof BuffSchema>;
 
@@ -190,51 +190,51 @@ export type Buff = z.infer<typeof BuffSchema>;
 export const AbnormalityEntrySchema = z.object({
   id: z.number(),
   name: z.string(),
-  emotionLevel: z.number().optional(),
+  emotionLevel: z.optional(z.number()),
 });
 export type AbnormalityEntry = z.infer<typeof AbnormalityEntrySchema>;
 
 export const ResistancesSchema = z.object({
-  slashHp: z.string().optional(),
-  pierceHp: z.string().optional(),
-  bluntHp: z.string().optional(),
-  slashBp: z.string().optional(),
-  pierceBp: z.string().optional(),
-  bluntBp: z.string().optional(),
+  slashHp: z.optional(z.string()),
+  pierceHp: z.optional(z.string()),
+  bluntHp: z.optional(z.string()),
+  slashBp: z.optional(z.string()),
+  pierceBp: z.optional(z.string()),
+  bluntBp: z.optional(z.string()),
 });
 export type Resistances = z.infer<typeof ResistancesSchema>;
 
 export const KeyPageSchema = z.object({
   /** Unique identifier for managed (librarian) key pages; absent on transient battle unit key pages. */
-  instanceId: z.number().optional(),
+  instanceId: z.optional(z.number()),
   name: z.string(),
-  speedDiceCount: z.number().optional(),
-  speedMin: z.number().optional(),
-  speedMax: z.number().optional(),
-  resistances: ResistancesSchema.optional(),
+  speedDiceCount: z.optional(z.number()),
+  speedMin: z.optional(z.number()),
+  speedMax: z.optional(z.number()),
+  resistances: z.optional(ResistancesSchema),
   /** Max HP including gift bonuses — present on librarian key pages. */
-  hp: z.number().optional(),
+  hp: z.optional(z.number()),
   /** Break (stagger) gauge capacity — present on librarian key pages. */
-  breakGauge: z.number().optional(),
+  breakGauge: z.optional(z.number()),
   /** BookXmlInfo.RangeType: "Melee" | "Range" | "Hybrid" — determines which card ranges can be equipped. */
-  equipRangeType: z.string().optional(),
+  equipRangeType: z.optional(z.string()),
   /** BookXmlInfo integer ID — used to load the body composite PNG for the preview. */
-  bookId: z.number().optional(),
+  bookId: z.optional(z.number()),
   /** Non-empty for workshop (mod) key pages; used with bookId to construct the body PNG URL. */
-  bookPackageId: z.string().optional(),
+  bookPackageId: z.optional(z.string()),
   /**
    * BookXmlInfo.Rarity: "Common" | "Uncommon" | "Rare" | "Unique" | "Special".
    * Emitted on librarian-owned key pages only — battle-context emission sites
    * intentionally omit this so combat surfaces never display a rarity outline.
    */
-  rarity: z.string().optional(),
+  rarity: z.optional(z.string()),
   /**
    * True when the equipped key page has the `BookOption.MultiDeck` flag (e.g.
    * The Purple Tear). Drives whether the deck editor exposes per-stance tabs.
    * Emitted on librarian-owned key pages only — battle-context emission sites
    * omit this for consistency with the other librarian-only fields.
    */
-  isMultiDeck: z.boolean().optional(),
+  isMultiDeck: z.optional(z.boolean()),
 });
 export type KeyPage = z.infer<typeof KeyPageSchema>;
 
@@ -242,7 +242,7 @@ export type KeyPage = z.infer<typeof KeyPageSchema>;
 export const AttributedPassiveSchema = z.object({
   passive: PassiveSchema,
   sourceInstanceId: z.number(),
-  sourceName: z.string().optional(),
+  sourceName: z.optional(z.string()),
 });
 export type AttributedPassive = z.infer<typeof AttributedPassiveSchema>;
 
@@ -251,15 +251,15 @@ export type AttributedPassive = z.infer<typeof AttributedPassiveSchema>;
 /** Card entry in a BattleSetting deck preview (grouped by card type with a count). */
 export const DeckCardPreviewSchema = z.object({
   /** LorId of the card — present in librarian deck previews, absent in BattleSetting previews. */
-  cardId: StringEntryIdSchema.optional(),
+  cardId: z.optional(StringEntryIdSchema),
   name: z.string(),
   cost: z.number(),
   range: z.string(),
-  rarity: z.string().optional(),
+  rarity: z.optional(z.string()),
   /** How many copies of this card are in the deck. */
   count: z.number(),
-  dice: z.array(DieSchema).optional(),
-  abilityDesc: z.string().optional(),
+  dice: z.optional(z.array(DieSchema)),
+  abilityDesc: z.optional(z.string()),
 });
 export type DeckCardPreview = z.infer<typeof DeckCardPreviewSchema>;
 
@@ -273,7 +273,7 @@ export type DeckCardPreview = z.infer<typeof DeckCardPreviewSchema>;
  */
 export const DeckPreviewSchema = z.object({
   index: z.number(),
-  label: z.string().optional(),
+  label: z.optional(z.string()),
   cards: z.array(DeckCardPreviewSchema),
 });
 export type DeckPreview = z.infer<typeof DeckPreviewSchema>;
@@ -287,10 +287,10 @@ export const EmotionCardEntrySchema = z.object({
   /** Emotion coin cost during battle. */
   emotionLevel: z.number(),
   /** Name of the abnormality this card belongs to (e.g. "Big Bird"). */
-  abnormalityName: z.string().optional(),
+  abnormalityName: z.optional(z.string()),
   /** Ability description from AbnormalityCardDescXmlList (same source as battle selection). */
-  desc: z.string().optional(),
-  flavorText: z.string().optional(),
+  desc: z.optional(z.string()),
+  flavorText: z.optional(z.string()),
 });
 export type EmotionCardEntry = z.infer<typeof EmotionCardEntrySchema>;
 
@@ -302,9 +302,9 @@ export const AppearanceDataSchema = z.object({
   browID: z.number(),
   mouthID: z.number(),
   /** Head sprite index (front=0, side=1). */
-  headID: z.number().optional(),
+  headID: z.optional(z.number()),
   /** Patron sephirah ID — when set, the head uses head_special_{id}.png from the patron prefab. */
-  patronHeadId: z.number().optional(),
+  patronHeadId: z.optional(z.number()),
   height: z.number(),
   hairColor: z.tuple([z.number(), z.number(), z.number()]),
   skinColor: z.tuple([z.number(), z.number(), z.number()]),
@@ -314,11 +314,11 @@ export type AppearanceData = z.infer<typeof AppearanceDataSchema>;
 
 /** Per-type custom battle dialogue text. null = game uses a randomly-selected preset. */
 export const DialogueDataSchema = z.object({
-  startBattle: z.string().nullable(),
-  victory: z.string().nullable(),
-  death: z.string().nullable(),
-  colleagueDeath: z.string().nullable(),
-  killsOpponent: z.string().nullable(),
+  startBattle: z.nullable(z.string()),
+  victory: z.nullable(z.string()),
+  death: z.nullable(z.string()),
+  colleagueDeath: z.nullable(z.string()),
+  killsOpponent: z.nullable(z.string()),
 });
 export type DialogueData = z.infer<typeof DialogueDataSchema>;
 
@@ -372,7 +372,7 @@ export type GiftOption = z.infer<typeof GiftOptionSchema>;
 
 /** Per-librarian gift inventory: 9 equipped slots + available pool. */
 export const GiftInventoryDataSchema = z.object({
-  equipped: z.array(GiftSlotSchema.nullable()),
+  equipped: z.array(z.nullable(GiftSlotSchema)),
   available: z.array(GiftOptionSchema),
 });
 export type GiftInventoryData = z.infer<typeof GiftInventoryDataSchema>;
@@ -383,9 +383,9 @@ export type GiftInventoryData = z.infer<typeof GiftInventoryDataSchema>;
 export const FashionBookSchema = z.object({
   id: z.number(),
   /** Non-empty for workshop (mod) books; omitted for core fashion books. */
-  packageId: z.string().optional(),
+  packageId: z.optional(z.string()),
   /** Explicit file stem override for body PNG lookup (e.g. "ws_2921128635"). */
-  fileStem: z.string().optional(),
+  fileStem: z.optional(z.string()),
   name: z.string(),
   /** EquipRangeType string — controls compatibility with librarian's range type. */
   rangeType: z.string(),
@@ -400,33 +400,33 @@ export const FashionBookSchema = z.object({
    * in Unity's left-hand screen space). Omitted when zero. Applied to face/hair
    * CSS layers so the preview matches the in-game head tilt.
    */
-  headTiltDeg: z.number().optional(),
+  headTiltDeg: z.optional(z.number()),
   /** Pivot horizontal position as a fraction [0,1] of the canvas width (left=0). */
-  pivotFracX: z.number().optional(),
+  pivotFracX: z.optional(z.number()),
   /** Pivot vertical position as a fraction [0,1] of the canvas height (top=0). */
-  pivotFracY: z.number().optional(),
+  pivotFracY: z.optional(z.number()),
   /**
    * True when fashionbodies_front/{id}.png was extracted — some body sprites
    * render in front of the face overlay and must be composited above it.
    */
-  hasFrontLayer: z.boolean().optional(),
+  hasFrontLayer: z.optional(z.boolean()),
   /**
    * True when the character model has a Hood sprite — the game hides all back
    * hair renderers in that case (RefreshAppearanceByMotion forcibly deactivates them).
    */
-  hidesBackHair: z.boolean().optional(),
+  hidesBackHair: z.optional(z.boolean()),
   /**
    * Gender variant of the skin (from BookXmlInfo.SkinGender): "F", "M", or omitted for "N".
    * When present, the body type toggle is enabled and body PNGs use a _f / _m suffix.
    */
-  skinGender: z.string().optional(),
+  skinGender: z.optional(z.string()),
   /**
    * Vertical position of the character's feet within the body PNG, as a fraction
    * [0,1] from the top.  1.0 (or omitted) means feet sit at the PNG bottom;
    * smaller values indicate the PNG extends below feet (weapons/props), letting
    * the frontend offset inward when aligning feet to a shared floor line.
    */
-  feetYFrac: z.number().optional(),
+  feetYFrac: z.optional(z.number()),
 });
 export type FashionBook = z.infer<typeof FashionBookSchema>;
 
@@ -437,12 +437,12 @@ export const WorkshopSkinSchema = z.object({
   /** Unique string key used to equip/save this skin (unit.workshopSkin). */
   contentFolderIdx: z.string(),
   /** True when the skin sprite replaces the entire head (no face/hair layers). */
-  replacesHead: z.boolean().optional(),
-  hasFrontLayer: z.boolean().optional(),
-  headTiltDeg: z.number().optional(),
-  pivotFracX: z.number().optional(),
-  pivotFracY: z.number().optional(),
-  feetYFrac: z.number().optional(),
+  replacesHead: z.optional(z.boolean()),
+  hasFrontLayer: z.optional(z.boolean()),
+  headTiltDeg: z.optional(z.number()),
+  pivotFracX: z.optional(z.number()),
+  pivotFracY: z.optional(z.number()),
+  feetYFrac: z.optional(z.number()),
 });
 export type WorkshopSkin = z.infer<typeof WorkshopSkinSchema>;
 
@@ -459,8 +459,8 @@ export const CustomizeOptionsSchema = z.object({
     colleagueDeath: z.array(z.string()),
     killsOpponent: z.array(z.string()),
   }),
-  fashionBooks: z.array(FashionBookSchema).optional(),
-  workshopSkins: z.array(WorkshopSkinSchema).optional(),
+  fashionBooks: z.optional(z.array(FashionBookSchema)),
+  workshopSkins: z.optional(z.array(WorkshopSkinSchema)),
 });
 export type CustomizeOptions = z.infer<typeof CustomizeOptionsSchema>;
 
@@ -476,40 +476,40 @@ export const CustomizePayloadSchema = z.object({
   floorIndex: z.number(),
   unitIndex: z.number(),
   // Face/hair: omitted by callers when the unit is a patron (sephirah head)
-  frontHairID: z.number().optional(),
-  backHairID: z.number().optional(),
-  eyeID: z.number().optional(),
-  browID: z.number().optional(),
-  mouthID: z.number().optional(),
+  frontHairID: z.optional(z.number()),
+  backHairID: z.optional(z.number()),
+  eyeID: z.optional(z.number()),
+  browID: z.optional(z.number()),
+  mouthID: z.optional(z.number()),
   height: z.number(),
   // Color components: omitted alongside face/hair for patrons
-  hairR: z.number().optional(),
-  hairG: z.number().optional(),
-  hairB: z.number().optional(),
-  skinR: z.number().optional(),
-  skinG: z.number().optional(),
-  skinB: z.number().optional(),
-  eyeR: z.number().optional(),
-  eyeG: z.number().optional(),
-  eyeB: z.number().optional(),
+  hairR: z.optional(z.number()),
+  hairG: z.optional(z.number()),
+  hairB: z.optional(z.number()),
+  skinR: z.optional(z.number()),
+  skinG: z.optional(z.number()),
+  skinB: z.optional(z.number()),
+  eyeR: z.optional(z.number()),
+  eyeG: z.optional(z.number()),
+  eyeB: z.optional(z.number()),
   // Dialogue: omitted when the unit lacks a BattleDialogueModel or is a patron.
   // Empty string restores a random game preset; null means "no change".
-  dlgStartBattle: z.string().nullable().optional(),
-  dlgVictory: z.string().nullable().optional(),
-  dlgDeath: z.string().nullable().optional(),
-  dlgColleagueDeath: z.string().nullable().optional(),
-  dlgKillsOpponent: z.string().nullable().optional(),
+  dlgStartBattle: z.optional(z.nullable(z.string())),
+  dlgVictory: z.optional(z.nullable(z.string())),
+  dlgDeath: z.optional(z.nullable(z.string())),
+  dlgColleagueDeath: z.optional(z.nullable(z.string())),
+  dlgKillsOpponent: z.optional(z.nullable(z.string())),
   prefixID: z.number(),
   postfixID: z.number(),
   /** -1 = unequip; any other value = BookXmlInfo ID to equip as appearance projection. */
   customBookId: z.number(),
   /** Non-empty when customBookId refers to a workshop book; omitted otherwise. */
-  customBookPackageId: z.string().optional(),
+  customBookPackageId: z.optional(z.string()),
   /**
    * contentFolderIdx of the workshop skin to equip, or "" to unequip.
    * Omitted from payload when unchanged (key absence means "do not change").
    */
-  workshopSkin: z.string().optional(),
+  workshopSkin: z.optional(z.string()),
   /** Body type variant: "F", "M", or "N". */
   appearanceType: z.string(),
 });
@@ -541,11 +541,11 @@ export const AvailableKeyPageSchema = z.object({
   resistances: ResistancesSchema,
   passives: z.array(PassiveSchema),
   /** False when this key page's passives are already attributed to another page. Absent = available. */
-  canGivePassive: z.boolean().optional(),
+  canGivePassive: z.optional(z.boolean()),
   /** Name of the librarian this key page's passives are attributed to. */
-  passiveGivenTo: z.string().optional(),
+  passiveGivenTo: z.optional(z.string()),
   /** BookXmlInfo.Rarity: "Common" | "Uncommon" | "Rare" | "Unique" | "Special". */
-  rarity: z.string().optional(),
+  rarity: z.optional(z.string()),
 });
 export type AvailableKeyPage = z.infer<typeof AvailableKeyPageSchema>;
 
@@ -557,9 +557,9 @@ export const AvailableCardSchema = z.object({
   range: z.string(),
   rarity: z.string(),
   count: z.number(),
-  abilityDesc: z.string().optional(),
-  dice: z.array(DieSchema).optional(),
-  chapter: z.number().optional(),
+  abilityDesc: z.optional(z.string()),
+  dice: z.optional(z.array(DieSchema)),
+  chapter: z.optional(z.number()),
 });
 export type AvailableCard = z.infer<typeof AvailableCardSchema>;
 
@@ -571,18 +571,18 @@ export const AbnormalityChoiceSchema = z.object({
   emotionLevel: z.number(),
   targetType: z.string(),
   state: z.string(),
-  desc: z.string().optional(),
-  flavorText: z.string().optional(),
+  desc: z.optional(z.string()),
+  flavorText: z.optional(z.string()),
 });
 export type AbnormalityChoice = z.infer<typeof AbnormalityChoiceSchema>;
 
 export const AbnormalitySelectionSchema = z.object({
   choices: z.array(AbnormalityChoiceSchema),
-  teamEmotionLevel: z.number().optional(),
-  teamCoin: z.number().optional(),
-  teamCoinMax: z.number().optional(),
-  teamPositiveCoins: z.number().optional(),
-  teamNegativeCoins: z.number().optional(),
+  teamEmotionLevel: z.optional(z.number()),
+  teamCoin: z.optional(z.number()),
+  teamCoinMax: z.optional(z.number()),
+  teamPositiveCoins: z.optional(z.number()),
+  teamNegativeCoins: z.optional(z.number()),
 });
 export type AbnormalitySelection = z.infer<typeof AbnormalitySelectionSchema>;
 
@@ -594,11 +594,11 @@ export const LibrarianEntrySchema = z.object({
   name: z.string(),
   keyPage: KeyPageSchema,
   passives: z.array(PassiveSchema),
-  attributedPassives: z.array(AttributedPassiveSchema).optional(),
-  passiveSlotCount: z.number().optional(),
-  maxPassiveCost: z.number().optional(),
-  currentPassiveCost: z.number().optional(),
-  sourceKeyPageIds: z.array(z.number()).optional(),
+  attributedPassives: z.optional(z.array(AttributedPassiveSchema)),
+  passiveSlotCount: z.optional(z.number()),
+  maxPassiveCost: z.optional(z.number()),
+  currentPassiveCost: z.optional(z.number()),
+  sourceKeyPageIds: z.optional(z.array(z.number())),
   /**
    * Per-deck-slot card lists for the librarian's equipped key page. Length 1
    * for single-deck books (the entry's `index === 0`, no `label`); length 4 for
@@ -606,59 +606,59 @@ export const LibrarianEntrySchema = z.object({
    */
   decks: z.array(DeckPreviewSchema),
   /** Session ID of the player currently editing this librarian, or null. */
-  lockedBy: z.string().nullable(),
+  lockedBy: z.nullable(z.string()),
   /**
    * Page-exclusive cards (CardOption.OnlyPage) belonging to this key page
    * that are currently in the shared inventory. Empty array when none exist.
    * Presented first in the deck editor's add-cards list.
    */
-  onlyCards: z.array(AvailableCardSchema).optional(),
+  onlyCards: z.optional(z.array(AvailableCardSchema)),
   /** True for sephirah (patron) librarians — name editing and face/hair customization disabled. */
-  isSephirah: z.boolean().optional(),
+  isSephirah: z.optional(z.boolean()),
   /** Appearance customization data (present for customizable librarians). */
-  appearance: AppearanceDataSchema.optional(),
+  appearance: z.optional(AppearanceDataSchema),
   /** Per-type custom battle dialogue text (null = using a random game preset). */
-  dialogue: DialogueDataSchema.optional(),
+  dialogue: z.optional(DialogueDataSchema),
   /** Title gift IDs for the name bar prefix and suffix. */
-  titles: TitleDataSchema.optional(),
+  titles: z.optional(TitleDataSchema),
   /**
    * ID of the custom core book currently used as an appearance projection, or -1 if none.
    * Set by EquipCustomCoreBook; persisted in save data as customcorebookInstanceId.
    */
-  customBookId: z.number().optional(),
+  customBookId: z.optional(z.number()),
   /** Non-empty when customBookId refers to a workshop book; omitted otherwise. */
-  customBookPackageId: z.string().optional(),
+  customBookPackageId: z.optional(z.string()),
   /**
    * contentFolderIdx of the active workshop cloth-overlay skin; omitted when none.
    * Equipped via the CustomizingResourceLoader system (separate from fashionBook).
    */
-  workshopSkin: z.string().optional(),
+  workshopSkin: z.optional(z.string()),
   /**
    * Active body type variant: "F" (female), "M" (male), or "N" (neutral).
    * Controls which _F/_M/_N prefab suffix is loaded in-game.
    */
-  appearanceType: z.string().optional(),
+  appearanceType: z.optional(z.string()),
   /**
    * SkinGender of the active skin source (fashion book or key page): "F" or "M".
    * Omitted when "N" (no gendered variants exist, body type toggle disabled).
    */
-  skinGender: z.string().optional(),
+  skinGender: z.optional(z.string()),
   /** Equipped and available battle symbols (gifts). */
-  gifts: GiftInventoryDataSchema.optional(),
+  gifts: z.optional(GiftInventoryDataSchema),
   /** Equipped key page has a body composite in fashionbodies/ (replacesHead behavior). */
-  keyPageReplacesHead: z.boolean().optional(),
+  keyPageReplacesHead: z.optional(z.boolean()),
   /** Equipped key page has a front-layer composite in fashionbodies_front/. */
-  keyPageHasFrontLayer: z.boolean().optional(),
+  keyPageHasFrontLayer: z.optional(z.boolean()),
   /** Equipped key page body has a head tilt (Z-axis rotation). */
-  keyPageHeadTiltDeg: z.number().optional(),
-  keyPagePivotFracX: z.number().optional(),
-  keyPagePivotFracY: z.number().optional(),
+  keyPageHeadTiltDeg: z.optional(z.number()),
+  keyPagePivotFracX: z.optional(z.number()),
+  keyPagePivotFracY: z.optional(z.number()),
   /** Equipped key page has a Hood sprite — back hair should be hidden. */
-  keyPageHidesBackHair: z.boolean().optional(),
+  keyPageHidesBackHair: z.optional(z.boolean()),
   /** SkinGender of the equipped key page skin: "F" or "M". */
-  keyPageSkinGender: z.string().optional(),
+  keyPageSkinGender: z.optional(z.string()),
   /** Feet-Y fraction of the equipped key page body PNG (see FashionBook.feetYFrac). */
-  keyPageFeetYFrac: z.number().optional(),
+  keyPageFeetYFrac: z.optional(z.number()),
 });
 export type LibrarianEntry = z.infer<typeof LibrarianEntrySchema>;
 
@@ -685,7 +685,7 @@ export type FloorEntry = z.infer<typeof FloorEntrySchema>;
 /** Fields shared by both ally and enemy units. */
 export const UnitSchema = z.object({
   id: z.number(),
-  name: z.string().optional(),
+  name: z.optional(z.string()),
   hp: z.number(),
   maxHp: z.number(),
   staggerGauge: z.number(),
@@ -700,34 +700,34 @@ export const UnitSchema = z.object({
   abnormalities: z.array(AbnormalityEntrySchema),
   emotionLevel: z.number(),
   emotionCoins: EmotionCoinsSchema,
-  keyPage: KeyPageSchema.optional(),
+  keyPage: z.optional(KeyPageSchema),
   /**
    * False when the unit is dead or locked — only present in BattleSetting phase.
    * Undefined (absent) during battle means no restriction.
    */
-  enabled: z.boolean().optional(),
+  enabled: z.optional(z.boolean()),
   /** Deck card preview — only present in BattleSetting phase. */
-  deckPreview: z.array(DeckCardPreviewSchema).optional(),
+  deckPreview: z.optional(z.array(DeckCardPreviewSchema)),
 });
 export type Unit = z.infer<typeof UnitSchema>;
 
 /** Ally-only extras: light, hand, deck, EGO. */
-export const AllyUnitSchema = UnitSchema.extend({
+export const AllyUnitSchema = z.extend(UnitSchema, {
   light: z.number(),
   maxLight: z.number(),
   reservedLight: z.number(),
   /** Present when this ally is owned by the current session. */
-  hand: z.array(CardSchema).optional(),
-  deck: z.array(CardSchema).optional(),
-  ego: z.array(CardSchema).optional(),
-  teamHand: z.array(CardSchema).optional(),
+  hand: z.optional(z.array(CardSchema)),
+  deck: z.optional(z.array(CardSchema)),
+  ego: z.optional(z.array(CardSchema)),
+  teamHand: z.optional(z.array(CardSchema)),
   /**
    * Present instead of hand/deck/ego when this ally belongs to another
    * session. The server sends counts rather than card data to preserve privacy.
    */
-  handCount: z.number().optional(),
-  deckCount: z.number().optional(),
-  egoCount: z.number().optional(),
+  handCount: z.optional(z.number()),
+  deckCount: z.optional(z.number()),
+  egoCount: z.optional(z.number()),
 });
 export type AllyUnit = z.infer<typeof AllyUnitSchema>;
 
@@ -754,7 +754,7 @@ export type PlayerInfo = z.infer<typeof PlayerInfoSchema>;
 /** Result returned when a WebSocket action resolves. */
 export const ActionResultSchema = z.object({
   ok: z.boolean(),
-  error: z.string().optional(),
+  error: z.optional(z.string()),
 });
 export type ActionResult = z.infer<typeof ActionResultSchema>;
 
@@ -764,25 +764,25 @@ export type ActionResult = z.infer<typeof ActionResultSchema>;
 export const GameStateSchema = z.object({
   scene: SceneNameSchema,
   /** Whether the server has finished extracting appearance/gift sprite assets. */
-  assetsReady: z.boolean().optional(),
+  assetsReady: z.optional(z.boolean()),
   /** Active stage phase class name (e.g. "ApplyLibrarianCardPhase"). */
-  phase: z.string().optional(),
+  phase: z.optional(z.string()),
   /** Active stage state enum value (e.g. "BattleSetting"). */
-  stageState: z.string().optional(),
-  uiPhase: z.string().optional(),
-  stage: StageInfoSchema.optional(),
-  allies: z.array(AllyUnitSchema).optional(),
-  enemies: z.array(UnitSchema).optional(),
+  stageState: z.optional(z.string()),
+  uiPhase: z.optional(z.string()),
+  stage: z.optional(StageInfoSchema),
+  allies: z.optional(z.array(AllyUnitSchema)),
+  enemies: z.optional(z.array(UnitSchema)),
   /** Only present during the key-page selection phase. */
-  abnormalitySelection: AbnormalitySelectionSchema.optional(),
+  abnormalitySelection: z.optional(AbnormalitySelectionSchema),
   /** Present in main scene (non-BattleSetting) — floor roster with nested librarians. */
-  floors: z.array(FloorEntrySchema).optional(),
+  floors: z.optional(z.array(FloorEntrySchema)),
   /** Key pages in the book inventory available to equip to a librarian. */
-  availableKeyPages: z.array(AvailableKeyPageSchema).optional(),
+  availableKeyPages: z.optional(z.array(AvailableKeyPageSchema)),
   /** Cards in the shared inventory available to add to a librarian's deck. */
-  availableCards: z.array(AvailableCardSchema).optional(),
+  availableCards: z.optional(z.array(AvailableCardSchema)),
   /** Global customization option tables (names, title lists, dialogue presets). */
-  customizeOptions: CustomizeOptionsSchema.optional(),
+  customizeOptions: z.optional(CustomizeOptionsSchema),
 });
 export type GameState = z.infer<typeof GameStateSchema>;
 
@@ -818,7 +818,7 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("actionResult"),
     reqId: z.string(),
     ok: z.boolean(),
-    error: z.string().optional(),
+    error: z.optional(z.string()),
   }),
   z.object({
     type: z.literal("ping"),
@@ -833,9 +833,9 @@ export const ClientActionSchema = z.discriminatedUnion("type", [
     unitId: z.number(),
     cardIndex: z.number(),
     diceSlot: z.number(),
-    targetUnitId: z.number().optional(),
-    targetDiceSlot: z.number().optional(),
-    isEgo: z.literal(1).optional(),
+    targetUnitId: z.optional(z.number()),
+    targetDiceSlot: z.optional(z.number()),
+    isEgo: z.optional(z.literal(1)),
   }),
   z.object({
     type: z.literal("removeCard"),
@@ -848,7 +848,7 @@ export const ClientActionSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("selectAbnormality"),
     cardId: z.number(),
-    targetUnitId: z.number().optional(),
+    targetUnitId: z.optional(z.number()),
   }),
   // setCustomization carries the full appearance/dialogue/title payload for
   // a single librarian (floorIndex + unitIndex address it). Field list mirrors
@@ -858,31 +858,31 @@ export const ClientActionSchema = z.discriminatedUnion("type", [
     type: z.literal("setCustomization"),
     floorIndex: z.number(),
     unitIndex: z.number(),
-    frontHairID: z.number().optional(),
-    backHairID: z.number().optional(),
-    eyeID: z.number().optional(),
-    browID: z.number().optional(),
-    mouthID: z.number().optional(),
+    frontHairID: z.optional(z.number()),
+    backHairID: z.optional(z.number()),
+    eyeID: z.optional(z.number()),
+    browID: z.optional(z.number()),
+    mouthID: z.optional(z.number()),
     height: z.number(),
-    hairR: z.number().optional(),
-    hairG: z.number().optional(),
-    hairB: z.number().optional(),
-    skinR: z.number().optional(),
-    skinG: z.number().optional(),
-    skinB: z.number().optional(),
-    eyeR: z.number().optional(),
-    eyeG: z.number().optional(),
-    eyeB: z.number().optional(),
-    dlgStartBattle: z.string().nullable().optional(),
-    dlgVictory: z.string().nullable().optional(),
-    dlgDeath: z.string().nullable().optional(),
-    dlgColleagueDeath: z.string().nullable().optional(),
-    dlgKillsOpponent: z.string().nullable().optional(),
+    hairR: z.optional(z.number()),
+    hairG: z.optional(z.number()),
+    hairB: z.optional(z.number()),
+    skinR: z.optional(z.number()),
+    skinG: z.optional(z.number()),
+    skinB: z.optional(z.number()),
+    eyeR: z.optional(z.number()),
+    eyeG: z.optional(z.number()),
+    eyeB: z.optional(z.number()),
+    dlgStartBattle: z.optional(z.nullable(z.string())),
+    dlgVictory: z.optional(z.nullable(z.string())),
+    dlgDeath: z.optional(z.nullable(z.string())),
+    dlgColleagueDeath: z.optional(z.nullable(z.string())),
+    dlgKillsOpponent: z.optional(z.nullable(z.string())),
     prefixID: z.number(),
     postfixID: z.number(),
     customBookId: z.number(),
-    customBookPackageId: z.string().optional(),
-    workshopSkin: z.string().optional(),
+    customBookPackageId: z.optional(z.string()),
+    workshopSkin: z.optional(z.string()),
     appearanceType: z.string(),
   }),
   // Deck add/remove. Optional deckIndex (0..3) targets a specific slot on
@@ -893,7 +893,7 @@ export const ClientActionSchema = z.discriminatedUnion("type", [
     unitIndex: z.number(),
     cardId: z.number(),
     packageId: z.string(),
-    deckIndex: z.number().int().min(0).max(3).optional(),
+    deckIndex: z.optional(z.int().check(z.gte(0), z.lte(3))),
   }),
   z.object({
     type: z.literal("removeCardFromDeck"),
@@ -901,7 +901,7 @@ export const ClientActionSchema = z.discriminatedUnion("type", [
     unitIndex: z.number(),
     cardId: z.number(),
     packageId: z.string(),
-    deckIndex: z.number().int().min(0).max(3).optional(),
+    deckIndex: z.optional(z.int().check(z.gte(0), z.lte(3))),
   }),
   // setGifts is a sparse batch update — callers send only the (position, key)
   // pairs that changed (see BattleSymbolsTab: one key per click). The server
@@ -911,24 +911,24 @@ export const ClientActionSchema = z.discriminatedUnion("type", [
     type: z.literal("setGifts"),
     floorIndex: z.number(),
     unitIndex: z.number(),
-    gift0: z.number().optional(),
-    gift1: z.number().optional(),
-    gift2: z.number().optional(),
-    gift3: z.number().optional(),
-    gift4: z.number().optional(),
-    gift5: z.number().optional(),
-    gift6: z.number().optional(),
-    gift7: z.number().optional(),
-    gift8: z.number().optional(),
-    vis0: z.number().optional(),
-    vis1: z.number().optional(),
-    vis2: z.number().optional(),
-    vis3: z.number().optional(),
-    vis4: z.number().optional(),
-    vis5: z.number().optional(),
-    vis6: z.number().optional(),
-    vis7: z.number().optional(),
-    vis8: z.number().optional(),
+    gift0: z.optional(z.number()),
+    gift1: z.optional(z.number()),
+    gift2: z.optional(z.number()),
+    gift3: z.optional(z.number()),
+    gift4: z.optional(z.number()),
+    gift5: z.optional(z.number()),
+    gift6: z.optional(z.number()),
+    gift7: z.optional(z.number()),
+    gift8: z.optional(z.number()),
+    vis0: z.optional(z.number()),
+    vis1: z.optional(z.number()),
+    vis2: z.optional(z.number()),
+    vis3: z.optional(z.number()),
+    vis4: z.optional(z.number()),
+    vis5: z.optional(z.number()),
+    vis6: z.optional(z.number()),
+    vis7: z.optional(z.number()),
+    vis8: z.optional(z.number()),
   }),
 ]);
 export type ClientAction = z.infer<typeof ClientActionSchema>;

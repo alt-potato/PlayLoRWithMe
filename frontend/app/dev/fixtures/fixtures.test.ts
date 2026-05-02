@@ -6,13 +6,14 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { z } from "zod/mini";
 import { FIXTURE_LOADERS } from "./index";
 import { GameStateSchema } from "../../types/game";
 
 describe("mock fixtures", () => {
   for (const [name, loader] of Object.entries(FIXTURE_LOADERS)) {
     it(`"${name}" parses against GameStateSchema`, () => {
-      const result = GameStateSchema.safeParse(loader());
+      const result = z.safeParse(GameStateSchema, loader());
       if (!result.success) {
         throw new Error(
           `Fixture "${name}" violates GameStateSchema:\n` +

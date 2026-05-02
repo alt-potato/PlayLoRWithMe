@@ -7,6 +7,7 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { z } from "zod/mini";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,7 +26,7 @@ const fixture = JSON.parse(fs.readFileSync(FIXTURE_PATH, "utf8")) as ReferenceFi
 describe("schema/reference-state.json", () => {
   for (const [name, payload] of Object.entries(fixture.cases)) {
     it(`case "${name}" parses against GameStateSchema`, () => {
-      const result = GameStateSchema.safeParse(payload);
+      const result = z.safeParse(GameStateSchema, payload);
       if (!result.success) {
         const formatted = JSON.stringify(result.error.issues, null, 2);
         throw new Error(

@@ -5,7 +5,7 @@
  * compares in-memory output against the committed file).
  */
 
-import { z } from "zod";
+import { z } from "zod/mini";
 
 import {
   GameStateSchema,

@@ -13,14 +13,15 @@ export default defineNuxtConfig({
 
   vite: {
     // Pre-bundle runtime deps Vite would otherwise discover mid-session and
-    // trigger a full-page reload for. zod lands here because types/game.ts
-    // imports it for wire-contract validation; the devtools modules are
-    // pulled in by Nuxt devtools when any dev-only page opens them.
+    // trigger a full-page reload for. zod/mini lands here because
+    // types/game.ts imports it for wire-contract validation; the devtools
+    // modules are pulled in by Nuxt devtools when any dev-only page opens
+    // them.
     optimizeDeps: {
       include: [
         "@vue/devtools-core",
         "@vue/devtools-kit",
-        "zod",
+        "zod/mini",
       ],
     },
   },

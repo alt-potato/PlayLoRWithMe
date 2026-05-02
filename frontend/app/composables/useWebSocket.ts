@@ -1,3 +1,4 @@
+import { z } from "zod/mini";
 import type { GameState, SessionState, PlayerInfo, ActionResult, ServerMessage, ClientAction } from "~/types/game";
 import { ServerMessageSchema } from "~/types/game";
 import { applyDelta } from "~/utils/deltaApply";
@@ -181,7 +182,7 @@ export function useWebSocket() {
         // throwing, so the developer keeps working while the mismatch is
         // diagnosed. tree-shaken from production by `import.meta.dev`.
         if (import.meta.dev) {
-          const result = ServerMessageSchema.safeParse(raw);
+          const result = z.safeParse(ServerMessageSchema, raw);
           if (!result.success) {
             console.error("[wire-contract] WebSocket payload violates schema:", result.error.issues);
           }

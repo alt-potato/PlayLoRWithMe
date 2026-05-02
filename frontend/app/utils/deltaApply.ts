@@ -1,3 +1,4 @@
+import { z } from "zod/mini";
 import type { GameState, AllyUnit, Unit } from "~/types/game";
 import { GameStateSchema } from "~/types/game";
 
@@ -49,9 +50,9 @@ export function applyDelta(base: GameState, delta: Record<string, unknown>): Gam
   // because upstream validation in `useWebSocket` already guards the `state`
   // message, so incremental delta patches from a conforming server stay valid.
   if (import.meta.dev) {
-    const parsed = GameStateSchema.safeParse(result);
+    const parsed = z.safeParse(GameStateSchema, result);
     if (!parsed.success) {
-      console.error("[wire-contract] applyDelta produced invalid GameState", parsed.error.format());
+      console.error("[wire-contract] applyDelta produced invalid GameState", z.formatError(parsed.error));
     }
   }
   return result as unknown as GameState;
