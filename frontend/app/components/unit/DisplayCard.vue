@@ -9,7 +9,6 @@
     side - "left" or "right"
 -->
 <script setup lang="ts">
-import type { BattleCtx } from "~/composables/useBattleContext";
 import type {
   AllyUnit,
   Card,
@@ -23,8 +22,6 @@ const props = defineProps<{
   side?: "right" | "left";
 }>();
 
-const ctx = inject(BATTLE_CTX);
-if (!ctx) throw new Error("BATTLE_CTX not provided — component must be used inside Stage.vue");
 const {
   isSelectPhase,
   selectingSlot,
@@ -36,7 +33,7 @@ const {
   allyColors,
   attackMap,
   isOwnUnit,
-} = ctx;
+} = useBattleCtx();
 
 const slots = computed(() => sortedSlots(props.unit));
 

@@ -36,8 +36,6 @@
 <script setup lang="ts">
 import type { Card } from "~/types/game";
 
-const LONG_PRESS_MS = 500;
-
 const props = withDefaults(
   defineProps<{
     card: Card;

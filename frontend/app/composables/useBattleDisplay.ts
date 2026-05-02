@@ -19,6 +19,13 @@ import type {
 /** Ally accent colours indexed by ally order. */
 export const ALLY_COLORS = ["#4fc3f7", "#81c784", "#ffb74d", "#ce93d8", "#f48fb1"] as const;
 
+/**
+ * Long-press threshold (ms) shared between hand cards and slotted cards so the
+ * gesture feels uniform — short enough that users discover detail-on-hold,
+ * long enough that an ordinary tap doesn't trigger it.
+ */
+export const LONG_PRESS_MS = 500;
+
 /** Builds a unitId → hex color map for allies, cycling through ALLY_COLORS. */
 export function buildAllyColors(allies: { id: number }[]): Record<number, string> {
   const m: Record<number, string> = {};

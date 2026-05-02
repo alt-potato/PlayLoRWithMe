@@ -145,6 +145,14 @@ const {
 // Screen width — only show arrow overlay on wide screens
 // ---------------------------------------------------------------------------
 
+// The breakpoint where the stage flips from one-column (mobile) to three-column
+// (enemy | center | ally). Mirrored in the @media (min-width: ...px) rules
+// below; CSS custom properties cannot drive @media query conditions, so the
+// literal lives here as a named constant and the matching @media rules carry a
+// comment pointing back at it.
+const STAGE_WIDE_BREAKPOINT_PX = 600;
+const STAGE_WIDE_QUERY = `(min-width: ${STAGE_WIDE_BREAKPOINT_PX}px)`;
+
 const showArrows = ref(false);
 
 let arrowMq: MediaQueryList | null = null;
@@ -154,7 +162,7 @@ function onMediaChange(e: MediaQueryListEvent) {
 }
 
 onMounted(() => {
-  arrowMq = window.matchMedia("(min-width: 600px)");
+  arrowMq = window.matchMedia(STAGE_WIDE_QUERY);
   showArrows.value = arrowMq.matches;
   arrowMq.addEventListener("change", onMediaChange);
 });
@@ -340,14 +348,9 @@ provide(BATTLE_CTX, {
   <!-- Emotion level-up selection overlay (key page or abnormality card) -->
   <EmotionUpgradePicker
     v-if="state?.abnormalitySelection"
-    :choices="state.abnormalitySelection.choices"
+    :selection="state.abnormalitySelection"
     :allies="state?.allies ?? []"
     :ally-colors="allyColors"
-    :team-emotion-level="state.abnormalitySelection.teamEmotionLevel"
-    :team-coin="state.abnormalitySelection.teamCoin"
-    :team-coin-max="state.abnormalitySelection.teamCoinMax"
-    :team-positive-coins="state.abnormalitySelection.teamPositiveCoins"
-    :team-negative-coins="state.abnormalitySelection.teamNegativeCoins"
     @select="
       ({ cardId, targetUnitId }) => onSelectAbnormality(cardId, targetUnitId)
     "
@@ -479,6 +482,7 @@ provide(BATTLE_CTX, {
   gap: 1rem;
 }
 
+/* Mirrors STAGE_WIDE_BREAKPOINT_PX in the script section. */
 @media (min-width: 600px) {
   /* Tablet+: enemy | fill | ally — sides are content-sized, middle expands */
   .stage {
@@ -561,6 +565,7 @@ provide(BATTLE_CTX, {
   color: var(--gold);
   text-align: right;
 }
+/* Mirrors STAGE_WIDE_BREAKPOINT_PX in the script section. */
 @media (min-width: 600px) {
   .wing-heading--ally {
     text-align: left;

@@ -11,7 +11,7 @@
  *   const ctx = inject(BATTLE_CTX)!
  */
 
-import type { InjectionKey, Ref, ComputedRef } from "vue";
+import { inject, type InjectionKey, type Ref, type ComputedRef } from "vue";
 import type { AllyUnit, Unit, SessionState, ActionResult } from "~/types/game";
 
 export interface BattleCtx {
@@ -121,3 +121,14 @@ export interface BattleCtx {
 
 /** InjectionKey used to share BattleCtx from BattleStage down to unit components. */
 export const BATTLE_CTX: InjectionKey<BattleCtx> = Symbol("battleCtx");
+
+/**
+ * Resolves the battle context, throwing a consistent error when called outside
+ * the Stage subtree. Use this instead of raw `inject(BATTLE_CTX)` so consumers
+ * don't each duplicate the null-guard.
+ */
+export function useBattleCtx(): BattleCtx {
+  const ctx = inject(BATTLE_CTX);
+  if (!ctx) throw new Error("BATTLE_CTX not provided — component must be used inside Stage.vue");
+  return ctx;
+}

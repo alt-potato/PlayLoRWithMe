@@ -11,8 +11,6 @@
 <script setup lang="ts">
 import type { SlottedCardEntry, SpeedDie, Unit } from "~/types/game";
 
-const LONG_PRESS_MS = 500;
-
 const props = withDefaults(
   defineProps<{
     unit: Unit;
@@ -28,8 +26,6 @@ const props = withDefaults(
   },
 );
 
-const ctx = inject(BATTLE_CTX);
-if (!ctx) throw new Error("BATTLE_CTX not provided — component must be used inside Stage.vue");
 const {
   phase,
   isSelectPhase,
@@ -40,7 +36,7 @@ const {
   onRemoveCard,
   allUnits,
   isOwnUnit,
-} = ctx;
+} = useBattleCtx();
 
 type DieState =
   | "empty" // no card in slot

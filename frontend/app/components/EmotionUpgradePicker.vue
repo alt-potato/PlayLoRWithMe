@@ -5,44 +5,31 @@
   key page or abnormality card at an emotion level-up. Mirrors the in-game LevelUpUI.
 
   Props:
-    choices    – array of { id, name, emotionLevel, targetType, state, desc?, flavorText? }
+    selection  – the AbnormalitySelection object straight off gameState; carries
+                 the choice list and the optional team-level emotion stats
+                 surfaced in the header
     allies     – ally unit list (for SelectOne targeting step)
     allyColors – map of unitId → hex color
-    teamEmotionLevel, teamCoin, teamCoinMax, teamPositiveCoins, teamNegativeCoins
-      – optional team-level emotion stats shown in the header
 
   Emits:
     select({ cardId, targetUnitId? })
 -->
 <script setup lang="ts">
-import type { AllyUnit } from "~/types/game";
+import type { AbnormalityChoice, AbnormalitySelection, AllyUnit } from "~/types/game";
 
 const props = defineProps<{
-  choices: Array<{
-    id: number;
-    name: string;
-    emotionLevel: number;
-    targetType: string;
-    state: string; // "Positive" | "Negative"
-    desc?: string;
-    flavorText?: string;
-  }>;
+  selection: AbnormalitySelection;
   allies: AllyUnit[];
   allyColors: Record<number, string>;
-  teamEmotionLevel?: number;
-  teamCoin?: number;
-  teamCoinMax?: number;
-  teamPositiveCoins?: number;
-  teamNegativeCoins?: number;
 }>();
 
 const emit = defineEmits<{
   select: [{ cardId: number; targetUnitId?: number }];
 }>();
 
-const pendingCard = ref<(typeof props.choices)[number] | null>(null);
+const pendingCard = ref<AbnormalityChoice | null>(null);
 
-function onCardClick(card: (typeof props.choices)[number]) {
+function onCardClick(card: AbnormalityChoice) {
   if (card.targetType === "SelectOne") {
     if (pendingCard.value?.id === card.id) {
       pendingCard.value = null;
@@ -64,14 +51,16 @@ function onBack() {
 }
 
 const totalCoins = computed(
-  () => (props.teamPositiveCoins ?? 0) + (props.teamNegativeCoins ?? 0),
+  () =>
+    (props.selection.teamPositiveCoins ?? 0) +
+    (props.selection.teamNegativeCoins ?? 0),
 );
 const posRatio = computed(() =>
   totalCoins.value > 0
-    ? (props.teamPositiveCoins ?? 0) / totalCoins.value
+    ? (props.selection.teamPositiveCoins ?? 0) / totalCoins.value
     : 0.5,
 );
-const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
+const showTeamInfo = computed(() => props.selection.teamEmotionLevel !== undefined);
 </script>
 
 <template>
@@ -80,17 +69,17 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
       <header class="ab-header">
         <span class="ab-title">Emotion Card Selection</span>
         <div v-if="showTeamInfo" class="ab-team-info">
-          <span class="ab-team-lv">Lv {{ toRoman(teamEmotionLevel!) }}</span>
+          <span class="ab-team-lv">Lv {{ toRoman(selection.teamEmotionLevel!) }}</span>
           <div
-            v-if="(teamCoinMax ?? 0) > 0"
+            v-if="(selection.teamCoinMax ?? 0) > 0"
             class="ab-coin-bar-wrap"
-            :title="`${teamCoin} / ${teamCoinMax} coins`"
+            :title="`${selection.teamCoin} / ${selection.teamCoinMax} coins`"
           >
             <div class="ab-coin-bar">
               <div
                 class="ab-coin-fill"
                 :style="{
-                  width: `${Math.min(100, ((teamCoin ?? 0) / (teamCoinMax ?? 1)) * 100)}%`,
+                  width: `${Math.min(100, ((selection.teamCoin ?? 0) / (selection.teamCoinMax ?? 1)) * 100)}%`,
                 }"
               />
             </div>
@@ -98,7 +87,7 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
           <div
             v-if="totalCoins > 0"
             class="ab-posneg-wrap"
-            :title="`+${teamPositiveCoins} / -${teamNegativeCoins}`"
+            :title="`+${selection.teamPositiveCoins} / -${selection.teamNegativeCoins}`"
           >
             <div class="ab-posneg-bar">
               <div
@@ -107,10 +96,10 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
               />
             </div>
             <span class="ab-posneg-label ab-posneg-label--pos"
-              >+{{ teamPositiveCoins }}</span
+              >+{{ selection.teamPositiveCoins }}</span
             >
             <span class="ab-posneg-label ab-posneg-label--neg"
-              >-{{ teamNegativeCoins }}</span
+              >-{{ selection.teamNegativeCoins }}</span
             >
           </div>
         </div>
@@ -120,7 +109,7 @@ const showTeamInfo = computed(() => props.teamEmotionLevel !== undefined);
         <!-- Choice list -->
         <div v-if="!pendingCard" key="choices" class="ab-choices">
           <AbnormalityPageCard
-            v-for="card in choices"
+            v-for="card in selection.choices"
             :key="card.id"
             :name="card.name"
             :state="card.state"
