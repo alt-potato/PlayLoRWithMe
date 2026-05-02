@@ -3,6 +3,14 @@ export default defineNuxtConfig({
   compatibilityDate: "2026-03-12",
   devtools: { enabled: true },
 
+  // The app is a SPA that bootstraps from a live WebSocket — there is no
+  // meaningful HTML to render before the first server message arrives.
+  // SSR would just produce an empty shell anyway, while dragging in browser
+  // globals (localStorage, matchMedia) at module-init time and surfacing
+  // hard-to-debug errors during `npm run dev`. `nuxt generate` still emits
+  // the static SPA shell that the mod's HTTP server serves as wwwroot/.
+  ssr: false,
+
   vite: {
     // Pre-bundle runtime deps Vite would otherwise discover mid-session and
     // trigger a full-page reload for. zod lands here because types/game.ts
