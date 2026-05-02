@@ -190,6 +190,10 @@ let prevDeckCounts = countDecks(decks.value);
  * delta drops the oldest pending-remove. The action-promise is
  * intentionally not consulted — the diff alone is the source of truth.
  */
+// Shallow watch — the wire patch path in `applyDelta` always reassigns
+// `props.lib.decks` to a new array reference when any deck slot changes, so
+// deep tracking would only add overhead. Falls back to a single-empty-slot
+// shape if the payload omits the field.
 watch(
   () => props.lib.decks,
   (next) => {
@@ -206,7 +210,6 @@ watch(
     }
     prevDeckCounts = nextCounts;
   },
-  { deep: true },
 );
 
 /**

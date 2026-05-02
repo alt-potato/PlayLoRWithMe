@@ -88,7 +88,12 @@ export function useWebSocket() {
     if (mockName) return useMockBackend(mockName);
   }
 
-  const gameState = ref<GameState | null>(null);
+  // shallowRef — every patch path (initial state, delta, resync) replaces
+  // gameState.value with a fresh top-level object. Deep reactivity would walk
+  // the entire game tree (nested allies, decks, slottedCards…) on every send;
+  // shallow tracking is sufficient because consumers re-derive from the new
+  // root reference rather than mutating in place.
+  const gameState = shallowRef<GameState | null>(null);
   const session = ref<SessionState | null>(null);
   const status = ref<Status>("connecting");
   const players = ref<PlayerInfo[]>([]);
