@@ -1237,12 +1237,17 @@ namespace PlayLoRWithMe
 
                 var skinPath = Path.Combine(FashionBodyDir, $"{stem}{suffix}_skin.png");
 
-                // Skip if already extracted.  The back file is the sentinel; for the rare
-                // case where all sprites are front-layer, use the front file instead.
+                // Per-PNG cache flags — gate the expensive composite/encode/IO work
+                // below.  Do NOT use these to skip the loop body wholesale: the bounds
+                // math and `RecordFeetYFrac` call at the end of each branch must run on
+                // every startup, since `FashionMeta` is rebuilt in-memory each session
+                // (Pass 2c seeds `FeetYFrac` with a 1.0 placeholder).  An earlier
+                // version had a `continue` here that left every cached book stuck on
+                // the placeholder, which made feet land at the PNG bottom edge instead
+                // of the authored feet position on every post-first-install startup.
                 bool backDone  = body.Sprites.Count      == 0 || File.Exists(path);
                 bool frontDone = body.FrontSprites.Count == 0 || File.Exists(frontPath);
                 bool skinDone  = body.SkinSprites.Count  == 0 || File.Exists(skinPath);
-                if (backDone && frontDone && skinDone) continue;
 
                 try
                 {
@@ -1302,17 +1307,16 @@ namespace PlayLoRWithMe
                         int bW = Mathf.Max(1, Mathf.RoundToInt(bodyBounds.size.x * ppu));
                         int bH = Mathf.Max(1, Mathf.RoundToInt(bodyBounds.size.y * ppu));
 
-                        // Composite the canvas, then scan pixels for the visible bottom
-                        // row.  sprite.bounds for workshop FullRect bodies (loaded via
-                        // LoadLargePivotSprite) covers the whole 512x512 texture even
-                        // when the character occupies only the middle — so bodyBounds
-                        // extends well below the authored feet-at-origin.  A pixel scan
-                        // gives the true visible bottom regardless of padding, keeping
-                        // feet aligned with the shared floor line in the frontend.
-                        var canvasPixels = BuildBodyCanvas(
-                            allReplaceSprites, bW, bH, bodyBounds, ppu, Vector3.zero, body.WorldScale);
+                        // Composite + write the PNG only when it isn't already cached.
+                        // BuildBodyCanvas iterates every pixel of every contributing
+                        // sprite — too expensive to run for the metadata-only refresh
+                        // path that drives `RecordFeetYFrac` below.
                         if (!backDone)
+                        {
+                            var canvasPixels = BuildBodyCanvas(
+                                allReplaceSprites, bW, bH, bodyBounds, ppu, Vector3.zero, body.WorldScale);
                             File.WriteAllBytes(path, EncodeCanvasToPng(canvasPixels, bW, bH));
+                        }
 
                         // Feet sit at world Y = 0 (prefab origin authored at feet) — same
                         // convention as the non-replacesHead branch below.  Pixel-scanning
