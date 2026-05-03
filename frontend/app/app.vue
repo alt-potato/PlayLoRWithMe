@@ -104,8 +104,40 @@ provide(ASSETS_READY, assetsReady);
 
 // Provide stateGeneration so descendants holding optimistic UI state (e.g.
 // DeckTab's pending-add/remove tiles) can drop phantoms when a fresh full
-// state replaces the previous one (initial connect, reconnect, or resync).
+// state replaces the previous one across a connection boundary (initial
+// connect, reconnect). Mid-session resyncs no longer bump this — they are
+// reconciled by per-feature diff watchers instead, so a brief WebSocket gap
+// during play doesn't wipe the user's queued tile taps.
 provide(STATE_GENERATION, stateGeneration);
+
+// Status banner: surfaces a non-blocking "Connecting…" / "Reconnecting…"
+// message when the WebSocket has been off `connected` for more than the brief
+// debounce window. The 600 ms threshold filters out transient blips (a single
+// dropped frame and immediate reopen) so the banner never flashes for normal
+// network jitter.
+const STATUS_BANNER_DELAY_MS = 600;
+const showStatusBanner = ref(false);
+let statusBannerTimer: ReturnType<typeof setTimeout> | null = null;
+watch(status, (s) => {
+  if (statusBannerTimer) {
+    clearTimeout(statusBannerTimer);
+    statusBannerTimer = null;
+  }
+  if (s === "connected") {
+    showStatusBanner.value = false;
+    return;
+  }
+  statusBannerTimer = setTimeout(() => {
+    showStatusBanner.value = true;
+  }, STATUS_BANNER_DELAY_MS);
+});
+const statusBannerLabel = computed(() => {
+  // No prior gameState ⇒ this is the initial connect, not a recovery from a
+  // mid-session drop. The wording reflects that so first-time users aren't
+  // told something is being "reconnected" when nothing was ever connected.
+  if (!gameState.value) return "Connecting to game…";
+  return "Connection lost — reconnecting…";
+});
 
 // SessionPanel is hoisted into the global header so it is reachable from
 // every scene (title, main/librarian manager, battle setup, battle).
@@ -154,6 +186,13 @@ const rawJson = computed(() =>
         />
       </div>
     </header>
+
+    <Transition name="status-banner">
+      <div v-if="showStatusBanner" class="status-banner" role="status" aria-live="polite">
+        <span class="status-banner-dot" />
+        <span>{{ statusBannerLabel }}</span>
+      </div>
+    </Transition>
 
     <main>
       <!--
@@ -613,6 +652,46 @@ body {
 
 main {
   flex: 1;
+}
+
+/* Connection status banner: thin amber strip under the topbar. Non-blocking
+   (no pointer-events override on main) so the user can keep interacting with
+   whatever last-known state is on screen while the socket recovers. */
+.status-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--bg-gold);
+  border: 1px solid var(--border-gold);
+  border-top: 1px solid var(--gold-dim);
+  color: var(--gold-bright);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.06em;
+  box-shadow: var(--shadow-inset), var(--shadow-sm);
+}
+.status-banner-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 2px rgba(240, 160, 32, 0.18);
+  flex-shrink: 0;
+  animation: status-banner-pulse 1.4s var(--ease-out) infinite;
+}
+@keyframes status-banner-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.status-banner-enter-from,
+.status-banner-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.status-banner-enter-active,
+.status-banner-leave-active {
+  transition: opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
 }
 
 .scene-idle {

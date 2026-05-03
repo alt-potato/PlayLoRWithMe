@@ -7,7 +7,12 @@ import { useMockBackend } from "~/dev/useMockBackend";
 
 const SESSION_STORAGE_KEY = "plwm_session";
 const DISPLAY_NAME_STORAGE_KEY = "plwm_display_name";
-const RECONNECT_DELAY_MS = 2000;
+// Exponential backoff (with jitter) for reconnect attempts. Without backoff a
+// flaky AP/hotspot blip would have every connected client banging on the
+// server every 2s in lockstep; the jitter spreads recovery and the cap keeps
+// the worst-case re-acquire latency reasonable.
+const RECONNECT_BASE_MS = 1000;
+const RECONNECT_CAP_MS = 15000;
 const ACTION_TIMEOUT_MS = 5000;
 
 /**
@@ -116,6 +121,16 @@ export function useWebSocket() {
   let lastSeq = 0;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let closing = false;
+  // Counts consecutive failed connect attempts (without an intervening open).
+  // Drives the exponential-backoff calculation and resets to zero once we get
+  // a fresh open event.
+  let reconnectAttempt = 0;
+  // Tracks whether the next "state" message arrives across a connection
+  // boundary (initial connect / reconnect) versus a mid-session resync. Only
+  // the former bumps `stateGeneration` — on a gap-resync the server is still
+  // alive and any pending optimistic edits can be reconciled by per-feature
+  // diff watchers instead of being wiped wholesale.
+  let expectingConnectionState = true;
   // True once the per-connection display-name restore has been attempted
   // (whether it sent a rename or skipped because the server already had
   // the right name). Reset on disconnect so a reconnect that lands on a
@@ -173,6 +188,8 @@ export function useWebSocket() {
 
     ws.onopen = () => {
       status.value = "connected";
+      reconnectAttempt = 0;
+      expectingConnectionState = true;
     };
 
     ws.onmessage = (ev: MessageEvent) => {
@@ -205,7 +222,17 @@ export function useWebSocket() {
         pending.delete(id);
       }
       inflightCount.value = pending.size;
-      if (!closing) reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
+      if (!closing) {
+        const expo = Math.min(
+          RECONNECT_CAP_MS,
+          RECONNECT_BASE_MS * 2 ** reconnectAttempt,
+        );
+        // jitter in [0.5, 1.0] spreads simultaneous client reconnects when a
+        // shared upstream (router, ap) flaps.
+        const delay = Math.floor(expo * (0.5 + Math.random() * 0.5));
+        reconnectAttempt += 1;
+        reconnectTimer = setTimeout(connect, delay);
+      }
     };
 
     ws.onerror = () => {
@@ -235,7 +262,13 @@ export function useWebSocket() {
         lastSeq = msg.seq;
         lastSeqRef.value = lastSeq;
         gameState.value = msg.data;
-        stateGeneration.value += 1;
+        // Only bump on the first state arrival per connection; mid-session
+        // resyncs are reconciled by per-feature diff watchers instead of
+        // wiping all optimistic UI state (e.g. pending deck-edit tiles).
+        if (expectingConnectionState) {
+          stateGeneration.value += 1;
+          expectingConnectionState = false;
+        }
         break;
 
       case "delta": {
