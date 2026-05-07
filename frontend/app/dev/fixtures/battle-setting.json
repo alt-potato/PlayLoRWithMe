@@ -1,12 +1,12 @@
 {
-  "_comment": "Pre-battle formation phase (main scene, uiPhase=BattleSetting). One ally claimed, one unclaimed so the claim board exercises both states.",
+  "_comment": "Pre-battle formation phase (main scene, uiPhase=BattleSetting). Mirrors main-librarian's Daat floor: Angela (Page of Signet) owned by the local session, BongBong (The Purple Tear) unclaimed. Modelled on the Daat Floor mod and Angel of Ruina (workshop 2871488081 / 2702048806).",
   "scene": "main",
   "uiPhase": "BattleSetting",
   "stageState": "BattleSetting",
   "assetsReady": true,
   "stage": {
-    "floor": 1,
-    "chapter": 1,
+    "floor": 10,
+    "chapter": 6,
     "wave": 1,
     "round": 1,
     "name": "Reception Hall"
@@ -14,22 +14,23 @@
   "allies": [
     {
       "id": 0,
-      "name": "Malkuth",
-      "hp": 110,
-      "maxHp": 110,
-      "staggerGauge": 80,
-      "maxStaggerGauge": 80,
-      "staggerThreshold": 40,
+      "name": "Angela",
+      "hp": 100,
+      "maxHp": 100,
+      "staggerGauge": 100,
+      "maxStaggerGauge": 100,
+      "staggerThreshold": 50,
       "targetable": true,
       "turnState": "WAIT_TURN",
       "speedDice": [],
       "slottedCards": [],
       "passives": [
         {
-          "id": { "id": 100001, "packageId": 0 },
-          "name": "Strong Will",
-          "desc": "+1 power on the first die.",
-          "cost": 1
+          "id": { "id": 30, "packageId": 0 },
+          "name": "System Princess / Aberrant Dimension",
+          "desc": "When killed, becomes Staggered and gains immunity to all damage for the Scene; restores HP/SR fully next Scene.",
+          "cost": 5,
+          "canTransfer": false
         }
       ],
       "buffs": [],
@@ -42,43 +43,74 @@
       "reservedLight": 0,
       "keyPage": {
         "instanceId": 101,
-        "name": "Malkuth's Page",
-        "speedDiceCount": 3,
-        "speedMin": 3,
-        "speedMax": 7,
-        "hp": 110,
-        "breakGauge": 80,
-        "equipRangeType": "Hybrid",
+        "name": "Page of Signet",
+        "speedDiceCount": 4,
+        "speedMin": 1,
+        "speedMax": 8,
+        "hp": 100,
+        "breakGauge": 100,
+        "equipRangeType": "Melee",
         "resistances": {
           "slashHp": "Normal",
-          "pierceHp": "Weak",
-          "bluntHp": "Resist"
+          "pierceHp": "Normal",
+          "bluntHp": "Normal"
         }
       },
       "deckPreview": [
         {
-          "cardId": { "id": 200001, "packageId": "core" },
-          "name": "Jab",
-          "cost": 2,
+          "cardId": { "id": 1, "packageId": "AngelOfRuina" },
+          "name": "Cautious Observation",
+          "cost": 0,
           "range": "Near",
           "rarity": "Common",
           "count": 3
+        },
+        {
+          "cardId": { "id": 2, "packageId": "AngelOfRuina" },
+          "name": "Probing Strike",
+          "cost": 1,
+          "range": "Near",
+          "rarity": "Uncommon",
+          "count": 3
+        },
+        {
+          "cardId": { "id": 4, "packageId": "AngelOfRuina" },
+          "name": "Lightning Dodge",
+          "cost": 3,
+          "range": "Near",
+          "rarity": "Rare",
+          "count": 2
+        },
+        {
+          "cardId": { "id": 5, "packageId": "AngelOfRuina" },
+          "name": "Blade Clash",
+          "cost": 4,
+          "range": "Near",
+          "rarity": "Rare",
+          "count": 1
         }
       ]
     },
     {
       "id": 1,
-      "name": "Adelaide",
-      "hp": 90,
-      "maxHp": 90,
-      "staggerGauge": 70,
-      "maxStaggerGauge": 70,
-      "staggerThreshold": 35,
+      "name": "BongBong",
+      "hp": 95,
+      "maxHp": 95,
+      "staggerGauge": 75,
+      "maxStaggerGauge": 75,
+      "staggerThreshold": 38,
       "targetable": true,
       "turnState": "WAIT_TURN",
       "speedDice": [],
       "slottedCards": [],
-      "passives": [],
+      "passives": [
+        {
+          "id": { "id": 250100, "packageId": 0 },
+          "name": "Sword of Adelaide",
+          "desc": "On using a Counter die, the next Atk die played gains +1 power.",
+          "cost": 3
+        }
+      ],
       "buffs": [],
       "abnormalities": [],
       "emotionLevel": 0,
@@ -89,12 +121,12 @@
       "reservedLight": 0,
       "keyPage": {
         "instanceId": 102,
-        "name": "Regret Page",
+        "name": "The Purple Tear",
         "speedDiceCount": 3,
         "speedMin": 2,
-        "speedMax": 6,
-        "hp": 90,
-        "breakGauge": 70,
+        "speedMax": 7,
+        "hp": 95,
+        "breakGauge": 75,
         "equipRangeType": "Melee",
         "resistances": {
           "slashHp": "Weak",
@@ -104,11 +136,27 @@
       },
       "deckPreview": [
         {
-          "cardId": { "id": 200001, "packageId": "core" },
-          "name": "Jab",
-          "cost": 2,
+          "cardId": { "id": 1, "packageId": "AngelOfRuina" },
+          "name": "Cautious Observation",
+          "cost": 0,
           "range": "Near",
           "rarity": "Common",
+          "count": 2
+        },
+        {
+          "cardId": { "id": 2, "packageId": "AngelOfRuina" },
+          "name": "Probing Strike",
+          "cost": 1,
+          "range": "Near",
+          "rarity": "Uncommon",
+          "count": 2
+        },
+        {
+          "cardId": { "id": 3, "packageId": "AngelOfRuina" },
+          "name": "Field Analysis",
+          "cost": 2,
+          "range": "Near",
+          "rarity": "Uncommon",
           "count": 2
         }
       ]
@@ -117,12 +165,12 @@
   "enemies": [
     {
       "id": 10,
-      "name": "Plague Doctor",
-      "hp": 120,
-      "maxHp": 120,
-      "staggerGauge": 60,
-      "maxStaggerGauge": 60,
-      "staggerThreshold": 30,
+      "name": "Melting Love",
+      "hp": 220,
+      "maxHp": 220,
+      "staggerGauge": 110,
+      "maxStaggerGauge": 110,
+      "staggerThreshold": 55,
       "targetable": true,
       "turnState": "WAIT_TURN",
       "speedDice": [],
@@ -135,12 +183,12 @@
     },
     {
       "id": 11,
-      "name": "Plague Cultist",
+      "name": "Pink Slime",
       "hp": 70,
       "maxHp": 70,
-      "staggerGauge": 45,
-      "maxStaggerGauge": 45,
-      "staggerThreshold": 22,
+      "staggerGauge": 35,
+      "maxStaggerGauge": 35,
+      "staggerThreshold": 17,
       "targetable": true,
       "turnState": "WAIT_TURN",
       "speedDice": [],

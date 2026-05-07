@@ -1,42 +1,42 @@
 {
-  "_comment": "Battle scene frozen on the abnormality-selection overlay. Three emotion-level-3 choices including one ally-targeting card.",
+  "_comment": "Battle scene frozen on the abnormality-selection overlay. Three emotion-level-3 choices drawn from the Da'at floor mod (Yin/Yang and Melting Love sets) — covers All, SelectOne, and Ally targeting paths.",
   "scene": "battle",
   "phase": "AbnormalitySelectionPhase",
   "stageState": "Battle",
   "assetsReady": true,
   "stage": {
-    "floor": 3,
-    "chapter": 1,
+    "floor": 10,
+    "chapter": 6,
     "wave": 2,
     "round": 5,
-    "name": "Urban Plague District"
+    "name": "Reception of Melting Love"
   },
   "abnormalitySelection": {
     "choices": [
       {
         "id": 1,
-        "name": "Big Bird I",
+        "name": "Barrier of Slime",
         "emotionLevel": 3,
         "targetType": "All",
         "state": "Positive",
-        "desc": "Restore 4 HP to all allies.",
-        "flavorText": "You have done well."
+        "desc": "Take 25% less damage from attacks while not Staggered. At the start of the Scene, recover HP equal to the number of allies present.",
+        "flavorText": "It's a by-product of some horrid experiment that eventually failed. People who touch this slime complain of strange sensations on their skin."
       },
       {
         "id": 2,
-        "name": "Punishing Bird I",
+        "name": "Devil's Pendant",
         "emotionLevel": 3,
         "targetType": "SelectOne",
         "state": "Negative",
-        "desc": "Deal 6 damage to a chosen enemy."
+        "desc": "Gain 1-2 Speed. Offensive dice min/max +2/+1. Defensive dice min/max -1/-2. Transferred to allies holding Angel's Pendant or Duality."
       },
       {
         "id": 3,
-        "name": "Long Bird I",
+        "name": "Angel's Pendant",
         "emotionLevel": 3,
         "targetType": "Ally",
         "state": "Positive",
-        "desc": "Grant the chosen ally 2 Protection and draw 1 card."
+        "desc": "Restore 1 Light at the start of the Scene. When this character rolls a max/min value, recover 1-2 HP/Stagger Resist."
       }
     ],
     "teamEmotionLevel": 3,
@@ -48,12 +48,12 @@
   "allies": [
     {
       "id": 1,
-      "name": "Daphnes",
-      "hp": 82,
-      "maxHp": 110,
-      "staggerGauge": 58,
-      "maxStaggerGauge": 80,
-      "staggerThreshold": 40,
+      "name": "Angela",
+      "hp": 78,
+      "maxHp": 100,
+      "staggerGauge": 72,
+      "maxStaggerGauge": 100,
+      "staggerThreshold": 50,
       "targetable": true,
       "turnState": "WAIT_CARD",
       "speedDice": [],
@@ -69,12 +69,12 @@
     },
     {
       "id": 2,
-      "name": "Morta",
+      "name": "BongBong",
       "hp": 60,
-      "maxHp": 90,
+      "maxHp": 95,
       "staggerGauge": 40,
-      "maxStaggerGauge": 70,
-      "staggerThreshold": 35,
+      "maxStaggerGauge": 75,
+      "staggerThreshold": 38,
       "targetable": true,
       "turnState": "WAIT_CARD",
       "speedDice": [],
@@ -85,19 +85,19 @@
       "emotionLevel": 1,
       "emotionCoins": { "positive": 1, "negative": 0, "max": 8 },
       "light": 2,
-      "maxLight": 4,
+      "maxLight": 3,
       "reservedLight": 0
     }
   ],
   "enemies": [
     {
       "id": 10,
-      "name": "Plague Doctor",
+      "name": "Melting Love",
       "hp": 95,
-      "maxHp": 120,
+      "maxHp": 220,
       "staggerGauge": 45,
-      "maxStaggerGauge": 60,
-      "staggerThreshold": 30,
+      "maxStaggerGauge": 110,
+      "staggerThreshold": 55,
       "targetable": true,
       "turnState": "WAIT_CARD",
       "speedDice": [],

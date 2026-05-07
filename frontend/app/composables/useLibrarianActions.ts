@@ -11,7 +11,11 @@ export interface LibrarianActions {
   lockLibrarian: (floorIndex: number, unitIndex: number) => Promise<ActionResult>;
   unlockLibrarian: (floorIndex: number, unitIndex: number) => Promise<ActionResult>;
   renameLibrarian: (floorIndex: number, unitIndex: number, name: string) => Promise<ActionResult>;
-  equipKeyPage: (floorIndex: number, unitIndex: number, bookInstanceId: number) => Promise<ActionResult>;
+  equipKeyPage: (
+    floorIndex: number,
+    unitIndex: number,
+    bookInstanceId: number,
+  ) => Promise<ActionResult>;
   addCardToDeck: (
     floorIndex: number,
     unitIndex: number,
@@ -26,15 +30,38 @@ export interface LibrarianActions {
     packageId: string,
     deckIndex?: number,
   ) => Promise<ActionResult>;
-  equipSourceBook: (floorIndex: number, unitIndex: number, bookInstanceId: number) => Promise<ActionResult>;
-  unequipSourceBook: (floorIndex: number, unitIndex: number, bookInstanceId: number) => Promise<ActionResult>;
-  attributePassive: (floorIndex: number, unitIndex: number, sourceInstanceId: number, passiveId: number, passivePackageId: string) => Promise<ActionResult>;
-  removeAttributedPassive: (floorIndex: number, unitIndex: number, sourceInstanceId: number, passiveId: number, passivePackageId: string) => Promise<ActionResult>;
+  equipSourceBook: (
+    floorIndex: number,
+    unitIndex: number,
+    bookInstanceId: number,
+  ) => Promise<ActionResult>;
+  unequipSourceBook: (
+    floorIndex: number,
+    unitIndex: number,
+    bookInstanceId: number,
+  ) => Promise<ActionResult>;
+  attributePassive: (
+    floorIndex: number,
+    unitIndex: number,
+    sourceInstanceId: number,
+    passiveId: number,
+    passivePackageId: string,
+  ) => Promise<ActionResult>;
+  removeAttributedPassive: (
+    floorIndex: number,
+    unitIndex: number,
+    sourceInstanceId: number,
+    passiveId: number,
+    passivePackageId: string,
+  ) => Promise<ActionResult>;
 }
 
 export const LIBRARIAN_ACTIONS: InjectionKey<LibrarianActions> = Symbol("LibrarianActions");
 
-/** Accent color keyed by floorIndex (0 = Malkuth ... 9 = Keter). */
+/**
+ * Accent color keyed by floorIndex (0 = Malkuth ... 9 = Keter, 10 = Daat).
+ * Da'at used by a certain workshop mod and dev fixtures.
+ */
 export const FLOOR_COLORS: Record<number, string> = {
   0: "#be9966", // Malkuth
   1: "#6968c4", // Yesod
@@ -46,6 +73,7 @@ export const FLOOR_COLORS: Record<number, string> = {
   7: "#957704", // Binah
   8: "#7c7b7c", // Hokma
   9: "#dddddd", // Keter
+  10: "#67e0d2", // Da'at (presumably)
 };
 
 /** Returns the accent color for a given floor index, falling back to grey. */

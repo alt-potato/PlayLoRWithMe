@@ -1,62 +1,206 @@
 {
-  "_comment": "Main scene with the librarian manager — exercises locked/unlocked states, minimal vs fully-equipped key pages, and a mixed-rarity inventory.",
+  "_comment": "Main scene with the librarian manager. Floor models the Da'at Floor mod (workshop 2871488081) — sephirah Daat at floorIndex 10 picks up the teal accent in FLOOR_COLORS. EGO pages are Angela-tied vanilla EGOs since the Daat mod ships none. Equipped/inventory key pages and combat cards are real entries from Angel of Ruina (workshop 2702048806) and vanilla LoR; passive IDs match those mods' PassiveList.xml so descriptions stay faithful.",
   "scene": "main",
   "phase": "MainMenuPhase",
   "stageState": "Default",
   "assetsReady": true,
   "floors": [
     {
-      "floorIndex": 1,
-      "officialName": "Malkuth",
-      "realizationLevel": 3,
-      "egoCards": [],
+      "floorIndex": 10,
+      "officialName": "Daat",
+      "realizationLevel": 4,
+      "egoCards": [
+        {
+          "cardId": { "id": 9100001, "packageId": "core" },
+          "name": "Magic Bullet",
+          "cost": 4,
+          "range": "FarArea",
+          "rarity": "Unique",
+          "count": 1,
+          "abilityDesc": "[On Use] Discards 1 random card from hand. Targets up to 3 enemies in a fan.",
+          "dice": [{ "type": "Atk", "detail": "Pierce", "min": 5, "max": 9 }]
+        },
+        {
+          "cardId": { "id": 9100002, "packageId": "core" },
+          "name": "Justitia",
+          "cost": 5,
+          "range": "Near",
+          "rarity": "Unique",
+          "count": 1,
+          "abilityDesc": "[On Clash Win] Restore 4 HP and gain 1 Light next Scene. [On Hit] Inflicts 2 Burn.",
+          "dice": [
+            { "type": "Atk", "detail": "Slash", "min": 6, "max": 11 },
+            { "type": "Def", "detail": "Guard", "min": 4, "max": 7 }
+          ]
+        },
+        {
+          "cardId": { "id": 9100003, "packageId": "core" },
+          "name": "Solemn Lament",
+          "cost": 5,
+          "range": "Far",
+          "rarity": "Unique",
+          "count": 1,
+          "abilityDesc": "[On Hit] Restores 5 HP to all allies.",
+          "dice": [
+            { "type": "Atk", "detail": "Hit", "min": 5, "max": 8 },
+            { "type": "Atk", "detail": "Hit", "min": 5, "max": 8 }
+          ]
+        },
+        {
+          "cardId": { "id": 9100004, "packageId": "core" },
+          "name": "Censored",
+          "cost": 6,
+          "range": "Special",
+          "rarity": "Unique",
+          "count": 1,
+          "abilityDesc": "Targets one enemy. Roll all dice; on each clash win, the next die gains +2 power.",
+          "dice": [
+            { "type": "Atk", "detail": "Slash", "min": 7, "max": 13 },
+            { "type": "Atk", "detail": "Slash", "min": 7, "max": 13 },
+            { "type": "Atk", "detail": "Slash", "min": 7, "max": 13 }
+          ]
+        }
+      ],
       "emotionCards": [
         {
-          "level": 3,
-          "name": "Awakening I",
-          "state": "Positive",
-          "targetType": "All",
-          "emotionLevel": 3,
-          "abnormalityName": "Big Bird",
-          "desc": "Restore 4 HP to all allies."
+          "level": 2,
+          "name": "Accord",
+          "state": "Negative",
+          "targetType": "SelectOne",
+          "emotionLevel": 1,
+          "abnormalityName": "[CENSORED]",
+          "desc": "Add an 'Accord' page to the personal E.G.O list: Cost 2 - [On Play] all other allies gain 1 Damage Up per 2 user Emotion Levels, 1 Strength, and lose 1 Light.",
+          "flavorText": "The only solution we could come up with was at the suggestion of one of our employees. It was to cover the Abnormality with a giant set of censors and blurring."
+        },
+        {
+          "level": 2,
+          "name": "Sacrifice",
+          "state": "Negative",
+          "targetType": "SelectOne",
+          "emotionLevel": 1,
+          "abnormalityName": "[CENSORED]",
+          "desc": "All dice gain +3 Power. Become Overwhelmed every even Scene.",
+          "flavorText": "Only when it has thoroughly ravaged the mind and body of a sacrifice will it enter a brief state of dormancy."
+        },
+        {
+          "level": 2,
+          "name": "Trauma",
+          "state": "Negative",
+          "targetType": "SelectOne",
+          "emotionLevel": 1,
+          "abnormalityName": "[CENSORED]",
+          "desc": "Upon selecting this page, become Staggered. At the start of subsequent Acts, lose 80% of Max Stagger Resist. All Stagger damage resistances become Ineffective.",
+          "flavorText": "Once its form is observed, it can never be erased from one's mind."
         },
         {
           "level": 3,
-          "name": "Breakdown I",
+          "name": "Gentle Touch",
           "state": "Negative",
           "targetType": "SelectOne",
-          "emotionLevel": 3,
-          "abnormalityName": "Small Bird",
-          "desc": "Deal 5 damage to a chosen enemy."
+          "emotionLevel": 2,
+          "abnormalityName": "Melting Love",
+          "desc": "Deal 50% more Stagger damage with attacks. Deal no damage with attacks against non-Staggered targets.",
+          "flavorText": "A rare bond had formed between the two. They cared about each other from the bottoms of their hearts."
+        },
+        {
+          "level": 3,
+          "name": "Barrier of Slime",
+          "state": "Positive",
+          "targetType": "All",
+          "emotionLevel": 1,
+          "abnormalityName": "Melting Love",
+          "desc": "Take 25% less damage from attacks while not Staggered. At the start of the Scene, recover HP equal to the number of allies present."
+        },
+        {
+          "level": 3,
+          "name": "Overgrowth",
+          "state": "Negative",
+          "targetType": "SelectOne",
+          "emotionLevel": 2,
+          "abnormalityName": "Melting Love",
+          "desc": "Increase Max HP by 100% (current HP unchanged). Reduce Max Stagger Resist by 50%."
+        },
+        {
+          "level": 4,
+          "name": "Angel's Pendant",
+          "state": "Positive",
+          "targetType": "SelectOne",
+          "emotionLevel": 2,
+          "abnormalityName": "Yin & Yang",
+          "desc": "If an ally has 'Devil's Pendant' or 'Duality', transfer this page to them. At the start of the Scene, restore 1 Light. Rolling max/min recovers 1-2 HP/Stagger Resist."
+        },
+        {
+          "level": 4,
+          "name": "Devil's Pendant",
+          "state": "Negative",
+          "targetType": "SelectOne",
+          "emotionLevel": 2,
+          "abnormalityName": "Yin & Yang",
+          "desc": "Gain 1-2 Speed. Offensive dice min/max +2/+1; defensive dice min/max -1/-2.",
+          "flavorText": "Some say just looking at it will fill up your mind with negativity."
+        },
+        {
+          "level": 4,
+          "name": "Duality",
+          "state": "Positive",
+          "targetType": "SelectOne",
+          "emotionLevel": 1,
+          "abnormalityName": "Yin & Yang",
+          "desc": "Bonus effects when the bearer also holds Angel's Pendant or Devil's Pendant; if both, double both pages' effects."
         }
       ],
       "librarians": [
         {
-          "floorIndex": 1,
+          "floorIndex": 10,
           "unitIndex": 0,
-          "name": "Malkuth",
+          "name": "Angela",
           "keyPage": {
             "instanceId": 101,
-            "name": "Malkuth's Page",
-            "speedDiceCount": 3,
-            "speedMin": 3,
-            "speedMax": 7,
-            "hp": 110,
-            "breakGauge": 80,
-            "equipRangeType": "Hybrid",
+            "name": "Page of Signet",
+            "speedDiceCount": 4,
+            "speedMin": 1,
+            "speedMax": 8,
+            "hp": 100,
+            "breakGauge": 100,
+            "equipRangeType": "Melee",
             "rarity": "Unique",
+            "bookId": 10000006,
+            "bookPackageId": "AngelOfRuina",
             "isMultiDeck": false,
             "resistances": {
               "slashHp": "Normal",
-              "pierceHp": "Weak",
-              "bluntHp": "Resist"
+              "pierceHp": "Normal",
+              "bluntHp": "Normal",
+              "slashBp": "Normal",
+              "pierceBp": "Normal",
+              "bluntBp": "Normal"
             }
           },
           "passives": [
             {
-              "id": { "id": 100001, "packageId": 0 },
-              "name": "Strong Will",
-              "desc": "+1 power on the first die.",
+              "id": { "id": 30, "packageId": 0 },
+              "name": "System Princess / Aberrant Dimension",
+              "desc": "When killed, becomes Staggered and gains immunity to all damage for the Scene; cancels pages targeting this character. Restores HP/SR fully next Scene. Each activation in the Library reduces Max HP by 35; if remaining Max HP is insufficient, dies. (Untransferable)",
+              "cost": 5,
+              "canTransfer": false
+            },
+            {
+              "id": { "id": 25, "packageId": 0 },
+              "name": "Imitation of Dimensional Intervention",
+              "desc": "At the end of a Scene, if Emotion Level reaches 1/3/5, choose a Singularity special page. (Untransferable)",
+              "cost": 4,
+              "canTransfer": false
+            },
+            {
+              "id": { "id": 47, "packageId": 0 },
+              "name": "Broken Light Construct",
+              "desc": "Takes no more than 10 damage from a single attack. (Once per Scene)",
+              "cost": 3
+            },
+            {
+              "id": { "id": 1, "packageId": 0 },
+              "name": "Petite Build",
+              "desc": "Evasion dice +1 power, Offensive dice -1 power.",
               "cost": 1
             }
           ],
@@ -65,19 +209,35 @@
               "index": 0,
               "cards": [
                 {
-                  "cardId": { "id": 200001, "packageId": "core" },
-                  "name": "Jab",
-                  "cost": 2,
+                  "cardId": { "id": 1, "packageId": "AngelOfRuina" },
+                  "name": "Cautious Observation",
+                  "cost": 0,
                   "range": "Near",
                   "rarity": "Common",
                   "count": 3
                 },
                 {
-                  "cardId": { "id": 200004, "packageId": "core" },
-                  "name": "Sanguine Rite",
+                  "cardId": { "id": 2, "packageId": "AngelOfRuina" },
+                  "name": "Probing Strike",
+                  "cost": 1,
+                  "range": "Near",
+                  "rarity": "Uncommon",
+                  "count": 3
+                },
+                {
+                  "cardId": { "id": 4, "packageId": "AngelOfRuina" },
+                  "name": "Lightning Dodge",
+                  "cost": 3,
+                  "range": "Near",
+                  "rarity": "Rare",
+                  "count": 2
+                },
+                {
+                  "cardId": { "id": 5, "packageId": "AngelOfRuina" },
+                  "name": "Blade Clash",
                   "cost": 4,
-                  "range": "Special",
-                  "rarity": "Unique",
+                  "range": "Near",
+                  "rarity": "Rare",
                   "count": 1
                 }
               ]
@@ -87,19 +247,19 @@
           "isSephirah": true
         },
         {
-          "floorIndex": 1,
+          "floorIndex": 10,
           "unitIndex": 1,
-          "name": "Adelaide",
+          "name": "BongBong",
           "keyPage": {
             "instanceId": 102,
             "name": "The Purple Tear",
             "speedDiceCount": 3,
             "speedMin": 2,
-            "speedMax": 6,
-            "hp": 90,
-            "breakGauge": 70,
+            "speedMax": 7,
+            "hp": 95,
+            "breakGauge": 75,
             "equipRangeType": "Melee",
-            "rarity": "Rare",
+            "rarity": "Unique",
             "bookId": 250035,
             "bookPackageId": "",
             "isMultiDeck": true,
@@ -109,17 +269,47 @@
               "bluntHp": "Normal"
             }
           },
-          "passives": [],
+          "passives": [
+            {
+              "id": { "id": 250100, "packageId": 0 },
+              "name": "Sword of Adelaide",
+              "desc": "On using a Counter die, the next Atk die played gains +1 power.",
+              "cost": 3
+            },
+            {
+              "id": { "id": 250101, "packageId": 0 },
+              "name": "Battle of Sequence",
+              "desc": "After playing every page in the active deck, swap to the next deck stance.",
+              "cost": 2,
+              "canTransfer": false
+            }
+          ],
           "decks": [
             {
               "index": 0,
               "cards": [
                 {
-                  "cardId": { "id": 200001, "packageId": "core" },
-                  "name": "Jab",
-                  "cost": 2,
+                  "cardId": { "id": 1, "packageId": "AngelOfRuina" },
+                  "name": "Cautious Observation",
+                  "cost": 0,
                   "range": "Near",
                   "rarity": "Common",
+                  "count": 2
+                },
+                {
+                  "cardId": { "id": 2, "packageId": "AngelOfRuina" },
+                  "name": "Probing Strike",
+                  "cost": 1,
+                  "range": "Near",
+                  "rarity": "Uncommon",
+                  "count": 2
+                },
+                {
+                  "cardId": { "id": 3, "packageId": "AngelOfRuina" },
+                  "name": "Field Analysis",
+                  "cost": 2,
+                  "range": "Near",
+                  "rarity": "Uncommon",
                   "count": 2
                 }
               ]
@@ -128,24 +318,121 @@
               "index": 1,
               "cards": [
                 {
-                  "cardId": { "id": 200004, "packageId": "core" },
-                  "name": "Sanguine Rite",
+                  "cardId": { "id": 8, "packageId": "AngelOfRuina" },
+                  "name": "Black Wind Sweep",
+                  "cost": 0,
+                  "range": "Near",
+                  "rarity": "Common",
+                  "count": 3
+                },
+                {
+                  "cardId": { "id": 5, "packageId": "AngelOfRuina" },
+                  "name": "Blade Clash",
                   "cost": 4,
+                  "range": "Near",
+                  "rarity": "Rare",
+                  "count": 1
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "cards": [
+                {
+                  "cardId": { "id": 9, "packageId": "AngelOfRuina" },
+                  "name": "Veiled Afterimages",
+                  "cost": 1,
                   "range": "Special",
                   "rarity": "Unique",
                   "count": 1
                 }
               ]
             },
-            { "index": 2, "cards": [] },
             { "index": 3, "cards": [] }
+          ],
+          "lockedBy": null
+        },
+        {
+          "floorIndex": 10,
+          "unitIndex": 2,
+          "name": "Celeste",
+          "keyPage": {
+            "instanceId": 103,
+            "name": "Page of the Black Samurai",
+            "speedDiceCount": 3,
+            "speedMin": 3,
+            "speedMax": 6,
+            "hp": 100,
+            "breakGauge": 50,
+            "equipRangeType": "Melee",
+            "rarity": "Rare",
+            "bookId": 10000005,
+            "bookPackageId": "AngelOfRuina",
+            "isMultiDeck": false,
+            "resistances": {
+              "slashHp": "Resist",
+              "pierceHp": "Normal",
+              "bluntHp": "Normal",
+              "slashBp": "Normal",
+              "pierceBp": "Normal",
+              "bluntBp": "Resist"
+            }
+          },
+          "passives": [
+            {
+              "id": { "id": 18, "packageId": 0 },
+              "name": "Piercing Armament",
+              "desc": "Offensive dice +1 power. On winning a clash against an Offensive die, inflict 1 Fragile next Scene. (Up to 2 times per Scene)",
+              "cost": 4
+            },
+            {
+              "id": { "id": 19, "packageId": 0 },
+              "name": "Designated Strategy",
+              "desc": "On winning a clash with an Atk die, the next Def die +1 power. On winning a clash with a Def die, the next Atk die +1 power.",
+              "cost": 3
+            },
+            {
+              "id": { "id": 20, "packageId": 0 },
+              "name": "Information Update",
+              "desc": "Win/Lose a clash with an Offensive die to gain/lose 1 Information. (Information: each 3 stacks adds +1 to Atk dice max roll, up to 10)",
+              "cost": 3
+            },
+            {
+              "id": { "id": 6, "packageId": 0 },
+              "name": "Posture Reset",
+              "desc": "Recover 2 HP on clash win; recover 2 SR on clash loss.",
+              "cost": 2
+            }
+          ],
+          "decks": [
+            {
+              "index": 0,
+              "cards": [
+                {
+                  "cardId": { "id": 8, "packageId": "AngelOfRuina" },
+                  "name": "Black Wind Sweep",
+                  "cost": 0,
+                  "range": "Near",
+                  "rarity": "Common",
+                  "count": 3
+                },
+                {
+                  "cardId": { "id": 10, "packageId": "AngelOfRuina" },
+                  "name": "Iron Swallow",
+                  "cost": 2,
+                  "range": "Special",
+                  "rarity": "Uncommon",
+                  "count": 2
+                }
+              ]
+            }
           ],
           "lockedBy": "another-session"
         },
         {
-          "floorIndex": 1,
-          "unitIndex": 2,
-          "name": "Celeste",
+          "floorIndex": 10,
+          "unitIndex": 3,
+          "name": "Poussey",
           "keyPage": {
             "name": "(No Page Equipped)",
             "isMultiDeck": false
@@ -160,37 +447,110 @@
   "availableKeyPages": [
     {
       "instanceId": 201,
-      "name": "Spare Page",
+      "name": "Page of Si Shan",
       "speedMin": 2,
-      "speedMax": 6,
-      "bookId": { "id": 300001, "packageId": "core" },
-      "chapter": 1,
-      "bookIcon": "Chapter1",
-      "bookGroupName": "The Stray Dogs",
-      "hp": 80,
-      "breakGauge": 70,
+      "speedMax": 7,
+      "bookId": { "id": 10000001, "packageId": "AngelOfRuina" },
+      "chapter": 6,
+      "bookIcon": "XinShi",
+      "bookGroupName": "Angel of Ruina",
+      "hp": 100,
+      "breakGauge": 52,
       "equipRangeType": "Melee",
-      "rarity": "Common",
+      "rarity": "Unique",
       "resistances": {
         "slashHp": "Normal",
-        "pierceHp": "Weak",
-        "bluntHp": "Resist"
+        "pierceHp": "Normal",
+        "bluntHp": "Resist",
+        "slashBp": "Resist",
+        "pierceBp": "Normal",
+        "bluntBp": "Normal"
       },
-      "passives": []
+      "passives": [
+        {
+          "id": { "id": 1, "packageId": 0 },
+          "name": "Petite Build",
+          "desc": "Evasion dice +1 power, Offensive dice -1 power.",
+          "cost": 1
+        },
+        {
+          "id": { "id": 3, "packageId": 0 },
+          "name": "Blitz Tactics II",
+          "desc": "Evasion dice can clash with other Evasion dice as normal, are rerolled after winning vs Defensive dice, and deal 4 damage on clash win.",
+          "cost": 7
+        },
+        {
+          "id": { "id": 23, "packageId": 0 },
+          "name": "Field Command",
+          "desc": "Reduce damage and Stagger damage taken by 1 for every 2 living allies (excluding self).",
+          "cost": 3
+        },
+        {
+          "id": { "id": 6, "packageId": 0 },
+          "name": "Posture Reset",
+          "desc": "Recover 2 HP on clash win; recover 2 SR on clash loss.",
+          "cost": 2
+        }
+      ]
     },
     {
       "instanceId": 202,
-      "name": "Flintlock Page",
-      "speedMin": 3,
+      "name": "Page of the Messenger",
+      "speedMin": 1,
       "speedMax": 7,
-      "bookId": { "id": 300002, "packageId": "core" },
-      "chapter": 2,
-      "bookIcon": "Chapter2",
-      "bookGroupName": "Urban Legend",
+      "bookId": { "id": 10000002, "packageId": "AngelOfRuina" },
+      "chapter": 6,
+      "bookIcon": "XinShi",
+      "bookGroupName": "Angel of Ruina",
       "hp": 95,
-      "breakGauge": 75,
-      "equipRangeType": "Range",
-      "rarity": "Uncommon",
+      "breakGauge": 48,
+      "equipRangeType": "Melee",
+      "rarity": "Rare",
+      "resistances": {
+        "slashHp": "Normal",
+        "pierceHp": "Normal",
+        "bluntHp": "Resist"
+      },
+      "passives": [
+        {
+          "id": { "id": 1, "packageId": 0 },
+          "name": "Petite Build",
+          "desc": "Evasion dice +1 power, Offensive dice -1 power.",
+          "cost": 1
+        },
+        {
+          "id": { "id": 2, "packageId": 0 },
+          "name": "Blitz Tactics I",
+          "desc": "Evasion dice can clash with other Evasion dice as normal, are rerolled after winning vs Defensive dice, and deal 2 damage on clash win.",
+          "cost": 5
+        },
+        {
+          "id": { "id": 5, "packageId": 0 },
+          "name": "Information Gathering",
+          "desc": "Win/Lose a clash with a Defensive die to gain/lose 1 Information. (Information: each 3 stacks adds +1 to Def dice min roll, up to 10)",
+          "cost": 4
+        },
+        {
+          "id": { "id": 6, "packageId": 0 },
+          "name": "Posture Reset",
+          "desc": "Recover 2 HP on clash win; recover 2 SR on clash loss.",
+          "cost": 2
+        }
+      ]
+    },
+    {
+      "instanceId": 203,
+      "name": "Page of Mayumi",
+      "speedMin": 2,
+      "speedMax": 6,
+      "bookId": { "id": 10000004, "packageId": "AngelOfRuina" },
+      "chapter": 6,
+      "bookIcon": "XinShi",
+      "bookGroupName": "Angel of Ruina",
+      "hp": 110,
+      "breakGauge": 70,
+      "equipRangeType": "Melee",
+      "rarity": "Unique",
       "resistances": {
         "slashHp": "Resist",
         "pierceHp": "Normal",
@@ -198,96 +558,225 @@
       },
       "passives": [
         {
-          "id": { "id": 100002, "packageId": 0 },
-          "name": "Sharpshooter",
-          "desc": "Ranged dice gain +1 power.",
-          "cost": 2
+          "id": { "id": 24, "packageId": 0 },
+          "name": "Path to Mastery",
+          "desc": "Slash dice +1 power. At Emotion Level 4 or above, adds the Battle Page 'Cleave the Night Sky' to hand. (Once per Act)",
+          "cost": 4
+        },
+        {
+          "id": { "id": 8, "packageId": 0 },
+          "name": "Field Command",
+          "desc": "Reduce damage and Stagger damage taken by 1 per living ally (excluding self).",
+          "cost": 4
         }
       ]
     },
     {
-      "instanceId": 203,
-      "name": "Myo Artisan Page",
-      "speedMin": 3,
-      "speedMax": 8,
-      "bookId": { "id": 300003, "packageId": "core" },
-      "chapter": 3,
-      "bookIcon": "Chapter3",
-      "bookGroupName": "Myo Artisan",
-      "hp": 120,
-      "breakGauge": 90,
-      "equipRangeType": "Hybrid",
-      "rarity": "Special",
+      "instanceId": 204,
+      "name": "Yujin's Page",
+      "speedMin": 2,
+      "speedMax": 6,
+      "bookId": { "id": 240001, "packageId": "" },
+      "chapter": 5,
+      "bookIcon": "ShiAssociation",
+      "bookGroupName": "Shi Association",
+      "hp": 268,
+      "breakGauge": 44,
+      "equipRangeType": "Melee",
+      "rarity": "Unique",
       "resistances": {
-        "slashHp": "Resist",
-        "pierceHp": "Resist",
-        "bluntHp": "Weak"
+        "slashHp": "Normal",
+        "pierceHp": "Endure",
+        "bluntHp": "Normal",
+        "slashBp": "Normal",
+        "pierceBp": "Normal",
+        "bluntBp": "Endure"
+      },
+      "passives": [
+        {
+          "id": { "id": 10004, "packageId": 0 },
+          "name": "Speed II",
+          "desc": "Speed Dice Slot +2 (Cannot Overlap)",
+          "cost": 8
+        },
+        {
+          "id": { "id": 240301, "packageId": 0 },
+          "name": "Eye of Death/Enervation",
+          "desc": "All dice gain +4 Power. All dice lose 3 Power.",
+          "cost": 5
+        },
+        {
+          "id": { "id": 241001, "packageId": 0 },
+          "name": "Kizuna/Extreme Fatigue",
+          "desc": "After an ally dies, gain 1 Strength and 1 Endurance each Scene for the rest of the Act. (Stacks up to two times.) Starts the battle with 75% less HP.",
+          "cost": 1
+        },
+        {
+          "id": { "id": 240101, "packageId": 0 },
+          "name": "Dead Fencer",
+          "desc": "Gan 4 Counter dice (Pierce, 1-4; If the natural roll is Max, and is 4 or higher, add +45 power) at combat start.",
+          "cost": 8
+        },
+        {
+          "id": { "id": 240001, "packageId": 0 },
+          "name": "Overbreathing/Exhaustion",
+          "desc": "Restore 2 Light upon using a page whose original Cost is 4 or higher. A Speed die becomes unavailable.",
+          "cost": 0
+        }
+      ]
+    },
+    {
+      "instanceId": 205,
+      "name": "Lenny's Page",
+      "speedMin": 1,
+      "speedMax": 4,
+      "bookId": { "id": 200001, "packageId": "" },
+      "chapter": 1,
+      "bookIcon": "Rats",
+      "bookGroupName": "The Stray Dogs",
+      "hp": 42,
+      "breakGauge": 22,
+      "equipRangeType": "Melee",
+      "rarity": "Common",
+      "resistances": {
+        "slashHp": "Normal",
+        "pierceHp": "Vulnerable",
+        "bluntHp": "Weak",
+        "slashBp": "Normal",
+        "pierceBp": "Vulnerable",
+        "bluntBp": "Weak"
       },
       "passives": []
     }
   ],
   "availableCards": [
     {
-      "cardId": { "id": 200001, "packageId": "core" },
-      "name": "Jab",
-      "cost": 2,
+      "cardId": { "id": 1, "packageId": "AngelOfRuina" },
+      "name": "Cautious Observation",
+      "cost": 0,
       "range": "Near",
       "rarity": "Common",
-      "count": 5,
-      "abilityDesc": "Basic melee strike.",
-      "dice": [{ "type": "Atk", "detail": "Slash", "min": 3, "max": 5 }]
+      "count": 12,
+      "abilityDesc": "A scout's preparatory step. Excellent against high-power swings.",
+      "dice": [{ "type": "Def", "detail": "Evasion", "min": 3, "max": 7 }]
     },
     {
-      "cardId": { "id": 200002, "packageId": "core" },
-      "name": "Warning Shot",
-      "cost": 3,
-      "range": "Far",
+      "cardId": { "id": 2, "packageId": "AngelOfRuina" },
+      "name": "Probing Strike",
+      "cost": 1,
+      "range": "Near",
       "rarity": "Uncommon",
-      "count": 4,
-      "abilityDesc": "[Clash Win] Inflict 2 Bleed.",
-      "dice": [{ "type": "Atk", "detail": "Pierce", "min": 4, "max": 6 }]
+      "count": 9,
+      "abilityDesc": "[On Hit] Inflicts 1 Bleed.",
+      "dice": [{ "type": "Atk", "detail": "Slash", "min": 4, "max": 9 }]
     },
     {
-      "cardId": { "id": 200003, "packageId": "core" },
-      "name": "Meditate",
-      "cost": 0,
-      "range": "Instance",
-      "rarity": "Rare",
-      "count": 2,
-      "abilityDesc": "Draw 1 card and recover 1 Light at the start of next Scene."
-    },
-    {
-      "cardId": { "id": 200004, "packageId": "core" },
-      "name": "Sanguine Rite",
-      "cost": 4,
-      "range": "Special",
-      "rarity": "Unique",
-      "count": 1,
-      "abilityDesc": "Pay 5 HP. If this attack hits, gain 3 Strength until end of Scene.",
+      "cardId": { "id": 3, "packageId": "AngelOfRuina" },
+      "name": "Field Analysis",
+      "cost": 2,
+      "range": "Near",
+      "rarity": "Uncommon",
+      "count": 6,
+      "abilityDesc": "Adapts to clash range; the trailing Standby covers the next round.",
       "dice": [
-        { "type": "Atk", "detail": "Slash", "min": 5, "max": 9 },
-        { "type": "Standby", "detail": "Guard", "min": 2, "max": 4 }
+        { "type": "Def", "detail": "Guard", "min": 4, "max": 8 },
+        { "type": "Def", "detail": "Evasion", "min": 4, "max": 8 },
+        { "type": "Standby", "detail": "Evasion", "min": 2, "max": 6 }
       ]
     },
     {
-      "cardId": { "id": 200005, "packageId": "core" },
-      "name": "Sweeping Arc",
+      "cardId": { "id": 4, "packageId": "AngelOfRuina" },
+      "name": "Lightning Dodge",
       "cost": 3,
-      "range": "FarArea",
+      "range": "Near",
       "rarity": "Rare",
-      "count": 3,
-      "abilityDesc": "Strikes the target and both neighbouring enemies once each.",
-      "dice": [{ "type": "Atk", "detail": "Pierce", "min": 3, "max": 5 }]
+      "count": 4,
+      "abilityDesc": "[On Evade] Gain 1 Charge for the Messenger Assembly EGO.",
+      "dice": [
+        { "type": "Def", "detail": "Evasion", "min": 5, "max": 10 },
+        { "type": "Def", "detail": "Evasion", "min": 5, "max": 10 },
+        { "type": "Standby", "detail": "Evasion", "min": 5, "max": 10 }
+      ]
     },
     {
-      "cardId": { "id": 200006, "packageId": "core" },
-      "name": "Scattershot",
-      "cost": 3,
-      "range": "FarAreaEach",
-      "rarity": "Uncommon",
+      "cardId": { "id": 5, "packageId": "AngelOfRuina" },
+      "name": "Blade Clash",
+      "cost": 4,
+      "range": "Near",
+      "rarity": "Rare",
       "count": 3,
-      "abilityDesc": "Roll once per enemy — each result is resolved independently.",
-      "dice": [{ "type": "Atk", "detail": "Pierce", "min": 2, "max": 4 }]
+      "abilityDesc": "A four-die exchange engineered for protracted duels.",
+      "dice": [
+        { "type": "Def", "detail": "Guard", "min": 1, "max": 9 },
+        {
+          "type": "Atk",
+          "detail": "Slash",
+          "min": 1,
+          "max": 9,
+          "desc": "[On Clash Win] Inflict 1 Bleed."
+        },
+        { "type": "Def", "detail": "Evasion", "min": 1, "max": 9 },
+        { "type": "Atk", "detail": "Hit", "min": 1, "max": 9 }
+      ]
+    },
+    {
+      "cardId": { "id": 6, "packageId": "AngelOfRuina" },
+      "name": "Messenger Assembly",
+      "cost": 5,
+      "range": "Near",
+      "rarity": "Unique",
+      "count": 2,
+      "abilityDesc": "Page-exclusive. Five-die ultimate for the Messenger book.",
+      "dice": [
+        { "type": "Def", "detail": "Guard", "min": 6, "max": 9 },
+        { "type": "Def", "detail": "Evasion", "min": 8, "max": 8 },
+        { "type": "Atk", "detail": "Slash", "min": 4, "max": 8 },
+        { "type": "Atk", "detail": "Pierce", "min": 4, "max": 8 },
+        { "type": "Atk", "detail": "Hit", "min": 4, "max": 8 }
+      ]
+    },
+    {
+      "cardId": { "id": 7, "packageId": "AngelOfRuina" },
+      "name": "Wings of Annihilation",
+      "cost": 6,
+      "range": "FarAreaEach",
+      "rarity": "Unique",
+      "count": 1,
+      "abilityDesc": "Page-exclusive. Strikes every enemy in range with two independent dice.",
+      "dice": [
+        { "type": "Atk", "detail": "Slash", "min": 4, "max": 7 },
+        { "type": "Atk", "detail": "Hit", "min": 6, "max": 12 }
+      ]
+    },
+    {
+      "cardId": { "id": 8, "packageId": "AngelOfRuina" },
+      "name": "Black Wind Sweep",
+      "cost": 0,
+      "range": "Near",
+      "rarity": "Common",
+      "count": 10,
+      "abilityDesc": "A samurai's opening cut.",
+      "dice": [{ "type": "Atk", "detail": "Slash", "min": 3, "max": 8 }]
+    },
+    {
+      "cardId": { "id": 9, "packageId": "AngelOfRuina" },
+      "name": "Veiled Afterimages",
+      "cost": 1,
+      "range": "Special",
+      "rarity": "Unique",
+      "count": 2,
+      "abilityDesc": "[On Use] Discards the highest-cost card in hand. Cannot be discarded.",
+      "dice": [{ "type": "Def", "detail": "Evasion", "min": 8, "max": 12 }]
+    },
+    {
+      "cardId": { "id": 10, "packageId": "AngelOfRuina" },
+      "name": "Iron Swallow",
+      "cost": 2,
+      "range": "Special",
+      "rarity": "Uncommon",
+      "count": 5,
+      "abilityDesc": "[Counter] Deals double damage on the parry die.",
+      "dice": [{ "type": "Standby", "detail": "Slash", "min": 3, "max": 7 }]
     }
   ]
 }

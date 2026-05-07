@@ -1,56 +1,63 @@
 {
-  "_comment": "Battle scene covering CardRange x rarity combinatorics, broken/dead units, subTargets, overflow-prone descriptions. Impossible game states (e.g. a card appearing in both hand[] and a slottedCard entry) are intentional — the fixture exists to exercise every UI branch, not to simulate realistic play.",
+  "_comment": "Battle scene covering CardRange x rarity combinatorics, broken/dead units, subTargets, overflow-prone descriptions. Allies, enemies, and cards mirror the Daat floor and Angel of Ruina mods used by main-librarian. Impossible game states (a card appearing in both hand[] and a slottedCard entry) are intentional — the fixture exists to exercise every UI branch, not to simulate realistic play.",
   "scene": "battle",
   "phase": "ApplyLibrarianCardPhase",
   "stageState": "Battle",
   "assetsReady": true,
   "stage": {
-    "floor": 3,
-    "chapter": 1,
+    "floor": 10,
+    "chapter": 6,
     "wave": 2,
     "round": 4,
-    "name": "Urban Plague District"
+    "name": "Reception of Daat — Melting Love"
   },
   "allies": [
     {
       "id": 1,
-      "name": "Daphnes",
-      "hp": 82,
-      "maxHp": 110,
-      "staggerGauge": 58,
-      "maxStaggerGauge": 80,
-      "staggerThreshold": 40,
+      "name": "Angela",
+      "hp": 78,
+      "maxHp": 100,
+      "staggerGauge": 72,
+      "maxStaggerGauge": 100,
+      "staggerThreshold": 50,
       "targetable": true,
       "turnState": "WAIT_CARD",
       "speedDice": [
         { "slot": 0, "value": 6, "type": "Atk", "detail": "Slash" },
         { "slot": 1, "value": 4, "type": "Atk", "detail": "Pierce" },
-        { "slot": 2, "value": 3, "type": "Def", "detail": "Guard" }
+        { "slot": 2, "value": 3, "type": "Def", "detail": "Guard" },
+        { "slot": 3, "value": 5, "type": "Def", "detail": "Evasion" }
       ],
       "slottedCards": [
         {
           "cardIndex": 4,
           "slot": 1,
-          "name": "Sweeping Arc",
-          "cost": 3,
+          "name": "Wings of Annihilation",
+          "cost": 6,
           "targetUnitId": 10,
           "targetSlot": 0,
           "clash": false,
-          "range": "FarArea",
+          "range": "FarAreaEach",
           "subTargets": [
             { "targetUnitId": 11, "targetSlot": 0 },
             { "targetUnitId": 12, "targetSlot": 0 }
           ],
           "dice": [
-            { "type": "Atk", "detail": "Pierce", "min": 3, "max": 5 }
+            { "type": "Atk", "detail": "Slash", "min": 4, "max": 7 },
+            { "type": "Atk", "detail": "Hit", "min": 6, "max": 12 }
           ]
         }
       ],
       "passives": [
         {
-          "id": { "id": 100001, "packageId": 0 },
-          "name": "Strong Will",
-          "desc": "+1 power on the first die every scene."
+          "id": { "id": 30, "packageId": 0 },
+          "name": "System Princess / Aberrant Dimension",
+          "desc": "When killed, becomes Staggered and gains immunity to all damage for the Scene; restores HP/SR fully next Scene."
+        },
+        {
+          "id": { "id": 47, "packageId": 0 },
+          "name": "Broken Light Construct",
+          "desc": "Takes no more than 10 damage from a single attack. (Once per Scene)"
         }
       ],
       "buffs": [
@@ -62,7 +69,9 @@
           "positive": "Negative"
         }
       ],
-      "abnormalities": [],
+      "abnormalities": [
+        { "id": 7, "name": "Angel's Pendant", "emotionLevel": 2 }
+      ],
       "emotionLevel": 2,
       "emotionCoins": { "positive": 3, "negative": 1, "max": 8 },
       "light": 3,
@@ -70,100 +79,109 @@
       "reservedLight": 1,
       "hand": [
         {
-          "id": { "id": 200001, "packageId": 0 },
+          "id": { "id": 1, "packageId": 0 },
           "index": 0,
-          "name": "Jab",
-          "cost": 2,
+          "name": "Cautious Observation",
+          "cost": 0,
           "range": "Near",
           "rarity": "Common",
-          "abilityDesc": "Basic melee strike.",
+          "abilityDesc": "A scout's preparatory step.",
           "dice": [
-            { "type": "Atk", "detail": "Slash", "min": 3, "max": 5 }
+            { "type": "Def", "detail": "Evasion", "min": 3, "max": 7 }
           ]
         },
         {
-          "id": { "id": 200002, "packageId": 0 },
+          "id": { "id": 2, "packageId": 0 },
           "index": 1,
-          "name": "Warning Shot",
-          "cost": 3,
-          "range": "Far",
+          "name": "Probing Strike",
+          "cost": 1,
+          "range": "Near",
           "rarity": "Uncommon",
-          "abilityDesc": "[Clash Win] Inflict 2 Bleed.",
+          "abilityDesc": "[On Hit] Inflicts 1 Bleed.",
           "dice": [
-            { "type": "Atk", "detail": "Pierce", "min": 4, "max": 6, "desc": "[Clash Win] Inflict 2 Bleed on target." }
+            { "type": "Atk", "detail": "Slash", "min": 4, "max": 9, "desc": "[On Hit] Inflict 1 Bleed on target." }
           ]
         },
         {
-          "id": { "id": 200003, "packageId": 0 },
+          "id": { "id": 9, "packageId": 0 },
           "index": 2,
-          "name": "Meditate",
-          "cost": 0,
-          "range": "Instance",
-          "rarity": "Rare",
-          "abilityDesc": "Draw 1 card and recover 1 Light at the start of next Scene.",
-          "dice": []
-        },
-        {
-          "id": { "id": 200004, "packageId": 0 },
-          "index": 3,
-          "name": "Sanguine Rite",
-          "cost": 4,
+          "name": "Veiled Afterimages",
+          "cost": 1,
           "range": "Special",
           "rarity": "Unique",
-          "abilityDesc": "Pay 5 HP. If this attack hits, gain 3 Strength until end of Scene. [On Clash Win] Restore the HP paid and reduce opponent's die power by 2 for the rest of the clash.",
+          "abilityDesc": "[On Use] Discards the highest-cost card in hand. Cannot be discarded.",
           "dice": [
-            { "type": "Atk", "detail": "Slash", "min": 5, "max": 9, "desc": "[On Clash Win] Restore HP paid and reduce opponent die power by 2 for the rest of this clash." },
-            { "type": "Standby", "detail": "Guard", "min": 2, "max": 4, "desc": "[Counter] If this die survives, inflict 3 Bleed." }
+            { "type": "Def", "detail": "Evasion", "min": 8, "max": 12 }
           ]
         },
         {
-          "id": { "id": 200005, "packageId": 0 },
-          "index": 4,
-          "name": "Sweeping Arc",
-          "cost": 3,
-          "range": "FarArea",
+          "id": { "id": 5, "packageId": 0 },
+          "index": 3,
+          "name": "Blade Clash",
+          "cost": 4,
+          "range": "Near",
           "rarity": "Rare",
-          "abilityDesc": "Strikes the target and both neighbouring enemies once each.",
+          "abilityDesc": "A four-die exchange engineered for protracted duels. [On Clash Win] Inflict 1 Bleed; [On Hit] Inflict 1 Burn for each die that hits this Scene.",
           "dice": [
-            { "type": "Atk", "detail": "Pierce", "min": 3, "max": 5 }
+            { "type": "Def", "detail": "Guard", "min": 1, "max": 9, "desc": "[Counter] If this die survives, restore 2 HP and 2 Stagger Resist to user." },
+            { "type": "Atk", "detail": "Slash", "min": 1, "max": 9, "desc": "[On Clash Win] Inflict 1 Bleed on target." },
+            { "type": "Def", "detail": "Evasion", "min": 1, "max": 9 },
+            { "type": "Atk", "detail": "Hit", "min": 1, "max": 9, "desc": "[On Hit] If user has Bleed, transfer 1 stack to target." }
           ]
         },
         {
-          "id": { "id": 200006, "packageId": 0 },
-          "index": 5,
-          "name": "Scattershot",
-          "cost": 3,
+          "id": { "id": 7, "packageId": 0 },
+          "index": 4,
+          "name": "Wings of Annihilation",
+          "cost": 6,
           "range": "FarAreaEach",
-          "rarity": "Uncommon",
-          "abilityDesc": "Roll once per enemy — each result is resolved independently.",
+          "rarity": "Unique",
+          "abilityDesc": "Page-exclusive. Strikes every enemy in range with two independent dice.",
           "dice": [
-            { "type": "Atk", "detail": "Pierce", "min": 2, "max": 4 }
+            { "type": "Atk", "detail": "Slash", "min": 4, "max": 7 },
+            { "type": "Atk", "detail": "Hit", "min": 6, "max": 12 }
           ]
         },
         {
-          "id": { "id": 200007, "packageId": 0 },
-          "index": 6,
-          "name": "Twilight Edict",
+          "id": { "id": 6, "packageId": 0 },
+          "index": 5,
+          "name": "Messenger Assembly",
           "cost": 5,
           "range": "Near",
           "rarity": "Unique",
-          "abilityDesc": "A long-winded rite: reduce your current Light by 2; for every point spent this way, add one die to this card's pool rolling for [3-5] Slash damage. At the end of this Scene, if no enemy is Staggered, gain 1 Positive Emotion Coin; otherwise gain 2 Negative Emotion Coins. This text is long enough to trigger vertical scrolling in the detail pane so we can validate overflow handling.",
+          "abilityDesc": "Page-exclusive. Five-die ultimate for the Messenger book; chains across guard, evasion, and three offensive dice.",
           "dice": [
-            { "type": "Atk", "detail": "Slash", "min": 4, "max": 7, "desc": "[On Hit] Inflict 1 Fairy for each Light point spent. [On Clash Lose] Restore 1 Light. These per-die descriptions are intentionally long so that the detail-pane die list exercises its wrapping path." },
-            { "type": "Standby", "detail": "Guard", "min": 3, "max": 5, "desc": "[Counter] Survives clashes with non-Unique cards. Inflicts 1 Charge on the user at round end." },
-            { "type": "Def", "detail": "Evasion", "min": 2, "max": 5, "desc": "[Evade Success] Gain 1 Protection on the user and every adjacent ally." }
+            { "type": "Def", "detail": "Guard", "min": 6, "max": 9 },
+            { "type": "Def", "detail": "Evasion", "min": 8, "max": 8 },
+            { "type": "Atk", "detail": "Slash", "min": 4, "max": 8 },
+            { "type": "Atk", "detail": "Pierce", "min": 4, "max": 8 },
+            { "type": "Atk", "detail": "Hit", "min": 4, "max": 8 }
+          ]
+        },
+        {
+          "id": { "id": 9100004, "packageId": 0 },
+          "index": 6,
+          "name": "Censored",
+          "cost": 6,
+          "range": "Special",
+          "rarity": "Unique",
+          "abilityDesc": "EGO. Targets one enemy. Roll all dice; on each clash win, the next die in this card gains +2 power. Reduce user's current Light by 2; if user has fewer than 2 Light, this card cannot be played. At the end of the Scene, if no enemy is Staggered, gain 1 Positive Emotion Coin; otherwise gain 2 Negative Emotion Coins. This text is long enough to trigger vertical scrolling in the detail pane so we can validate overflow handling.",
+          "dice": [
+            { "type": "Atk", "detail": "Slash", "min": 7, "max": 13, "desc": "[On Clash Win] Inflict 1 Erosion on target. [On Hit] Inflict 1 Fairy on target. These per-die descriptions are intentionally long so that the detail-pane die list exercises its wrapping path." },
+            { "type": "Atk", "detail": "Slash", "min": 7, "max": 13, "desc": "[On Clash Win] Survives clashes with non-Unique cards." },
+            { "type": "Atk", "detail": "Slash", "min": 7, "max": 13, "desc": "[On Hit] Apply Stagger Protection to user equal to half the rolled value." }
           ]
         }
       ]
     },
     {
       "id": 2,
-      "name": "Morta",
+      "name": "BongBong",
       "hp": 28,
-      "maxHp": 90,
+      "maxHp": 95,
       "staggerGauge": 0,
-      "maxStaggerGauge": 70,
-      "staggerThreshold": 35,
+      "maxStaggerGauge": 75,
+      "staggerThreshold": 38,
       "targetable": true,
       "turnState": "BREAK",
       "speedDice": [
@@ -185,7 +203,7 @@
       "emotionLevel": 1,
       "emotionCoins": { "positive": 1, "negative": 2, "max": 8 },
       "light": 0,
-      "maxLight": 4,
+      "maxLight": 3,
       "reservedLight": 0,
       "handCount": 3,
       "deckCount": 12,
@@ -193,9 +211,9 @@
     },
     {
       "id": 3,
-      "name": "Wint",
+      "name": "Celeste",
       "hp": 0,
-      "maxHp": 80,
+      "maxHp": 100,
       "staggerGauge": 0,
       "maxStaggerGauge": 60,
       "staggerThreshold": 30,
@@ -216,12 +234,12 @@
   "enemies": [
     {
       "id": 10,
-      "name": "Plague Doctor",
-      "hp": 95,
-      "maxHp": 120,
-      "staggerGauge": 45,
-      "maxStaggerGauge": 60,
-      "staggerThreshold": 30,
+      "name": "Melting Love",
+      "hp": 175,
+      "maxHp": 220,
+      "staggerGauge": 60,
+      "maxStaggerGauge": 110,
+      "staggerThreshold": 55,
       "targetable": true,
       "turnState": "WAIT_CARD",
       "speedDice": [
@@ -232,7 +250,7 @@
         {
           "cardIndex": 0,
           "slot": 0,
-          "name": "Lunge",
+          "name": "Embrace",
           "cost": 1,
           "targetUnitId": 1,
           "targetSlot": 0,
@@ -259,12 +277,12 @@
     },
     {
       "id": 11,
-      "name": "Plague Cultist",
-      "hp": 54,
+      "name": "Pink Slime",
+      "hp": 38,
       "maxHp": 70,
-      "staggerGauge": 25,
-      "maxStaggerGauge": 45,
-      "staggerThreshold": 22,
+      "staggerGauge": 22,
+      "maxStaggerGauge": 35,
+      "staggerThreshold": 17,
       "targetable": true,
       "turnState": "WAIT_CARD",
       "speedDice": [
@@ -279,12 +297,12 @@
     },
     {
       "id": 12,
-      "name": "Plague Rat",
-      "hp": 38,
-      "maxHp": 50,
+      "name": "Pink Slime",
+      "hp": 28,
+      "maxHp": 70,
       "staggerGauge": 10,
-      "maxStaggerGauge": 30,
-      "staggerThreshold": 15,
+      "maxStaggerGauge": 35,
+      "staggerThreshold": 17,
       "targetable": true,
       "turnState": "WAIT_CARD",
       "speedDice": [
