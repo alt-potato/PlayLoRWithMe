@@ -26,8 +26,9 @@
   Preview box sizing:
     The preview is a fixed square (PREVIEW_W × PREVIEW_W).  Face canvas sprites are
     square-canvas, so they fill the box without dead space.  Fashion body composites
-    show the head and upper body within the same square crop.  AppearanceCache writes
-    dimensions.json with the face canvas pixel size, used only for the head-tilt pivot.
+    show the head and upper body within the same square crop.  The face canvas pixel
+    size is injected via FACE_CANVAS_DIMS (sourced from customizeOptions) and is used
+    only for the head-tilt pivot.
 
   Props:
     appearance – AppearanceData with sprite IDs and color tuples (0–255 bytes).
@@ -37,6 +38,7 @@
 import type { Ref } from "vue";
 import type { AppearanceData, FashionBook, GiftSlot } from "~/types/game";
 import { ASSETS_READY } from "~/composables/useAssetsReady";
+import { FACE_CANVAS_DIMS } from "~/composables/useFaceCanvasDims";
 
 const props = defineProps<{
   appearance: AppearanceData;
@@ -97,30 +99,17 @@ const PREVIEW_W = computed(() => props.size ?? 160);
 const PREVIEW_H = PREVIEW_W;
 
 /**
- * Canvas pixel dimensions from AppearanceCache's dimensions.json.
- * Used only for the rotation transform-origin calculation.
+ * Shared face/hair canvas pixel dimensions, injected from app.vue and
+ * sourced from `gameState.customizeOptions.faceCanvasW/H`.  Available
+ * synchronously on every mount (provide/inject is reactive but not async),
+ * so the head-tilt transform origin lands in the right place on first
+ * paint — earlier versions fetched dimensions.json after mount, which
+ * caused a head-snap on every floor-tab switch.
  */
-const dims = ref<{ w: number; h: number } | null>(null);
-
-// Module-level cache so multiple instances share one fetch.
-let _dimsPromise: Promise<{ w: number; h: number } | null> | null = null;
-
-function fetchDims(): Promise<{ w: number; h: number } | null> {
-  if (_dimsPromise) return _dimsPromise;
-  // Bust only on retry, not first load — the dimensions.json may simply not
-  // exist yet on initial connect; once assetsReady flips we want a fresh fetch.
-  const url = bustToken.value
-    ? `/assets/customize/dimensions.json?_=${bustToken.value}`
-    : "/assets/customize/dimensions.json";
-  _dimsPromise = fetch(url)
-    .then((r) => r.json() as Promise<{ w: number; h: number }>)
-    .catch(() => null);
-  return _dimsPromise;
-}
-
-onMounted(async () => {
-  dims.value = await fetchDims();
-});
+const dims = inject<Ref<{ w: number; h: number } | null>>(
+  FACE_CANVAS_DIMS,
+  ref(null),
+);
 
 // When the server finishes extracting assets, mint a fresh bust token so
 // `withBust` re-requests the URLs that 404'd before. Successful sprites stay
@@ -137,11 +126,6 @@ watch(assetsReady, (ready) => {
   fashionSkinFailed.value = false;
   patronFrontFailed.value = false;
   patronRearFailed.value = false;
-  // invalidate module-level dimensions cache and re-fetch
-  _dimsPromise = null;
-  fetchDims().then((d) => {
-    dims.value = d;
-  });
 });
 
 /**

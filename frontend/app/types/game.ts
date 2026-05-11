@@ -471,6 +471,16 @@ export const CustomizeOptionsSchema = z.object({
   }),
   fashionBooks: z.optional(z.array(FashionBookSchema)),
   workshopSkins: z.optional(z.array(WorkshopSkinSchema)),
+  /**
+   * Pixel dimensions of the shared face/hair canvas (AppearanceCache's
+   * extracted sprite size). Supplied so AppearancePreview can compute the
+   * head-tilt transform origin synchronously instead of fetching
+   * /assets/customize/dimensions.json after mount — that fetch caused a
+   * visible head-snap when switching floor tabs because each remount
+   * started with dims=null and only updated after the fetch resolved.
+   */
+  faceCanvasW: z.optional(z.number()),
+  faceCanvasH: z.optional(z.number()),
 });
 export type CustomizeOptions = z.infer<typeof CustomizeOptionsSchema>;
 

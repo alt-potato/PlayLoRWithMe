@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { LIBRARIAN_ACTIONS } from "~/composables/useLibrarianActions";
 import { ASSETS_READY } from "~/composables/useAssetsReady";
+import { FACE_CANVAS_DIMS } from "~/composables/useFaceCanvasDims";
 import { STATE_GENERATION } from "~/composables/useStateGeneration";
 
 // Vite replaces `import.meta.dev` with a literal boolean at build time; in
@@ -101,6 +102,16 @@ provide(LIBRARIAN_ACTIONS, {
 // the server finishes extracting appearance sprites — clearing cached 404s.
 const assetsReady = computed(() => gameState.value?.assetsReady === true);
 provide(ASSETS_READY, assetsReady);
+
+// Provide the shared face/hair canvas dimensions so AppearancePreview can
+// compute its head-tilt transform origin synchronously across remounts.
+const faceCanvasDims = computed<{ w: number; h: number } | null>(() => {
+  const co = gameState.value?.customizeOptions;
+  return co?.faceCanvasW && co?.faceCanvasH
+    ? { w: co.faceCanvasW, h: co.faceCanvasH }
+    : null;
+});
+provide(FACE_CANVAS_DIMS, faceCanvasDims);
 
 // Provide stateGeneration so descendants holding optimistic UI state (e.g.
 // DeckTab's pending-add/remove tiles) can drop phantoms when a fresh full

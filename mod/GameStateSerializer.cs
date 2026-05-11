@@ -1429,6 +1429,16 @@ namespace PlayLoRWithMe
                         });
                     }
                 });
+
+                // Shared face/hair canvas dimensions, sourced from AppearanceCache once
+                // extraction has run. Supplied so the frontend can size the head-tilt
+                // pivot synchronously instead of fetching dimensions.json after mount
+                // (which caused a head-snap on every fresh remount, e.g. floor-tab
+                // switches). Omitted before extraction completes — frontend keeps a
+                // safe square-canvas fallback for that initial window.
+                if (AppearanceCache.FaceHairCanvasW > 0 && AppearanceCache.FaceHairCanvasH > 0)
+                    o.Add("faceCanvasW", AppearanceCache.FaceHairCanvasW)
+                     .Add("faceCanvasH", AppearanceCache.FaceHairCanvasH);
             });
         }
 

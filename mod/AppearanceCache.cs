@@ -265,13 +265,10 @@ namespace PlayLoRWithMe
                     canvasH = Mathf.Max(1, Mathf.RoundToInt(faceHairBounds.size.y * ppu));
                 }
 
-                // Persist the canvas dimensions so the frontend can size the preview box
-                // to match the actual canvas aspect ratio instead of using a fixed height.
-                File.WriteAllText(
-                    Path.Combine(CustomizeDir, "dimensions.json"),
-                    $"{{\"w\":{canvasW},\"h\":{canvasH}}}");
-
                 // Expose canvas data so GiftCache can render gifts onto the same canvas.
+                // (Previously also persisted to dimensions.json for the frontend to fetch
+                // after mount, but that introduced a head-snap on every remount; the
+                // canvas dims are now emitted inline in the customizeOptions state.)
                 FaceHairBounds = faceHairBounds;
                 FaceHairPpu = ppu;
                 FaceHairCanvasW = canvasW;

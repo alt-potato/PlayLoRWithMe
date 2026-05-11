@@ -2940,6 +2940,12 @@
                 ],
                 "additionalProperties": false
               }
+            },
+            "faceCanvasW": {
+              "type": "number"
+            },
+            "faceCanvasH": {
+              "type": "number"
             }
           },
           "required": [
@@ -5934,6 +5940,12 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "faceCanvasW": {
+                      "type": "number"
+                    },
+                    "faceCanvasH": {
+                      "type": "number"
                     }
                   },
                   "required": [
