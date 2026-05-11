@@ -43,6 +43,8 @@ function isOwnUnit(unitId: number): boolean {
 
 const phase = computed(() => props.state?.phase ?? "");
 
+const debugEnabled = computed(() => useRoute().query.debug === "1");
+
 const isSelectPhase = computed(
   () => props.state?.phase === "ApplyLibrarianCardPhase",
 );
@@ -211,7 +213,7 @@ provide(BATTLE_CTX, {
   <!-- Status bar -->
   <BattleStatusBar
     :stage="state.stage"
-    :phase="state.phase"
+    :phase="debugEnabled ? state.phase : undefined"
     :confirm-enabled="isSelectPhase"
     :confirm-label="isSelectPhase ? 'START' : 'WAITING'"
     @confirm="onConfirm"
