@@ -209,7 +209,6 @@ const rawJson = computed(() =>
         :send-action="sendAction"
         :claim-unit="claimUnit"
         :release-unit="releaseUnit"
-        :rename-player="renamePlayer"
       />
 
       <LazyBattleStage
