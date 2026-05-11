@@ -181,6 +181,7 @@
               "id": { "id": 30, "packageId": 0 },
               "name": "System Princess / Aberrant Dimension",
               "desc": "When killed, becomes Staggered and gains immunity to all damage for the Scene; cancels pages targeting this character. Restores HP/SR fully next Scene. Each activation in the Library reduces Max HP by 35; if remaining Max HP is insufficient, dies. (Untransferable)",
+              "rare": "Unique",
               "cost": 5,
               "canTransfer": false
             },
@@ -188,6 +189,7 @@
               "id": { "id": 25, "packageId": 0 },
               "name": "Imitation of Dimensional Intervention",
               "desc": "At the end of a Scene, if Emotion Level reaches 1/3/5, choose a Singularity special page. (Untransferable)",
+              "rare": "Unique",
               "cost": 4,
               "canTransfer": false
             },
@@ -195,12 +197,14 @@
               "id": { "id": 47, "packageId": 0 },
               "name": "Broken Light Construct",
               "desc": "Takes no more than 10 damage from a single attack. (Once per Scene)",
+              "rare": "Rare",
               "cost": 3
             },
             {
               "id": { "id": 1, "packageId": 0 },
               "name": "Petite Build",
               "desc": "Evasion dice +1 power, Offensive dice -1 power.",
+              "rare": "Common",
               "cost": 1
             }
           ],
@@ -274,12 +278,14 @@
               "id": { "id": 250100, "packageId": 0 },
               "name": "Sword of Adelaide",
               "desc": "On using a Counter die, the next Atk die played gains +1 power.",
+              "rare": "Rare",
               "cost": 3
             },
             {
               "id": { "id": 250101, "packageId": 0 },
               "name": "Battle of Sequence",
               "desc": "After playing every page in the active deck, swap to the next deck stance.",
+              "rare": "Unique",
               "cost": 2,
               "canTransfer": false
             }
@@ -383,24 +389,28 @@
               "id": { "id": 18, "packageId": 0 },
               "name": "Piercing Armament",
               "desc": "Offensive dice +1 power. On winning a clash against an Offensive die, inflict 1 Fragile next Scene. (Up to 2 times per Scene)",
+              "rare": "Rare",
               "cost": 4
             },
             {
               "id": { "id": 19, "packageId": 0 },
               "name": "Designated Strategy",
               "desc": "On winning a clash with an Atk die, the next Def die +1 power. On winning a clash with a Def die, the next Atk die +1 power.",
+              "rare": "Uncommon",
               "cost": 3
             },
             {
               "id": { "id": 20, "packageId": 0 },
               "name": "Information Update",
               "desc": "Win/Lose a clash with an Offensive die to gain/lose 1 Information. (Information: each 3 stacks adds +1 to Atk dice max roll, up to 10)",
+              "rare": "Uncommon",
               "cost": 3
             },
             {
               "id": { "id": 6, "packageId": 0 },
               "name": "Posture Reset",
               "desc": "Recover 2 HP on clash win; recover 2 SR on clash loss.",
+              "rare": "Common",
               "cost": 2
             }
           ],
@@ -471,24 +481,28 @@
           "id": { "id": 1, "packageId": 0 },
           "name": "Petite Build",
           "desc": "Evasion dice +1 power, Offensive dice -1 power.",
+          "rare": "Common",
           "cost": 1
         },
         {
           "id": { "id": 3, "packageId": 0 },
           "name": "Blitz Tactics II",
           "desc": "Evasion dice can clash with other Evasion dice as normal, are rerolled after winning vs Defensive dice, and deal 4 damage on clash win.",
+          "rare": "Unique",
           "cost": 7
         },
         {
           "id": { "id": 23, "packageId": 0 },
           "name": "Field Command",
           "desc": "Reduce damage and Stagger damage taken by 1 for every 2 living allies (excluding self).",
+          "rare": "Rare",
           "cost": 3
         },
         {
           "id": { "id": 6, "packageId": 0 },
           "name": "Posture Reset",
           "desc": "Recover 2 HP on clash win; recover 2 SR on clash loss.",
+          "rare": "Common",
           "cost": 2
         }
       ]
@@ -516,24 +530,28 @@
           "id": { "id": 1, "packageId": 0 },
           "name": "Petite Build",
           "desc": "Evasion dice +1 power, Offensive dice -1 power.",
+          "rare": "Common",
           "cost": 1
         },
         {
           "id": { "id": 2, "packageId": 0 },
           "name": "Blitz Tactics I",
           "desc": "Evasion dice can clash with other Evasion dice as normal, are rerolled after winning vs Defensive dice, and deal 2 damage on clash win.",
+          "rare": "Rare",
           "cost": 5
         },
         {
           "id": { "id": 5, "packageId": 0 },
           "name": "Information Gathering",
           "desc": "Win/Lose a clash with a Defensive die to gain/lose 1 Information. (Information: each 3 stacks adds +1 to Def dice min roll, up to 10)",
+          "rare": "Uncommon",
           "cost": 4
         },
         {
           "id": { "id": 6, "packageId": 0 },
           "name": "Posture Reset",
           "desc": "Recover 2 HP on clash win; recover 2 SR on clash loss.",
+          "rare": "Common",
           "cost": 2
         }
       ]
@@ -561,12 +579,14 @@
           "id": { "id": 24, "packageId": 0 },
           "name": "Path to Mastery",
           "desc": "Slash dice +1 power. At Emotion Level 4 or above, adds the Battle Page 'Cleave the Night Sky' to hand. (Once per Act)",
+          "rare": "Rare",
           "cost": 4
         },
         {
           "id": { "id": 8, "packageId": 0 },
           "name": "Field Command",
           "desc": "Reduce damage and Stagger damage taken by 1 per living ally (excluding self).",
+          "rare": "Rare",
           "cost": 4
         }
       ]
@@ -597,30 +617,35 @@
           "id": { "id": 10004, "packageId": 0 },
           "name": "Speed II",
           "desc": "Speed Dice Slot +2 (Cannot Overlap)",
+          "rare": "Special",
           "cost": 8
         },
         {
           "id": { "id": 240301, "packageId": 0 },
           "name": "Eye of Death/Enervation",
           "desc": "All dice gain +4 Power. All dice lose 3 Power.",
+          "rare": "Rare",
           "cost": 5
         },
         {
           "id": { "id": 241001, "packageId": 0 },
           "name": "Kizuna/Extreme Fatigue",
           "desc": "After an ally dies, gain 1 Strength and 1 Endurance each Scene for the rest of the Act. (Stacks up to two times.) Starts the battle with 75% less HP.",
+          "rare": "Rare",
           "cost": 1
         },
         {
           "id": { "id": 240101, "packageId": 0 },
           "name": "Dead Fencer",
           "desc": "Gan 4 Counter dice (Pierce, 1-4; If the natural roll is Max, and is 4 or higher, add +45 power) at combat start.",
+          "rare": "Unique",
           "cost": 8
         },
         {
           "id": { "id": 240001, "packageId": 0 },
           "name": "Overbreathing/Exhaustion",
           "desc": "Restore 2 Light upon using a page whose original Cost is 4 or higher. A Speed die becomes unavailable.",
+          "rare": "Common",
           "cost": 0
         }
       ]

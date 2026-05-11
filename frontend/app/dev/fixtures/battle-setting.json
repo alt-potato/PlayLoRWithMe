@@ -29,6 +29,7 @@
           "id": { "id": 30, "packageId": 0 },
           "name": "System Princess / Aberrant Dimension",
           "desc": "When killed, becomes Staggered and gains immunity to all damage for the Scene; restores HP/SR fully next Scene.",
+          "rare": "Unique",
           "cost": 5,
           "canTransfer": false
         }
@@ -108,6 +109,7 @@
           "id": { "id": 250100, "packageId": 0 },
           "name": "Sword of Adelaide",
           "desc": "On using a Counter die, the next Atk die played gains +1 power.",
+          "rare": "Rare",
           "cost": 3
         }
       ],

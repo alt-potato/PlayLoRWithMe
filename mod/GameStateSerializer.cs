@@ -1960,6 +1960,9 @@ namespace PlayLoRWithMe
                                 .Add("desc", p.desc)
                                 .Add("rare", p.rare.ToString())
                                 .Add("isNegative", p.isNegative);
+                            var passiveXml = Singleton<PassiveXmlList>.Instance?.GetData(p.id);
+                            if (passiveXml != null)
+                                o.Add("cost", passiveXml.cost);
                         });
                     }
                 }

@@ -52,12 +52,16 @@
         {
           "id": { "id": 30, "packageId": 0 },
           "name": "System Princess / Aberrant Dimension",
-          "desc": "When killed, becomes Staggered and gains immunity to all damage for the Scene; restores HP/SR fully next Scene."
+          "desc": "When killed, becomes Staggered and gains immunity to all damage for the Scene; restores HP/SR fully next Scene.",
+          "rare": "Unique",
+          "cost": 4
         },
         {
           "id": { "id": 47, "packageId": 0 },
           "name": "Broken Light Construct",
-          "desc": "Takes no more than 10 damage from a single attack. (Once per Scene)"
+          "desc": "Takes no more than 10 damage from a single attack. (Once per Scene)",
+          "rare": "Rare",
+          "cost": 3
         }
       ],
       "buffs": [
