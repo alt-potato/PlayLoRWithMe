@@ -240,19 +240,25 @@ const fashionBodyUrl = computed(() =>
 
 const fashionBodyFailed = ref(false);
 /**
- * Natural pixel dimensions of the fashion body PNG once it finishes loading.
- * Used to compute the feet-Y in CSS space so the height scale transform pins
- * the character's feet instead of the preview box's bottom edge.
+ * Pixel dimensions of the fashion body PNG, supplied by the server in
+ * `FashionBook.bodyW/bodyH`.  Derived synchronously from props so the
+ * preview can lay out the body layer on first paint — earlier versions
+ * measured the dims via an `@load` handler on a hidden probe, which
+ * caused a feet-snap because layout ran with `null` dims until the
+ * image decoded (and never ran at all when `loading="lazy"` skipped the
+ * off-viewport fetch).
  */
-const fashionBodyDims = ref<{ w: number; h: number } | null>(null);
+const fashionBodyDims = computed<{ w: number; h: number } | null>(() => {
+  const fb = props.fashionBook;
+  if (!fb || !fb.bodyW || !fb.bodyH) return null;
+  return { w: fb.bodyW, h: fb.bodyH };
+});
 watch(fashionFileStem, () => {
   fashionBodyFailed.value = false;
-  fashionBodyDims.value = null;
 });
 // also reset when variant changes (different PNG)
 watch(fashionVariantSuffix, () => {
   fashionBodyFailed.value = false;
-  fashionBodyDims.value = null;
 });
 
 /**
@@ -599,13 +605,6 @@ const visibleGifts = computed(() => {
         loading="lazy"
         decoding="async"
         @error="fashionSkinFailed = true"
-        @load="
-          (e) => {
-            if (fashionBodyDims) return;
-            const el = e.target as HTMLImageElement;
-            fashionBodyDims = { w: el.naturalWidth, h: el.naturalHeight };
-          }
-        "
       />
 
       <!--
@@ -633,12 +632,6 @@ const visibleGifts = computed(() => {
         loading="lazy"
         decoding="async"
         @error="fashionBodyFailed = true"
-        @load="
-          (e) => {
-            const el = e.target as HTMLImageElement;
-            fashionBodyDims = { w: el.naturalWidth, h: el.naturalHeight };
-          }
-        "
       />
 
       <!--
@@ -706,13 +699,6 @@ const visibleGifts = computed(() => {
         loading="lazy"
         decoding="async"
         @error="fashionFrontFailed = true"
-        @load="
-          (e) => {
-            if (fashionBodyDims) return;
-            const el = e.target as HTMLImageElement;
-            fashionBodyDims = { w: el.naturalWidth, h: el.naturalHeight };
-          }
-        "
       />
 
       <!--

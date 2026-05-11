@@ -52,6 +52,8 @@ export function resolveFashionBook(
         pivotFracX: skin.pivotFracX,
         pivotFracY: skin.pivotFracY,
         feetYFrac: skin.feetYFrac,
+        bodyW: skin.bodyW,
+        bodyH: skin.bodyH,
       };
     }
   }
@@ -82,5 +84,7 @@ export function resolveFashionBook(
     hidesBackHair: lib.keyPageHidesBackHair,
     skinGender: lib.keyPageSkinGender,
     feetYFrac: lib.keyPageFeetYFrac,
+    bodyW: lib.keyPageBodyW,
+    bodyH: lib.keyPageBodyH,
   };
 }

@@ -427,6 +427,14 @@ export const FashionBookSchema = z.object({
    * the frontend offset inward when aligning feet to a shared floor line.
    */
   feetYFrac: z.optional(z.number()),
+  /**
+   * Pixel dimensions of the extracted body PNG.  Supplied by the server so the
+   * preview can lay out the body layer synchronously instead of waiting for an
+   * @load event to measure the image — required to avoid a feet-snap on first
+   * paint and on tab switches.  Omitted when extraction hasn't populated dims.
+   */
+  bodyW: z.optional(z.number()),
+  bodyH: z.optional(z.number()),
 });
 export type FashionBook = z.infer<typeof FashionBookSchema>;
 
@@ -443,6 +451,8 @@ export const WorkshopSkinSchema = z.object({
   pivotFracX: z.optional(z.number()),
   pivotFracY: z.optional(z.number()),
   feetYFrac: z.optional(z.number()),
+  bodyW: z.optional(z.number()),
+  bodyH: z.optional(z.number()),
 });
 export type WorkshopSkin = z.infer<typeof WorkshopSkinSchema>;
 
@@ -659,6 +669,9 @@ export const LibrarianEntrySchema = z.object({
   keyPageSkinGender: z.optional(z.string()),
   /** Feet-Y fraction of the equipped key page body PNG (see FashionBook.feetYFrac). */
   keyPageFeetYFrac: z.optional(z.number()),
+  /** Pixel dimensions of the equipped key page body PNG (see FashionBook.bodyW/bodyH). */
+  keyPageBodyW: z.optional(z.number()),
+  keyPageBodyH: z.optional(z.number()),
 });
 export type LibrarianEntry = z.infer<typeof LibrarianEntrySchema>;
 

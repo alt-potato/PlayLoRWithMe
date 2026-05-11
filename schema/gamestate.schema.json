@@ -2475,6 +2475,12 @@
                     },
                     "keyPageFeetYFrac": {
                       "type": "number"
+                    },
+                    "keyPageBodyW": {
+                      "type": "number"
+                    },
+                    "keyPageBodyH": {
+                      "type": "number"
                     }
                   },
                   "required": [
@@ -2871,6 +2877,12 @@
                   },
                   "feetYFrac": {
                     "type": "number"
+                  },
+                  "bodyW": {
+                    "type": "number"
+                  },
+                  "bodyH": {
+                    "type": "number"
                   }
                 },
                 "required": [
@@ -2912,6 +2924,12 @@
                     "type": "number"
                   },
                   "feetYFrac": {
+                    "type": "number"
+                  },
+                  "bodyW": {
+                    "type": "number"
+                  },
+                  "bodyH": {
                     "type": "number"
                   }
                 },
@@ -5451,6 +5469,12 @@
                             },
                             "keyPageFeetYFrac": {
                               "type": "number"
+                            },
+                            "keyPageBodyW": {
+                              "type": "number"
+                            },
+                            "keyPageBodyH": {
+                              "type": "number"
                             }
                           },
                           "required": [
@@ -5847,6 +5871,12 @@
                           },
                           "feetYFrac": {
                             "type": "number"
+                          },
+                          "bodyW": {
+                            "type": "number"
+                          },
+                          "bodyH": {
+                            "type": "number"
                           }
                         },
                         "required": [
@@ -5888,6 +5918,12 @@
                             "type": "number"
                           },
                           "feetYFrac": {
+                            "type": "number"
+                          },
+                          "bodyW": {
+                            "type": "number"
+                          },
+                          "bodyH": {
                             "type": "number"
                           }
                         },

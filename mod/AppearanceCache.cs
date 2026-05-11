@@ -46,9 +46,13 @@ namespace PlayLoRWithMe
         /// means the PNG extends below feet (weapons/props).  Used by the frontend to pin
         /// feet to a shared floor line when scaling.  Populated during extraction; defaults
         /// to 1.0 if the body has no sprites extending below feet.
+        /// BodyW / BodyH are the pixel dimensions of the extracted body PNG, recorded so the
+        /// frontend can lay out the preview without waiting on @load events to measure the
+        /// image — required to avoid a feet-snap on first paint and on tab switches.
+        /// Zero until populated in pass 4.
         /// </summary>
-        internal static readonly Dictionary<string, (float TiltDeg, float PivotFracX, float PivotFracY, bool HasFrontLayer, bool HidesBackHair, string SkinGender, float FeetYFrac)>
-            FashionMeta = new Dictionary<string, (float, float, float, bool, bool, string, float)>();
+        internal static readonly Dictionary<string, (float TiltDeg, float PivotFracX, float PivotFracY, bool HasFrontLayer, bool HidesBackHair, string SkinGender, float FeetYFrac, int BodyW, int BodyH)>
+            FashionMeta = new Dictionary<string, (float, float, float, bool, bool, string, float, int, int)>();
 
         /// <summary>
         /// Face/hair canvas bounds in world space, populated during extraction.
@@ -298,7 +302,8 @@ namespace PlayLoRWithMe
                         if (b.FrontSprites.Count > 0 && !existing.HasFrontLayer)
                             FashionMeta[stem] = (existing.TiltDeg, existing.PivotFracX,
                                 existing.PivotFracY, true, existing.HidesBackHair,
-                                existing.SkinGender, existing.FeetYFrac);
+                                existing.SkinGender, existing.FeetYFrac,
+                                existing.BodyW, existing.BodyH);
                         continue;
                     }
                     string skinGender;
@@ -316,8 +321,9 @@ namespace PlayLoRWithMe
                     // Initial placeholder for FeetYFrac; overwritten in pass 4 once
                     // the body PNG's actual extent is known.  1.0 means "feet at PNG bottom"
                     // and is a safe default for bodies whose sprite extents match the feet.
+                    // BodyW/BodyH are zero until pass 4 records them.
                     FashionMeta[stem] = (b.PivotRotDeg, fracX, fracY,
-                        b.FrontSprites.Count > 0, !b.ReplacesHead && b.HasHood, skinGender, 1f);
+                        b.FrontSprites.Count > 0, !b.ReplacesHead && b.HasHood, skinGender, 1f, 0, 0);
                 }
             }
 
@@ -1323,6 +1329,7 @@ namespace PlayLoRWithMe
                         // for the visible bottom would misidentify props hanging below the
                         // feet (e.g. Mao's scabbard) as the floor reference.
                         RecordFeetYFrac(body.FileStem, bodyBounds.max.y, bodyBounds.min.y, 0f);
+                        RecordBodyDims(body.FileStem, bW, bH);
                         // replacesHead=true → face overlay never shown; front PNG unused.
                     }
                     else
@@ -1390,6 +1397,7 @@ namespace PlayLoRWithMe
                         // so the frontend can align feet to a shared floor line without
                         // needing the canvas' absolute coordinates.
                         RecordFeetYFrac(body.FileStem, extMaxY, extMinY, -anchor.y);
+                        RecordBodyDims(body.FileStem, faceHairW, extH);
                     }
                 }
                 catch (System.Exception ex)
@@ -1415,7 +1423,21 @@ namespace PlayLoRWithMe
             float frac = Mathf.Clamp01((topY - feetY) / canvasH);
             if (!FashionMeta.TryGetValue(stem, out var m)) return;
             FashionMeta[stem] = (m.TiltDeg, m.PivotFracX, m.PivotFracY,
-                m.HasFrontLayer, m.HidesBackHair, m.SkinGender, frac);
+                m.HasFrontLayer, m.HidesBackHair, m.SkinGender, frac, m.BodyW, m.BodyH);
+        }
+
+        /// <summary>
+        /// Updates <see cref="FashionMeta"/> for <paramref name="stem"/> with the pixel
+        /// dimensions of the extracted body PNG.  Recorded so the frontend can compute
+        /// the body-layer height and feet pivot synchronously instead of waiting on
+        /// an &lt;img&gt; @load event.
+        /// </summary>
+        private static void RecordBodyDims(string stem, int w, int h)
+        {
+            if (w <= 0 || h <= 0) return;
+            if (!FashionMeta.TryGetValue(stem, out var m)) return;
+            FashionMeta[stem] = (m.TiltDeg, m.PivotFracX, m.PivotFracY,
+                m.HasFrontLayer, m.HidesBackHair, m.SkinGender, m.FeetYFrac, w, h);
         }
 
         /// <summary>

@@ -516,6 +516,9 @@ namespace PlayLoRWithMe
                                                             o.Add("keyPageHidesBackHair", true);
                                                         if (kpMeta.FeetYFrac < 0.999f)
                                                             o.Add("keyPageFeetYFrac", kpMeta.FeetYFrac);
+                                                        if (kpMeta.BodyW > 0 && kpMeta.BodyH > 0)
+                                                            o.Add("keyPageBodyW", kpMeta.BodyW)
+                                                             .Add("keyPageBodyH", kpMeta.BodyH);
                                                     }
                                                 }
                                             }
@@ -1286,6 +1289,11 @@ namespace PlayLoRWithMe
                                 // feet (weapons/props), so feet-alignment math can offset inward.
                                 if (meta.FeetYFrac < 0.999f)
                                     fb.Add("feetYFrac", meta.FeetYFrac);
+                                // Body PNG pixel dimensions: lets the preview compute the body
+                                // layer height and feet pivot without waiting on @load.
+                                if (meta.BodyW > 0 && meta.BodyH > 0)
+                                    fb.Add("bodyW", meta.BodyW)
+                                        .Add("bodyH", meta.BodyH);
                             }
                         });
                     }
@@ -1331,6 +1339,9 @@ namespace PlayLoRWithMe
                                         fb.Add("hidesBackHair", true);
                                     if (meta.FeetYFrac < 0.999f)
                                         fb.Add("feetYFrac", meta.FeetYFrac);
+                                    if (meta.BodyW > 0 && meta.BodyH > 0)
+                                        fb.Add("bodyW", meta.BodyW)
+                                            .Add("bodyH", meta.BodyH);
                                 }
                             });
                         }
@@ -1382,6 +1393,9 @@ namespace PlayLoRWithMe
                                         .Add("pivotFracY", meta.PivotFracY);
                                 if (meta.FeetYFrac < 0.999f)
                                     s.Add("feetYFrac", meta.FeetYFrac);
+                                if (meta.BodyW > 0 && meta.BodyH > 0)
+                                    s.Add("bodyW", meta.BodyW)
+                                        .Add("bodyH", meta.BodyH);
                             }
                         });
                     }
