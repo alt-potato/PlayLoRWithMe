@@ -320,6 +320,15 @@
                     },
                     "emotionLevel": {
                       "type": "number"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "desc": {
+                      "type": "string"
+                    },
+                    "flavorText": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -1326,6 +1335,15 @@
                     },
                     "emotionLevel": {
                       "type": "number"
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "desc": {
+                      "type": "string"
+                    },
+                    "flavorText": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -3320,6 +3338,15 @@
                             },
                             "emotionLevel": {
                               "type": "number"
+                            },
+                            "state": {
+                              "type": "string"
+                            },
+                            "desc": {
+                              "type": "string"
+                            },
+                            "flavorText": {
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -4326,6 +4353,15 @@
                             },
                             "emotionLevel": {
                               "type": "number"
+                            },
+                            "state": {
+                              "type": "string"
+                            },
+                            "desc": {
+                              "type": "string"
+                            },
+                            "flavorText": {
+                              "type": "string"
                             }
                           },
                           "required": [

@@ -186,11 +186,20 @@ export const BuffSchema = z.object({
 });
 export type Buff = z.infer<typeof BuffSchema>;
 
-/** Entry in a unit's abnormality/emotion-card list. */
+/**
+ * Entry in a unit's abnormality/emotion-card list. `state` is the raw
+ * `MentalState` enum from the game ("Positive" | "Negative"); the UI treats
+ * anything else as a fallback styling bucket. `desc` and `flavorText` mirror
+ * `AbnormalityCardDescXmlList` and are absent when the entry has no matching
+ * description xml.
+ */
 export const AbnormalityEntrySchema = z.object({
   id: z.number(),
   name: z.string(),
   emotionLevel: z.optional(z.number()),
+  state: z.optional(z.string()),
+  desc: z.optional(z.string()),
+  flavorText: z.optional(z.string()),
 });
 export type AbnormalityEntry = z.infer<typeof AbnormalityEntrySchema>;
 

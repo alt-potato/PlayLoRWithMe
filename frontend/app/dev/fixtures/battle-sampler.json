@@ -70,7 +70,14 @@
         }
       ],
       "abnormalities": [
-        { "id": 7, "name": "Angel's Pendant", "emotionLevel": 2 }
+        {
+          "id": 7,
+          "name": "Angel's Pendant",
+          "emotionLevel": 2,
+          "state": "Positive",
+          "desc": "Recover 5 Light at the start of each Scene.",
+          "flavorText": "A small comfort, kept close."
+        }
       ],
       "emotionLevel": 2,
       "emotionCoins": { "positive": 3, "negative": 1, "max": 8 },

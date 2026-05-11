@@ -337,12 +337,7 @@ const detailsLabel = computed(() => {
       <!-- Abnormality pages -->
       <template v-if="unit.abnormalities?.length">
         <div class="det-label">Abnormalities</div>
-        <div class="clist">
-          <div v-for="ab in unit.abnormalities" :key="ab.id" class="centry">
-            <span>{{ ab.name }}</span>
-            <span class="centry-range">Lv{{ ab.emotionLevel }}</span>
-          </div>
-        </div>
+        <UnitAbnormalityList :abnormalities="unit.abnormalities" />
       </template>
 
       <!-- Resistances -->

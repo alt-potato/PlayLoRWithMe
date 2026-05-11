@@ -2040,15 +2040,39 @@ namespace PlayLoRWithMe
                         var passiveList = ed.PassiveList;
                         if (passiveList == null)
                             return;
+                        // Same text source as the selection overlay and EmotionPassiveCardUI.SetTexts:
+                        // AbnormalityCardDescXmlList keyed by the script-name string (XmlInfo.Name).
+                        // Falling back to the raw script name would surface internal ids like
+                        // "bigbird1" in the UI when the localized entry is missing.
+                        var descList = Singleton<AbnormalityCardDescXmlList>.Instance;
                         foreach (var ab in passiveList)
                         {
                             if (ab?.XmlInfo == null)
                                 continue;
+                            var desc = descList?.GetAbnormalityCard(ab.XmlInfo.Name);
+                            var localizedName = desc?.cardName;
+                            if (
+                                string.IsNullOrEmpty(localizedName)
+                                || localizedName == "Not found"
+                            )
+                                localizedName = ab.XmlInfo.Name;
                             arr.AddObject(o =>
+                            {
                                 o.Add("id", ab.XmlInfo.id)
-                                    .Add("name", ab.XmlInfo.Name)
+                                    .Add("name", localizedName)
                                     .Add("emotionLevel", ab.XmlInfo.EmotionLevel)
-                            );
+                                    .Add("state", ab.XmlInfo.State.ToString());
+                                if (
+                                    !string.IsNullOrEmpty(desc?.abilityDesc)
+                                    && desc.abilityDesc != "Not found"
+                                )
+                                    o.Add("desc", desc.abilityDesc);
+                                if (
+                                    !string.IsNullOrEmpty(desc?.flavorText)
+                                    && desc.flavorText != "Not found"
+                                )
+                                    o.Add("flavorText", desc.flavorText);
+                            });
                         }
                     }
                 );
