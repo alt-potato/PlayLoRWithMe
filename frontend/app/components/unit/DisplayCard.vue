@@ -430,6 +430,12 @@ const detailsLabel = computed(() => {
   margin-left: 0;
   margin-right: -1.8rem;
 }
+.reversed-order .unit-header-row {
+  flex-direction: row-reverse;
+}
+.reversed-order .unit-name {
+  text-align: left;
+}
 .slot-card-entry {
   display: flex;
   flex-direction: row;
