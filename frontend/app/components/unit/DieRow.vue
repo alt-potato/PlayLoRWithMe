@@ -73,13 +73,18 @@ function onSlotPressStart(sc: SlottedCardEntry | undefined) {
 }
 
 const dieState: ComputedRef<DieState> = computed(() => {
-  // broken takes priority over locked — a destroyed die is unusable regardless
-  // of whether the unit was also under a paralysis-class buff.
-  if (props.die.staggered || isUnitBroken.value) return "broken";
+  // a per-die staggered flag always wins — actually destroyed dice show the X
+  // glyph regardless of any unit-level state.
+  if (props.die.staggered) return "broken";
 
-  // disabled / immobilized die — the value is hidden behind a lock glyph and
-  // the slot is not selectable, mirroring the behaviour of staggered dice.
+  // lock wins over unit-level broken so a stun-immobilised unit that has also
+  // entered BREAK still shows the lock overlay (matching SpeedDiceSetter's
+  // BreakDice(breaked:true, locked:true) call when HasStun() is true).
   if (props.die.locked) return "locked";
+
+  // unit-level broken state (BREAK turnState or dead): the unit cannot act,
+  // so all remaining dice render as X.
+  if (isUnitBroken.value) return "broken";
 
   // Placeholder dice emitted by the serializer before rolls have occurred
   if (
