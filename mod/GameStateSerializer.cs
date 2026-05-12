@@ -1748,6 +1748,13 @@ namespace PlayLoRWithMe
                     .Add("maxLight", unit.MaxPlayPoint)
                     .Add("reservedLight", unit.cardSlotDetail?.ReservedPlayPoint ?? 0);
 
+                // Optional per-unit speed-die colour override from the
+                // CustomSpeedDiceColor workshop mod. Absent when CDC is not
+                // loaded or no entry matches this unit's books.
+                var dieColor = CustomDiceColorProbe.TryGet(unit);
+                if (dieColor != null)
+                    w.Add("dieColor", dieColor);
+
                 if (unit.Book != null)
                     WriteKeyPage(w, unit);
 

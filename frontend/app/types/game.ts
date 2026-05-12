@@ -747,6 +747,13 @@ export const UnitSchema = z.object({
   enabled: z.optional(z.boolean()),
   /** Deck card preview — only present in BattleSetting phase. */
   deckPreview: z.optional(z.array(DeckCardPreviewSchema)),
+  /**
+   * Per-unit speed-die fill colour override (#rrggbb), sourced from the
+   * CustomSpeedDiceColor workshop mod when loaded. Absent when no override
+   * applies; consumers fall back to the per-faction `--die-{ally,enemy}-fill`
+   * CSS vars.
+   */
+  dieColor: z.optional(z.string()),
 });
 export type Unit = z.infer<typeof UnitSchema>;
 

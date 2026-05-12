@@ -52,15 +52,24 @@ const isAllyTargeting = computed(
 const isUntargetable = computed(
   () => !props.isAlly && props.unit.targetable === false,
 );
-const borderStyle = computed(() => {
+const borderStyle = computed<Record<string, string>>(() => {
   const color = props.isAlly
     ? isAllyTargeting.value
       ? "var(--green-hi)" // turn green if ally is selecting target
       : (allyColors.value[props.unit.id] ?? "var(--gold-dim)")
     : "var(--crimson)";
 
+  // Speed-die inner-hex fill cascades from this unit-card via inheritance,
+  // so DieRow's .hex-inner can read var(--die-faction-fill) without per-die
+  // wiring. The CDC mod's per-unit override takes precedence over the
+  // per-faction default; both are CSS values (var refs or hex literals)
+  // so the consumer sees a single resolved colour.
+  const factionFill = props.unit.dieColor
+    ?? (props.isAlly ? "var(--die-ally-fill)" : "var(--die-enemy-fill)");
+
   return {
     [`border-${props.side}`]: "2px solid " + color,
+    "--die-faction-fill": factionFill,
   };
 });
 

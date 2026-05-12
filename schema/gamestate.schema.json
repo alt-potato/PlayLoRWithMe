@@ -537,6 +537,9 @@
                   "additionalProperties": false
                 }
               },
+              "dieColor": {
+                "type": "string"
+              },
               "light": {
                 "type": "number"
               },
@@ -1554,6 +1557,9 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "dieColor": {
+                "type": "string"
               }
             },
             "required": [
@@ -3605,6 +3611,9 @@
                           "additionalProperties": false
                         }
                       },
+                      "dieColor": {
+                        "type": "string"
+                      },
                       "light": {
                         "type": "number"
                       },
@@ -4622,6 +4631,9 @@
                           ],
                           "additionalProperties": false
                         }
+                      },
+                      "dieColor": {
+                        "type": "string"
                       }
                     },
                     "required": [

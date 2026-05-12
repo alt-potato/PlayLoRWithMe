@@ -22,38 +22,77 @@ This faction fill is the *base* colour for the inner hex. Existing dice states t
 - **THEN** the `.hex-wrap` outer background uses the existing clash colour
 - **AND** the inner hex follows the existing clash rule, not the faction fill
 
-### Requirement: Locked dice SHALL display a lock overlay that preserves the faction fill
+### Requirement: Locked dice SHALL display a lock glyph in place of the rolled value, and SHALL NOT be selectable for slotting
 
-When a `SpeedDie` payload has `locked === true` and the die is not in a committed combat state (slotted with a target / clash / broken-and-not-locked), the `DieRow.vue` rendering MUST overlay a lock glyph on top of the inner hex. The glyph MUST be additive — the underlying faction fill and rolled value MUST remain visible behind it.
+When a `SpeedDie` payload has `locked === true` AND `staggered === false`, the `DieRow.vue` rendering MUST replace the rolled value with a centred lock glyph. The underlying faction-coloured inner-hex fill MUST remain visible around the glyph (the glyph itself is monochrome and additive, satisfying the "do not completely hide the colour" constraint). The rolled value MUST NOT be visible — the lock glyph is the sole indicator.
 
-When a die is *both* `locked === true` and `staggered === true`, the broken state still renders (`✕` on the crimson hex), but with the lock glyph also overlaid so the player can see why the die was destroyed (mirroring vanilla LoR's `_lockDiceRoot` activation for the `breaked && locked` case).
+Locked dice MUST NOT respond to slot-selection clicks. The early-return guard in `handleSlotClick` MUST treat `locked` identically to `staggered` and broken-unit states: the slot does not enter the "open" / "available" affordance, no green pulse, no pointer cursor, and the slot remove-button MUST NOT appear on a locked slot.
 
-The lock glyph MUST be styled in pure CSS / inline SVG and MUST NOT depend on a prefab-extracted sprite. The glyph MUST have `pointer-events: none` so clicks pass through to the existing slot interaction layer.
+The broken state takes priority over the locked state. When a die is *both* `locked === true` AND `staggered === true`, the die renders in the broken state only (`✕` on the crimson hex). The lock glyph MUST NOT be rendered on a broken die — the destroyed-die cue is the dominant signal and the lock affordance is moot because a broken die is already unusable.
 
-#### Scenario: Locked-and-not-broken die
+The lock glyph MUST be styled in pure CSS / inline SVG and MUST NOT depend on a prefab-extracted sprite. The glyph element MUST have `pointer-events: none` so the underlying slot interaction layer continues to handle (and now reject) the clicks.
+
+#### Scenario: Locked-and-not-broken die hides the value
 
 - **WHEN** an ally `SpeedDie` has `locked === true` and `staggered === false`
 - **THEN** the die renders with the ally faction fill on the inner hex
-- **AND** a lock glyph overlay is positioned on top of the inner hex
-- **AND** the rolled value remains visible at reduced opacity behind the glyph
-- **AND** the underlying faction fill colour is visible around the glyph (the overlay does not completely mask the colour)
+- **AND** a lock glyph is rendered in the centre of the hex
+- **AND** the rolled value is NOT visible
+- **AND** the underlying faction fill colour is visible around the glyph (the glyph does not completely mask the colour)
 
-#### Scenario: Locked-and-broken die
+#### Scenario: Locked die rejects slot-selection clicks
 
-- **WHEN** an enemy `SpeedDie` has `locked === true` and `staggered === true`
+- **WHEN** an ally `SpeedDie` has `locked === true` and `staggered === false` AND the player taps the slot
+- **THEN** no slot-selection state is entered (`selectingSlot` stays unchanged)
+- **AND** no green pulse / open affordance appears on the slot
+- **AND** the remove-button does NOT appear on the slot
+
+#### Scenario: Locked-and-broken die — broken takes priority
+
+- **WHEN** an enemy `SpeedDie` has `locked === true` AND `staggered === true`
 - **THEN** the die renders in the broken state (`✕` on the crimson hex)
-- **AND** the lock glyph is overlaid on top so the player can see the die is locked
+- **AND** NO lock glyph is rendered on the die
+- **AND** the slot behaviour mirrors the existing broken-die behaviour
 
 #### Scenario: Unlocked die has no lock overlay
 
 - **WHEN** a `SpeedDie` has `locked === false` (or the field is absent)
 - **THEN** no lock glyph is rendered on the die
 
-#### Scenario: Lock overlay does not interfere with slot clicks
+### Requirement: Per-unit speed-die colour overrides SHALL be honoured for CustomSpeedDiceColor mod compatibility
 
-- **WHEN** an ally die has `locked === true` and the user taps the underlying slot
-- **THEN** the click is handled by the slot interaction layer
-- **AND** the lock overlay does not consume the event
+When the workshop mod `Patty_SpeedDiceColor_MOD` is loaded and a battle unit's book or default-book matches one of its `CustomSpeedDiceXML.SpeedDice` entries (book-ID + package-ID match, with faction match), the mod MUST emit an optional `dieColor: string` (`#rrggbb` lowercase hex) on the unit's wire payload. The frontend MUST honour `unit.dieColor` by setting `--die-faction-fill` inline on the unit's `DieRow` components, overriding the faction-class default for that unit only.
+
+When the mod is not loaded, or no entry matches the unit's books, the serializer MUST omit `dieColor` entirely. Units without an override continue to use the per-faction `--die-ally-fill` / `--die-enemy-fill` CSS vars as the inner-hex base.
+
+The mod MUST integrate via reflection — no compile-time reference to `Patty_SpeedDiceColor_MOD.dll` is permitted. Only the dice colour is read; sprite swaps (`FolderName`, `BaseChange`) and other CDC-specific behaviour are out of scope.
+
+#### Scenario: Probe binds the singleton list when CDC is loaded
+
+- **WHEN** `Patty_SpeedDiceColor_MOD.dll` is present in the player's mod load order
+- **THEN** the probe resolves `Type.GetType("CustomSpeedDiceXML.SpeedDiceManager, Patty_SpeedDiceColor_MOD")`
+- **AND** caches the `Singleton<SpeedDiceManager>.Instance.speedDicesList` for subsequent lookups
+- **AND** each per-unit lookup matches against `BookID + BookUniqueID` OR `DefaultBookID + DefaultBookUniqueID`, with the `Faction` field matching the unit's faction
+
+#### Scenario: Per-unit override emits `dieColor` on the wire
+
+- **WHEN** a battle unit's `Book.BookId` matches a CDC entry that maps to RGBA `(120, 200, 40, 255)` for the ally faction
+- **THEN** the unit's serialized payload includes `dieColor: "#78c828"`
+- **AND** the frontend's `DieRow` rendering of that unit's dice uses `--die-faction-fill: #78c828`
+- **AND** other units in the same battle without a matching CDC entry continue to use the per-faction default
+
+#### Scenario: CDC is not loaded — no override fields emitted
+
+- **WHEN** the player does not have `Patty_SpeedDiceColor_MOD.dll` installed
+- **THEN** the per-unit lookup returns null for every unit
+- **AND** no `dieColor` field appears in any wire payload
+- **AND** the frontend renders speed dice using the per-faction default CSS vars
+
+#### Scenario: Mod is link-time-free of CDC
+
+- **WHEN** a contributor inspects `mod/PlayLoRWithMe.csproj` after this change
+- **THEN** no `<Reference>` or `<PackageReference>` element names `Patty_SpeedDiceColor_MOD`
+- **AND** no source file under `mod/` contains a `using CustomSpeedDiceXML` or `using Patty_SpeedDiceColorChange_MOD` directive
 
 ### Requirement: Untargetable units SHALL display row-level and per-die affordances
 

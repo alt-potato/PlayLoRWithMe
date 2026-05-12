@@ -96,6 +96,7 @@
     <Compile Include="Server.cs" />
     <Compile Include="StateBroadcaster.cs" />
     <Compile Include="ThemeProbe.cs" />
+    <Compile Include="CustomDiceColorProbe.cs" />
     <Compile Include="DeltaEngine.cs" />
     <Compile Include="SessionManager.cs" />
     <Compile Include="WebSocketClient.cs" />

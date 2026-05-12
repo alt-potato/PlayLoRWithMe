@@ -1,5 +1,21 @@
 ## ADDED Requirements
 
+### Requirement: `UnitSchema` SHALL carry an optional `dieColor` override
+
+`UnitSchema` (and by inheritance `AllyUnitSchema`) in `frontend/app/types/game.ts` MUST declare a new optional `dieColor: z.optional(z.string())` field. When present, the value is a `#rrggbb` lowercase hex string sourced from a `CustomSpeedDiceColor` mod entry whose `BookID/BookUniqueID` (or `DefaultBookID/DefaultBookUniqueID`) matches the unit and whose `Faction` matches the unit's faction.
+
+The C# serializer MUST emit `dieColor` only when the CDC probe returns a non-null match. Absent values fall back to the per-faction CSS defaults declared in `app.vue`'s `:root`.
+
+#### Scenario: Schema parses a unit with `dieColor`
+
+- **WHEN** `GameStateSchema` parses a payload whose ally unit includes `dieColor: "#78c828"`
+- **THEN** the parse succeeds and `unit.dieColor === "#78c828"`
+
+#### Scenario: Schema parses a unit without `dieColor`
+
+- **WHEN** `GameStateSchema` parses a payload whose unit omits `dieColor`
+- **THEN** the parse succeeds and `unit.dieColor` is `undefined`
+
 ### Requirement: `SpeedDieSchema` SHALL carry an optional `locked` field
 
 `SpeedDieSchema` in `frontend/app/types/game.ts` MUST declare a new optional field `locked: z.optional(z.boolean())`. The field's value, when present, indicates that the die cannot be commanded this turn, derived on the C# side as `(!unit.bufListDetail.IsControlable()) || (!die.isControlable)`.

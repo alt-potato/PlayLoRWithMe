@@ -47,6 +47,7 @@ type DieState =
   | "unopposed-incoming"
   | "clash" // target set, clash
   | "broken"
+  | "locked" // die disabled (paralysis-class buff or per-die isControlable=false)
   | "invalid";
 
 const isUnitBroken = computed(
@@ -72,8 +73,13 @@ function onSlotPressStart(sc: SlottedCardEntry | undefined) {
 }
 
 const dieState: ComputedRef<DieState> = computed(() => {
-  // die is broken
+  // broken takes priority over locked — a destroyed die is unusable regardless
+  // of whether the unit was also under a paralysis-class buff.
   if (props.die.staggered || isUnitBroken.value) return "broken";
+
+  // disabled / immobilized die — the value is hidden behind a lock glyph and
+  // the slot is not selectable, mirroring the behaviour of staggered dice.
+  if (props.die.locked) return "locked";
 
   // Placeholder dice emitted by the serializer before rolls have occurred
   if (
@@ -119,6 +125,9 @@ const dieDisplayValue: ComputedRef<string> = computed(() => {
       return "✕";
     case "invalid":
       return "—";
+    case "locked":
+      // the lock glyph overlay is the sole indicator; suppress the rolled value
+      return "";
     default:
       return String(props.die.value) || "—";
   }
@@ -134,6 +143,9 @@ const slotState = computed(() => {
     case "pending":
       return "slot-pending";
     case "broken":
+    case "locked":
+      // locked slots share the broken treatment: no pointer cursor, no green
+      // pulse, no click affordance — the die cannot accept a card.
       return "slot-broken";
     case "available":
       return "slot-available";
@@ -171,11 +183,11 @@ function handleSlotClick(d: SpeedDie, sc: SlottedCardEntry | undefined) {
   if (props.isAlly) {
     // ally: handle slot selection for playing cards only
     if (!isOwnUnit(props.unit.id)) return;
-    if (sc != null || d.staggered || isUnitBroken.value) return;
+    if (sc != null || d.staggered || d.locked || isUnitBroken.value) return;
     onSlotSelectClick(props.unit, d.slot);
   } else {
     // enemy: handle targeting only
-    if (canBeTargeted.value && !d.staggered) {
+    if (canBeTargeted.value && !d.staggered && !d.locked) {
       onTargetDieClick(props.unit.id, d.slot);
     }
   }
@@ -214,8 +226,6 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
         dieState,
         {
           'hex-target': canBeTargeted && !isAlly && !die.staggered,
-          'hex-ally': isAlly,
-          'hex-enemy': !isAlly,
         },
       ]"
       :data-die="`${unit.id}-${die.slot}`"
@@ -228,9 +238,11 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
         >{{ dieDisplayValue }}</span
       >
       <!-- additive overlays — lock and untargetable preserve the underlying
-           faction-coloured fill so the cue does not erase identifying state. -->
+           faction-coloured fill so the cue does not erase identifying state.
+           Lock only renders when the die is not also broken: broken takes
+           priority because a destroyed die is unusable regardless. -->
       <span
-        v-if="die.locked"
+        v-if="dieState === 'locked'"
         class="hex-overlay hex-lock"
         aria-label="locked"
       >
@@ -351,18 +363,15 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
   width: 2rem;
   height: 1.75rem;
   clip-path: var(--hex);
-  /* faction fill — overridden by the committed-state classes below */
+  /* faction fill inherits from the parent unit-card, which sets
+     --die-faction-fill based on faction (or the CDC per-unit override).
+     Falls back to a neutral panel colour when no ancestor sets it
+     (e.g. preview-die contexts outside DisplayCard). */
   background: var(--die-faction-fill, var(--bg-card-2));
   font-family: var(--font-body);
   font-size: 0.82rem;
   color: var(--text-1);
   pointer-events: none;
-}
-.hex-wrap.hex-ally {
-  --die-faction-fill: var(--die-ally-fill);
-}
-.hex-wrap.hex-enemy {
-  --die-faction-fill: var(--die-enemy-fill);
 }
 /* empty (ready for select) */
 .hex-wrap.available {

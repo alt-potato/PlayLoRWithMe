@@ -11,10 +11,11 @@ For remote players who can't see the in-game animation cues (paralysis shimmer, 
 ## What Changes
 
 - Speed-die hex inner fill matches the vanilla per-faction colour. Colours are sampled at mod init from `SpeedDiceUI`'s prefab via reflection (the prefab's `Refs.color_allyDice` / `Refs.color_enemyDice` `Color` fields) and shipped once on the `hello` payload as a `theme.factionDieColors` block. Frontend caches them into CSS vars at receive time and falls back to hardcoded defaults if reflection ever returns null.
-- The serializer emits a new optional `locked: boolean` on each `SpeedDie`, derived as `(!unit.bufListDetail.IsControlable()) || (!die.isControlable)`. When `true`, the die renders with a lock-glyph overlay that preserves the underlying faction-coloured fill (additive, not opaque).
+- The serializer emits a new optional `locked: boolean` on each `SpeedDie`, derived as `(!unit.bufListDetail.IsControlable()) || (!die.isControlable)`. When `true` (and the die is not also broken), the die renders a centred lock glyph in place of the rolled value; the underlying faction-coloured inner-hex fill remains visible around the glyph. Locked dies are not selectable for slotting (the click guard mirrors the staggered/broken-unit guard).
 - Untargetable enemy units (`unit.targetable === false`) gain a stage-level visual treatment in `DieRow.vue`: a row-level dim with a small "⚠ untargetable" chip near the unit name, plus a crosshatch SVG mask overlay on each die. The crosshatch is additive — the faction tint and rolled value remain visible underneath.
-- The lock and untargetable overlays compose: a unit that is both immobilized and untargetable shows both. Existing state overlays (clash / unopposed-outgoing / unopposed-incoming / broken) take priority over the lock/untargetable affordances when they would conflict, because those represent committed game state rather than pre-action constraints.
-- Out-of-battle preview dice (`SettingView`, `KeyPageDetail`) pick up the faction-coloured base fill but skip the lock/untargetable overlays — no battle context exists.
+- The broken state takes priority over the locked state: a die that is both `staggered` and `locked` renders the broken ✕ on the crimson hex with no lock glyph overlay. The locked and untargetable affordances compose with each other (a locked-and-untargetable die shows both lock glyph and crosshatch).
+- Out-of-battle preview surfaces (`SettingView`, `KeyPageDetail`) currently render speed as `min–max` text only — no die graphics to update.
+- Soft-dependency compatibility with the `Patty_SpeedDiceColor_MOD` workshop mod (id 2746914901): when present, per-unit dice colour entries flow through as an optional `dieColor: "#rrggbb"` on each unit's wire payload, overriding the faction default. No graphics swaps are honoured (out of scope) — only the colour.
 
 ## Capabilities
 

@@ -302,6 +302,7 @@
       "staggerThreshold": 17,
       "targetable": true,
       "turnState": "WAIT_CARD",
+      "dieColor": "#78c828",
       "speedDice": [
         { "slot": 0, "value": 4, "type": "Def", "detail": "Evasion" }
       ],
