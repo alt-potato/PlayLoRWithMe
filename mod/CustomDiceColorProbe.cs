@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using CustomSpeedDiceXML;
 using LOR_DiceSystem;
+using UnityEngine;
 
 namespace PlayLoRWithMe
 {
@@ -25,6 +26,7 @@ namespace PlayLoRWithMe
         // Cached once per session — AppDomain.GetAssemblies enumeration is O(n)
         // and stable for the lifetime of the process. Nullable = not yet checked.
         private static bool? _hasCdc;
+        private static bool _diagnosedOnce;
 
         private static bool HasCdc
         {
@@ -47,8 +49,33 @@ namespace PlayLoRWithMe
         /// </summary>
         internal static string TryGet(BattleUnitModel unit)
         {
+            DiagnoseOnce();
             if (!HasCdc) return null;
             return LookupColor(unit);
+        }
+
+        // One-shot log to help diagnose missing colours in the wild. Fires on
+        // first call regardless of HasCdc — both branches reveal information:
+        // false → CDC isn't loaded at all; true → CDC is loaded and we report
+        // how many entries it registered. Remove once the integration is
+        // confirmed stable across player setups.
+        private static void DiagnoseOnce()
+        {
+            if (_diagnosedOnce) return;
+            _diagnosedOnce = true;
+            if (!HasCdc)
+            {
+                Debug.Log("[CustomDiceColorProbe] Patty_SpeedDiceColor_MOD assembly not loaded; per-unit overrides disabled.");
+                return;
+            }
+            DiagnoseLoaded();
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void DiagnoseLoaded()
+        {
+            var list = Singleton<SpeedDiceManager>.Instance?.speedDicesList;
+            Debug.Log($"[CustomDiceColorProbe] CDC loaded; speedDicesList has {list?.Count ?? -1} entries.");
         }
 
         // Separate method, intentionally not inlined: CDC type references live
