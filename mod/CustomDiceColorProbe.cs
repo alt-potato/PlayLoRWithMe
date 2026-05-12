@@ -64,6 +64,11 @@ namespace PlayLoRWithMe
             var graphic = _rouletteImgField.GetValue(dieUi) as Graphic;
             if (graphic == null) return null;
 
+            // TEMPORARY: capture sprite textures for tint-factor calibration.
+            // The extractor self-limits to the first few units and skips the
+            // un-Init'd prefab; remove once calibration is done.
+            SpeedDiceTextureExtractor.TryExtractFromDie(unit, dieUi);
+
             return ColorToHex(graphic.color);
         }
 

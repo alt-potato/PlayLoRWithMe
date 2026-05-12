@@ -10,71 +10,75 @@ using UnityEngine.UI;
 namespace PlayLoRWithMe
 {
     /// <summary>
-    /// TEMPORARY one-shot diagnostic extractor: walks every live SpeedDiceUI
-    /// instance after a battle scene activates, dumps each unique assigned
-    /// sprite texture to wwwroot/assets/dice-debug/ as PNG, and logs each
-    /// unit's (frame sprite, glow sprite, sampled tint) tuple so the captured
-    /// textures can be correlated with the tints observed in-game.
+    /// TEMPORARY one-shot diagnostic extractor for calibrating the tint →
+    /// visible-colour relationship on CustomSpeedDiceColor-themed sprites.
+    /// Invoked from <see cref="CustomDiceColorProbe.TryGet"/> on the first live
+    /// die we sample, so the SpeedDiceUI has already been Init'd (and any
+    /// upstream tint mod has applied its swaps and colours). For each unique
+    /// frame sprite encountered we dump the texture as PNG to
+    /// wwwroot/assets/dice-debug/ and log the (sprite name, tint) pair.
     ///
-    /// Purpose: calibrate the tint → visible-colour relationship for
-    /// CustomSpeedDiceColor-themed sprites (which darken the tint by
-    /// per-channel multiplication against the underlying texture).
-    ///
-    /// Remove this file (and its csproj entry and the StateBroadcaster call)
-    /// once the calibration factor is captured.
+    /// Remove this file (and the call from CustomDiceColorProbe) once the
+    /// approximation factor is captured.
     /// </summary>
     internal static class SpeedDiceTextureExtractor
     {
-        private static bool _done;
+        private const int MaxUnitsToLog = 8;
+        private static int _unitsLogged;
+        private static bool _everWroteAnything;
         private static readonly HashSet<string> _writtenSprites = new HashSet<string>();
+        private static string _outDir;
 
-        internal static void ExtractOnce()
+        // Called per-unit, but only logs/writes for the first MaxUnitsToLog
+        // calls that reach this code path. Each call cheaply returns once
+        // we've captured enough variety to calibrate against.
+        internal static void TryExtractFromDie(BattleUnitModel unit, SpeedDiceUI dieUi)
         {
-            if (_done) return;
+            if (_unitsLogged >= MaxUnitsToLog) return;
+            if (dieUi == null) return;
+
             try
             {
-                var outDir = Path.Combine(Server.WwwRootPath, "assets", "dice-debug");
-                Directory.CreateDirectory(outDir);
+                var frameImg = ReadField<Image>(dieUi, "img_normalFrame");
+                var glowImg = ReadField<Image>(dieUi, "img_lightFrame");
+                var rouletteRaw = ReadField<RawImage>(dieUi, "_rouletteImg");
+                if (frameImg?.sprite == null) return;
 
-                var instances = Resources.FindObjectsOfTypeAll<SpeedDiceUI>();
-                if (instances == null || instances.Length == 0) return;
+                // Skip the prefab clone — its default sprite is from an icon
+                // atlas (e.g. "AfterIcon_9_9"). CDC-swapped sprites are named
+                // after themes (Malkuth, Yesod, RedMist, Abnormalities, etc.).
+                var frameSpriteName = frameImg.sprite.name;
+                if (frameSpriteName.StartsWith("AfterIcon")) return;
 
-                int unitNumber = 0;
-                foreach (var instance in instances)
+                if (_outDir == null)
                 {
-                    if (instance == null) continue;
-
-                    var frameImg = ReadField<Image>(instance, "img_normalFrame");
-                    var glowImg = ReadField<Image>(instance, "img_lightFrame");
-                    var rouletteRaw = ReadField<RawImage>(instance, "_rouletteImg");
-
-                    if (frameImg?.sprite == null) continue;
-
-                    unitNumber++;
-                    Color tint = rouletteRaw?.color ?? frameImg.color;
-                    string frameSpriteName = frameImg.sprite.name;
-                    string glowSpriteName = glowImg?.sprite?.name ?? "<none>";
-
-                    Debug.Log(
-                        $"[SpeedDiceTextureExtractor] unit#{unitNumber} "
-                        + $"frame={frameSpriteName} glow={glowSpriteName} "
-                        + $"frameColor={ColorToHexRgba(frameImg.color)} "
-                        + $"rouletteColor={ColorToHexRgba(tint)}"
-                    );
-
-                    WriteSpriteTexture(frameImg.sprite, outDir);
-                    if (glowImg?.sprite != null) WriteSpriteTexture(glowImg.sprite, outDir);
-                    if (rouletteRaw?.texture != null)
-                        WriteTexture(rouletteRaw.texture, "_rouletteImg-texture", outDir);
+                    _outDir = Path.Combine(Server.WwwRootPath, "assets", "dice-debug");
+                    Directory.CreateDirectory(_outDir);
                 }
 
-                if (unitNumber == 0) return; // no Init'd dice yet, retry next time
+                _unitsLogged++;
+                var glowSpriteName = glowImg?.sprite?.name ?? "<none>";
+                string unitName = unit?.UnitData?.unitData?.name ?? "<unknown>";
+                int unitId = unit?.id ?? -1;
 
-                _done = true;
                 Debug.Log(
-                    $"[SpeedDiceTextureExtractor] wrote {_writtenSprites.Count} "
-                    + $"unique sprite textures to {outDir}"
+                    $"[SpeedDiceTextureExtractor] unit#{_unitsLogged} "
+                    + $"id={unitId} name=\"{unitName}\" "
+                    + $"frame={frameSpriteName} glow={glowSpriteName} "
+                    + $"frameColor={ColorToHexRgba(frameImg.color)} "
+                    + $"glowColor={(glowImg != null ? ColorToHexRgba(glowImg.color) : "<n/a>")} "
+                    + $"rouletteColor={(rouletteRaw != null ? ColorToHexRgba(rouletteRaw.color) : "<n/a>")}"
                 );
+
+                WriteSpriteTexture(frameImg.sprite);
+                if (glowImg?.sprite != null) WriteSpriteTexture(glowImg.sprite);
+                if (rouletteRaw?.texture != null && !_everWroteAnything)
+                {
+                    // roulette texture is shared across all dice; capture once
+                    WriteTexture(rouletteRaw.texture, "_rouletteImg-texture");
+                }
+
+                _everWroteAnything = true;
             }
             catch (Exception ex)
             {
@@ -91,18 +95,17 @@ namespace PlayLoRWithMe
             return f?.GetValue(target) as T;
         }
 
-        private static void WriteSpriteTexture(Sprite sprite, string outDir)
+        private static void WriteSpriteTexture(Sprite sprite)
         {
             string name = sprite.name;
             if (_writtenSprites.Contains(name)) return;
             _writtenSprites.Add(name);
-            WriteTexture(sprite.texture, name, outDir);
+            WriteTexture(sprite.texture, name);
         }
 
         // Standard blit-then-readback pattern for non-CPU-readable textures —
-        // mirrors what AppearanceCache does for character art. Slightly wasteful
-        // (re-allocates per call) but this runs once per session.
-        private static void WriteTexture(Texture source, string name, string outDir)
+        // mirrors what AppearanceCache does for character art.
+        private static void WriteTexture(Texture source, string name)
         {
             try
             {
@@ -118,7 +121,7 @@ namespace PlayLoRWithMe
                 RenderTexture.active = prev;
                 RenderTexture.ReleaseTemporary(rt);
                 byte[] png = readable.EncodeToPNG();
-                string path = Path.Combine(outDir, $"{SanitizeFilename(name)}.png");
+                string path = Path.Combine(_outDir, $"{SanitizeFilename(name)}.png");
                 File.WriteAllBytes(path, png);
                 UnityEngine.Object.Destroy(readable);
             }
