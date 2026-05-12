@@ -8,37 +8,40 @@ using UnityEngine.UI;
 namespace PlayLoRWithMe
 {
     /// <summary>
-    /// Samples each unit's frame sprite to derive a representative "die colour"
-    /// for the web UI. Per-unit tints applied by any speed-die colour mod
-    /// (e.g. CustomSpeedDiceColor / Patty_SpeedDiceColor_MOD) flow through as
-    /// an optional <c>dieColor</c> payload field.
+    /// Samples each unit's first SpeedDiceUI to derive two coordinated colours
+    /// for the web UI:
     ///
-    /// Why the frame sprite rather than the tint:
-    ///   CDC's hardcoded fallback (see SpeedDiceUI.Init postfix) swaps the
-    ///   frame sprite to a themed one and tints the inner roulette image
-    ///   separately. The visible die is dominated by the frame texture (the
-    ///   themed sprite shown at color=#ffffff), not by the roulette tint we
-    ///   were previously sampling. Sampling the frame sprite's alpha-weighted
-    ///   mean captures the muted, accent-coloured appearance that matches
-    ///   in-game rendering.
+    ///   <list type="bullet">
+    ///     <item><c>fill</c> — alpha-weighted mean of img_normalFrame.sprite's
+    ///       texture, representing the dim themed appearance of the hex
+    ///       interior. Cached per sprite name.</item>
+    ///     <item><c>accent</c> — _rouletteImg.color, the per-unit tint that
+    ///       any speed-die colour mod sets to paint the numeric digits. Live
+    ///       sample (no caching).</item>
+    ///   </list>
     ///
-    /// Per-sprite cost is one blit + readback the first time each sprite is
-    /// encountered. The Color result is cached by sprite name; subsequent
-    /// lookups are dictionary hits.
+    /// Together they let the frontend match the in-game appearance:
+    /// CustomSpeedDiceColor's WARP Cleanup Agent reads as dark navy with
+    /// bright blue numerals on the web just as it does in-game.
     /// </summary>
     internal static class CustomDiceColorProbe
     {
-        // SpeedDiceUI.img_normalFrame is private; bind via reflection once.
+        // SpeedDiceUI.img_normalFrame and _rouletteImg are private; bind once.
         private static FieldInfo _normalFrameField;
+        private static FieldInfo _rouletteImgField;
         private static bool _bindAttempted;
         private static bool _bindFailed;
 
-        // Cache: sprite name -> mean colour (alpha-weighted, opaque pixels only).
-        // Keyed by sprite name because CDC reuses the same themed sprite across
-        // many units (e.g. all WARP Cleanup Agents share "WarpCrew"), so the
-        // computed mean is identical for them.
-        private static readonly Dictionary<string, Color> _meanCache =
+        // Cache: frame sprite name -> alpha-weighted mean of opaque pixels.
+        private static readonly Dictionary<string, Color> _frameMeanCache =
             new Dictionary<string, Color>();
+
+        internal struct Colors
+        {
+            public string Fill;
+            public string Accent;
+            public bool HasAny => Fill != null || Accent != null;
+        }
 
         private static void TryBindOnce()
         {
@@ -48,59 +51,73 @@ namespace PlayLoRWithMe
                 "img_normalFrame",
                 BindingFlags.NonPublic | BindingFlags.Instance
             );
-            if (_normalFrameField == null)
+            _rouletteImgField = typeof(SpeedDiceUI).GetField(
+                "_rouletteImg",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+            if (_normalFrameField == null || _rouletteImgField == null)
             {
                 _bindFailed = true;
-                Debug.LogWarning("[CustomDiceColorProbe] SpeedDiceUI.img_normalFrame field not found via reflection; per-unit colour sampling disabled.");
+                Debug.LogWarning("[CustomDiceColorProbe] SpeedDiceUI fields not found via reflection; per-unit colour sampling disabled.");
             }
         }
 
         /// <summary>
-        /// Returns the unit's representative speed-die colour as a
-        /// <c>#rrggbb</c> hex string, or null when the unit's SpeedDiceUI
-        /// isn't initialised (BattleSetting preview, between waves, dead unit
-        /// cleanup) or its frame sprite is the un-Init'd prefab default.
+        /// Returns the unit's representative die colours. Both fields may be
+        /// null when the unit's SpeedDiceUI isn't initialised yet (BattleSetting
+        /// preview, between waves) or its frame sprite is the prefab default.
+        /// The frontend treats null fields as "use the per-faction fallback".
         /// </summary>
-        internal static string TryGet(BattleUnitModel unit)
+        internal static Colors TryGet(BattleUnitModel unit)
         {
             TryBindOnce();
-            if (_bindFailed || unit == null) return null;
+            if (_bindFailed || unit == null) return default;
 
             var setter = unit.view?.speedDiceSetterUI;
-            if (setter == null || setter.SpeedDicesCount <= 0) return null;
+            if (setter == null || setter.SpeedDicesCount <= 0) return default;
 
-            // All dice on a unit share the same themed sprite (CDC's patch is
-            // per-die but the inputs are per-unit), so the first slot is
-            // representative.
             var dieUi = setter.GetSpeedDiceByIndex(0);
-            if (dieUi == null) return null;
+            if (dieUi == null) return default;
 
+            var result = new Colors();
+
+            // Fill: cached alpha-weighted mean of the themed frame sprite.
             var frameImg = _normalFrameField.GetValue(dieUi) as Image;
-            if (frameImg?.sprite == null) return null;
-
-            // Skip the un-Init'd prefab clone — its default sprite is from a
-            // generic icon atlas (e.g. "AfterIcon_9_9"), not a themed frame.
-            string spriteName = frameImg.sprite.name;
-            if (spriteName.StartsWith("AfterIcon")) return null;
-
-            if (!_meanCache.TryGetValue(spriteName, out Color mean))
+            if (frameImg?.sprite != null)
             {
-                mean = ComputeSpriteMean(frameImg.sprite.texture);
-                _meanCache[spriteName] = mean;
+                string spriteName = frameImg.sprite.name;
+                // Skip the un-Init'd prefab default (generic atlas sprite).
+                if (!spriteName.StartsWith("AfterIcon"))
+                {
+                    if (!_frameMeanCache.TryGetValue(spriteName, out Color mean))
+                    {
+                        mean = ComputeSpriteMean(frameImg.sprite.texture);
+                        _frameMeanCache[spriteName] = mean;
+                    }
+                    // Multiply by frame.color (typically white) so a future mod
+                    // that tints the frame instead of the roulette still surfaces.
+                    Color tinted = new Color(
+                        mean.r * frameImg.color.r,
+                        mean.g * frameImg.color.g,
+                        mean.b * frameImg.color.b,
+                        1f
+                    );
+                    result.Fill = ColorToHex(tinted);
+                }
             }
 
-            // Multiply by the Image's own colour (typically white, but mods
-            // could tint the frame differently). Force alpha=1 — we emit
-            // RGB-only hex and the underlying alpha here is a Unity rendering
-            // concern, not a wire-format one.
-            Color tint = frameImg.color;
-            Color visible = new Color(mean.r * tint.r, mean.g * tint.g, mean.b * tint.b, 1f);
-            return ColorToHex(visible);
+            // Accent: live _rouletteImg tint — what CDC paints onto the digits.
+            var rouletteRaw = _rouletteImgField.GetValue(dieUi) as Graphic;
+            if (rouletteRaw != null)
+            {
+                result.Accent = ColorToHex(rouletteRaw.color);
+            }
+
+            return result;
         }
 
-        // Standard blit + ReadPixels pattern for non-CPU-readable textures,
-        // matching what AppearanceCache does. Runs once per unique sprite per
-        // session; subsequent lookups return the cached Color.
+        // Standard blit + ReadPixels for non-CPU-readable textures.
+        // Runs once per unique sprite per session; subsequent lookups hit cache.
         private static Color ComputeSpriteMean(Texture source)
         {
             if (source == null) return Color.white;
@@ -116,9 +133,8 @@ namespace PlayLoRWithMe
             RenderTexture.active = prev;
             RenderTexture.ReleaseTemporary(rt);
 
-            // Alpha-weighted mean over opaque-ish pixels. Weighting by alpha
-            // skews the mean toward the visible sprite content (icon + edges)
-            // and away from the soft transparent halo around the hex shape.
+            // Alpha-weighted mean over opaque pixels — biases toward the visible
+            // sprite content (icon + edges) and away from the transparent halo.
             var pixels = readable.GetPixels32();
             double rs = 0, gs = 0, bs = 0, totalA = 0;
             foreach (var p in pixels)

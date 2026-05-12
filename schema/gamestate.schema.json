@@ -540,6 +540,9 @@
               "dieColor": {
                 "type": "string"
               },
+              "dieAccentColor": {
+                "type": "string"
+              },
               "light": {
                 "type": "number"
               },
@@ -1559,6 +1562,9 @@
                 }
               },
               "dieColor": {
+                "type": "string"
+              },
+              "dieAccentColor": {
                 "type": "string"
               }
             },
@@ -3614,6 +3620,9 @@
                       "dieColor": {
                         "type": "string"
                       },
+                      "dieAccentColor": {
+                        "type": "string"
+                      },
                       "light": {
                         "type": "number"
                       },
@@ -4633,6 +4642,9 @@
                         }
                       },
                       "dieColor": {
+                        "type": "string"
+                      },
+                      "dieAccentColor": {
                         "type": "string"
                       }
                     },

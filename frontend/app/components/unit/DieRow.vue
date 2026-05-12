@@ -352,7 +352,10 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
   width: 2.4rem;
   height: 2.1rem;
   clip-path: var(--hex);
-  background: var(--border-mid);
+  /* Outline = lighter shade of the inner fill so both stay in the same
+     colour family. State-class rules (.broken / .open / .pending / .clash
+     / .unopposed-* / .hex-target) override this for committed combat states. */
+  background: color-mix(in srgb, var(--die-faction-fill, var(--border-mid)) 70%, white);
   flex-shrink: 0;
   position: relative;
 }
@@ -370,7 +373,9 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
   background: var(--die-faction-fill, var(--bg-card-2));
   font-family: var(--font-body);
   font-size: 0.82rem;
-  color: var(--text-1);
+  /* Numeral colour picks up the per-unit accent (CDC's tint, e.g. #6666ff
+     for WARP Cleanup Agents) when present, falling back to --text-1. */
+  color: var(--die-accent-color, var(--text-1));
   pointer-events: none;
 }
 /* empty (ready for select) */

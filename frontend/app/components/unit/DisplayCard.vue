@@ -59,18 +59,25 @@ const borderStyle = computed<Record<string, string>>(() => {
       : (allyColors.value[props.unit.id] ?? "var(--gold-dim)")
     : "var(--crimson)";
 
-  // Speed-die inner-hex fill cascades from this unit-card via inheritance,
-  // so DieRow's .hex-inner can read var(--die-faction-fill) without per-die
-  // wiring. The CDC mod's per-unit override takes precedence over the
-  // per-faction default; both are CSS values (var refs or hex literals)
-  // so the consumer sees a single resolved colour.
+  // Speed-die colours cascade from this unit-card via inheritance:
+  //   --die-faction-fill  -> hex-inner background (dim themed inner)
+  //   --die-accent-color  -> hex-inner number text (bright themed)
+  // The hex-wrap outline reads color-mix(fill, white) for a lighter shade in
+  // the same family — keeps all three speed-die elements coordinated without
+  // a third wire field. Per-unit overrides (CDC) win over per-faction defaults;
+  // when neither is present DieRow's CSS falls back to var(--border-mid) /
+  // var(--text-1) so vanilla rendering stays unchanged.
   const factionFill = props.unit.dieColor
     ?? (props.isAlly ? "var(--die-ally-fill)" : "var(--die-enemy-fill)");
 
-  return {
+  const style: Record<string, string> = {
     [`border-${props.side}`]: "2px solid " + color,
     "--die-faction-fill": factionFill,
   };
+  if (props.unit.dieAccentColor) {
+    style["--die-accent-color"] = props.unit.dieAccentColor;
+  }
+  return style;
 });
 
 function dieColor(sc: SlottedCardEntry | undefined): string {

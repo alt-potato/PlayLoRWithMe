@@ -1748,12 +1748,17 @@ namespace PlayLoRWithMe
                     .Add("maxLight", unit.MaxPlayPoint)
                     .Add("reservedLight", unit.cardSlotDetail?.ReservedPlayPoint ?? 0);
 
-                // Optional per-unit speed-die colour override from the
-                // CustomSpeedDiceColor workshop mod. Absent when CDC is not
-                // loaded or no entry matches this unit's books.
-                var dieColor = CustomDiceColorProbe.TryGet(unit);
-                if (dieColor != null)
-                    w.Add("dieColor", dieColor);
+                // Optional per-unit speed-die colours. `dieColor` tints the
+                // inner hex fill (frame sprite mean); `dieAccentColor` tints
+                // the numerals (CDC's _rouletteImg tint, which it also paints
+                // onto img_tensNum / img_unitsNum in-game). The frontend
+                // derives the outline as a lightened shade of `dieColor` via
+                // CSS color-mix, so both elements stay in the same family.
+                var dieColors = CustomDiceColorProbe.TryGet(unit);
+                if (dieColors.Fill != null)
+                    w.Add("dieColor", dieColors.Fill);
+                if (dieColors.Accent != null)
+                    w.Add("dieAccentColor", dieColors.Accent);
 
                 if (unit.Book != null)
                     WriteKeyPage(w, unit);

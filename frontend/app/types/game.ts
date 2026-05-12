@@ -748,12 +748,21 @@ export const UnitSchema = z.object({
   /** Deck card preview — only present in BattleSetting phase. */
   deckPreview: z.optional(z.array(DeckCardPreviewSchema)),
   /**
-   * Per-unit speed-die fill colour override (#rrggbb), sourced from the
-   * CustomSpeedDiceColor workshop mod when loaded. Absent when no override
-   * applies; consumers fall back to the per-faction `--die-{ally,enemy}-fill`
-   * CSS vars.
+   * Per-unit speed-die inner-fill colour override (#rrggbb). Sampled at
+   * runtime as the alpha-weighted mean of the unit's frame sprite texture
+   * (CDC swaps this to themed sprites whose mean reflects the dim hex
+   * interior). Absent when no override applies — consumers fall back to
+   * the per-faction `--die-{ally,enemy}-fill` CSS vars.
    */
   dieColor: z.optional(z.string()),
+  /**
+   * Per-unit speed-die accent colour override (#rrggbb) — the tint a
+   * colour mod sets on the inner roulette, which it also paints onto the
+   * numeric digits in-game. Used for the speed-value numeral on the web;
+   * the hex outline is derived from `dieColor` via CSS color-mix so all
+   * three elements stay in the same colour family.
+   */
+  dieAccentColor: z.optional(z.string()),
 });
 export type Unit = z.infer<typeof UnitSchema>;
 
