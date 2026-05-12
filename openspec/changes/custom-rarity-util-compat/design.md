@@ -32,25 +32,64 @@ The inline-var pattern accepts arbitrary colour values natively; the class patte
 
 ## Decisions
 
-### Reflection-based soft dependency
+### Soft dependency via HintPath reference + JIT gate
 
-**Decision:** at mod init, probe `Type.GetType("CustomRarityUtil.Xml.CardRarityXmlList, CustomRarityUtil")`. If the type resolves, cache a `Func<string, Rarity, object>` delegate for `Singleton<CardRarityXmlList>.Instance.GetCardRarityXmlInfo(string, Rarity)` and similar field-accessor delegates for the four `FrameColor` / `RangeIconColor` / `AbilityDescColor` / `AbilityKeywordColor` `Color` properties. Cache once; the hot path is a direct delegate invoke.
+**Decision:** the csproj takes a `<Reference Include="CustomRarityUtil">` entry with a `HintPath` to `$(LorWorkshopDir)\2874916185\Assemblies\CustomRarityUtil.dll` and `<Private>False</Private>` so the optional DLL is never bundled into our build output. Source files freely use `using CustomRarityUtil.Xml;` for type-safe API access.
 
-**Alternative considered:** Per-call `Type.GetType` + `MethodInfo.Invoke`. Rejected — speed-dice / hand / passive serialization runs on every state push, and several dozen lookups per snapshot × per-call reflection cost is noticeable. Cached delegates make the hot path ~one virtual call.
+The runtime soft-dep guarantee is enforced through a two-method pattern in `CustomRarityProbe`:
 
-**Alternative considered:** Hard-reference CustomRarityUtil and rely on Unity's assembly-load tolerance. Rejected — this couples our build to a workshop artefact we don't control, breaks builds for contributors who don't have the workshop installed locally, and would require the workshop mod's load order to be enforced by every player.
+```csharp
+private static bool? _hasCru;
+private static bool HasCru
+{
+    get
+    {
+        if (!_hasCru.HasValue)
+            _hasCru = AppDomain.CurrentDomain.GetAssemblies()
+                .Any(a => a.GetName().Name == "CustomRarityUtil");
+        return _hasCru.Value;
+    }
+}
+
+internal static RarityOverride TryGet(string packageId, Rarity rarity)
+{
+    if (!HasCru) return null;
+    return LookupOverride(packageId, rarity);   // ← gated
+}
+
+[MethodImpl(MethodImplOptions.NoInlining)]
+private static RarityOverride LookupOverride(string packageId, Rarity rarity)
+{
+    var info = Singleton<CardRarityXmlList>.Instance
+        .GetCardRarityXmlInfo(packageId, rarity);
+    if (info == null) return null;
+    // direct field access — no reflection
+    return new RarityOverride(
+        FromColor(info.FrameColor),
+        FromColor(info.RangeIconColor),
+        FromColor(info.AbilityDescColor),
+        FromColor(info.AbilityKeywordColor)
+    );
+}
+```
+
+The .NET JIT only loads referenced types when a method body is JIT-compiled. `[MethodImpl(NoInlining)]` keeps `LookupOverride` from being inlined into `TryGet`, so CustomRarityUtil types are only resolved when the gate has admitted us. When CustomRarityUtil is absent the gated method is never JIT'd, the CLR never tries to resolve its types, and our mod loads cleanly.
+
+**Alternative considered:** Pure reflection (cached delegates via `Type.GetType` + `Delegate.CreateDelegate`). Rejected after iteration — the reflection plumbing is ~150 lines per probe, lacks IDE refactor support, drops compile-time safety on field/method renames, and offers no real benefit over the JIT-gate pattern. The build-environment cost (workshop mods must be installed locally) is documented in the README and acceptable for this project's primary contributor.
+
+**Alternative considered:** Vendor the workshop DLLs in `mod/libs/`. Rejected — license/redistribution concerns plus repo bloat for what amounts to ~200 KB of binary artefacts we don't control.
 
 ### Helper class `CustomRarityProbe`
 
 **Decision:** a new `mod/CustomRarityProbe.cs` exposes a single static method:
 
 ```csharp
-public static RarityOverride? TryGet(string packageId, Rarity rarity);
+public static RarityOverride TryGet(string packageId, Rarity rarity);
 ```
 
-where `RarityOverride` is a small POCO with four nullable `(byte R, byte G, byte B)` tuples. The helper returns `null` quickly if the type was not found at init; otherwise it invokes the cached delegate and converts the Unity `Color`s to byte tuples.
+where `RarityOverride` is a small POCO with four nullable `(byte R, byte G, byte B)` tuples. The helper checks `HasCru` once per session, then dispatches to the non-inlined lookup body for direct API access against `Singleton<CardRarityXmlList>.Instance.GetCardRarityXmlInfo`.
 
-This keeps the reflection plumbing in one place. `GameStateSerializer` calls it at each emission site and, if the result is non-null, emits the four optional fields via `WriteRgbHex`.
+This keeps all CustomRarityUtil-typed code in one place. `GameStateSerializer` calls `TryGet` at each emission site and, if the result is non-null, emits the four optional fields via `WriteRgbHex`.
 
 ### Hex encoding on the wire
 
@@ -107,7 +146,9 @@ These propagate via `z.infer<>` automatically. `schema/gamestate.schema.json` re
 
 ## Risks / Trade-offs
 
-[Reflection target name drift] → CustomRarityUtil could rename `CardRarityXmlList` or its members in a future version. Mitigation: `CustomRarityProbe` logs a single startup message when it detects the type but cannot bind one of the delegates, so the failure mode is visible in the player's log without crashing the mod.
+[API name drift] → CustomRarityUtil could rename `CardRarityXmlList` or its members in a future version. With a hard reference, this surfaces at compile time on the next contributor build — strictly better than reflection, where the drift wouldn't appear until runtime. Mitigation: contributors update the HintPath / call sites; the workshop mod has been stable for years so this is unlikely.
+
+[Contributor must have workshop mod installed] → anyone who clones this repo and tries to build needs `CustomRarityUtil.dll` available at the HintPath (default: stock Steam workshop directory; `LOR_WORKSHOP_DIR` env var override available). Mitigation: README documents the build requirement; players who only run the mod don't need either workshop subscription.
 
 [Load-order dependency] → CustomRarityUtil must be loaded before our mod for the probe to find the type. Mitigation: vanilla LoR loads mods alphabetically by directory name; our mod is `PlayLoRWithMe`, alphabetically after `CustomRarityUtil`-named mods. If load order ever flips, we can re-probe on first state push instead of at init — a one-line change.
 

@@ -65,34 +65,37 @@ When the workshop mod `Patty_SpeedDiceColor_MOD` is loaded and a battle unit's b
 
 When the mod is not loaded, or no entry matches the unit's books, the serializer MUST omit `dieColor` entirely. Units without an override continue to use the per-faction `--die-ally-fill` / `--die-enemy-fill` CSS vars as the inner-hex base.
 
-The mod MUST integrate via reflection — no compile-time reference to `Patty_SpeedDiceColor_MOD.dll` is permitted. Only the dice colour is read; sprite swaps (`FolderName`, `BaseChange`) and other CDC-specific behaviour are out of scope.
+The mod MAY take a compile-time HintPath reference to `Patty_SpeedDiceColor_MOD.dll` for type-safe API access, but MUST mark it `Private=False` so the optional DLL is never bundled into our build output. The runtime soft-dep contract is enforced via an assembly-presence check (`AppDomain.CurrentDomain.GetAssemblies()`) that gates entry into a separate, non-inlined method whose body references the CDC types — when CDC is absent the gated method is never JIT'd and the CLR never resolves CDC types, so the mod stays loadable.
 
-#### Scenario: Probe binds the singleton list when CDC is loaded
+Only the dice colour is read; sprite swaps (`FolderName`, `BaseChange`) and other CDC-specific behaviour are out of scope.
 
-- **WHEN** `Patty_SpeedDiceColor_MOD.dll` is present in the player's mod load order
-- **THEN** the probe resolves `Type.GetType("CustomSpeedDiceXML.SpeedDiceManager, Patty_SpeedDiceColor_MOD")`
-- **AND** caches the `Singleton<SpeedDiceManager>.Instance.speedDicesList` for subsequent lookups
-- **AND** each per-unit lookup matches against `BookID + BookUniqueID` OR `DefaultBookID + DefaultBookUniqueID`, with the `Faction` field matching the unit's faction
+#### Scenario: CDC is loaded — per-unit override emits `dieColor` on the wire
 
-#### Scenario: Per-unit override emits `dieColor` on the wire
-
-- **WHEN** a battle unit's `Book.BookId` matches a CDC entry that maps to RGBA `(120, 200, 40, 255)` for the ally faction
+- **WHEN** the player has `Patty_SpeedDiceColor_MOD.dll` installed AND a battle unit's `Book.BookId` matches a CDC entry that declares RGBA `(120, 200, 40, 255)` for the ally faction
 - **THEN** the unit's serialized payload includes `dieColor: "#78c828"`
 - **AND** the frontend's `DieRow` rendering of that unit's dice uses `--die-faction-fill: #78c828`
 - **AND** other units in the same battle without a matching CDC entry continue to use the per-faction default
 
+#### Scenario: CDC is loaded — lookup uses BookID or DefaultBookID
+
+- **WHEN** a CDC entry sets only `DefaultBookID + DefaultBookUniqueID` for a unit whose live key page (`unit.Book.BookId`) does not match
+- **THEN** the lookup MUST still match via the unit's default book (`unit.UnitData.unitData.defaultBook.BookId`)
+- **AND** the matching entry's `Faction` field MUST equal `unit.faction`
+
 #### Scenario: CDC is not loaded — no override fields emitted
 
 - **WHEN** the player does not have `Patty_SpeedDiceColor_MOD.dll` installed
-- **THEN** the per-unit lookup returns null for every unit
+- **THEN** the assembly-presence gate returns false
+- **AND** the CDC-typed lookup method is never JIT'd
 - **AND** no `dieColor` field appears in any wire payload
 - **AND** the frontend renders speed dice using the per-faction default CSS vars
+- **AND** the mod's own DLL loads and runs without error
 
-#### Scenario: Mod is link-time-free of CDC
+#### Scenario: Mod build does not bundle CDC
 
-- **WHEN** a contributor inspects `mod/PlayLoRWithMe.csproj` after this change
-- **THEN** no `<Reference>` or `<PackageReference>` element names `Patty_SpeedDiceColor_MOD`
-- **AND** no source file under `mod/` contains a `using CustomSpeedDiceXML` or `using Patty_SpeedDiceColorChange_MOD` directive
+- **WHEN** the mod is built and `mod/bin/Debug/PlayLoRWithMe/Assemblies/` is inspected
+- **THEN** no copy of `Patty_SpeedDiceColor_MOD.dll` is present in our output
+- **AND** the csproj reference is marked `Private=False`
 
 ### Requirement: Untargetable units SHALL display row-level and per-die affordances
 

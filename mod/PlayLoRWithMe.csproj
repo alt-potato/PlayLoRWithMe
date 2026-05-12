@@ -36,6 +36,24 @@
     <LorManagedDir Condition=" '$(LOR_MANAGED_DIR)' != '' ">$(LOR_MANAGED_DIR)</LorManagedDir>
     <LorManagedDir Condition=" '$(LorManagedDir)' == '' ">..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Library Of Ruina\LibraryOfRuina_Data\Managed</LorManagedDir>
   </PropertyGroup>
+
+  <!--
+    Locate the Steam workshop directory containing optional, soft-dependency
+    mods (CustomSpeedDiceColor, CustomRarityUtil, etc.). Resolution mirrors
+    LorManagedDir: env var first, then a default for the stock Steam path.
+
+    Optional-mod DLLs are referenced via HintPath with Private=False — we
+    compile against them for type-safe API calls, but we don't bundle them
+    in our build output (those mods are independent subscriptions). The
+    runtime soft-dep guarantee is preserved via assembly-presence checks
+    in each probe (see CustomDiceColorProbe.HasCdc et al.); the CLR loads
+    optional-mod types lazily, so the gated entry points keep the mod
+    loadable when those subscriptions are absent.
+  -->
+  <PropertyGroup>
+    <LorWorkshopDir Condition=" '$(LOR_WORKSHOP_DIR)' != '' ">$(LOR_WORKSHOP_DIR)</LorWorkshopDir>
+    <LorWorkshopDir Condition=" '$(LorWorkshopDir)' == '' ">..\..\..\..\..\Program Files (x86)\Steam\steamapps\workshop\content\1256670</LorWorkshopDir>
+  </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
@@ -79,6 +97,12 @@
     </Reference>
     <Reference Include="UnityEngine.UI">
       <HintPath>$(LorManagedDir)\UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <!-- Optional workshop dependency: CustomSpeedDiceColor (id 2746914901).
+         Private=False so the optional DLL is never copied into our output. -->
+    <Reference Include="Patty_SpeedDiceColor_MOD">
+      <HintPath>$(LorWorkshopDir)\2746914901\Assemblies\Patty_SpeedDiceColor_MOD.dll</HintPath>
+      <Private>False</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>

@@ -1,9 +1,9 @@
 ## 1. C# soft-dependency probe
 
-- [ ] 1.1 Create `mod/CustomRarityProbe.cs` with a static `Init()` that uses `Type.GetType("CustomRarityUtil.Xml.CardRarityXmlList, CustomRarityUtil")` and caches a `GetCardRarityXmlInfo(string, Rarity)` delegate plus accessor delegates for `FrameColor`, `RangeIconColor`, `AbilityDescColor`, `AbilityKeywordColor`
-- [ ] 1.2 Define the `RarityOverride` POCO with four nullable `(byte R, byte G, byte B)` tuples and a `TryGet(string packageId, Rarity rarity)` static entry point
-- [ ] 1.3 Wire `CustomRarityProbe.Init()` into `Initializer.cs` (called once after Harmony patches apply)
-- [ ] 1.4 Confirm no source file under `mod/` contains `using CustomRarityUtil` or a project reference, and `dotnet build` runs `0 Warning(s) 0 Error(s)` on a clean checkout
+- [ ] 1.1 Add a HintPath `<Reference Include="CustomRarityUtil">` to `mod/PlayLoRWithMe.csproj` resolving through `$(LorWorkshopDir)\2874916185\Assemblies\CustomRarityUtil.dll`, marked `<Private>False</Private>` so the optional DLL is never bundled
+- [ ] 1.2 Create `mod/CustomRarityProbe.cs` with a `HasCru` assembly-presence gate (cached) and a non-inlined `LookupOverride(string packageId, Rarity rarity)` method that calls `Singleton<CardRarityXmlList>.Instance.GetCardRarityXmlInfo` directly and reads the four colour properties off the returned `CardRarityXmlInfo`
+- [ ] 1.3 Define the `RarityOverride` POCO with four `(byte R, byte G, byte B)` tuples; `TryGet(packageId, rarity)` dispatches `HasCru ? LookupOverride(...) : null`
+- [ ] 1.4 Confirm the build runs `0 Warning(s) 0 Error(s)` AND that `bin/Debug/PlayLoRWithMe/Assemblies/` does not contain a copy of `CustomRarityUtil.dll`
 
 ## 2. Serializer emission
 

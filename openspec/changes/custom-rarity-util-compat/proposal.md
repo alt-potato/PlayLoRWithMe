@@ -4,11 +4,11 @@ The CustomRarityUtil workshop mod (id 2874916185) lets other mods declare additi
 
 ## What Changes
 
-- The C# serializer probes `CustomRarityUtil.Xml.CardRarityXmlList` via cached reflection delegates and, when the mod is loaded and a card/key-page/passive has a custom rarity, emits four new optional override hex strings: `rarityColor`, `rarityRangeIconColor`, `rarityAbilityColor`, `rarityKeywordColor`.
+- The C# serializer queries `CustomRarityUtil.Xml.CardRarityXmlList` via a direct API call and, when the mod is loaded and a card/key-page/passive has a custom rarity, emits four new optional override hex strings: `rarityColor`, `rarityRangeIconColor`, `rarityAbilityColor`, `rarityKeywordColor`.
 - Vanilla rarities are unchanged on the wire — no override fields are emitted, and the frontend continues to use the existing `--rarity-common`/`--rarity-uncommon`/etc. tokens.
 - Frontend rarity styling unifies onto a single `--rarity-color` inline-var pattern (plus `--rarity-range-icon-color`, `--rarity-ability-color`, `--rarity-keyword-color`). `PassiveList`'s class-based approach migrates to the inline-var approach already used by `KeyPageDetail`, `KeyPageTab`, and `PassivesTab`.
 - Schema (`game.ts`) extends `CardSchema`, `PassiveSchema`, `KeyPageSchema`, `AvailableKeyPageSchema`, `AvailableCardSchema`, `DeckCardPreviewSchema`, and `SlottedCardEntrySchema` with the four optional override fields.
-- The C# mod retains **no hard reference** to `CustomRarityUtil.dll`. The reflection probe falls back gracefully when the mod is not present (returns null; payload omits the override fields).
+- The C# mod takes a HintPath reference to `CustomRarityUtil.dll` for type-safe API access (`Private=False`, so the optional DLL is never bundled). The runtime soft-dep guarantee is enforced via an assembly-presence check that gates a non-inlined CDC-using method — when CustomRarityUtil is absent the CLR never JITs the gated method and never resolves its types, so the mod stays loadable.
 - **Out of scope** (explicitly): range icon image swaps, frame artwork swaps, `FrameEffect` (Rainbow/Glow), and `FrameLinearColor`.
 
 ## Capabilities
@@ -27,7 +27,7 @@ The CustomRarityUtil workshop mod (id 2874916185) lets other mods declare additi
 
 ## Impact
 
-- **C#**: new `CustomRarityProbe` helper (cached reflection delegates, init-time lookup, null-safe accessors); ~four emission sites in `GameStateSerializer.cs` add optional override hex output; no new project references; DLL size delta within the existing wire-contract-schema budget.
+- **C#**: new `CustomRarityProbe` helper (assembly-presence gate + non-inlined CustomRarityUtil-typed lookup); ~four emission sites in `GameStateSerializer.cs` add optional override hex output; new HintPath csproj reference to `CustomRarityUtil.dll` (Private=False so the optional DLL is not bundled); DLL size delta within the existing wire-contract-schema budget.
 - **Frontend**: `PassiveList.vue` refactors from class-based rarity styling onto the inline-var pattern; `HandCard`/`SlottedCard`/`CardDetail`/`CardRangeIcon` accept the new override vars; `app.vue` gains the new default tokens. No public API changes; all override fields are optional, so older snapshots and battle-context payloads continue to render unchanged.
 - **Tests**: extend `useBattleDisplay.test.ts` (or add a new helper test) for the rarity-style override resolution; fixture updates to exercise the override path in `battle-sampler.json`.
 - **Dev workflow**: no new dependencies; build still completes via `cd mod && dotnet build`. Players without CustomRarityUtil installed see no change.

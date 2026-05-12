@@ -1,171 +1,95 @@
 using System;
-using System.Collections;
 using System.Globalization;
-using System.Reflection;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using CustomSpeedDiceXML;
 using LOR_DiceSystem;
-using UnityEngine;
 
 namespace PlayLoRWithMe
 {
     /// <summary>
-    /// Soft-dependency reflection probe for the Patty_SpeedDiceColor_MOD
-    /// workshop mod (id 2746914901). When loaded, per-book speed-die colour
-    /// overrides flow through to the web UI as an optional <c>dieColor</c>
-    /// field on each unit's payload; otherwise <see cref="TryGet"/> returns
-    /// null and units render with the vanilla per-faction defaults.
+    /// Soft-dependency bridge to the CustomSpeedDiceColor workshop mod
+    /// (Patty_SpeedDiceColor_MOD, id 2746914901). When the mod is loaded,
+    /// per-book speed-die colour overrides flow through to the web UI as an
+    /// optional <c>dieColor</c> field on each unit's payload.
     ///
-    /// Match semantics mirror the CDC mod's own SpeedDiceUI.Init postfix:
-    /// faction must match, and either (BookID + BookUniqueID) or
-    /// (DefaultBookID + DefaultBookUniqueID) must match the unit's books.
+    /// The mod is referenced at compile time via HintPath in the csproj
+    /// (Private=False so we don't bundle it). The runtime soft-dep contract
+    /// is enforced by the <see cref="HasCdc"/> gate plus <c>[MethodImpl(NoInlining)]</c>
+    /// on <see cref="LookupColor"/>: the CLR resolves CDC types lazily, only
+    /// when LookupColor's body is JIT-compiled, which only happens once HasCdc
+    /// has gated us through. Mod stays loadable when the subscription is absent.
     /// </summary>
     internal static class CustomDiceColorProbe
     {
-        // cached reflection plumbing — bound once at init, accessed per-lookup
-        private static IEnumerable _speedDicesList;
-        private static FieldInfo _factionField;
-        private static FieldInfo _bookIdField;
-        private static FieldInfo _bookUniqueIdField;
-        private static FieldInfo _defaultBookIdField;
-        private static FieldInfo _defaultBookUniqueIdField;
-        private static FieldInfo _colorField;
-        private static bool _giveUp;
+        // Cached once per session — AppDomain.GetAssemblies enumeration is O(n)
+        // and stable for the lifetime of the process. Nullable = not yet checked.
+        private static bool? _hasCdc;
 
-        /// <summary>True after a successful bind; further probes are no-ops.</summary>
-        internal static bool IsReady => _speedDicesList != null;
-
-        /// <summary>
-        /// Idempotent. Resolves the CDC singleton's SpeedDice list and the
-        /// field accessors needed for per-unit lookups. Best-effort: missing
-        /// type / field returns silently and a single warning is logged so
-        /// subsequent state pushes don't retry.
-        /// </summary>
-        internal static void TryProbe()
+        private static bool HasCdc
         {
-            if (IsReady || _giveUp)
-                return;
-
-            try
+            get
             {
-                var managerType = Type.GetType(
-                    "CustomSpeedDiceXML.SpeedDiceManager, Patty_SpeedDiceColor_MOD"
-                );
-                if (managerType == null)
+                if (!_hasCdc.HasValue)
                 {
-                    // CDC mod isn't installed — this is the common case and not a
-                    // failure. Mark as given-up so future state pushes skip the probe.
-                    _giveUp = true;
-                    return;
+                    _hasCdc = AppDomain.CurrentDomain.GetAssemblies()
+                        .Any(a => a.GetName().Name == "Patty_SpeedDiceColor_MOD");
                 }
-
-                var singletonType = typeof(Singleton<>).MakeGenericType(managerType);
-                var instanceProp = singletonType.GetProperty(
-                    "Instance",
-                    BindingFlags.Public | BindingFlags.Static
-                );
-                var manager = instanceProp?.GetValue(null);
-                if (manager == null)
-                    return; // singleton not yet initialised — retry later
-
-                var listField = managerType.GetField("speedDicesList");
-                if (listField == null)
-                {
-                    _giveUp = true;
-                    Debug.LogWarning("[CustomDiceColorProbe] SpeedDiceManager.speedDicesList field not found; CDC overrides disabled.");
-                    return;
-                }
-                var list = listField.GetValue(manager) as IEnumerable;
-                if (list == null)
-                    return;
-
-                var speedDiceType = Type.GetType(
-                    "CustomSpeedDiceXML.SpeedDice, Patty_SpeedDiceColor_MOD"
-                );
-                if (speedDiceType == null)
-                {
-                    _giveUp = true;
-                    Debug.LogWarning("[CustomDiceColorProbe] SpeedDice type not found via reflection; CDC overrides disabled.");
-                    return;
-                }
-
-                _factionField = speedDiceType.GetField("Faction");
-                _bookIdField = speedDiceType.GetField("BookID");
-                _bookUniqueIdField = speedDiceType.GetField("BookUniqueID");
-                _defaultBookIdField = speedDiceType.GetField("DefaultBookID");
-                _defaultBookUniqueIdField = speedDiceType.GetField("DefaultBookUniqueID");
-                _colorField = speedDiceType.GetField("Color");
-
-                if (
-                    _factionField == null
-                    || _bookIdField == null
-                    || _bookUniqueIdField == null
-                    || _defaultBookIdField == null
-                    || _defaultBookUniqueIdField == null
-                    || _colorField == null
-                )
-                {
-                    _giveUp = true;
-                    Debug.LogWarning("[CustomDiceColorProbe] SpeedDice fields missing; CDC overrides disabled.");
-                    return;
-                }
-
-                _speedDicesList = list;
-            }
-            catch (Exception ex)
-            {
-                _giveUp = true;
-                Debug.LogWarning("[CustomDiceColorProbe] reflection failed: " + ex);
+                return _hasCdc.Value;
             }
         }
 
         /// <summary>
-        /// Looks up the per-unit override colour. Returns null when CDC isn't
-        /// loaded or no entry matches. The unit's faction is compared against
-        /// each CDC entry's faction; the book / default-book IDs are matched
-        /// the same way the CDC mod's own SpeedDiceUI.Init postfix matches.
+        /// Returns the per-unit speed-die colour override hex if CDC is loaded
+        /// and one of its <c>SpeedDice</c> entries matches the unit (faction +
+        /// either current book id or default book id). Returns null when CDC
+        /// is absent or no entry matches.
         /// </summary>
         internal static string TryGet(BattleUnitModel unit)
         {
-            if (_speedDicesList == null || unit == null)
-                return null;
+            if (!HasCdc) return null;
+            return LookupColor(unit);
+        }
+
+        // Separate method, intentionally not inlined: CDC type references live
+        // here, so the CLR only resolves SpeedDiceManager / SpeedDice when this
+        // method's body is JIT'd. HasCdc gates the call site, so JIT never
+        // touches this method when the CDC assembly is absent.
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static string LookupColor(BattleUnitModel unit)
+        {
+            if (unit == null) return null;
+            var list = Singleton<SpeedDiceManager>.Instance?.speedDicesList;
+            if (list == null) return null;
 
             var book = unit.Book?.BookId;
             var defaultBook = unit.UnitData?.unitData?.defaultBook?.BookId;
 
-            foreach (var entry in _speedDicesList)
+            foreach (var entry in list)
             {
-                if (entry == null)
-                    continue;
-                var entryFaction = (Faction)_factionField.GetValue(entry);
-                if (entryFaction != unit.faction)
-                    continue;
-
-                var entryBookId = (int)_bookIdField.GetValue(entry);
-                var entryBookUid = (string)_bookUniqueIdField.GetValue(entry);
-                var entryDefBookId = (int)_defaultBookIdField.GetValue(entry);
-                var entryDefBookUid = (string)_defaultBookUniqueIdField.GetValue(entry);
+                if (entry == null) continue;
+                if (entry.Faction != unit.faction) continue;
 
                 bool match =
-                    (book != null && entryBookId == book.id && entryBookUid == book.packageId)
-                    || (
-                        defaultBook != null
-                        && entryDefBookId == defaultBook.id
-                        && entryDefBookUid == defaultBook.packageId
-                    );
-                if (!match)
-                    continue;
+                    (book != null
+                        && entry.BookID == book.id
+                        && entry.BookUniqueID == book.packageId)
+                    || (defaultBook != null
+                        && entry.DefaultBookID == defaultBook.id
+                        && entry.DefaultBookUniqueID == defaultBook.packageId);
+                if (!match) continue;
 
-                var color = (Color32)_colorField.GetValue(entry);
-                return Color32ToHex(color);
+                // entry.Color is only populated by SpeedDiceManager.LoadFromString;
+                // CDC's own initializer uses LoadFromFolder which skips that step,
+                // so the Color32 field is (0,0,0,0) for folder-loaded entries.
+                // DiceColor (the XML-loaded RGBA) is always correct.
+                var c = entry.DiceColor;
+                return "#"
+                    + c.R.ToString("x2", CultureInfo.InvariantCulture)
+                    + c.G.ToString("x2", CultureInfo.InvariantCulture)
+                    + c.B.ToString("x2", CultureInfo.InvariantCulture);
             }
             return null;
-        }
-
-        private static string Color32ToHex(Color32 c)
-        {
-            return "#"
-                + c.r.ToString("x2", CultureInfo.InvariantCulture)
-                + c.g.ToString("x2", CultureInfo.InvariantCulture)
-                + c.b.ToString("x2", CultureInfo.InvariantCulture);
         }
     }
 }

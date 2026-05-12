@@ -85,7 +85,6 @@ namespace PlayLoRWithMe
                 // Retry the theme probe — the SpeedDiceUI prefab may not have
                 // been loaded yet when ActivateUIController fired.
                 ThemeProbe.TryProbe();
-                CustomDiceColorProbe.TryProbe();
                 Broadcast();
             }
         }
@@ -103,9 +102,6 @@ namespace PlayLoRWithMe
                 // Best-effort sample of vanilla speed-die colours; may need to
                 // retry from ActivateBattleScene if no prefab is loaded yet.
                 ThemeProbe.TryProbe();
-                // Bind the optional Patty_SpeedDiceColor_MOD lookup so per-unit
-                // colour overrides flow through subsequent state pushes.
-                CustomDiceColorProbe.TryProbe();
                 Broadcast();
             }
         }

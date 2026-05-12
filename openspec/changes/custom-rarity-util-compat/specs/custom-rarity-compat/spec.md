@@ -1,32 +1,40 @@
 ## ADDED Requirements
 
-### Requirement: The mod SHALL detect CustomRarityUtil as a soft dependency at init
+### Requirement: The mod SHALL integrate with CustomRarityUtil as a soft dependency
 
-The mod MUST probe for the type `CustomRarityUtil.Xml.CardRarityXmlList` once during initialization (after `ModInitializer` has run and before the first state push). When the type resolves, the mod MUST cache one delegate per member it needs to invoke: `GetCardRarityXmlInfo(string packageId, Rarity rarity)` plus field accessors for `FrameColor`, `RangeIconColor`, `AbilityDescColor`, and `AbilityKeywordColor` on the returned `CardRarityXmlInfo` instance.
+The mod MAY take a compile-time HintPath reference to `CustomRarityUtil.dll` for type-safe API access, but the reference MUST be marked `Private=False` so the optional DLL is never bundled into our build output. Source files MAY freely use `using CustomRarityUtil.Xml;` directives.
 
-The mod MUST NOT add any compile-time reference to `CustomRarityUtil.dll`. The probe MUST be implemented entirely via `Type.GetType` and `Delegate.CreateDelegate` (or reflection equivalents). The mod MUST build and run on a system that does not have CustomRarityUtil installed.
+The runtime soft-dep guarantee MUST be enforced via an assembly-presence check (`AppDomain.CurrentDomain.GetAssemblies()` searching for the `CustomRarityUtil` assembly name), gating entry into a separate method whose body references CustomRarityUtil types. The gated method MUST carry `[MethodImpl(MethodImplOptions.NoInlining)]` so the JIT keeps it isolated from the gate site — when CustomRarityUtil is absent, the gated method is never JIT-compiled and the CLR never resolves its types, so the mod stays loadable.
 
-When the type does not resolve, the probe MUST set every cached delegate to `null` and the helper's public `TryGet` method MUST return `null` for every subsequent call.
+`CustomRarityProbe.TryGet(string packageId, Rarity rarity)` MUST return `null` for every call when CustomRarityUtil is absent, and `null` when the mod is present but no entry matches the supplied `packageId` + `rarity` pair. Otherwise it MUST return a populated `RarityOverride` carrying the four `(byte R, byte G, byte B)` tuples sourced from `Singleton<CardRarityXmlList>.Instance.GetCardRarityXmlInfo` and its `FrameColor` / `RangeIconColor` / `AbilityDescColor` / `AbilityKeywordColor` properties.
 
-#### Scenario: Probe succeeds when CustomRarityUtil is installed
+#### Scenario: Lookup succeeds when CustomRarityUtil is installed
 
-- **WHEN** the player has `CustomRarityUtil.dll` loaded into the game process
-- **THEN** `CustomRarityProbe` resolves the `CardRarityXmlList` type at init
-- **AND** caches the four colour-accessor delegates
-- **AND** `TryGet(packageId, rarity)` returns a non-null `RarityOverride` for any rarity that CustomRarityUtil has registered
+- **WHEN** the player has `CustomRarityUtil.dll` loaded into the game process AND a rarity is registered for some `packageId`
+- **THEN** the assembly-presence gate returns true
+- **AND** `TryGet(packageId, rarity)` invokes the direct API and returns a non-null `RarityOverride`
+- **AND** the four colour tuples are sourced from the `CardRarityXmlInfo`'s `FrameColor` / `RangeIconColor` / `AbilityDescColor` / `AbilityKeywordColor`
 
-#### Scenario: Probe gracefully handles a missing dependency
+#### Scenario: Mod loads gracefully without CustomRarityUtil
 
 - **WHEN** the player has not installed CustomRarityUtil
-- **THEN** the probe runs at init and resolves no types
+- **THEN** the assembly-presence gate returns false
+- **AND** the gated lookup method is never JIT'd, so the CLR never resolves CustomRarityUtil types
 - **AND** `TryGet(packageId, rarity)` returns `null` for every call
 - **AND** no exception is logged
+- **AND** the mod's own DLL loads and runs without error
 
-#### Scenario: Mod builds without CustomRarityUtil on disk
+#### Scenario: Mod build does not bundle CustomRarityUtil
 
-- **WHEN** a contributor runs `dotnet build` from `mod/` on a system that does not have `CustomRarityUtil.dll` available
-- **THEN** the build completes with `0 Warning(s) 0 Error(s)`
-- **AND** the resulting DLL contains no compile-time reference to any `CustomRarityUtil.*` type
+- **WHEN** the mod is built and `mod/bin/Debug/PlayLoRWithMe/Assemblies/` is inspected
+- **THEN** no copy of `CustomRarityUtil.dll` is present in our output
+- **AND** the csproj reference is marked `Private=False`
+
+#### Scenario: Contributor build requires the workshop DLL
+
+- **WHEN** a contributor runs `dotnet build` from `mod/` on a system that does not have `CustomRarityUtil.dll` at the HintPath
+- **THEN** the build fails with an unresolved-reference error
+- **AND** the README documents the workshop-subscription build requirement
 
 ### Requirement: The serializer SHALL emit colour overrides only for custom rarities
 
@@ -54,17 +62,17 @@ When the result is null (e.g. the rarity is custom but CustomRarityUtil is not l
 - **THEN** the emitted JSON has no `rarityColor` or sibling override fields
 - **AND** the frontend renders the card with the default `--border` colour for the rarity-styled surfaces
 
-### Requirement: The mod's compiled DLL SHALL NOT depend on CustomRarityUtil at link time
+### Requirement: The mod's HintPath reference to CustomRarityUtil SHALL NOT bundle the DLL
 
-The reflection-based probe MUST be the sole integration point. The C# project file (`mod/*.csproj`) MUST NOT contain a `<Reference>` or `<PackageReference>` to `CustomRarityUtil` or any of its types. The `using` directives in mod source files MUST NOT reference `CustomRarityUtil` namespaces.
+The C# project file (`mod/*.csproj`) MAY contain a `<Reference Include="CustomRarityUtil">` with a `<HintPath>` resolving to the workshop subscription's DLL location, but the reference MUST carry `<Private>False</Private>` so MSBuild does not copy the optional DLL into our build output. The mod's own DLL must not redistribute someone else's workshop mod.
 
-#### Scenario: Project file is free of CustomRarityUtil references
+#### Scenario: Project file references CustomRarityUtil with Private=False
 
 - **WHEN** a contributor inspects `mod/PlayLoRWithMe.csproj`
-- **THEN** no `<Reference>` or `<PackageReference>` element names `CustomRarityUtil`
-- **AND** no `<HintPath>` resolves to a CustomRarityUtil artefact
+- **THEN** the `<Reference Include="CustomRarityUtil">` element carries `<Private>False</Private>`
+- **AND** the `<HintPath>` resolves through `$(LorWorkshopDir)` (env-var overridable)
 
-#### Scenario: Source files are free of CustomRarityUtil using-directives
+#### Scenario: Build output does not redistribute CustomRarityUtil
 
-- **WHEN** a contributor greps `mod/**/*.cs` for `using CustomRarityUtil`
-- **THEN** the grep returns no results
+- **WHEN** the AfterBuild target finishes assembling `bin/Debug/PlayLoRWithMe/Assemblies/`
+- **THEN** no `CustomRarityUtil.dll` is present in our output's `Assemblies/` directory
