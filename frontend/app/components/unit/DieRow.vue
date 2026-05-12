@@ -378,30 +378,33 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
   color: var(--die-accent-color, var(--text-1));
   pointer-events: none;
 }
-/* empty (ready for select) */
+/* empty (ready for select) — the beckon pulses between the static outline
+   colour and the unit's accent so themed dice cycle in their own palette
+   rather than the generic gold. Vanilla / un-overridden units fall back
+   through the cascade to the gold tokens. */
 .hex-wrap.available {
-  background: var(--border-mid);
+  background: color-mix(in srgb, var(--die-faction-fill, var(--border-mid)) 70%, white);
   cursor: pointer;
   animation: hex-beckon 2.2s ease-in-out infinite;
 }
 .hex-wrap.available .hex-inner {
-  color: var(--gold-dim);
+  color: var(--die-accent-color, var(--gold-dim));
 }
 .hex-wrap.available:hover {
   animation: none;
-  background: var(--gold-dim);
+  background: var(--die-accent-color, var(--gold-dim));
 }
 .hex-wrap.available:hover .hex-inner {
-  background: var(--bg-gold-hover);
-  color: var(--gold);
+  background: color-mix(in srgb, var(--die-accent-color, var(--bg-gold-hover)) 35%, white);
+  color: var(--die-accent-color, var(--gold));
 }
 @keyframes hex-beckon {
   0%,
   100% {
-    background: var(--border-mid);
+    background: color-mix(in srgb, var(--die-faction-fill, var(--border-mid)) 70%, white);
   }
   50% {
-    background: var(--bg-gold-beacon);
+    background: var(--die-accent-color, var(--bg-gold-beacon));
   }
 }
 /* open */
