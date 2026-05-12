@@ -57,12 +57,37 @@ const isUnitBroken = computed(
 let slotLongPressed = false;
 let slotPressTimer: ReturnType<typeof setTimeout> | null = null;
 
+// transient rejection flash — see flashReject below. Stored as a slot index
+// so multiple dice in the same row can flash independently without sharing
+// timer state.
+const rejectedSlot = ref<number | null>(null);
+let rejectTimer: ReturnType<typeof setTimeout> | null = null;
+const REJECT_FLASH_MS = 380;
+
 onBeforeUnmount(() => {
   if (slotPressTimer) {
     clearTimeout(slotPressTimer);
     slotPressTimer = null;
   }
+  if (rejectTimer) {
+    clearTimeout(rejectTimer);
+    rejectTimer = null;
+  }
 });
+
+// Plays a brief red overlay flash on the die. Reset to null first and toggle
+// back on the next frame so consecutive clicks restart the animation cleanly.
+function flashReject(slot: number) {
+  if (rejectTimer) clearTimeout(rejectTimer);
+  rejectedSlot.value = null;
+  requestAnimationFrame(() => {
+    rejectedSlot.value = slot;
+    rejectTimer = setTimeout(() => {
+      rejectedSlot.value = null;
+      rejectTimer = null;
+    }, REJECT_FLASH_MS);
+  });
+}
 function onSlotPressStart(sc: SlottedCardEntry | undefined) {
   if (!sc) return;
   slotLongPressed = false;
@@ -186,15 +211,34 @@ function handleSlotClick(d: SpeedDie, sc: SlottedCardEntry | undefined) {
   if (!isSelectPhase.value) return;
 
   if (props.isAlly) {
-    // ally: handle slot selection for playing cards only
-    if (!isOwnUnit(props.unit.id)) return;
-    if (sc != null || d.staggered || d.locked || isUnitBroken.value) return;
+    // Clicks on a slotted die are reserved for long-press detail; tap is a
+    // no-op rather than a rejection so we don't flash on it.
+    if (sc != null) return;
+    const rejected =
+      !isOwnUnit(props.unit.id) ||
+      d.staggered ||
+      d.locked ||
+      d.controllable === false ||
+      isUnitBroken.value;
+    if (rejected) {
+      flashReject(d.slot);
+      return;
+    }
     onSlotSelectClick(props.unit, d.slot);
   } else {
-    // enemy: handle targeting only
-    if (canBeTargeted.value && !d.staggered && !d.locked) {
-      onTargetDieClick(props.unit.id, d.slot);
+    // Enemy dice only matter while the user is targeting; outside of that the
+    // tap is a no-op (not a rejection) so the row stays quiet on idle taps.
+    if (!isTargeting.value) return;
+    const valid =
+      canBeTargeted.value &&
+      !d.staggered &&
+      !d.locked &&
+      d.controllable !== false;
+    if (!valid) {
+      flashReject(d.slot);
+      return;
     }
+    onTargetDieClick(props.unit.id, d.slot);
   }
 }
 
@@ -231,6 +275,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
         dieState,
         {
           'hex-target': canBeTargeted && !isAlly && !die.staggered,
+          'hex-rejected': rejectedSlot === die.slot,
         },
       ]"
       :data-die="`${unit.id}-${die.slot}`"
@@ -508,6 +553,33 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
     transparent 6px
   );
   mix-blend-mode: overlay;
+}
+
+/* ── Rejection flash ──
+   A transient red overlay played when a click can't be accepted (unowned
+   ally, mind-controlled unit, staggered/locked die, per-die clock EGO,
+   broken unit, untargetable enemy). Pseudo-element keeps the underlying
+   die state visible while signalling that the input was received. */
+.hex-wrap.hex-rejected::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--crimson-hi, #e53935);
+  clip-path: var(--hex);
+  pointer-events: none;
+  animation: hex-reject-flash 380ms ease-out forwards;
+  z-index: 5;
+}
+@keyframes hex-reject-flash {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 /* ── Targetable die highlight ── */

@@ -1855,20 +1855,25 @@ namespace PlayLoRWithMe
 
         /// <summary>
         /// Writes a JSON object representing speed dice on a unit in battle.
-        /// Each die's <c>locked</c> flag mirrors only the in-game lock overlay:
-        /// either the individual die has been disabled (e.g. clock EGO) or the
-        /// unit has Stun (KeywordBuf.Stun) — Stun marks dice <c>breaked</c> via
-        /// <c>SpeedDiceBreakedAdder</c> but the game's <c>SpeedDiceSetter</c>
-        /// displays those dice as locked, not staggered. Mirroring that here
-        /// flips <c>staggered</c> off so the frontend's broken-priority rule
-        /// doesn't show the X glyph for stunned dice.
         /// </summary>
         /// <remarks>
-        /// Unit-level uncontrollability (mind-control / charm buffs that
-        /// override <c>IsControllable</c>) is reported separately via the
-        /// <c>controllable</c> field on the unit; the frontend reuses the
-        /// unclaimed-unit affordance for that state instead of drawing a lock,
-        /// matching vanilla's lack of an in-game overlay for charmed units.
+        /// <para>The <c>locked</c> flag reflects only the in-game lock overlay:
+        /// vanilla draws the lock root via <c>SpeedDiceSetter.BreakDice</c>
+        /// when <c>HasStun()</c> is true and the die is <c>breaked</c>. Stun
+        /// marks dice <c>breaked</c> via <c>SpeedDiceBreakedAdder</c>; mirroring
+        /// the setter we emit <c>locked=true, staggered=false</c> for that
+        /// combination so the frontend's broken-priority rule doesn't show the
+        /// X glyph for stunned dice.</para>
+        ///
+        /// <para>Per-die <c>!isControlable</c> (e.g. clock EGO) is reported
+        /// separately via the <c>controllable</c> field: vanilla doesn't draw
+        /// any overlay for that case — the die looks normal but the click
+        /// handler bails out. The frontend mirrors that and flashes a red
+        /// rejection cue on click instead of painting a lock.</para>
+        ///
+        /// <para>Unit-level <c>!IsControlable()</c> (mind-control / charm buffs)
+        /// is reported on the unit via <c>controllable</c>; the frontend reuses
+        /// the unclaimed-unit affordance for that state.</para>
         /// </remarks>
         private static void WriteSpeedDice(JsonWriter w, BattleUnitModel unit)
         {
@@ -1884,14 +1889,16 @@ namespace PlayLoRWithMe
                         {
                             var d = dice[i];
                             bool stunLocked = hasStun && d.breaked;
-                            bool locked = !d.isControlable || stunLocked;
                             bool staggered = d.breaked && !stunLocked;
                             arr.AddObject(o =>
+                            {
                                 o.Add("slot", i)
                                     .Add("value", d.value)
                                     .Add("staggered", staggered)
-                                    .Add("locked", locked)
-                            );
+                                    .Add("locked", stunLocked);
+                                if (!d.isControlable)
+                                    o.Add("controllable", false);
+                            });
                         }
                         return;
                     }
@@ -1907,14 +1914,16 @@ namespace PlayLoRWithMe
                     {
                         var d = rule.speedDiceList[i];
                         bool stunLocked = hasStun && d.breaked;
-                        bool locked = !d.isControlable || stunLocked;
                         bool staggered = d.breaked && !stunLocked;
                         arr.AddObject(o =>
+                        {
                             o.Add("slot", i)
                                 .Add("value", 0)
                                 .Add("staggered", staggered)
-                                .Add("locked", locked)
-                        );
+                                .Add("locked", stunLocked);
+                            if (!d.isControlable)
+                                o.Add("controllable", false);
+                        });
                     }
                 }
             );

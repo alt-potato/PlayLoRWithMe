@@ -147,12 +147,19 @@ export const SpeedDieSchema = z.object({
   /** True when the die is staggered (shown as ✕). */
   staggered: z.optional(z.boolean()),
   /**
-   * True when the die cannot be commanded this turn — either the owning
-   * unit has an immobilizing buff (e.g. paralysis), or the die itself has
-   * been disabled by a card effect. Renders a lock glyph that preserves the
-   * underlying faction-coloured fill.
+   * True when the in-game `SpeedDiceSetter` would render the lock overlay —
+   * specifically when the owning unit has Stun (`KeywordBuf.Stun`). Vanilla
+   * does not raise the lock root for any other condition, so the frontend
+   * only draws the glyph for this case to match the game.
    */
   locked: z.optional(z.boolean()),
+  /**
+   * False when this individual die is disabled by a card effect (e.g. clock
+   * EGO). Vanilla shows the die normally and just bounces clicks; the
+   * frontend mirrors that — the die keeps its beckon, and a red rejection
+   * flash plays on click. Default-true (omitted) means controllable.
+   */
+  controllable: z.optional(z.boolean()),
 });
 export type SpeedDie = z.infer<typeof SpeedDieSchema>;
 
