@@ -6,6 +6,7 @@ import type {
   ActionResult,
   ClientAction,
 } from "../types/game";
+import { applyTheme } from "../utils/applyTheme";
 import { FIXTURE_LOADERS } from "./fixtures";
 
 type Status = "connecting" | "connected" | "disconnected";
@@ -57,7 +58,13 @@ export function useMockBackend(fixtureName: string) {
       gameState.value = null;
       return;
     }
-    gameState.value = loader();
+    const state = loader();
+    gameState.value = state;
+    // mirror useWebSocket so fixtures that include a theme block exercise the
+    // CSS-var handshake; absent theme leaves the :root defaults in place.
+    if (typeof document !== "undefined") {
+      applyTheme(state.theme, document.documentElement);
+    }
   });
 
   if (typeof window !== "undefined") {

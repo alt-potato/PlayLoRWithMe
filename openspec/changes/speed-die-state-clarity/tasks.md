@@ -35,14 +35,14 @@
 
 ## 6. Out-of-battle preview surfaces
 
-- [ ] 6.1 Update `components/battle/SettingView.vue` preview-die rendering to use the faction-fill CSS var.
-- [ ] 6.2 Update `components/librarian/KeyPageDetail.vue` preview-die rendering to use the faction-fill CSS var.
-- [ ] 6.3 Confirm neither surface ever attempts to render lock or crosshatch overlays.
+- [x] 6.1 Update `components/battle/SettingView.vue` preview-die rendering to use the faction-fill CSS var. (Not applicable — SettingView shows speed as `min–max` text only; no die graphics exist.)
+- [x] 6.2 Update `components/librarian/KeyPageDetail.vue` preview-die rendering to use the faction-fill CSS var. (Not applicable — KeyPageDetail shows speed as `min–max` text only; no die graphics exist.)
+- [x] 6.3 Confirm neither surface ever attempts to render lock or crosshatch overlays. (Confirmed — neither component renders `.hex-wrap` elements.)
 
 ## 7. Fixture and visual verification
 
-- [ ] 7.1 Extend `frontend/app/dev/fixtures/battle-sampler.json` with: a die that has `locked: true, staggered: false`; a die that has `locked: true, staggered: true`; an enemy unit with `targetable: false` and at least one rolled die.
-- [ ] 7.2 Add the `theme.factionDieColors` block to the hello-like setup the fixture loader uses (or wire the loader to inject the CSS vars manually for fixture mode).
+- [x] 7.1 Extend `frontend/app/dev/fixtures/battle-sampler.json` with: a die that has `locked: true, staggered: false`; a die that has `locked: true, staggered: true`; an enemy unit with `targetable: false` and at least one rolled die.
+- [x] 7.2 Add the `theme.factionDieColors` block to the hello-like setup the fixture loader uses (or wire the loader to inject the CSS vars manually for fixture mode).
 - [ ] 7.3 `npm run dev` from `frontend/`, load the fixture, visually confirm: faction-fill colours, lock glyph preserves colour underneath, crosshatch preserves colour and value underneath, chip is visible near the untargetable unit's name.
 
 ## 8. Final validation

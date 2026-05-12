@@ -4,6 +4,12 @@
   "phase": "ApplyLibrarianCardPhase",
   "stageState": "Battle",
   "assetsReady": true,
+  "theme": {
+    "factionDieColors": {
+      "ally": "#3aaad8",
+      "enemy": "#d83a6d"
+    }
+  },
   "stage": {
     "floor": 10,
     "chapter": 6,
@@ -25,7 +31,7 @@
       "speedDice": [
         { "slot": 0, "value": 6, "type": "Atk", "detail": "Slash" },
         { "slot": 1, "value": 4, "type": "Atk", "detail": "Pierce" },
-        { "slot": 2, "value": 3, "type": "Def", "detail": "Guard" },
+        { "slot": 2, "value": 3, "type": "Def", "detail": "Guard", "locked": true },
         { "slot": 3, "value": 5, "type": "Def", "detail": "Evasion" }
       ],
       "slottedCards": [
@@ -196,7 +202,7 @@
       "targetable": true,
       "turnState": "BREAK",
       "speedDice": [
-        { "slot": 0, "value": 0, "type": "Atk", "detail": "Slash", "staggered": true },
+        { "slot": 0, "value": 0, "type": "Atk", "detail": "Slash", "staggered": true, "locked": true },
         { "slot": 1, "value": 0, "type": "Def", "detail": "Guard", "staggered": true }
       ],
       "slottedCards": [],
@@ -314,7 +320,7 @@
       "staggerGauge": 10,
       "maxStaggerGauge": 35,
       "staggerThreshold": 17,
-      "targetable": true,
+      "targetable": false,
       "turnState": "WAIT_CARD",
       "speedDice": [
         { "slot": 0, "value": 2, "type": "Atk", "detail": "Blunt" }
