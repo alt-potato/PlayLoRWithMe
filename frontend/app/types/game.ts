@@ -146,6 +146,13 @@ export const SpeedDieSchema = z.object({
   detail: z.string(),
   /** True when the die is staggered (shown as ✕). */
   staggered: z.optional(z.boolean()),
+  /**
+   * True when the die cannot be commanded this turn — either the owning
+   * unit has an immobilizing buff (e.g. paralysis), or the die itself has
+   * been disabled by a card effect. Renders a lock glyph that preserves the
+   * underlying faction-coloured fill.
+   */
+  locked: z.optional(z.boolean()),
 });
 export type SpeedDie = z.infer<typeof SpeedDieSchema>;
 
@@ -792,11 +799,29 @@ export type ActionResult = z.infer<typeof ActionResultSchema>;
 
 // ── Root state ───────────────────────────────────────────────────────────────
 
+/**
+ * Runtime-sampled visual constants the mod ships once it can read them
+ * from the game prefabs. The frontend caches each block into CSS custom
+ * properties so component styling stays declarative. Treated as one-shot
+ * data: the same values flow through every state push but the client only
+ * applies them on first receipt (and on subsequent value changes).
+ */
+export const ThemeSchema = z.object({
+  /** Vanilla LoR's per-faction speed-die fill colour, sampled from SpeedDiceUI.Refs. */
+  factionDieColors: z.optional(z.object({
+    ally: z.string(),
+    enemy: z.string(),
+  })),
+});
+export type Theme = z.infer<typeof ThemeSchema>;
+
 /** Top-level WebSocket `state` payload. */
 export const GameStateSchema = z.object({
   scene: SceneNameSchema,
   /** Whether the server has finished extracting appearance/gift sprite assets. */
   assetsReady: z.optional(z.boolean()),
+  /** Runtime-sampled visual constants; see ThemeSchema. */
+  theme: z.optional(ThemeSchema),
   /** Active stage phase class name (e.g. "ApplyLibrarianCardPhase"). */
   phase: z.optional(z.string()),
   /** Active stage state enum value (e.g. "BattleSetting"). */
@@ -827,6 +852,8 @@ export const ServerMessageSchema = z.discriminatedUnion("type", [
     sessionId: z.string(),
     assignedUnits: z.array(z.number()),
     claimsEnabled: z.boolean(),
+    /** One-shot visual constants; see ThemeSchema. */
+    theme: z.optional(ThemeSchema),
   }),
   z.object({
     type: z.literal("state"),

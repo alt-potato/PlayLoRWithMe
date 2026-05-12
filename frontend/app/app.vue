@@ -423,6 +423,13 @@ const rawJson = computed(() =>
   --rarity-unique: #c9a227;
   --rarity-special: #c62828;
 
+  /* ── Speed-die faction fills ──
+     Defaults approximate vanilla LoR; the mod overrides these at runtime via
+     theme.factionDieColors sampled from SpeedDiceUI.Refs. Keep the defaults
+     in sync with the in-game prefab so a probe failure stays unobtrusive. */
+  --die-ally-fill: #3aaad8;
+  --die-enemy-fill: #d83a6d;
+
   --blue-hi: #1976d2;
   --cyan: #4fc3f7;
 

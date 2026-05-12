@@ -19,6 +19,28 @@
         "assetsReady": {
           "type": "boolean"
         },
+        "theme": {
+          "type": "object",
+          "properties": {
+            "factionDieColors": {
+              "type": "object",
+              "properties": {
+                "ally": {
+                  "type": "string"
+                },
+                "enemy": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ally",
+                "enemy"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
         "phase": {
           "type": "string"
         },
@@ -115,6 +137,9 @@
                       "type": "string"
                     },
                     "staggered": {
+                      "type": "boolean"
+                    },
+                    "locked": {
                       "type": "boolean"
                     }
                   },
@@ -1130,6 +1155,9 @@
                       "type": "string"
                     },
                     "staggered": {
+                      "type": "boolean"
+                    },
+                    "locked": {
                       "type": "boolean"
                     }
                   },
@@ -3000,6 +3028,28 @@
             },
             "claimsEnabled": {
               "type": "boolean"
+            },
+            "theme": {
+              "type": "object",
+              "properties": {
+                "factionDieColors": {
+                  "type": "object",
+                  "properties": {
+                    "ally": {
+                      "type": "string"
+                    },
+                    "enemy": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ally",
+                    "enemy"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
             }
           },
           "required": [
@@ -3036,6 +3086,28 @@
                 },
                 "assetsReady": {
                   "type": "boolean"
+                },
+                "theme": {
+                  "type": "object",
+                  "properties": {
+                    "factionDieColors": {
+                      "type": "object",
+                      "properties": {
+                        "ally": {
+                          "type": "string"
+                        },
+                        "enemy": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ally",
+                        "enemy"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
                 },
                 "phase": {
                   "type": "string"
@@ -3133,6 +3205,9 @@
                               "type": "string"
                             },
                             "staggered": {
+                              "type": "boolean"
+                            },
+                            "locked": {
                               "type": "boolean"
                             }
                           },
@@ -4148,6 +4223,9 @@
                               "type": "string"
                             },
                             "staggered": {
+                              "type": "boolean"
+                            },
+                            "locked": {
                               "type": "boolean"
                             }
                           },

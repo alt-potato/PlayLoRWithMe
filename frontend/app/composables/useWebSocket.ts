@@ -2,6 +2,7 @@ import { z } from "zod/mini";
 import type { GameState, SessionState, PlayerInfo, ActionResult, ServerMessage, ClientAction } from "~/types/game";
 import { ServerMessageSchema } from "~/types/game";
 import { applyDelta } from "~/utils/deltaApply";
+import { applyTheme } from "~/utils/applyTheme";
 import { resolveMockFixture } from "~/dev/resolveMockFixture";
 import { useMockBackend } from "~/dev/useMockBackend";
 
@@ -253,6 +254,7 @@ export function useWebSocket() {
           claimsEnabled: msg.claimsEnabled ?? true,
         };
         localStorage.setItem(SESSION_STORAGE_KEY, msg.sessionId);
+        applyTheme(msg.theme, document.documentElement);
         // The post-attach playerList typically arrives before hello, so
         // run the restore from here in case we're the second to arrive.
         tryRestoreDisplayName();
@@ -261,6 +263,7 @@ export function useWebSocket() {
       case "state":
         lastSeq = msg.seq;
         lastSeqRef.value = lastSeq;
+        applyTheme(msg.data?.theme, document.documentElement);
         gameState.value = msg.data;
         // Only bump on the first state arrival per connection; mid-session
         // resyncs are reconciled by per-feature diff watchers instead of
@@ -274,6 +277,7 @@ export function useWebSocket() {
       case "delta": {
         if (gameState.value && msg.seq === lastSeq + 1) {
           gameState.value = applyDelta(gameState.value, msg.data);
+          applyTheme(gameState.value.theme, document.documentElement);
           lastSeq = msg.seq;
           lastSeqRef.value = lastSeq;
         } else {

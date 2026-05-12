@@ -8,16 +8,16 @@
 
 ## 2. Schema extension
 
-- [ ] 2.1 Extend `SpeedDieSchema` in `frontend/app/types/game.ts` with `locked: z.optional(z.boolean())`.
-- [ ] 2.2 Extend the `hello` message variant in `ServerMessageSchema` (or its sibling schema) with `theme: z.optional(z.object({ factionDieColors: z.optional(...) }))`. Permit `theme` as a delta entry on state messages too.
-- [ ] 2.3 Regenerate `schema/gamestate.schema.json`. Add a drift-test case covering a die with `locked: true`, a die without `locked`, and a hello with and without the theme block.
-- [ ] 2.4 `cd frontend && npm test` passes including the new drift cases.
+- [x] 2.1 Extend `SpeedDieSchema` in `frontend/app/types/game.ts` with `locked: z.optional(z.boolean())`.
+- [x] 2.2 Extend the `hello` message variant in `ServerMessageSchema` (or its sibling schema) with `theme: z.optional(z.object({ factionDieColors: z.optional(...) }))`. Permit `theme` as a delta entry on state messages too.
+- [x] 2.3 Regenerate `schema/gamestate.schema.json`. Add a drift-test case covering a die with `locked: true`, a die without `locked`, and a hello with and without the theme block.
+- [x] 2.4 `cd frontend && npm test` passes including the new drift cases.
 
 ## 3. Frontend theme handling
 
-- [ ] 3.1 Add `--die-ally-fill` and `--die-enemy-fill` defaults to `app.vue`'s `:root` block (hardcoded approximations: `#3aaad8` ally / `#d83a6d` enemy, adjustable based on the sampled values).
-- [ ] 3.2 In `composables/useWebSocket.ts`, on receipt of a hello (and on any later state message with a `theme` block), write `theme.factionDieColors.ally`/`enemy` to `document.documentElement.style` as the corresponding CSS custom properties.
-- [ ] 3.3 Add a unit test for the theme-cache helper: given a hello payload with theme, it writes the two CSS vars; given a hello without theme, it leaves the vars untouched.
+- [x] 3.1 Add `--die-ally-fill` and `--die-enemy-fill` defaults to `app.vue`'s `:root` block (hardcoded approximations: `#3aaad8` ally / `#d83a6d` enemy, adjustable based on the sampled values).
+- [x] 3.2 In `composables/useWebSocket.ts`, on receipt of a hello (and on any later state message with a `theme` block), write `theme.factionDieColors.ally`/`enemy` to `document.documentElement.style` as the corresponding CSS custom properties.
+- [x] 3.3 Add a unit test for the theme-cache helper: given a hello payload with theme, it writes the two CSS vars; given a hello without theme, it leaves the vars untouched.
 
 ## 4. DieRow visual updates
 
