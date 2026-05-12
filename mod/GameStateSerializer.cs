@@ -1847,13 +1847,19 @@ namespace PlayLoRWithMe
         /// <summary>
         /// Writes a JSON object representing speed dice on a unit in battle.
         /// Each die's <c>locked</c> flag mirrors the in-game lock affordance:
-        /// either the unit as a whole is uncontrollable (paralysis-class buff)
-        /// or the individual die has been disabled (e.g. clock EGO).
+        /// either the unit as a whole is uncontrollable (mind-control/charm-class
+        /// buff), the individual die has been disabled (e.g. clock EGO), or the
+        /// unit has Stun (KeywordBuf.Stun) — Stun marks dice <c>breaked</c> via
+        /// <c>SpeedDiceBreakedAdder</c> but the game's <c>SpeedDiceSetter</c>
+        /// displays those dice as locked, not staggered. Mirroring that here
+        /// flips <c>staggered</c> off so the frontend's broken-priority rule
+        /// doesn't show the X glyph for stunned dice.
         /// </summary>
         private static void WriteSpeedDice(JsonWriter w, BattleUnitModel unit)
         {
             // unit-level controllability — applies to every die owned by this unit
             bool unitLocked = unit.bufListDetail != null && !unit.bufListDetail.IsControlable();
+            bool hasStun = unit.bufListDetail != null && unit.bufListDetail.HasStun();
             w.AddArray(
                 "speedDice",
                 arr =>
@@ -1864,11 +1870,13 @@ namespace PlayLoRWithMe
                         for (int i = 0; i < dice.Count; i++)
                         {
                             var d = dice[i];
-                            bool locked = unitLocked || !d.isControlable;
+                            bool stunLocked = hasStun && d.breaked;
+                            bool locked = unitLocked || !d.isControlable || stunLocked;
+                            bool staggered = d.breaked && !stunLocked;
                             arr.AddObject(o =>
                                 o.Add("slot", i)
                                     .Add("value", d.value)
-                                    .Add("staggered", d.breaked)
+                                    .Add("staggered", staggered)
                                     .Add("locked", locked)
                             );
                         }
@@ -1885,11 +1893,13 @@ namespace PlayLoRWithMe
                     for (int i = 0; i < rule.speedDiceList.Count; i++)
                     {
                         var d = rule.speedDiceList[i];
-                        bool locked = unitLocked || !d.isControlable;
+                        bool stunLocked = hasStun && d.breaked;
+                        bool locked = unitLocked || !d.isControlable || stunLocked;
+                        bool staggered = d.breaked && !stunLocked;
                         arr.AddObject(o =>
                             o.Add("slot", i)
                                 .Add("value", 0)
-                                .Add("staggered", d.breaked)
+                                .Add("staggered", staggered)
                                 .Add("locked", locked)
                         );
                     }
