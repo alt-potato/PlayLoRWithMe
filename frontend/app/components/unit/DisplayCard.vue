@@ -46,12 +46,11 @@ const isAllyTargeting = computed(
     selectingAllyTargetFor.value !== null &&
     selectingAllyTargetFor.value.unitId !== props.unit.id,
 );
-// Untargetable signal mirrors the in-game vacant-shield affordance (Justitia
-// and friends). Allies cannot currently surface this state, so we keep the
-// chip + dim treatment scoped to the enemy side.
-const isUntargetable = computed(
-  () => !props.isAlly && props.unit.targetable === false,
-);
+// Untargetable signal mirrors the in-game vacant-shield affordance — applies
+// to enemies (Justitia-style invincibility) and allies alike (e.g. stealth
+// buffs that flip IsTargetable off without making the unit invisible to its
+// own controller).
+const isUntargetable = computed(() => props.unit.targetable === false);
 const borderStyle = computed<Record<string, string>>(() => {
   const color = props.isAlly
     ? isAllyTargeting.value
@@ -402,10 +401,11 @@ const detailsLabel = computed(() => {
 .unit-card--ally-select:hover {
   background: var(--bg-green-2);
 }
-/* Untargetable enemies dim the row body but keep the header (and the
+/* Untargetable units dim the row body but keep the header (and the
    "untargetable" chip itself) at full opacity so the cue stays legible.
    The crosshatch overlay on each DieRow communicates the same state
-   inline next to the rolled value. */
+   inline next to the rolled value. Applies to both sides — ally stealth
+   buffs reach this branch as well. */
 .unit-card--untargetable .unit-header-row:not(:first-child),
 .unit-card--untargetable :deep(.slot-list),
 .unit-card--untargetable :deep(.buffs),

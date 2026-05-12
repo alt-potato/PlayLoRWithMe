@@ -188,13 +188,11 @@ const isTargeting = computed(() => selectingTargetFor.value !== null);
 const canBeTargeted = computed(
   () => isTargeting.value && props.unit.targetable,
 );
-// Enemies opt out of the targetable list to signal Justitia-style invincibility.
-// The vanilla affordance is a shield + dimmed dice; we mirror that with a
-// crosshatch overlay so the rolled value (still useful for clash planning)
-// stays visible underneath.
-const isUntargetable = computed(
-  () => !props.isAlly && props.unit.targetable === false,
-);
+// Either side opts out of targeting via Justitia-style invincibility or
+// stealth-class ally buffs. The vanilla affordance is a shield + dimmed dice;
+// we mirror that with a crosshatch overlay so the rolled value (still useful
+// for clash planning) stays visible underneath.
+const isUntargetable = computed(() => props.unit.targetable === false);
 
 function onSlotPressEnd() {
   if (slotPressTimer) {
