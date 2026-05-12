@@ -85,6 +85,10 @@ namespace PlayLoRWithMe
                 // Retry the theme probe — the SpeedDiceUI prefab may not have
                 // been loaded yet when ActivateUIController fired.
                 ThemeProbe.TryProbe();
+                // TEMPORARY: dump live SpeedDiceUI sprite textures once for
+                // calibrating the tint→visible-colour multiplier. Remove
+                // alongside SpeedDiceTextureExtractor.cs once calibrated.
+                SpeedDiceTextureExtractor.ExtractOnce();
                 Broadcast();
             }
         }
