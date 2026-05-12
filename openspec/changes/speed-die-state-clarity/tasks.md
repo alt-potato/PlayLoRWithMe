@@ -21,16 +21,16 @@
 
 ## 4. DieRow visual updates
 
-- [ ] 4.1 Refactor `components/unit/DieRow.vue` so the `.hex-inner` background uses `var(--die-ally-fill)` for ally rows and `var(--die-enemy-fill)` for enemy rows. Existing committed-state classes (broken / clash / unopposed-outgoing / unopposed-incoming / open / pending) continue to drive the outer `.hex-wrap` and their existing inner overrides.
-- [ ] 4.2 Add a lock overlay element: `<span v-if="die.locked && !die.staggered" class="hex-overlay hex-lock"><svg .../></span>`. Style it as an absolutely-positioned, additive overlay on top of `.hex-inner` with `pointer-events: none`.
-- [ ] 4.3 Add the locked-and-broken case: when `die.locked && die.staggered`, render the broken state as today AND also include the lock overlay (so the cause is visible).
-- [ ] 4.4 Add a crosshatch overlay element: `<span v-if="isUntargetable" class="hex-overlay hex-untargetable"><svg .../></span>`. Style it as additive, `pointer-events: none`. Inject `isUntargetable` from a parent or compute from `unit.targetable === false`.
+- [x] 4.1 Refactor `components/unit/DieRow.vue` so the `.hex-inner` background uses `var(--die-ally-fill)` for ally rows and `var(--die-enemy-fill)` for enemy rows. Existing committed-state classes (broken / clash / unopposed-outgoing / unopposed-incoming / open / pending) continue to drive the outer `.hex-wrap` and their existing inner overrides.
+- [x] 4.2 Add a lock overlay element: `<span v-if="die.locked && !die.staggered" class="hex-overlay hex-lock"><svg .../></span>`. Style it as an absolutely-positioned, additive overlay on top of `.hex-inner` with `pointer-events: none`.
+- [x] 4.3 Add the locked-and-broken case: when `die.locked && die.staggered`, render the broken state as today AND also include the lock overlay (so the cause is visible).
+- [x] 4.4 Add a crosshatch overlay element: `<span v-if="isUntargetable" class="hex-overlay hex-untargetable"><svg .../></span>`. Style it as additive, `pointer-events: none`. Inject `isUntargetable` from a parent or compute from `unit.targetable === false`.
 - [ ] 4.5 Verify with the existing fixture that no committed-state appearance regresses; the new overlays must not visually displace any existing affordance.
 
 ## 5. Stage-level untargetable chip and row dim
 
-- [ ] 5.1 In `components/battle/Stage.vue` (or wherever the unit name and die rows are co-rendered), add the "⚠ untargetable" chip near the name when `unit.targetable === false`. Match the existing chip styling vocabulary.
-- [ ] 5.2 Apply a row-level opacity reduction (~`0.6`) on untargetable rows. Confirm the chip itself remains at full opacity so the cue stays legible.
+- [x] 5.1 In `components/battle/Stage.vue` (or wherever the unit name and die rows are co-rendered), add the "⚠ untargetable" chip near the name when `unit.targetable === false`. Match the existing chip styling vocabulary.
+- [x] 5.2 Apply a row-level opacity reduction (~`0.6`) on untargetable rows. Confirm the chip itself remains at full opacity so the cue stays legible.
 - [ ] 5.3 Verify on narrow viewports (mobile) that the chip fits without pushing the dice off-screen.
 
 ## 6. Out-of-battle preview surfaces

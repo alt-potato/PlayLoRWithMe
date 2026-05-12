@@ -46,6 +46,12 @@ const isAllyTargeting = computed(
     selectingAllyTargetFor.value !== null &&
     selectingAllyTargetFor.value.unitId !== props.unit.id,
 );
+// Untargetable signal mirrors the in-game vacant-shield affordance (Justitia
+// and friends). Allies cannot currently surface this state, so we keep the
+// chip + dim treatment scoped to the enemy side.
+const isUntargetable = computed(
+  () => !props.isAlly && props.unit.targetable === false,
+);
 const borderStyle = computed(() => {
   const color = props.isAlly
     ? isAllyTargeting.value
@@ -158,6 +164,7 @@ const detailsLabel = computed(() => {
     :class="{
       'unit-card--ally-select': isAllyTargeting,
       'reversed-order': side !== 'right',
+      'unit-card--untargetable': isUntargetable,
     }"
     :style="borderStyle"
     @click.capture="isAllyTargeting ? onAllyTargetClick(unit.id) : undefined"
@@ -176,6 +183,9 @@ const detailsLabel = computed(() => {
         <span class="unit-name reversible-text">{{
           unit.name ?? unit.keyPage?.name ?? `Unit #${unit.id}`
         }}</span>
+        <span v-if="isUntargetable" class="untargetable-chip" title="This unit cannot be targeted">
+          ⚠ untargetable
+        </span>
       </div>
 
       <!-- row 2: light pips, emotion level -->
@@ -375,6 +385,27 @@ const detailsLabel = computed(() => {
 }
 .unit-card--ally-select:hover {
   background: var(--bg-green-2);
+}
+/* Untargetable enemies dim the row body but keep the header (and the
+   "untargetable" chip itself) at full opacity so the cue stays legible.
+   The crosshatch overlay on each DieRow communicates the same state
+   inline next to the rolled value. */
+.unit-card--untargetable .unit-header-row:not(:first-child),
+.unit-card--untargetable :deep(.slot-list),
+.unit-card--untargetable :deep(.buffs),
+.unit-card--untargetable :deep(.abnormality-list),
+.unit-card--untargetable :deep(.passive-list),
+.unit-card--untargetable :deep(.resistance-table) {
+  opacity: 0.6;
+}
+.untargetable-chip {
+  font-family: var(--font-body);
+  font-size: 0.55rem;
+  color: var(--crimson-hi);
+  border: 1px solid var(--crimson-hi);
+  padding: 0.05rem 0.35rem;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 /* ── Header — ally: meta left, name center, badge right (via row-reverse) ── */

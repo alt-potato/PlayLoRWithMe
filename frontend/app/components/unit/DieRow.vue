@@ -146,6 +146,13 @@ const isTargeting = computed(() => selectingTargetFor.value !== null);
 const canBeTargeted = computed(
   () => isTargeting.value && props.unit.targetable,
 );
+// Enemies opt out of the targetable list to signal Justitia-style invincibility.
+// The vanilla affordance is a shield + dimmed dice; we mirror that with a
+// crosshatch overlay so the rolled value (still useful for clash planning)
+// stays visible underneath.
+const isUntargetable = computed(
+  () => !props.isAlly && props.unit.targetable === false,
+);
 
 function onSlotPressEnd() {
   if (slotPressTimer) {
@@ -207,6 +214,8 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
         dieState,
         {
           'hex-target': canBeTargeted && !isAlly && !die.staggered,
+          'hex-ally': isAlly,
+          'hex-enemy': !isAlly,
         },
       ]"
       :data-die="`${unit.id}-${die.slot}`"
@@ -218,6 +227,25 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
         }"
         >{{ dieDisplayValue }}</span
       >
+      <!-- additive overlays — lock and untargetable preserve the underlying
+           faction-coloured fill so the cue does not erase identifying state. -->
+      <span
+        v-if="die.locked"
+        class="hex-overlay hex-lock"
+        aria-label="locked"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path
+            d="M5 7V5a3 3 0 0 1 6 0v2h1v6H4V7h1zm1.4 0h3.2V5a1.6 1.6 0 0 0-3.2 0v2z"
+            fill="currentColor"
+          />
+        </svg>
+      </span>
+      <span
+        v-if="isUntargetable"
+        class="hex-overlay hex-untargetable"
+        aria-hidden="true"
+      ></span>
     </span>
 
     <!-- slotted card -->
@@ -314,6 +342,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
   clip-path: var(--hex);
   background: var(--border-mid);
   flex-shrink: 0;
+  position: relative;
 }
 .hex-inner {
   display: inline-flex;
@@ -322,11 +351,18 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
   width: 2rem;
   height: 1.75rem;
   clip-path: var(--hex);
-  background: var(--bg-card-2);
+  /* faction fill — overridden by the committed-state classes below */
+  background: var(--die-faction-fill, var(--bg-card-2));
   font-family: var(--font-body);
   font-size: 0.82rem;
   color: var(--text-1);
   pointer-events: none;
+}
+.hex-wrap.hex-ally {
+  --die-faction-fill: var(--die-ally-fill);
+}
+.hex-wrap.hex-enemy {
+  --die-faction-fill: var(--die-enemy-fill);
 }
 /* empty (ready for select) */
 .hex-wrap.available {
@@ -415,6 +451,41 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
 /* invalid */
 .hex-inner--dim-value {
   color: var(--text-2);
+}
+
+/* ── Additive overlays — lock and untargetable ──
+   Both are absolutely positioned on top of .hex-inner and leave the
+   underlying faction-coloured fill visible so the cue does not erase
+   identifying state. pointer-events: none so slot clicks pass through. */
+.hex-overlay {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  clip-path: var(--hex);
+}
+.hex-lock {
+  color: var(--text-1);
+}
+.hex-lock svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  opacity: 0.92;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.7));
+}
+/* hatched ⌧ via a repeating linear gradient — additive, leaves the
+   underlying faction colour and rolled value readable. */
+.hex-untargetable {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.32) 0,
+    rgba(255, 255, 255, 0.32) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+  mix-blend-mode: overlay;
 }
 
 /* ── Targetable die highlight ── */
