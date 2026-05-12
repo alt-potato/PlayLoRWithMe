@@ -1450,7 +1450,7 @@ namespace PlayLoRWithMe
 
         private string BuildHelloMessage(PlayerSession session)
         {
-            return new JsonWriter()
+            var w = new JsonWriter()
                 .Add("type", "hello")
                 .Add("sessionId", session.SessionId)
                 .Add("claimsEnabled", ClaimsEnabled)
@@ -1461,8 +1461,12 @@ namespace PlayLoRWithMe
                         foreach (int uid in session.AssignedUnitIds)
                             arr.AddInt(uid);
                     }
-                )
-                .Build();
+                );
+            // theme block is one-shot — present only when ThemeProbe has bound
+            // both colours by hello-send time. Late-probe retries arrive via
+                // the next state push instead.
+            GameStateSerializer.WriteTheme(w);
+            return w.Build();
         }
 
         // Wraps the raw game-state JSON object in the {type, seq, data} envelope

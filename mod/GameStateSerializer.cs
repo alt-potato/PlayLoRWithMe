@@ -87,6 +87,10 @@ namespace PlayLoRWithMe
 
             var w = new JsonWriter();
             w.Add("assetsReady", AppearanceCache.IsReady && GiftCache.IsReady);
+            // emit theme on state too so clients that connected before
+            // ThemeProbe.IsReady pick up the colours via the next push
+            // (DeltaEngine drops the block when unchanged between pushes).
+            WriteTheme(w);
 
             if (gsm.battleScene != null && gsm.battleScene.gameObject.activeSelf)
             {
@@ -1830,9 +1834,14 @@ namespace PlayLoRWithMe
 
         /// <summary>
         /// Writes a JSON object representing speed dice on a unit in battle.
+        /// Each die's <c>locked</c> flag mirrors the in-game lock affordance:
+        /// either the unit as a whole is uncontrollable (paralysis-class buff)
+        /// or the individual die has been disabled (e.g. clock EGO).
         /// </summary>
         private static void WriteSpeedDice(JsonWriter w, BattleUnitModel unit)
         {
+            // unit-level controllability — applies to every die owned by this unit
+            bool unitLocked = unit.bufListDetail != null && !unit.bufListDetail.IsControlable();
             w.AddArray(
                 "speedDice",
                 arr =>
@@ -1843,8 +1852,12 @@ namespace PlayLoRWithMe
                         for (int i = 0; i < dice.Count; i++)
                         {
                             var d = dice[i];
+                            bool locked = unitLocked || !d.isControlable;
                             arr.AddObject(o =>
-                                o.Add("slot", i).Add("value", d.value).Add("staggered", d.breaked)
+                                o.Add("slot", i)
+                                    .Add("value", d.value)
+                                    .Add("staggered", d.breaked)
+                                    .Add("locked", locked)
                             );
                         }
                         return;
@@ -1860,11 +1873,35 @@ namespace PlayLoRWithMe
                     for (int i = 0; i < rule.speedDiceList.Count; i++)
                     {
                         var d = rule.speedDiceList[i];
+                        bool locked = unitLocked || !d.isControlable;
                         arr.AddObject(o =>
-                            o.Add("slot", i).Add("value", 0).Add("staggered", d.breaked)
+                            o.Add("slot", i)
+                                .Add("value", 0)
+                                .Add("staggered", d.breaked)
+                                .Add("locked", locked)
                         );
                     }
                 }
+            );
+        }
+
+        /// <summary>
+        /// Emits the one-shot <c>theme</c> block on a hello (or, on the late-probe
+        /// retry path, on the next state push) so the frontend can match vanilla
+        /// LoR's per-faction speed-die fill colours. Omits the block entirely
+        /// when the probe has not yet bound both colours.
+        /// </summary>
+        public static void WriteTheme(JsonWriter w)
+        {
+            if (!ThemeProbe.IsReady)
+                return;
+            w.AddObject(
+                "theme",
+                t => t.AddObject(
+                    "factionDieColors",
+                    c => c.Add("ally", ThemeProbe.AllyDieColor)
+                          .Add("enemy", ThemeProbe.EnemyDieColor)
+                )
             );
         }
 

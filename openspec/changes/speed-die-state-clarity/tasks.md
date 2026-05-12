@@ -1,10 +1,10 @@
 ## 1. C# theme probe and serializer additions
 
-- [ ] 1.1 Create `mod/ThemeProbe.cs` (or fold equivalent logic into an existing init flow) that finds a `SpeedDiceUI` instance via `Resources.FindObjectsOfTypeAll<SpeedDiceUI>()` and reflects into the private `Refs` field to read `color_allyDice` and `color_enemyDice`. Convert each `Color` to `#rrggbb` lowercase hex and cache as two static `string`s.
-- [ ] 1.2 Implement the deferred-retry path: if init runs before any prefab is loaded, schedule a single retry on the first state push after a battle scene loads. If a permanent error occurs, log a single `[ThemeProbe]` warning and proceed with `null` values.
-- [ ] 1.3 Add `WriteTheme(JsonWriter o)` helper in `GameStateSerializer.cs` that emits the `theme.factionDieColors` block from the cached values; called from the `hello` writer when values are present.
-- [ ] 1.4 Extend `WriteSpeedDice` to emit `locked` per die, computed as `(!unit.bufListDetail.IsControlable()) || (!d.isControlable)`. Both the post-roll and pre-roll placeholder paths must include the field.
-- [ ] 1.5 `cd mod && dotnet build` runs `0 Warning(s) 0 Error(s)`.
+- [x] 1.1 Create `mod/ThemeProbe.cs` (or fold equivalent logic into an existing init flow) that finds a `SpeedDiceUI` instance via `Resources.FindObjectsOfTypeAll<SpeedDiceUI>()` and reflects into the private `Refs` field to read `color_allyDice` and `color_enemyDice`. Convert each `Color` to `#rrggbb` lowercase hex and cache as two static `string`s.
+- [x] 1.2 Implement the deferred-retry path: if init runs before any prefab is loaded, schedule a single retry on the first state push after a battle scene loads. If a permanent error occurs, log a single `[ThemeProbe]` warning and proceed with `null` values.
+- [x] 1.3 Add `WriteTheme(JsonWriter o)` helper in `GameStateSerializer.cs` that emits the `theme.factionDieColors` block from the cached values; called from the `hello` writer when values are present.
+- [x] 1.4 Extend `WriteSpeedDice` to emit `locked` per die, computed as `(!unit.bufListDetail.IsControlable()) || (!d.isControlable)`. Both the post-roll and pre-roll placeholder paths must include the field.
+- [x] 1.5 `cd mod && dotnet build` runs `0 Warning(s) 0 Error(s)`.
 
 ## 2. Schema extension
 

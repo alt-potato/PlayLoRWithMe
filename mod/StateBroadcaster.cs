@@ -82,6 +82,9 @@ namespace PlayLoRWithMe
             {
                 // Reset so TryTranslateClaimsForBattle runs once for this battle.
                 Server.Instance?.ResetClaimsTranslation();
+                // Retry the theme probe — the SpeedDiceUI prefab may not have
+                // been loaded yet when ActivateUIController fired.
+                ThemeProbe.TryProbe();
                 Broadcast();
             }
         }
@@ -96,6 +99,9 @@ namespace PlayLoRWithMe
                 // CustomizingResourceLoader's singleton is available.
                 AppearanceCache.EnsureExtracted();
                 GiftCache.EnsureExtracted();
+                // Best-effort sample of vanilla speed-die colours; may need to
+                // retry from ActivateBattleScene if no prefab is loaded yet.
+                ThemeProbe.TryProbe();
                 Broadcast();
             }
         }
