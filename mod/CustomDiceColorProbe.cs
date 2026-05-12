@@ -1,122 +1,81 @@
-using System;
 using System.Globalization;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using CustomSpeedDiceXML;
-using LOR_DiceSystem;
+using System.Reflection;
+using LOR_BattleUnit_UI;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace PlayLoRWithMe
 {
     /// <summary>
-    /// Soft-dependency bridge to the CustomSpeedDiceColor workshop mod
-    /// (Patty_SpeedDiceColor_MOD, id 2746914901). When the mod is loaded,
-    /// per-book speed-die colour overrides flow through to the web UI as an
-    /// optional <c>dieColor</c> field on each unit's payload.
+    /// Samples the live colour of each unit's first <see cref="SpeedDiceUI"/>
+    /// so per-unit tints applied by any colour-modifying mod
+    /// (e.g. CustomSpeedDiceColor / Patty_SpeedDiceColor_MOD) flow through to
+    /// the web UI as an optional <c>dieColor</c> payload field.
     ///
-    /// The mod is referenced at compile time via HintPath in the csproj
-    /// (Private=False so we don't bundle it). The runtime soft-dep contract
-    /// is enforced by the <see cref="HasCdc"/> gate plus <c>[MethodImpl(NoInlining)]</c>
-    /// on <see cref="LookupColor"/>: the CLR resolves CDC types lazily, only
-    /// when LookupColor's body is JIT-compiled, which only happens once HasCdc
-    /// has gated us through. Mod stays loadable when the subscription is absent.
+    /// This sits where an XML-list lookup used to: in practice CDC's per-unit
+    /// colours come from a long hardcoded fallback in its SpeedDiceUI.Init
+    /// postfix, not from its (often empty) speedDicesList. Sampling the live
+    /// post-Init colour captures whatever upstream applies, with the bonus of
+    /// covering any other speed-die tint mod the player has installed.
     /// </summary>
     internal static class CustomDiceColorProbe
     {
-        // Cached once per session — AppDomain.GetAssemblies enumeration is O(n)
-        // and stable for the lifetime of the process. Nullable = not yet checked.
-        private static bool? _hasCdc;
-        private static bool _diagnosedOnce;
+        // SpeedDiceUI._rouletteImg is private; bind via reflection once.
+        private static FieldInfo _rouletteImgField;
+        private static bool _bindAttempted;
+        private static bool _bindFailed;
 
-        private static bool HasCdc
+        private static void TryBindOnce()
         {
-            get
+            if (_bindAttempted) return;
+            _bindAttempted = true;
+            _rouletteImgField = typeof(SpeedDiceUI).GetField(
+                "_rouletteImg",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+            if (_rouletteImgField == null)
             {
-                if (!_hasCdc.HasValue)
-                {
-                    _hasCdc = AppDomain.CurrentDomain.GetAssemblies()
-                        .Any(a => a.GetName().Name == "Patty_SpeedDiceColor_MOD");
-                }
-                return _hasCdc.Value;
+                _bindFailed = true;
+                Debug.LogWarning("[CustomDiceColorProbe] SpeedDiceUI._rouletteImg field not found via reflection; per-unit colour sampling disabled.");
+                return;
             }
+            Debug.Log("[CustomDiceColorProbe] live-sample probe bound; per-unit colours will sample SpeedDiceUI._rouletteImg.color after init.");
         }
 
         /// <summary>
-        /// Returns the per-unit speed-die colour override hex if CDC is loaded
-        /// and one of its <c>SpeedDice</c> entries matches the unit (faction +
-        /// either current book id or default book id). Returns null when CDC
-        /// is absent or no entry matches.
+        /// Returns the unit's current speed-die fill colour as a <c>#rrggbb</c>
+        /// hex string, or null when the unit's SpeedDiceUI isn't initialized
+        /// yet (e.g. BattleSetting phase, between waves, dead units). The
+        /// frontend treats absent <c>dieColor</c> as "use faction default".
         /// </summary>
         internal static string TryGet(BattleUnitModel unit)
         {
-            DiagnoseOnce();
-            if (!HasCdc) return null;
-            return LookupColor(unit);
+            TryBindOnce();
+            if (_bindFailed || unit == null) return null;
+
+            var setter = unit.view?.speedDiceSetterUI;
+            if (setter == null || setter.SpeedDicesCount <= 0) return null;
+
+            // All dice on a unit share the same CDC tint (the patch is per-die
+            // but the inputs are per-unit), so the first slot is representative.
+            var dieUi = setter.GetSpeedDiceByIndex(0);
+            if (dieUi == null) return null;
+
+            var graphic = _rouletteImgField.GetValue(dieUi) as Graphic;
+            if (graphic == null) return null;
+
+            return ColorToHex(graphic.color);
         }
 
-        // One-shot log to help diagnose missing colours in the wild. Fires on
-        // first call regardless of HasCdc — both branches reveal information:
-        // false → CDC isn't loaded at all; true → CDC is loaded and we report
-        // how many entries it registered. Remove once the integration is
-        // confirmed stable across player setups.
-        private static void DiagnoseOnce()
+        private static string ColorToHex(Color c)
         {
-            if (_diagnosedOnce) return;
-            _diagnosedOnce = true;
-            if (!HasCdc)
-            {
-                Debug.Log("[CustomDiceColorProbe] Patty_SpeedDiceColor_MOD assembly not loaded; per-unit overrides disabled.");
-                return;
-            }
-            DiagnoseLoaded();
-        }
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void DiagnoseLoaded()
-        {
-            var list = Singleton<SpeedDiceManager>.Instance?.speedDicesList;
-            Debug.Log($"[CustomDiceColorProbe] CDC loaded; speedDicesList has {list?.Count ?? -1} entries.");
-        }
-
-        // Separate method, intentionally not inlined: CDC type references live
-        // here, so the CLR only resolves SpeedDiceManager / SpeedDice when this
-        // method's body is JIT'd. HasCdc gates the call site, so JIT never
-        // touches this method when the CDC assembly is absent.
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private static string LookupColor(BattleUnitModel unit)
-        {
-            if (unit == null) return null;
-            var list = Singleton<SpeedDiceManager>.Instance?.speedDicesList;
-            if (list == null) return null;
-
-            var book = unit.Book?.BookId;
-            var defaultBook = unit.UnitData?.unitData?.defaultBook?.BookId;
-
-            foreach (var entry in list)
-            {
-                if (entry == null) continue;
-                if (entry.Faction != unit.faction) continue;
-
-                bool match =
-                    (book != null
-                        && entry.BookID == book.id
-                        && entry.BookUniqueID == book.packageId)
-                    || (defaultBook != null
-                        && entry.DefaultBookID == defaultBook.id
-                        && entry.DefaultBookUniqueID == defaultBook.packageId);
-                if (!match) continue;
-
-                // entry.Color is only populated by SpeedDiceManager.LoadFromString;
-                // CDC's own initializer uses LoadFromFolder which skips that step,
-                // so the Color32 field is (0,0,0,0) for folder-loaded entries.
-                // DiceColor (the XML-loaded RGBA) is always correct.
-                var c = entry.DiceColor;
-                return "#"
-                    + c.R.ToString("x2", CultureInfo.InvariantCulture)
-                    + c.G.ToString("x2", CultureInfo.InvariantCulture)
-                    + c.B.ToString("x2", CultureInfo.InvariantCulture);
-            }
-            return null;
+            int r = Mathf.Clamp(Mathf.RoundToInt(c.r * 255f), 0, 255);
+            int g = Mathf.Clamp(Mathf.RoundToInt(c.g * 255f), 0, 255);
+            int b = Mathf.Clamp(Mathf.RoundToInt(c.b * 255f), 0, 255);
+            return "#"
+                + r.ToString("x2", CultureInfo.InvariantCulture)
+                + g.ToString("x2", CultureInfo.InvariantCulture)
+                + b.ToString("x2", CultureInfo.InvariantCulture);
         }
     }
 }

@@ -59,43 +59,42 @@ The lock glyph MUST be styled in pure CSS / inline SVG and MUST NOT depend on a 
 - **WHEN** a `SpeedDie` has `locked === false` (or the field is absent)
 - **THEN** no lock glyph is rendered on the die
 
-### Requirement: Per-unit speed-die colour overrides SHALL be honoured for CustomSpeedDiceColor mod compatibility
+### Requirement: Per-unit speed-die colours SHALL be sampled live from the rendered UI
 
-When the workshop mod `Patty_SpeedDiceColor_MOD` is loaded and a battle unit's book or default-book matches one of its `CustomSpeedDiceXML.SpeedDice` entries (book-ID + package-ID match, with faction match), the mod MUST emit an optional `dieColor: string` (`#rrggbb` lowercase hex) on the unit's wire payload. The frontend MUST honour `unit.dieColor` by setting `--die-faction-fill` inline on the unit's `DieRow` components, overriding the faction-class default for that unit only.
+For each `BattleUnitModel` whose `view.speedDiceSetterUI` has at least one initialised `SpeedDiceUI`, the mod MUST sample the live `_rouletteImg.color` from the first slot via reflection and emit it as an optional `dieColor: string` (`#rrggbb` lowercase hex) on the unit's wire payload. The frontend MUST honour `unit.dieColor` by setting `--die-faction-fill` inline on the unit's container so every child `DieRow` reads the per-unit colour.
 
-When the mod is not loaded, or no entry matches the unit's books, the serializer MUST omit `dieColor` entirely. Units without an override continue to use the per-faction `--die-ally-fill` / `--die-enemy-fill` CSS vars as the inner-hex base.
+When the unit has no `SpeedDiceUI` yet (pre-battle preview, between waves, dead unit cleanup) the serializer MUST omit `dieColor` entirely. The frontend's per-faction `--die-ally-fill` / `--die-enemy-fill` defaults take over for those cases.
 
-The mod MAY take a compile-time HintPath reference to `Patty_SpeedDiceColor_MOD.dll` for type-safe API access, but MUST mark it `Private=False` so the optional DLL is never bundled into our build output. The runtime soft-dep contract is enforced via an assembly-presence check (`AppDomain.CurrentDomain.GetAssemblies()`) that gates entry into a separate, non-inlined method whose body references the CDC types — when CDC is absent the gated method is never JIT'd and the CLR never resolves CDC types, so the mod stays loadable.
+The sampling MUST go through reflection because `SpeedDiceUI._rouletteImg` is private. Field-info binding MUST happen once per session, cached, with a single warning logged on bind failure. The sampling MUST NOT take any compile-time dependency on a third-party mod's assembly — capturing whatever upstream applies (CustomSpeedDiceColor's per-floor fallback, an XML-list entry it loads, or any other speed-die tint mod) is the explicit goal.
 
-Only the dice colour is read; sprite swaps (`FolderName`, `BaseChange`) and other CDC-specific behaviour are out of scope.
+Sprite swaps and other UI changes mods may apply are out of scope; only the inner-hex fill colour is captured.
 
-#### Scenario: CDC is loaded — per-unit override emits `dieColor` on the wire
+#### Scenario: Live unit emits sampled colour
 
-- **WHEN** the player has `Patty_SpeedDiceColor_MOD.dll` installed AND a battle unit's `Book.BookId` matches a CDC entry that declares RGBA `(120, 200, 40, 255)` for the ally faction
-- **THEN** the unit's serialized payload includes `dieColor: "#78c828"`
-- **AND** the frontend's `DieRow` rendering of that unit's dice uses `--die-faction-fill: #78c828`
-- **AND** other units in the same battle without a matching CDC entry continue to use the per-faction default
+- **WHEN** the player has a speed-die tint mod installed (or any combination thereof) AND a battle unit's `SpeedDiceUI[0]._rouletteImg.color` resolves to `Color(0.47, 0.78, 0.16, 1.0)`
+- **THEN** the unit's serialized payload includes `dieColor: "#78c828"` (rounded from the float RGB to the byte-hex form)
+- **AND** the frontend renders that unit's dice with `--die-faction-fill: #78c828`
+- **AND** other units in the same battle emit their own sampled colours independently
 
-#### Scenario: CDC is loaded — lookup uses BookID or DefaultBookID
+#### Scenario: Unit without a SpeedDiceUI yet — no override emitted
 
-- **WHEN** a CDC entry sets only `DefaultBookID + DefaultBookUniqueID` for a unit whose live key page (`unit.Book.BookId`) does not match
-- **THEN** the lookup MUST still match via the unit's default book (`unit.UnitData.unitData.defaultBook.BookId`)
-- **AND** the matching entry's `Faction` field MUST equal `unit.faction`
+- **WHEN** a unit exists in the battle model but its `view.speedDiceSetterUI.SpeedDicesCount` is `0` (e.g. before the first Init pass or during BattleSetting preview)
+- **THEN** the serializer omits `dieColor` from that unit's payload
+- **AND** the frontend's faction-default CSS vars render the dice
 
-#### Scenario: CDC is not loaded — no override fields emitted
+#### Scenario: Reflection bind fails — graceful fallback
 
-- **WHEN** the player does not have `Patty_SpeedDiceColor_MOD.dll` installed
-- **THEN** the assembly-presence gate returns false
-- **AND** the CDC-typed lookup method is never JIT'd
-- **AND** no `dieColor` field appears in any wire payload
-- **AND** the frontend renders speed dice using the per-faction default CSS vars
-- **AND** the mod's own DLL loads and runs without error
+- **WHEN** `SpeedDiceUI._rouletteImg` cannot be located via reflection (LoR has renamed the private field in a future patch)
+- **THEN** a single `[CustomDiceColorProbe]` warning is logged
+- **AND** every subsequent `TryGet` call returns null
+- **AND** the frontend falls back to the per-faction default colours
+- **AND** the mod continues running without further error
 
-#### Scenario: Mod build does not bundle CDC
+#### Scenario: Mod has no compile-time dependency on speed-die tint mods
 
-- **WHEN** the mod is built and `mod/bin/Debug/PlayLoRWithMe/Assemblies/` is inspected
-- **THEN** no copy of `Patty_SpeedDiceColor_MOD.dll` is present in our output
-- **AND** the csproj reference is marked `Private=False`
+- **WHEN** a contributor inspects `mod/PlayLoRWithMe.csproj`
+- **THEN** no `<Reference>` element names `Patty_SpeedDiceColor_MOD` or any other speed-die tint mod
+- **AND** the mod builds and runs on systems without those subscriptions
 
 ### Requirement: Untargetable units SHALL display row-level and per-die affordances
 

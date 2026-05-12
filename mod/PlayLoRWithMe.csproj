@@ -98,12 +98,6 @@
     <Reference Include="UnityEngine.UI">
       <HintPath>$(LorManagedDir)\UnityEngine.UI.dll</HintPath>
     </Reference>
-    <!-- Optional workshop dependency: CustomSpeedDiceColor (id 2746914901).
-         Private=False so the optional DLL is never copied into our output. -->
-    <Reference Include="Patty_SpeedDiceColor_MOD">
-      <HintPath>$(LorWorkshopDir)\2746914901\Assemblies\Patty_SpeedDiceColor_MOD.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActionInjector.cs" />
