@@ -116,6 +116,31 @@ const allUnits = computed(() => [
   ...(props.state?.enemies ?? []),
 ]);
 
+/**
+ * Per-selection actor → restricted-target lookup. Mirrors the vanilla
+ * `BlockOtherUnitsDice` path: when a die is held selected on an actor with
+ * non-empty `fixedTargets`, every other unit dims. Recomputed reactively as
+ * the selection state changes, so the cue clears on deselect (matching
+ * vanilla's `UnblockOtherUnitsDice`).
+ */
+const restrictedTargetSet = computed<Set<number> | null>(() => {
+  const actorId =
+    selectingSlot.value?.unitId ??
+    selectingTargetFor.value?.unitId ??
+    selectingAllyTargetFor.value?.unitId ??
+    null;
+  if (actorId == null) return null;
+  const actor = allUnits.value.find((u) => u.id === actorId);
+  const fixed = actor?.fixedTargets;
+  if (!fixed || fixed.length === 0) return null;
+  return new Set(fixed);
+});
+
+function isRestrictedTarget(unitId: number): boolean {
+  const set = restrictedTargetSet.value;
+  return set !== null && !set.has(unitId);
+}
+
 // ---------------------------------------------------------------------------
 // Unit display order (manual reordering + dead-to-bottom)
 // ---------------------------------------------------------------------------
@@ -213,6 +238,7 @@ provide(BATTLE_CTX, {
   onSelectAbnormality,
   session,
   isOwnUnit,
+  isRestrictedTarget,
   claimUnit: props.claimUnit,
   releaseUnit: props.releaseUnit,
 } satisfies BattleCtx);

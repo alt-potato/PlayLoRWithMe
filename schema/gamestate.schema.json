@@ -549,6 +549,12 @@
               "controllable": {
                 "type": "boolean"
               },
+              "fixedTargets": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
               "light": {
                 "type": "number"
               },
@@ -1578,6 +1584,12 @@
               },
               "controllable": {
                 "type": "boolean"
+              },
+              "fixedTargets": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
               }
             },
             "required": [
@@ -3641,6 +3653,12 @@
                       "controllable": {
                         "type": "boolean"
                       },
+                      "fixedTargets": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        }
+                      },
                       "light": {
                         "type": "number"
                       },
@@ -4670,6 +4688,12 @@
                       },
                       "controllable": {
                         "type": "boolean"
+                      },
+                      "fixedTargets": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        }
                       }
                     },
                     "required": [

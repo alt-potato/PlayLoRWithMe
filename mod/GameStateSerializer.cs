@@ -1757,6 +1757,21 @@ namespace PlayLoRWithMe
                 if (unit.bufListDetail != null && !unit.bufListDetail.IsControlable())
                     w.Add("controllable", false);
 
+                // Per-actor target restriction (e.g. BigBird_Eye's "Stared At" — the
+                // affected unit may only target the inflicter). Mirrors the in-game
+                // BattleUnitCardsInHandUI.BlockOtherUnitsDice path that consults
+                // `selectedUnit.GetFixedTargets()` at die-tap time: when this list is
+                // non-empty, every other valid target is dimmed while a die on this
+                // unit is selected. Omitted when empty (the common case) to keep
+                // the payload small.
+                var fixedTargets = unit.GetFixedTargets();
+                if (fixedTargets != null && fixedTargets.Count > 0)
+                    w.AddArray("fixedTargets", arr =>
+                    {
+                        foreach (var t in fixedTargets)
+                            if (t != null) arr.AddInt(t.id);
+                    });
+
                 // Optional per-unit speed-die colours. `dieColor` tints the
                 // inner hex fill (frame sprite mean); `dieAccentColor` tints
                 // the numerals (CDC's _rouletteImg tint, which it also paints

@@ -28,6 +28,7 @@
       "staggerThreshold": 50,
       "targetable": true,
       "turnState": "WAIT_CARD",
+      "fixedTargets": [10],
       "speedDice": [
         { "slot": 0, "value": 6, "type": "Atk", "detail": "Slash" },
         { "slot": 1, "value": 4, "type": "Atk", "detail": "Pierce" },

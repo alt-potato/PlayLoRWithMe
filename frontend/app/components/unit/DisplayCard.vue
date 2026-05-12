@@ -33,6 +33,7 @@ const {
   allyColors,
   attackMap,
   isOwnUnit,
+  isRestrictedTarget,
 } = useBattleCtx();
 
 const slots = computed(() => sortedSlots(props.unit));
@@ -46,11 +47,15 @@ const isAllyTargeting = computed(
     selectingAllyTargetFor.value !== null &&
     selectingAllyTargetFor.value.unitId !== props.unit.id,
 );
-// Untargetable signal mirrors the in-game vacant-shield affordance — applies
-// to enemies (Justitia-style invincibility) and allies alike (e.g. stealth
-// buffs that flip IsTargetable off without making the unit invisible to its
-// own controller).
-const isUntargetable = computed(() => props.unit.targetable === false);
+// Untargetable signal combines the intrinsic in-game vacant-shield affordance
+// (Justitia-style invincibility on enemies, stealth-class ally buffs) with the
+// per-selection BigBird_Eye / "Stared At" restriction: when the currently
+// selected actor has a `fixedTargets` list and this unit isn't in it, the cue
+// applies for the duration of the selection — mirroring vanilla's
+// `BlockOtherUnitsDice` / `UnblockOtherUnitsDice` lifecycle.
+const isUntargetable = computed(
+  () => props.unit.targetable === false || isRestrictedTarget(props.unit.id),
+);
 const borderStyle = computed<Record<string, string>>(() => {
   const color = props.isAlly
     ? isAllyTargeting.value

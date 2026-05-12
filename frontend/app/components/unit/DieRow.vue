@@ -36,6 +36,7 @@ const {
   onRemoveCard,
   allUnits,
   isOwnUnit,
+  isRestrictedTarget,
 } = useBattleCtx();
 
 type DieState =
@@ -186,13 +187,22 @@ const slotState = computed(() => {
 
 const isTargeting = computed(() => selectingTargetFor.value !== null);
 const canBeTargeted = computed(
-  () => isTargeting.value && props.unit.targetable,
+  () =>
+    isTargeting.value &&
+    props.unit.targetable &&
+    !isRestrictedTarget(props.unit.id),
 );
-// Either side opts out of targeting via Justitia-style invincibility or
-// stealth-class ally buffs. The vanilla affordance is a shield + dimmed dice;
-// we mirror that with a crosshatch overlay so the rolled value (still useful
-// for clash planning) stays visible underneath.
-const isUntargetable = computed(() => props.unit.targetable === false);
+// Combines two unrelated sources of "this die can't be targeted":
+//   1. Intrinsic: `targetable === false` — Justitia-style invincibility on
+//      enemies, stealth-class ally buffs. Shown statically.
+//   2. Per-selection: the currently-selected actor has a fixedTargets list
+//      (BigBird_Eye / "Stared At") and this unit is not in it. Cleared on
+//      deselect, matching the vanilla `BlockOtherUnitsDice`/`Unblock` pair.
+// Both render with the same crosshatch overlay so the rolled value (still
+// useful for clash planning) stays visible underneath.
+const isUntargetable = computed(
+  () => props.unit.targetable === false || isRestrictedTarget(props.unit.id),
+);
 
 function onSlotPressEnd() {
   if (slotPressTimer) {

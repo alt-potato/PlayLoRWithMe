@@ -112,6 +112,16 @@ export interface BattleCtx {
   /** Returns true when this session owns (or has uncontested access to) the unit. */
   isOwnUnit: (unitId: number) => boolean;
 
+  /**
+   * Returns true when `unitId` should render as untargetable due to the
+   * *currently-selected actor's* `fixedTargets` list — i.e. the actor has
+   * a per-attacker target restriction (BigBird_Eye / "Stared At") and this
+   * unit is not in its allowed list. Returns false outside of an active
+   * selection or when the selected actor has no restriction. Components OR
+   * this with the intrinsic `unit.targetable === false` check.
+   */
+  isRestrictedTarget: (unitId: number) => boolean;
+
   /** Claim a librarian for this session. */
   claimUnit: (unitId: number) => Promise<ActionResult>;
 

@@ -778,6 +778,15 @@ export const UnitSchema = z.object({
    * acts on its own.
    */
   controllable: z.optional(z.boolean()),
+  /**
+   * Per-actor target restriction. When this unit is the *attacker* and the
+   * list is non-empty (e.g. BigBird_Eye's "Stared At" — only the inflicter
+   * may be targeted), every alive opposing unit whose id is not in the list
+   * should render as untargetable *while a die on this unit is selected*.
+   * Mirrors the vanilla `BlockOtherUnitsDice` path that consults
+   * `selectedUnit.GetFixedTargets()` at die-tap time. Omitted when empty.
+   */
+  fixedTargets: z.optional(z.array(z.number())),
 });
 export type Unit = z.infer<typeof UnitSchema>;
 
