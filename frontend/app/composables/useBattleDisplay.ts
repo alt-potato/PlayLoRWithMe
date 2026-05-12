@@ -321,6 +321,22 @@ export function previewToCard(p: DeckCardPreview, i: number): Card {
   };
 }
 
+/**
+ * Speed-die numeral threshold above which the game replaces the digits with an
+ * infinity glyph (e.g. The Strongest's speed-max passive). Matches the literal
+ * `value >= 999` branch in `SpeedDiceUI.ChangeSprite`.
+ */
+export const SPEED_DIE_INFINITY_THRESHOLD = 999;
+
+/**
+ * Format a speed-die numeral for display. Mirrors vanilla: values at or above
+ * the infinity threshold render as `∞` instead of the raw number.
+ */
+export function formatSpeedDieValue(value: number): string {
+  if (value >= SPEED_DIE_INFINITY_THRESHOLD) return "∞";
+  return String(value);
+}
+
 /** Sort speed dice (staggered first, then descending value) and pair with slotted cards. */
 export function sortedSlots(
   unit: Unit,

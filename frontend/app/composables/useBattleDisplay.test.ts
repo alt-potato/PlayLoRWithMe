@@ -18,6 +18,8 @@ import {
   diceIcon,
   dieTypeColor,
   fillPercentage,
+  formatSpeedDieValue,
+  SPEED_DIE_INFINITY_THRESHOLD,
   isDead,
   isMassRange,
   isSlotFilled,
@@ -344,5 +346,23 @@ describe("sortedSlots", () => {
 
   it("returns an empty array when speedDice is missing", () => {
     expect(sortedSlots(unit({ speedDice: undefined as unknown as SpeedDie[] }))).toEqual([]);
+  });
+});
+
+describe("formatSpeedDieValue", () => {
+  // The threshold mirrors SpeedDiceUI.ChangeSprite's `value >= 999` branch.
+  // Any passive that pushes a die past that point renders as ∞ in-game.
+  it("renders normal rolled values as their decimal string", () => {
+    expect(formatSpeedDieValue(0)).toBe("0");
+    expect(formatSpeedDieValue(7)).toBe("7");
+    expect(formatSpeedDieValue(99)).toBe("99");
+    expect(formatSpeedDieValue(998)).toBe("998");
+  });
+
+  it("renders the infinity glyph at and above the threshold", () => {
+    expect(formatSpeedDieValue(SPEED_DIE_INFINITY_THRESHOLD)).toBe("∞");
+    expect(formatSpeedDieValue(999)).toBe("∞");
+    expect(formatSpeedDieValue(1000)).toBe("∞");
+    expect(formatSpeedDieValue(2_147_483_647)).toBe("∞");
   });
 });

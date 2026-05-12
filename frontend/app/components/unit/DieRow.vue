@@ -159,7 +159,7 @@ const dieDisplayValue: ComputedRef<string> = computed(() => {
       // the lock glyph overlay is the sole indicator; suppress the rolled value
       return "";
     default:
-      return String(props.die.value) || "—";
+      return formatSpeedDieValue(props.die.value) || "—";
   }
 });
 

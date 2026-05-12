@@ -98,7 +98,7 @@ function dieState(
             "
             @click="pick(unit.id, d.slot)"
           >
-            <span class="die-hex-inner">{{ d.staggered ? "✕" : d.value }}</span>
+            <span class="die-hex-inner">{{ d.staggered ? "✕" : formatSpeedDieValue(d.value) }}</span>
           </button>
         </div>
       </div>
