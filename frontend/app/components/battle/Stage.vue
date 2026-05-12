@@ -30,8 +30,17 @@ const props = defineProps<{
 
 const session = toRef(() => props.session);
 
-/** True when this session owns the unit (or the unit is unclaimed by anyone). */
+/**
+ * True when the current session can issue actions for this unit right now —
+ * the session must own the claim AND the unit must not be mind-controlled
+ * (the serializer emits `controllable: false` when a charm-class buff has
+ * flipped `IsControllable` off in-game). Hand display, slot interactions,
+ * and remove buttons all gate on this combined check so mind-controlled
+ * units reuse the existing unclaimed-style affordance.
+ */
 function isOwnUnit(unitId: number): boolean {
+  const ally = props.state?.allies?.find((u) => u.id === unitId);
+  if (ally?.controllable === false) return false;
   const s = props.session;
   if (!s || !s.claimsEnabled) return true;
   return s.assignedUnits.includes(unitId);

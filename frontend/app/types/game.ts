@@ -763,6 +763,14 @@ export const UnitSchema = z.object({
    * three elements stay in the same colour family.
    */
   dieAccentColor: z.optional(z.string()),
+  /**
+   * False when a mind-control / charm buff has flipped the unit's
+   * `IsControllable` off in-game. Reuses the unclaimed-unit affordance on
+   * the frontend (dim dice, no beckon, click rejected) rather than drawing
+   * a dedicated overlay — vanilla doesn't show one either; the unit simply
+   * acts on its own.
+   */
+  controllable: z.optional(z.boolean()),
 });
 export type Unit = z.infer<typeof UnitSchema>;
 

@@ -543,6 +543,9 @@
               "dieAccentColor": {
                 "type": "string"
               },
+              "controllable": {
+                "type": "boolean"
+              },
               "light": {
                 "type": "number"
               },
@@ -1566,6 +1569,9 @@
               },
               "dieAccentColor": {
                 "type": "string"
+              },
+              "controllable": {
+                "type": "boolean"
               }
             },
             "required": [
@@ -3623,6 +3629,9 @@
                       "dieAccentColor": {
                         "type": "string"
                       },
+                      "controllable": {
+                        "type": "boolean"
+                      },
                       "light": {
                         "type": "number"
                       },
@@ -4646,6 +4655,9 @@
                       },
                       "dieAccentColor": {
                         "type": "string"
+                      },
+                      "controllable": {
+                        "type": "boolean"
                       }
                     },
                     "required": [

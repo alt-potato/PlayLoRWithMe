@@ -1748,6 +1748,15 @@ namespace PlayLoRWithMe
                     .Add("maxLight", unit.MaxPlayPoint)
                     .Add("reservedLight", unit.cardSlotDetail?.ReservedPlayPoint ?? 0);
 
+                // Emit only when controllability is denied (mind-control / charm
+                // buffs that override IsControllable). Vanilla doesn't draw any
+                // overlay for these — the unit just acts on its own — so the
+                // frontend treats this flag the same way it treats an unclaimed
+                // unit: dimmed dice, no beckon, action gating. Default-true
+                // (omitted) keeps the payload lean.
+                if (unit.bufListDetail != null && !unit.bufListDetail.IsControlable())
+                    w.Add("controllable", false);
+
                 // Optional per-unit speed-die colours. `dieColor` tints the
                 // inner hex fill (frame sprite mean); `dieAccentColor` tints
                 // the numerals (CDC's _rouletteImg tint, which it also paints
@@ -1846,19 +1855,23 @@ namespace PlayLoRWithMe
 
         /// <summary>
         /// Writes a JSON object representing speed dice on a unit in battle.
-        /// Each die's <c>locked</c> flag mirrors the in-game lock affordance:
-        /// either the unit as a whole is uncontrollable (mind-control/charm-class
-        /// buff), the individual die has been disabled (e.g. clock EGO), or the
+        /// Each die's <c>locked</c> flag mirrors only the in-game lock overlay:
+        /// either the individual die has been disabled (e.g. clock EGO) or the
         /// unit has Stun (KeywordBuf.Stun) — Stun marks dice <c>breaked</c> via
         /// <c>SpeedDiceBreakedAdder</c> but the game's <c>SpeedDiceSetter</c>
         /// displays those dice as locked, not staggered. Mirroring that here
         /// flips <c>staggered</c> off so the frontend's broken-priority rule
         /// doesn't show the X glyph for stunned dice.
         /// </summary>
+        /// <remarks>
+        /// Unit-level uncontrollability (mind-control / charm buffs that
+        /// override <c>IsControllable</c>) is reported separately via the
+        /// <c>controllable</c> field on the unit; the frontend reuses the
+        /// unclaimed-unit affordance for that state instead of drawing a lock,
+        /// matching vanilla's lack of an in-game overlay for charmed units.
+        /// </remarks>
         private static void WriteSpeedDice(JsonWriter w, BattleUnitModel unit)
         {
-            // unit-level controllability — applies to every die owned by this unit
-            bool unitLocked = unit.bufListDetail != null && !unit.bufListDetail.IsControlable();
             bool hasStun = unit.bufListDetail != null && unit.bufListDetail.HasStun();
             w.AddArray(
                 "speedDice",
@@ -1871,7 +1884,7 @@ namespace PlayLoRWithMe
                         {
                             var d = dice[i];
                             bool stunLocked = hasStun && d.breaked;
-                            bool locked = unitLocked || !d.isControlable || stunLocked;
+                            bool locked = !d.isControlable || stunLocked;
                             bool staggered = d.breaked && !stunLocked;
                             arr.AddObject(o =>
                                 o.Add("slot", i)
@@ -1894,7 +1907,7 @@ namespace PlayLoRWithMe
                     {
                         var d = rule.speedDiceList[i];
                         bool stunLocked = hasStun && d.breaked;
-                        bool locked = unitLocked || !d.isControlable || stunLocked;
+                        bool locked = !d.isControlable || stunLocked;
                         bool staggered = d.breaked && !stunLocked;
                         arr.AddObject(o =>
                             o.Add("slot", i)
