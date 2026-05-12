@@ -47,7 +47,7 @@
 
 ## 8. Final validation
 
-- [ ] 8.1 `cd mod && dotnet build` — `0 Warning(s) 0 Error(s)`.
-- [ ] 8.2 `cd frontend && npm test` — all suites pass.
+- [x] 8.1 `cd mod && dotnet build` — `0 Warning(s) 0 Error(s)`.
+- [x] 8.2 `cd frontend && npm test` — all suites pass.
 - [ ] 8.3 Live test: launch LoR with the local mod build, take a stage with at least one paralysis-bearing unit or untargetable enemy, confirm the cues appear in the web UI.
-- [ ] 8.4 Update `MEMORY.md` with any non-obvious reflection lookup pattern that future sessions would benefit from knowing (e.g. the `SpeedDiceUI.Refs.color_allyDice` field path).
+- [x] 8.4 Update `MEMORY.md` with any non-obvious reflection lookup pattern that future sessions would benefit from knowing (e.g. the `SpeedDiceUI.Refs.color_allyDice` field path).
