@@ -180,7 +180,7 @@ namespace PlayLoRWithMe
             if (_sessions.TryRemove(sessionId, out var session))
             {
                 session.ExpiryTimer?.Dispose();
-                Debug.Log($"[PlayLoRWithMe] Session expired: {sessionId} ({session.DisplayName})");
+                Debug.Log($"[PRWM] Session expired: {sessionId} ({session.DisplayName})");
                 BroadcastPlayerList();
             }
         }
@@ -259,10 +259,7 @@ namespace PlayLoRWithMe
         {
             lock (_lock)
             {
-                if (
-                    _librarianLocks.TryGetValue(key, out var holder)
-                    && holder != sessionId
-                )
+                if (_librarianLocks.TryGetValue(key, out var holder) && holder != sessionId)
                     return false;
                 _librarianLocks[key] = sessionId;
                 return true;
@@ -278,10 +275,7 @@ namespace PlayLoRWithMe
         {
             lock (_lock)
             {
-                if (
-                    _librarianLocks.TryGetValue(key, out var holder)
-                    && holder == sessionId
-                )
+                if (_librarianLocks.TryGetValue(key, out var holder) && holder == sessionId)
                     _librarianLocks.Remove(key);
             }
         }

@@ -24,7 +24,7 @@ namespace PlayLoRWithMe
                 // server reference and skip Harmony patching — applying patches
                 // when there's no client to serve their state would only add
                 // overhead and confuse OnQuit's UnpatchAll.
-                Debug.LogError($"[PlayLoRWithMe] Server failed to start; mod disabled: {ex}");
+                Debug.LogError($"[PRWM] Server failed to start; mod disabled: {ex}");
                 _server = null;
                 return;
             }

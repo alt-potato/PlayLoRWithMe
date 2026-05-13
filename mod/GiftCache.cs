@@ -32,7 +32,7 @@ namespace PlayLoRWithMe
             }
             catch (System.Exception ex)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] GiftCache.EnsureExtracted failed: {ex.Message}");
+                Debug.LogWarning($"[PRWM] GiftCache.EnsureExtracted failed: {ex.Message}");
             }
         }
 
@@ -51,7 +51,9 @@ namespace PlayLoRWithMe
             bool haveCanvas = canvasW > 0 && canvasH > 0 && ppu > 0f;
 
             if (!haveCanvas)
-                Debug.LogWarning("[PlayLoRWithMe] GiftCache: face-canvas data not available, gifts will use raw sprites");
+                Debug.LogWarning(
+                    "[PRWM] GiftCache: face-canvas data not available, gifts will use raw sprites"
+                );
 
             foreach (var xml in list)
             {
@@ -64,24 +66,30 @@ namespace PlayLoRWithMe
 
                 try
                 {
-                    var prefab = Resources.Load<GameObject>($"Prefabs/Gifts/Gifts_NeedRename/Gift_{xml.Resource}");
+                    var prefab = Resources.Load<GameObject>(
+                        $"Prefabs/Gifts/Gifts_NeedRename/Gift_{xml.Resource}"
+                    );
                     if (prefab == null)
                     {
-                        Debug.LogWarning($"[PlayLoRWithMe] GiftCache: prefab not found for gift {xml.id} (Resource={xml.Resource})");
+                        Debug.LogWarning(
+                            $"[PRWM] GiftCache: prefab not found for gift {xml.id} (Resource={xml.Resource})"
+                        );
                         continue;
                     }
 
                     var appearance = prefab.GetComponent<GiftAppearance>();
                     if (appearance == null)
                     {
-                        Debug.LogWarning($"[PlayLoRWithMe] GiftCache: no GiftAppearance component on gift {xml.id}");
+                        Debug.LogWarning(
+                            $"[PRWM] GiftCache: no GiftAppearance component on gift {xml.id}"
+                        );
                         continue;
                     }
 
                     var sprite = appearance.GetGiftPreview();
                     if (sprite == null)
                     {
-                        Debug.LogWarning($"[PlayLoRWithMe] GiftCache: null sprite for gift {xml.id}");
+                        Debug.LogWarning($"[PRWM] GiftCache: null sprite for gift {xml.id}");
                         continue;
                     }
 
@@ -97,26 +105,41 @@ namespace PlayLoRWithMe
                         SpriteRenderer frontRenderer = null;
                         foreach (var r in renderers)
                         {
-                            if (r != null) { frontRenderer = r; break; }
+                            if (r != null)
+                            {
+                                frontRenderer = r;
+                                break;
+                            }
                         }
 
                         var worldOffset = Vector3.zero;
-                        var worldScale  = Vector3.one;
+                        var worldScale = Vector3.one;
                         if (frontRenderer != null)
                         {
                             var t = frontRenderer.transform;
                             while (t != null)
                             {
-                                worldOffset = t.localPosition + Vector3.Scale(t.localScale, worldOffset);
-                                worldScale  = Vector3.Scale(worldScale, t.localScale);
-                                if (t == prefab.transform) break;
+                                worldOffset =
+                                    t.localPosition + Vector3.Scale(t.localScale, worldOffset);
+                                worldScale = Vector3.Scale(worldScale, t.localScale);
+                                if (t == prefab.transform)
+                                    break;
                                 t = t.parent;
                             }
                         }
 
-                        File.WriteAllBytes(path,
+                        File.WriteAllBytes(
+                            path,
                             AppearanceCache.SpriteToPng(
-                                sprite, canvasW, canvasH, bounds, ppu, worldOffset, worldScale.x));
+                                sprite,
+                                canvasW,
+                                canvasH,
+                                bounds,
+                                ppu,
+                                worldOffset,
+                                worldScale.x
+                            )
+                        );
                     }
                     else
                     {
@@ -126,7 +149,9 @@ namespace PlayLoRWithMe
                 }
                 catch (System.Exception ex)
                 {
-                    Debug.LogWarning($"[PlayLoRWithMe] GiftCache: failed to extract gift {xml.id}: {ex.Message}");
+                    Debug.LogWarning(
+                        $"[PRWM] GiftCache: failed to extract gift {xml.id}: {ex.Message}"
+                    );
                 }
             }
         }

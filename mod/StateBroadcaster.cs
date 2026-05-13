@@ -58,7 +58,7 @@ namespace PlayLoRWithMe
 
             uic.PhaseEnterEvent += _ => Broadcast();
             _subscribedToUIPhase = true;
-            Debug.Log("[PlayLoRWithMe] Subscribed to UIController.PhaseEnterEvent");
+            Debug.Log("[PRWM] Subscribed to UIController.PhaseEnterEvent");
         }
 
         // ------------------------------------------------------------------
@@ -239,7 +239,7 @@ namespace PlayLoRWithMe
                 catch (Exception ex)
                 {
                     Debug.LogError(
-                        $"[PlayLoRWithMe] MainThread action failed: {ex.Message}\n{ex.StackTrace}"
+                        $"[PRWM] MainThread action failed: {ex.Message}\n{ex.StackTrace}"
                     );
                 }
             }

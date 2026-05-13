@@ -64,9 +64,7 @@ namespace PlayLoRWithMe
                 {
                     pending.Ok = false;
                     pending.Error = ex.Message;
-                    Debug.LogError(
-                        $"[PlayLoRWithMe] ActionInjector: {ex.Message}\n{ex.StackTrace}"
-                    );
+                    Debug.LogError($"[PRWM] ActionInjector: {ex.Message}\n{ex.StackTrace}");
                 }
                 finally
                 {
@@ -115,7 +113,7 @@ namespace PlayLoRWithMe
                     break;
                 default:
                     error = $"Unknown action: '{type}'";
-                    Debug.LogWarning($"[PlayLoRWithMe] {error}");
+                    Debug.LogWarning($"[PRWM] {error}");
                     return false;
             }
 
@@ -157,7 +155,7 @@ namespace PlayLoRWithMe
             if (unit == null)
             {
                 error = $"Ally unit {unitId} not found";
-                Debug.LogWarning($"[PlayLoRWithMe] playCard: {error}");
+                Debug.LogWarning($"[PRWM] playCard: {error}");
                 return false;
             }
 
@@ -166,7 +164,7 @@ namespace PlayLoRWithMe
             if (hand == null || cardIndex < 0 || cardIndex >= hand.Count)
             {
                 error = $"No card at {(isEgo ? "ego" : "hand")} index {cardIndex}";
-                Debug.LogWarning($"[PlayLoRWithMe] playCard: {error}");
+                Debug.LogWarning($"[PRWM] playCard: {error}");
                 return false;
             }
 
@@ -182,7 +180,7 @@ namespace PlayLoRWithMe
                 if (target == null)
                 {
                     error = $"Target unit {targetId} not found";
-                    Debug.LogWarning($"[PlayLoRWithMe] playCard: {error}");
+                    Debug.LogWarning($"[PRWM] playCard: {error}");
                     return false;
                 }
                 r.TryGetInt("targetDiceSlot", out targetSlot); // optional for Instance cards
@@ -200,7 +198,7 @@ namespace PlayLoRWithMe
             {
                 unit.cardOrder = prevCardOrder;
                 error = $"Card '{card.GetName()}' is not available (insufficient light or blocked)";
-                Debug.LogWarning($"[PlayLoRWithMe] playCard: {error}");
+                Debug.LogWarning($"[PRWM] playCard: {error}");
                 return false;
             }
 
@@ -208,7 +206,7 @@ namespace PlayLoRWithMe
             unit.cardSlotDetail.AddCard(card, target, targetSlot);
             SingletonBehavior<BattleManagerUI>.Instance?.ui_TargetArrow?.UpdateTargetList();
             Debug.Log(
-                $"[PlayLoRWithMe] playCard: unit={unitId} card='{card.GetName()}' slot={diceSlot} target={target.id} targetSlot={targetSlot}"
+                $"[PRWM] playCard: unit={unitId} card='{card.GetName()}' slot={diceSlot} target={target.id} targetSlot={targetSlot}"
             );
             return true;
         }
@@ -245,7 +243,7 @@ namespace PlayLoRWithMe
             unit.cardOrder = diceSlot;
             unit.cardSlotDetail.AddCard(null, null, 0);
             SingletonBehavior<BattleManagerUI>.Instance?.ui_TargetArrow?.UpdateTargetList();
-            Debug.Log($"[PlayLoRWithMe] removeCard: unit={unitId} slot={diceSlot}");
+            Debug.Log($"[PRWM] removeCard: unit={unitId} slot={diceSlot}");
             return true;
         }
 
@@ -261,7 +259,7 @@ namespace PlayLoRWithMe
                 return true; // not an error; phase may have already advanced
 
             sc.CompleteApplyingLibrarianCardPhase(auto: false);
-            Debug.Log("[PlayLoRWithMe] confirm");
+            Debug.Log("[PRWM] confirm");
             return true;
         }
 
@@ -323,7 +321,7 @@ namespace PlayLoRWithMe
             // by more than one in this act (multi-selection case).
             SingletonBehavior<BattleManagerUI>.Instance?.ui_levelup?.SetRootCanvas(false);
             Debug.Log(
-                $"[PlayLoRWithMe] selectAbnormality: card={card.Name} target={target?.id.ToString() ?? "all"}"
+                $"[PRWM] selectAbnormality: card={card.Name} target={target?.id.ToString() ?? "all"}"
             );
             return true;
         }

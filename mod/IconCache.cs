@@ -19,7 +19,12 @@ namespace PlayLoRWithMe
         /// Extracts a sprite to PNG and caches it in the given directory.
         /// Returns the sprite name (icon ID) on success, or null if the sprite is null.
         /// </summary>
-        private static string EnsureSprite(Sprite sprite, string dir, HashSet<string> written, string label)
+        private static string EnsureSprite(
+            Sprite sprite,
+            string dir,
+            HashSet<string> written,
+            string label
+        )
         {
             if (sprite == null)
                 return null;
@@ -34,15 +39,20 @@ namespace PlayLoRWithMe
             }
             catch (System.Exception ex)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] IconCache ({label}) failed for '{id}': {ex.Message}");
+                Debug.LogWarning($"[PRWM] IconCache ({label}) failed for '{id}': {ex.Message}");
                 return null;
             }
             return id;
         }
 
-        internal static string EnsureIcon(Sprite sprite) => EnsureSprite(sprite, BuficonDir, _written, "buff");
-        internal static string EnsureCardIcon(Sprite sprite) => EnsureSprite(sprite, CardIconDir, _cardWritten, "card");
-        internal static string EnsureStageIcon(Sprite sprite) => EnsureSprite(sprite, StageIconDir, _stageWritten, "stage");
+        internal static string EnsureIcon(Sprite sprite) =>
+            EnsureSprite(sprite, BuficonDir, _written, "buff");
+
+        internal static string EnsureCardIcon(Sprite sprite) =>
+            EnsureSprite(sprite, CardIconDir, _cardWritten, "card");
+
+        internal static string EnsureStageIcon(Sprite sprite) =>
+            EnsureSprite(sprite, StageIconDir, _stageWritten, "stage");
 
         // Extracts the sprite's pixel region via RenderTexture — handles non-readable
         // textures and sprite-sheet atlases safely on the Unity main thread.

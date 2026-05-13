@@ -12,7 +12,8 @@ namespace PlayLoRWithMe
         public const int Port = 8080;
 
         /// <summary>Builds the canonical lock key for a librarian slot.</summary>
-        private static string LockKey(int floorIndex, int unitIndex) => floorIndex + ":" + unitIndex;
+        private static string LockKey(int floorIndex, int unitIndex) =>
+            floorIndex + ":" + unitIndex;
 
         // DLL is in <mod root>/Assemblies/; wwwroot is a sibling of Assemblies/
         private static readonly string ModRootPath = Path.GetDirectoryName(
@@ -71,7 +72,7 @@ namespace PlayLoRWithMe
             };
             _listenerThread.Start();
 
-            Debug.Log($"[PlayLoRWithMe] Server listening on http://*:{Port}/");
+            Debug.Log($"[PRWM] Server listening on http://*:{Port}/");
         }
 
         public void Stop()
@@ -95,7 +96,7 @@ namespace PlayLoRWithMe
                 Initializer.packageId + ".xml"
             );
 
-            Debug.Log($"[PlayLoRWithMe] Config path: {path}");
+            Debug.Log($"[PRWM] Config path: {path}");
 
             if (!File.Exists(path))
                 return;
@@ -109,11 +110,11 @@ namespace PlayLoRWithMe
                 if (node != null && bool.TryParse(node.InnerText, out bool ce))
                     ClaimsEnabled = ce;
 
-                Debug.Log($"[PlayLoRWithMe] Config loaded: claimsEnabled={ClaimsEnabled}");
+                Debug.Log($"[PRWM] Config loaded: claimsEnabled={ClaimsEnabled}");
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] Failed to read config.xml: {ex}");
+                Debug.LogWarning($"[PRWM] Failed to read config.xml: {ex}");
             }
         }
 
@@ -134,7 +135,7 @@ namespace PlayLoRWithMe
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogWarning($"[PlayLoRWithMe] Accept error: {ex}");
+                    Debug.LogWarning($"[PRWM] Accept error: {ex}");
                 }
             }
         }
@@ -162,7 +163,7 @@ namespace PlayLoRWithMe
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] Handler error: {ex}");
+                Debug.LogWarning($"[PRWM] Handler error: {ex}");
                 try
                 {
                     ctx.Response.StatusCode = 500;
@@ -170,7 +171,7 @@ namespace PlayLoRWithMe
                 }
                 catch (Exception ex2)
                 {
-                    Debug.LogWarning($"[PlayLoRWithMe] Failed to send 500 response: {ex2}");
+                    Debug.LogWarning($"[PRWM] Failed to send 500 response: {ex2}");
                 }
             }
         }
@@ -224,7 +225,7 @@ namespace PlayLoRWithMe
 
             _sessionManager.TranslateUnitIds(map);
             _claimsTranslated = true;
-            Debug.Log($"[PlayLoRWithMe] Translated {map.Count} unit claim IDs for battle.");
+            Debug.Log($"[PRWM] Translated {map.Count} unit claim IDs for battle.");
         }
 
         /// <summary>
@@ -246,7 +247,7 @@ namespace PlayLoRWithMe
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] WebSocket handshake failed: {ex.Message}");
+                Debug.LogWarning($"[PRWM] WebSocket handshake failed: {ex.Message}");
                 try
                 {
                     ctx.Response.StatusCode = 400;
@@ -254,7 +255,7 @@ namespace PlayLoRWithMe
                 }
                 catch (Exception ex2)
                 {
-                    Debug.LogWarning($"[PlayLoRWithMe] Failed to send 400 response: {ex2.Message}");
+                    Debug.LogWarning($"[PRWM] Failed to send 400 response: {ex2.Message}");
                 }
                 return;
             }
@@ -266,9 +267,7 @@ namespace PlayLoRWithMe
             var client = new WebSocketClient(session.SessionId, stream, OnWebSocketMessage);
             _deltaEngine.AddSession(session.SessionId);
             _sessionManager.Attach(session.SessionId, client);
-            Debug.Log(
-                $"[PlayLoRWithMe] WebSocket connected: {session.SessionId} ({session.DisplayName})"
-            );
+            Debug.Log($"[PRWM] WebSocket connected: {session.SessionId} ({session.DisplayName})");
 
             client.Send(BuildHelloMessage(session));
 
@@ -295,7 +294,7 @@ namespace PlayLoRWithMe
 
             _sessionManager.Detach(session.SessionId, client);
             _deltaEngine.RemoveSession(session.SessionId);
-            Debug.Log($"[PlayLoRWithMe] WebSocket disconnected: {session.SessionId}");
+            Debug.Log($"[PRWM] WebSocket disconnected: {session.SessionId}");
         }
 
         private void OnWebSocketMessage(WebSocketClient client, string json)
@@ -323,7 +322,9 @@ namespace PlayLoRWithMe
                         if (claimed)
                             Interlocked.Exchange(ref _pendingBroadcast, 1);
                         SendResult(
-                            client, reqId, claimed,
+                            client,
+                            reqId,
+                            claimed,
                             claimed ? null : "Unit already claimed by another player"
                         );
                     }
@@ -358,7 +359,9 @@ namespace PlayLoRWithMe
                         if (locked)
                             StateBroadcaster.Broadcast();
                         SendResult(
-                            client, reqId, locked,
+                            client,
+                            reqId,
+                            locked,
                             locked ? null : "Librarian is being edited by another player"
                         );
                     }
@@ -395,7 +398,9 @@ namespace PlayLoRWithMe
                     break;
 
                 case "removeCardFromDeck":
-                    StateBroadcaster.RunOnMainThread(() => HandleRemoveCardFromDeck(client, r, reqId));
+                    StateBroadcaster.RunOnMainThread(() =>
+                        HandleRemoveCardFromDeck(client, r, reqId)
+                    );
                     break;
 
                 case "equipSourceBook":
@@ -403,19 +408,27 @@ namespace PlayLoRWithMe
                     break;
 
                 case "unequipSourceBook":
-                    StateBroadcaster.RunOnMainThread(() => HandleUnequipSourceBook(client, r, reqId));
+                    StateBroadcaster.RunOnMainThread(() =>
+                        HandleUnequipSourceBook(client, r, reqId)
+                    );
                     break;
 
                 case "attributePassive":
-                    StateBroadcaster.RunOnMainThread(() => HandleAttributePassive(client, r, reqId));
+                    StateBroadcaster.RunOnMainThread(() =>
+                        HandleAttributePassive(client, r, reqId)
+                    );
                     break;
 
                 case "removeAttributedPassive":
-                    StateBroadcaster.RunOnMainThread(() => HandleRemoveAttributedPassive(client, r, reqId));
+                    StateBroadcaster.RunOnMainThread(() =>
+                        HandleRemoveAttributedPassive(client, r, reqId)
+                    );
                     break;
 
                 case "setCustomization":
-                    StateBroadcaster.RunOnMainThread(() => HandleSetCustomization(client, r, reqId));
+                    StateBroadcaster.RunOnMainThread(() =>
+                        HandleSetCustomization(client, r, reqId)
+                    );
                     break;
 
                 case "setGifts":
@@ -443,7 +456,7 @@ namespace PlayLoRWithMe
                     break;
 
                 default:
-                    Debug.Log($"[PlayLoRWithMe] Unknown WebSocket message type: {type}");
+                    Debug.Log($"[PRWM] Unknown WebSocket message type: {type}");
                     break;
             }
         }
@@ -567,8 +580,11 @@ namespace PlayLoRWithMe
 
             // Key page changes affect the card inventory, so do a full card panel refresh.
             RefreshCharacterRenderer(
-                unit, unit.OwnerSephirah, FloorListSlotBase + ui,
-                refreshCardInventory: true);
+                unit,
+                unit.OwnerSephirah,
+                FloorListSlotBase + ui,
+                refreshCardInventory: true
+            );
 
             SaveAndBroadcast();
             SendResult(client, reqId, true, null);
@@ -628,7 +644,12 @@ namespace PlayLoRWithMe
             // pending the mod's reinstall.
             if (ItemXmlDataList.instance.GetCardItem(lorId, errNull: true) == null)
             {
-                SendResult(client, reqId, false, "Card XML not found (likely from an uninstalled mod)");
+                SendResult(
+                    client,
+                    reqId,
+                    false,
+                    "Card XML not found (likely from an uninstalled mod)"
+                );
                 return;
             }
 
@@ -724,9 +745,12 @@ namespace PlayLoRWithMe
         private static System.Collections.Generic.List<PassiveModel> GetAllPassives(BookModel book)
         {
             return typeof(BookModel)
-                .GetField("_activatedAllPassives",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                ?.GetValue(book) as System.Collections.Generic.List<PassiveModel>;
+                    .GetField(
+                        "_activatedAllPassives",
+                        System.Reflection.BindingFlags.NonPublic
+                            | System.Reflection.BindingFlags.Instance
+                    )
+                    ?.GetValue(book) as System.Collections.Generic.List<PassiveModel>;
         }
 
         /// <summary>
@@ -760,7 +784,8 @@ namespace PlayLoRWithMe
         /// </summary>
         private static BookModel FindEquippedBook(int instanceId)
         {
-            return BookInventoryModel.Instance?.GetBookList_equip()
+            return BookInventoryModel
+                .Instance?.GetBookList_equip()
                 ?.Find(b => b?.instanceId == instanceId);
         }
 
@@ -772,7 +797,8 @@ namespace PlayLoRWithMe
         private void HandleEquipSourceBook(WebSocketClient client, JsonReader r, string reqId)
         {
             var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
-            if (unit == null) return;
+            if (unit == null)
+                return;
 
             if (!r.TryGetInt("bookInstanceId", out int bookInstanceId))
             {
@@ -795,8 +821,10 @@ namespace PlayLoRWithMe
             }
 
             // source must not already be attributed to a different key page
-            if (sourceBook.originData?.equipedPassiveBookInstanceId != -1
-                && sourceBook.originData.equipedPassiveBookInstanceId != targetBook.instanceId)
+            if (
+                sourceBook.originData?.equipedPassiveBookInstanceId != -1
+                && sourceBook.originData.equipedPassiveBookInstanceId != targetBook.instanceId
+            )
             {
                 SendResult(client, reqId, false, "Source key page is already attributed elsewhere");
                 return;
@@ -827,7 +855,8 @@ namespace PlayLoRWithMe
         private void HandleUnequipSourceBook(WebSocketClient client, JsonReader r, string reqId)
         {
             var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
-            if (unit == null) return;
+            if (unit == null)
+                return;
 
             if (!r.TryGetInt("bookInstanceId", out int bookInstanceId))
             {
@@ -850,8 +879,10 @@ namespace PlayLoRWithMe
             }
 
             // verify source is actually equipped on this target
-            if (targetBook.originData?.equipedBookIdListInPassive == null
-                || !targetBook.originData.equipedBookIdListInPassive.Contains(bookInstanceId))
+            if (
+                targetBook.originData?.equipedBookIdListInPassive == null
+                || !targetBook.originData.equipedBookIdListInPassive.Contains(bookInstanceId)
+            )
             {
                 SendResult(client, reqId, false, "Source key page is not equipped on this target");
                 return;
@@ -876,10 +907,13 @@ namespace PlayLoRWithMe
         private void HandleAttributePassive(WebSocketClient client, JsonReader r, string reqId)
         {
             var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
-            if (unit == null) return;
+            if (unit == null)
+                return;
 
-            if (!r.TryGetInt("sourceInstanceId", out int sourceInstanceId)
-                || !r.TryGetInt("passiveId", out int passiveId))
+            if (
+                !r.TryGetInt("sourceInstanceId", out int sourceInstanceId)
+                || !r.TryGetInt("passiveId", out int passiveId)
+            )
             {
                 SendResult(client, reqId, false, "Missing sourceInstanceId or passiveId");
                 return;
@@ -907,8 +941,7 @@ namespace PlayLoRWithMe
                 : new LorId(passivePackageId, passiveId);
 
             var sourcePassives = GetAllPassives(sourceBook);
-            var sourcePassive = sourcePassives?.Find(
-                p => p.originpassive?.id == passiveLorId);
+            var sourcePassive = sourcePassives?.Find(p => p.originpassive?.id == passiveLorId);
             if (sourcePassive == null)
             {
                 SendResult(client, reqId, false, "Passive not found on source key page");
@@ -925,9 +958,10 @@ namespace PlayLoRWithMe
             PassiveModel targetSlot = null;
             if (targetPassives != null)
             {
-                targetSlot = targetPassives.Find(
-                    p => p.originpassive?.id == GameStateSerializer.EmptyAttributionPassiveId
-                        && !p.IsReceivedSuccessionPassive);
+                targetSlot = targetPassives.Find(p =>
+                    p.originpassive?.id == GameStateSerializer.EmptyAttributionPassiveId
+                    && !p.IsReceivedSuccessionPassive
+                );
             }
             if (targetSlot == null)
             {
@@ -962,13 +996,20 @@ namespace PlayLoRWithMe
         /// Removes a previously attributed passive from the librarian's key page,
         /// restoring its dummy slot and releasing the source passive.
         /// </summary>
-        private void HandleRemoveAttributedPassive(WebSocketClient client, JsonReader r, string reqId)
+        private void HandleRemoveAttributedPassive(
+            WebSocketClient client,
+            JsonReader r,
+            string reqId
+        )
         {
             var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
-            if (unit == null) return;
+            if (unit == null)
+                return;
 
-            if (!r.TryGetInt("sourceInstanceId", out int sourceInstanceId)
-                || !r.TryGetInt("passiveId", out int passiveId))
+            if (
+                !r.TryGetInt("sourceInstanceId", out int sourceInstanceId)
+                || !r.TryGetInt("passiveId", out int passiveId)
+            )
             {
                 SendResult(client, reqId, false, "Missing sourceInstanceId or passiveId");
                 return;
@@ -995,10 +1036,11 @@ namespace PlayLoRWithMe
             PassiveModel toRemove = null;
             if (targetPassives != null)
             {
-                toRemove = targetPassives.Find(
-                    p => p.IsReceivedSuccessionPassive
-                        && p.reservedData?.currentpassive?.id == passiveLorId
-                        && p.reservedData?.receivepassivebookId == sourceInstanceId);
+                toRemove = targetPassives.Find(p =>
+                    p.IsReceivedSuccessionPassive
+                    && p.reservedData?.currentpassive?.id == passiveLorId
+                    && p.reservedData?.receivepassivebookId == sourceInstanceId
+                );
             }
             if (toRemove == null)
             {
@@ -1026,11 +1068,7 @@ namespace PlayLoRWithMe
         /// Colors are passed as separate R/G/B integer fields (0–255).
         /// An empty string for a dialogue field restores a random game preset.
         /// </summary>
-        private void HandleSetCustomization(
-            WebSocketClient client,
-            JsonReader r,
-            string reqId
-        )
+        private void HandleSetCustomization(WebSocketClient client, JsonReader r, string reqId)
         {
             var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
             if (unit == null)
@@ -1061,24 +1099,14 @@ namespace PlayLoRWithMe
                     && r.TryGetInt("hairG", out int hairG)
                     && r.TryGetInt("hairB", out int hairB)
                 )
-                    cd.hairColor = new Color32(
-                        (byte)hairR,
-                        (byte)hairG,
-                        (byte)hairB,
-                        255
-                    );
+                    cd.hairColor = new Color32((byte)hairR, (byte)hairG, (byte)hairB, 255);
 
                 if (
                     r.TryGetInt("skinR", out int skinR)
                     && r.TryGetInt("skinG", out int skinG)
                     && r.TryGetInt("skinB", out int skinB)
                 )
-                    cd.skinColor = new Color32(
-                        (byte)skinR,
-                        (byte)skinG,
-                        (byte)skinB,
-                        255
-                    );
+                    cd.skinColor = new Color32((byte)skinR, (byte)skinG, (byte)skinB, 255);
 
                 if (
                     r.TryGetInt("eyeR", out int eyeR)
@@ -1096,11 +1124,14 @@ namespace PlayLoRWithMe
             var at = r.GetString("appearanceType");
             if (!string.IsNullOrEmpty(at))
             {
-                try { unit.appearanceType = (Gender)System.Enum.Parse(typeof(Gender), at); }
+                try
+                {
+                    unit.appearanceType = (Gender)System.Enum.Parse(typeof(Gender), at);
+                }
                 catch (Exception ex)
                 {
                     Debug.LogWarning(
-                        $"[PlayLoRWithMe] SetCustomization: invalid appearanceType '{at}': {ex.Message}"
+                        $"[PRWM] SetCustomization: invalid appearanceType '{at}': {ex.Message}"
                     );
                 }
             }
@@ -1125,38 +1156,18 @@ namespace PlayLoRWithMe
                 catch (Exception ex)
                 {
                     Debug.LogWarning(
-                        $"[PlayLoRWithMe] SetCustomization: failed to initialize Librarian dialogue model: {ex.Message}"
+                        $"[PRWM] SetCustomization: failed to initialize Librarian dialogue model: {ex.Message}"
                     );
                 }
             }
 
             if (dlgModel != null)
             {
-                ApplyDialogue(
-                    dlgModel,
-                    r,
-                    LOR_XML.DialogType.START_BATTLE,
-                    "dlgStartBattle"
-                );
-                ApplyDialogue(
-                    dlgModel,
-                    r,
-                    LOR_XML.DialogType.BATTLE_VICTORY,
-                    "dlgVictory"
-                );
+                ApplyDialogue(dlgModel, r, LOR_XML.DialogType.START_BATTLE, "dlgStartBattle");
+                ApplyDialogue(dlgModel, r, LOR_XML.DialogType.BATTLE_VICTORY, "dlgVictory");
                 ApplyDialogue(dlgModel, r, LOR_XML.DialogType.DEATH, "dlgDeath");
-                ApplyDialogue(
-                    dlgModel,
-                    r,
-                    LOR_XML.DialogType.COLLEAGUE_DEATH,
-                    "dlgColleagueDeath"
-                );
-                ApplyDialogue(
-                    dlgModel,
-                    r,
-                    LOR_XML.DialogType.KILLS_OPPONENT,
-                    "dlgKillsOpponent"
-                );
+                ApplyDialogue(dlgModel, r, LOR_XML.DialogType.COLLEAGUE_DEATH, "dlgColleagueDeath");
+                ApplyDialogue(dlgModel, r, LOR_XML.DialogType.KILLS_OPPONENT, "dlgKillsOpponent");
             }
 
             // Title IDs.
@@ -1187,7 +1198,9 @@ namespace PlayLoRWithMe
                     }
                     else
                     {
-                        Debug.LogWarning($"[PlayLoRWithMe] SetCustomization: book not found cbid={cbid} pkg={cbPkg}");
+                        Debug.LogWarning(
+                            $"[PRWM] SetCustomization: book not found cbid={cbid} pkg={cbPkg}"
+                        );
                     }
                 }
             }
@@ -1274,10 +1287,7 @@ namespace PlayLoRWithMe
                         GiftModel toEquip = null;
                         foreach (var g in inv.GetUnequippedList())
                         {
-                            if (
-                                g.GetGiftClassInfoId() == giftId
-                                && g.ClassInfo.Position == giftPos
-                            )
+                            if (g.GetGiftClassInfoId() == giftId && g.ClassInfo.Position == giftPos)
                             {
                                 toEquip = g;
                                 break;
@@ -1332,13 +1342,20 @@ namespace PlayLoRWithMe
         /// null after sending an error reply.
         /// </summary>
         private UnitDataModel ValidateLibrarianEdit(
-            WebSocketClient client, JsonReader r, string reqId,
-            out int floorIndex, out int unitIndex)
+            WebSocketClient client,
+            JsonReader r,
+            string reqId,
+            out int floorIndex,
+            out int unitIndex
+        )
         {
             floorIndex = -1;
             unitIndex = -1;
 
-            if (!r.TryGetInt("floorIndex", out floorIndex) || !r.TryGetInt("unitIndex", out unitIndex))
+            if (
+                !r.TryGetInt("floorIndex", out floorIndex)
+                || !r.TryGetInt("unitIndex", out unitIndex)
+            )
                 return null;
 
             string key = LockKey(floorIndex, unitIndex);
@@ -1367,8 +1384,11 @@ namespace PlayLoRWithMe
         /// (equip panel, inventory list). When false, only the info panel is updated.
         /// </param>
         private void RefreshCharacterRenderer(
-            UnitDataModel unit, SephirahType sephirah, int characterSlot,
-            bool refreshCardInventory = false)
+            UnitDataModel unit,
+            SephirahType sephirah,
+            int characterSlot,
+            bool refreshCardInventory = false
+        )
         {
             var unitRef = unit;
             StateBroadcaster.RunOnMainThread(() =>
@@ -1393,24 +1413,28 @@ namespace PlayLoRWithMe
                     if (uic.CurrentUIPhase == UI.UIPhase.Librarian)
                     {
                         var infoPanel =
-                            uic.GetUIPanel(UI.UIPanelType.LibrarianInfo)
-                            as UI.UILibrarianInfoPanel;
+                            uic.GetUIPanel(UI.UIPanelType.LibrarianInfo) as UI.UILibrarianInfoPanel;
                         if (infoPanel != null)
                         {
-                            renderer?.SetCharacter(unitRef, LibrarianDetailSlot, forcelyReload: true);
+                            renderer?.SetCharacter(
+                                unitRef,
+                                LibrarianDetailSlot,
+                                forcelyReload: true
+                            );
                             infoPanel.UpdatePanel();
                         }
                     }
                     else if (uic.CurrentUIPhase == UI.UIPhase.Librarian_CardList)
                     {
-                        var cardPanel =
-                            uic.GetUIPanel(UI.UIPanelType.Page) as UI.UICardPanel;
+                        var cardPanel = uic.GetUIPanel(UI.UIPanelType.Page) as UI.UICardPanel;
                         if (refreshCardInventory)
                         {
                             cardPanel?.LibrarianInfoPanel?.SetData(unitRef);
                             cardPanel?.EquipInfoDeckPanel?.SetData();
                             cardPanel?.InvenCardList?.SetData(
-                                Singleton<InventoryModel>.Instance?.GetCardList(), unitRef);
+                                Singleton<InventoryModel>.Instance?.GetCardList(),
+                                unitRef
+                            );
                         }
                         else
                         {
@@ -1464,7 +1488,7 @@ namespace PlayLoRWithMe
                 );
             // theme block is one-shot — present only when ThemeProbe has bound
             // both colours by hello-send time. Late-probe retries arrive via
-                // the next state push instead.
+            // the next state push instead.
             GameStateSerializer.WriteTheme(w);
             return w.Build();
         }
@@ -1560,6 +1584,5 @@ namespace PlayLoRWithMe
                     return "application/octet-stream";
             }
         }
-
     }
 }

@@ -51,8 +51,21 @@ namespace PlayLoRWithMe
         /// image — required to avoid a feet-snap on first paint and on tab switches.
         /// Zero until populated in pass 4.
         /// </summary>
-        internal static readonly Dictionary<string, (float TiltDeg, float PivotFracX, float PivotFracY, bool HasFrontLayer, bool HidesBackHair, string SkinGender, float FeetYFrac, int BodyW, int BodyH)>
-            FashionMeta = new Dictionary<string, (float, float, float, bool, bool, string, float, int, int)>();
+        internal static readonly Dictionary<
+            string,
+            (
+                float TiltDeg,
+                float PivotFracX,
+                float PivotFracY,
+                bool HasFrontLayer,
+                bool HidesBackHair,
+                string SkinGender,
+                float FeetYFrac,
+                int BodyW,
+                int BodyH
+            )
+        > FashionMeta =
+            new Dictionary<string, (float, float, float, bool, bool, string, float, int, int)>();
 
         /// <summary>
         /// Face/hair canvas bounds in world space, populated during extraction.
@@ -103,7 +116,15 @@ namespace PlayLoRWithMe
                 if (stale)
                 {
                     // Wipe all asset dirs so everything re-extracts with the new layout.
-                    foreach (var dir in new[] { CustomizeDir, BookIconDir, FashionBodyDir, FashionBodyFrontDir })
+                    foreach (
+                        var dir in new[]
+                        {
+                            CustomizeDir,
+                            BookIconDir,
+                            FashionBodyDir,
+                            FashionBodyFrontDir,
+                        }
+                    )
                         if (Directory.Exists(dir))
                             Directory.Delete(dir, recursive: true);
                 }
@@ -115,9 +136,7 @@ namespace PlayLoRWithMe
             }
             catch (System.Exception ex)
             {
-                Debug.LogWarning(
-                    $"[PlayLoRWithMe] AppearanceCache: extraction failed: {ex.Message}"
-                );
+                Debug.LogWarning($"[PRWM] AppearanceCache: extraction failed: {ex.Message}");
             }
         }
 
@@ -149,7 +168,6 @@ namespace PlayLoRWithMe
 
         private static void ExtractInner(CustomizingResourceLoader loader)
         {
-
             // --- Pass 1: gather all face/hair sprites ---
             // Collect every customization sprite so we can compute a shared world-space
             // bounding box before writing any files.
@@ -165,17 +183,25 @@ namespace PlayLoRWithMe
                         if (s != null)
                             entries.Add((prefix, i, s));
                     }
-                    catch { /* skip inaccessible indices */ }
+                    catch
+                    { /* skip inaccessible indices */
+                    }
                 }
             }
 
-            Gather("eyes",      loader.NumberOfEye(),  i => loader.GetEyeResourceSet(i)?.normal);
-            Gather("brows",     loader.NumberOfBrow(), i => loader.GetBrowResourceSet(i)?.normal);
-            Gather("mouths",    loader.NumberOfMouth(), i => loader.GetMouthResourceSet(i)?.normal);
-            Gather("fronthair", loader.NumberOfCustomizingResources(CustomizingLookType.FrontHair),
-                                i => loader.GetFrontHairSprite(i));
-            Gather("backhair",  loader.NumberOfCustomizingResources(CustomizingLookType.BackHair),
-                                i => loader.GetRearHairSprite(i));
+            Gather("eyes", loader.NumberOfEye(), i => loader.GetEyeResourceSet(i)?.normal);
+            Gather("brows", loader.NumberOfBrow(), i => loader.GetBrowResourceSet(i)?.normal);
+            Gather("mouths", loader.NumberOfMouth(), i => loader.GetMouthResourceSet(i)?.normal);
+            Gather(
+                "fronthair",
+                loader.NumberOfCustomizingResources(CustomizingLookType.FrontHair),
+                i => loader.GetFrontHairSprite(i)
+            );
+            Gather(
+                "backhair",
+                loader.NumberOfCustomizingResources(CustomizingLookType.BackHair),
+                i => loader.GetRearHairSprite(i)
+            );
             // Heads: GetHeadSprite has no bounds check so we stop on error.
             for (int i = 0; i < HeadVariantCount; i++)
             {
@@ -185,7 +211,10 @@ namespace PlayLoRWithMe
                     if (s != null)
                         entries.Add(("head", i, s));
                 }
-                catch { break; }
+                catch
+                {
+                    break;
+                }
             }
 
             if (entries.Count == 0)
@@ -209,7 +238,7 @@ namespace PlayLoRWithMe
             // Done before Pass 3 so body-sprite GameObjects can be destroyed after
             // Pass 3, but gathered here to keep Unity instantiation on the main thread.
             var fashionBodies = new List<FashionBookBody>();
-            var bodyGos       = new List<GameObject>();
+            var bodyGos = new List<GameObject>();
             GatherFashionBodies(fashionBodies, bodyGos);
 
             // --- Pass 2c: expand shared canvas to cover all body sprite extents ---
@@ -260,7 +289,8 @@ namespace PlayLoRWithMe
                 {
                     faceHairBounds.SetMinMax(
                         new Vector3(allMinX, faceHairBounds.min.y, faceHairBounds.min.z),
-                        new Vector3(allMaxX, allMaxY,              faceHairBounds.max.z));
+                        new Vector3(allMaxX, allMaxY, faceHairBounds.max.z)
+                    );
                     canvasW = Mathf.Max(1, Mathf.RoundToInt(faceHairBounds.size.x * ppu));
                     canvasH = Mathf.Max(1, Mathf.RoundToInt(faceHairBounds.size.y * ppu));
                 }
@@ -284,11 +314,12 @@ namespace PlayLoRWithMe
                 // the wrong pivot for skins whose pivot is placed at the hat brim or
                 // other non-neck attachment points.
                 FashionMeta.Clear();
-                float bw = faceHairBounds.size.x, bh = faceHairBounds.size.y;
+                float bw = faceHairBounds.size.x,
+                    bh = faceHairBounds.size.y;
                 // Canonical librarian pivot is at world origin (0, 0) — horizontal
                 // center of the face canvas and neck-level on the Y axis.
                 float fracX = (bw > 0f) ? Mathf.Clamp01(-faceHairBounds.min.x / bw) : 0.5f;
-                float fracY = (bh > 0f) ? Mathf.Clamp01(faceHairBounds.max.y / bh)  : 0.5f;
+                float fracY = (bh > 0f) ? Mathf.Clamp01(faceHairBounds.max.y / bh) : 0.5f;
                 foreach (var b in fashionBodies)
                 {
                     var stem = b.FileStem;
@@ -297,17 +328,26 @@ namespace PlayLoRWithMe
                         // Second variant for same book — merge HasFrontLayer flag.
                         var existing = FashionMeta[stem];
                         if (b.FrontSprites.Count > 0 && !existing.HasFrontLayer)
-                            FashionMeta[stem] = (existing.TiltDeg, existing.PivotFracX,
-                                existing.PivotFracY, true, existing.HidesBackHair,
-                                existing.SkinGender, existing.FeetYFrac,
-                                existing.BodyW, existing.BodyH);
+                            FashionMeta[stem] = (
+                                existing.TiltDeg,
+                                existing.PivotFracX,
+                                existing.PivotFracY,
+                                true,
+                                existing.HidesBackHair,
+                                existing.SkinGender,
+                                existing.FeetYFrac,
+                                existing.BodyW,
+                                existing.BodyH
+                            );
                         continue;
                     }
                     string skinGender;
                     if (!string.IsNullOrEmpty(b.PackageId))
                     {
                         // Workshop book: look up by full LorId to get the correct gender.
-                        var wsInfo = Singleton<BookXmlList>.Instance?.GetData(new LorId(b.PackageId, b.BookId));
+                        var wsInfo = Singleton<BookXmlList>.Instance?.GetData(
+                            new LorId(b.PackageId, b.BookId)
+                        );
                         skinGender = wsInfo?.gender.ToString() ?? "N";
                     }
                     else
@@ -319,8 +359,17 @@ namespace PlayLoRWithMe
                     // the body PNG's actual extent is known.  1.0 means "feet at PNG bottom"
                     // and is a safe default for bodies whose sprite extents match the feet.
                     // BodyW/BodyH are zero until pass 4 records them.
-                    FashionMeta[stem] = (b.PivotRotDeg, fracX, fracY,
-                        b.FrontSprites.Count > 0, !b.ReplacesHead && b.HasHood, skinGender, 1f, 0, 0);
+                    FashionMeta[stem] = (
+                        b.PivotRotDeg,
+                        fracX,
+                        fracY,
+                        b.FrontSprites.Count > 0,
+                        !b.ReplacesHead && b.HasHood,
+                        skinGender,
+                        1f,
+                        0,
+                        0
+                    );
                 }
             }
 
@@ -334,7 +383,7 @@ namespace PlayLoRWithMe
                 catch (System.Exception ex)
                 {
                     Debug.LogWarning(
-                        $"[PlayLoRWithMe] AppearanceCache: {prefix}[{index}] failed: {ex.Message}"
+                        $"[PRWM] AppearanceCache: {prefix}[{index}] failed: {ex.Message}"
                     );
                 }
             }
@@ -378,7 +427,11 @@ namespace PlayLoRWithMe
         ///   head_special_{id}_rear.png  — rear hair (renders behind fashion body)
         /// </summary>
         private static void ExtractPatronHeads(
-            int canvasW, int canvasH, Bounds totalBounds, float ppu)
+            int canvasW,
+            int canvasH,
+            Bounds totalBounds,
+            float ppu
+        )
         {
             var loader = Singleton<CustomizingResourceLoader>.Instance;
             if (loader == null)
@@ -386,11 +439,11 @@ namespace PlayLoRWithMe
 
             var field = typeof(CustomizingResourceLoader).GetField(
                 "_specialCustomPrefabDic",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+            );
             if (field == null)
                 return;
-            var dic = field.GetValue(loader)
-                as Dictionary<int, SpecialCustomizedAppearance>;
+            var dic = field.GetValue(loader) as Dictionary<int, SpecialCustomizedAppearance>;
             if (dic == null)
                 return;
 
@@ -402,7 +455,7 @@ namespace PlayLoRWithMe
                     continue;
 
                 var frontPath = Path.Combine(CustomizeDir, $"head_special_{sephirahId}.png");
-                var rearPath  = Path.Combine(CustomizeDir, $"head_special_{sephirahId}_rear.png");
+                var rearPath = Path.Combine(CustomizeDir, $"head_special_{sephirahId}_rear.png");
                 if (File.Exists(frontPath) && File.Exists(rearPath))
                     continue;
 
@@ -424,10 +477,11 @@ namespace PlayLoRWithMe
                     // 1) find head matching ActionDetail.Standing
                     // 2) fall back to front-facing direction
                     // 3) fall back to first available
-                    var head = inst.list.Find(
-                            h => h.detail == ActionDetail.Standing)
-                        ?? inst.list.Find(
-                            h => h.motionDirection == CharacterMotion.MotionDirection.FrontView)
+                    var head =
+                        inst.list.Find(h => h.detail == ActionDetail.Standing)
+                        ?? inst.list.Find(h =>
+                            h.motionDirection == CharacterMotion.MotionDirection.FrontView
+                        )
                         ?? inst.list[0];
 
                     // Activate this variant so its renderers are live; deactivate others.
@@ -445,7 +499,7 @@ namespace PlayLoRWithMe
                     // Partition renderers into rear (behind body) and front (above body).
                     // Rear hair renders behind the fashion body; everything else renders
                     // in front, matching the normal face/hair layer ordering.
-                    var rearRenderers  = new List<SpriteRenderer>();
+                    var rearRenderers = new List<SpriteRenderer>();
                     var frontRenderers = new List<SpriteRenderer>();
 
                     void AddTo(List<SpriteRenderer> list, SpriteRenderer sr)
@@ -456,13 +510,16 @@ namespace PlayLoRWithMe
                     AddTo(frontRenderers, head.headRenderer);
                     AddTo(frontRenderers, head.faceRenderer);
                     AddTo(frontRenderers, head.frontHairRenderer);
-                    AddTo(rearRenderers,  head.rearHairRenderer);
+                    AddTo(rearRenderers, head.rearHairRenderer);
                     if (head.additionalFace != null)
-                        foreach (var sr in head.additionalFace) AddTo(frontRenderers, sr);
+                        foreach (var sr in head.additionalFace)
+                            AddTo(frontRenderers, sr);
                     if (head.additionalFrontHair != null)
-                        foreach (var sr in head.additionalFrontHair) AddTo(frontRenderers, sr);
+                        foreach (var sr in head.additionalFrontHair)
+                            AddTo(frontRenderers, sr);
                     if (head.additionalRearHair != null)
-                        foreach (var sr in head.additionalRearHair) AddTo(rearRenderers, sr);
+                        foreach (var sr in head.additionalRearHair)
+                            AddTo(rearRenderers, sr);
 
                     if (frontRenderers.Count == 0 && rearRenderers.Count == 0)
                         continue;
@@ -476,7 +533,8 @@ namespace PlayLoRWithMe
                     {
                         int la = layerIdxMap.TryGetValue(a.sortingLayerID, out var va) ? va : 0;
                         int lb = layerIdxMap.TryGetValue(b.sortingLayerID, out var vb) ? vb : 0;
-                        if (la != lb) return la.CompareTo(lb);
+                        if (la != lb)
+                            return la.CompareTo(lb);
                         return a.sortingOrder.CompareTo(b.sortingOrder);
                     };
                     frontRenderers.Sort(cmp);
@@ -490,23 +548,40 @@ namespace PlayLoRWithMe
                     foreach (var sr in rearRenderers)
                         patronBounds.Encapsulate(sr.bounds);
 
-                    int patronCanvasW = Mathf.Max(canvasW,
-                        Mathf.RoundToInt(patronBounds.size.x * ppu));
-                    int patronCanvasH = Mathf.Max(canvasH,
-                        Mathf.RoundToInt(patronBounds.size.y * ppu));
+                    int patronCanvasW = Mathf.Max(
+                        canvasW,
+                        Mathf.RoundToInt(patronBounds.size.x * ppu)
+                    );
+                    int patronCanvasH = Mathf.Max(
+                        canvasH,
+                        Mathf.RoundToInt(patronBounds.size.y * ppu)
+                    );
 
                     if (!File.Exists(frontPath) && frontRenderers.Count > 0)
-                        CompositeAndSave(frontRenderers, patronCanvasW, patronCanvasH,
-                            patronBounds, ppu, frontPath);
+                        CompositeAndSave(
+                            frontRenderers,
+                            patronCanvasW,
+                            patronCanvasH,
+                            patronBounds,
+                            ppu,
+                            frontPath
+                        );
 
                     if (!File.Exists(rearPath) && rearRenderers.Count > 0)
-                        CompositeAndSave(rearRenderers, patronCanvasW, patronCanvasH,
-                            patronBounds, ppu, rearPath);
+                        CompositeAndSave(
+                            rearRenderers,
+                            patronCanvasW,
+                            patronCanvasH,
+                            patronBounds,
+                            ppu,
+                            rearPath
+                        );
                 }
                 catch (System.Exception ex)
                 {
                     Debug.LogWarning(
-                        $"[PlayLoRWithMe] AppearanceCache: patron head [{sephirahId}] failed: {ex.Message}");
+                        $"[PRWM] AppearanceCache: patron head [{sephirahId}] failed: {ex.Message}"
+                    );
                 }
                 finally
                 {
@@ -521,7 +596,12 @@ namespace PlayLoRWithMe
         /// </summary>
         private static void CompositeAndSave(
             List<SpriteRenderer> renderers,
-            int cw, int ch, Bounds bounds, float ppu, string outPath)
+            int cw,
+            int ch,
+            Bounds bounds,
+            float ppu,
+            string outPath
+        )
         {
             // Hoist the pixel buffer outside the loop so we composite directly
             // into it, avoiding a full-canvas GetPixels32/SetPixels32 round-trip
@@ -541,18 +621,15 @@ namespace PlayLoRWithMe
                     float ppuRatio = ppu / spritePpu;
 
                     var wb = sr.bounds;
-                    int boundsOffsetX = Mathf.RoundToInt(
-                        (wb.min.x - bounds.min.x) * ppu);
-                    int boundsOffsetY = Mathf.RoundToInt(
-                        (wb.min.y - bounds.min.y) * ppu);
+                    int boundsOffsetX = Mathf.RoundToInt((wb.min.x - bounds.min.x) * ppu);
+                    int boundsOffsetY = Mathf.RoundToInt((wb.min.y - bounds.min.y) * ppu);
 
                     var texRectOffset = sr.sprite.textureRectOffset;
-                    int offsetX = boundsOffsetX
-                        + Mathf.RoundToInt(texRectOffset.x * ppuRatio);
-                    int offsetY = boundsOffsetY
-                        + Mathf.RoundToInt(texRectOffset.y * ppuRatio);
+                    int offsetX = boundsOffsetX + Mathf.RoundToInt(texRectOffset.x * ppuRatio);
+                    int offsetY = boundsOffsetY + Mathf.RoundToInt(texRectOffset.y * ppuRatio);
 
-                    int finalW, finalH;
+                    int finalW,
+                        finalH;
                     Color32[] srcPixels;
 
                     if (Mathf.Approximately(ppuRatio, 1f))
@@ -566,14 +643,17 @@ namespace PlayLoRWithMe
                         finalW = Mathf.Max(1, Mathf.RoundToInt(cropW * ppuRatio));
                         finalH = Mathf.Max(1, Mathf.RoundToInt(cropH * ppuRatio));
                         var rt = RenderTexture.GetTemporary(
-                            finalW, finalH, 0, RenderTextureFormat.ARGB32);
+                            finalW,
+                            finalH,
+                            0,
+                            RenderTextureFormat.ARGB32
+                        );
                         try
                         {
                             Graphics.Blit(crop, rt);
                             var prev = RenderTexture.active;
                             RenderTexture.active = rt;
-                            var scaled = new Texture2D(
-                                finalW, finalH, TextureFormat.RGBA32, false);
+                            var scaled = new Texture2D(finalW, finalH, TextureFormat.RGBA32, false);
                             try
                             {
                                 scaled.ReadPixels(new Rect(0, 0, finalW, finalH), 0, 0);
@@ -595,30 +675,34 @@ namespace PlayLoRWithMe
                     // Apply SpriteRenderer.color tint (Unity multiplies every pixel
                     // by this color — e.g. a white head sprite × skin color = skin).
                     Color32 tint = sr.color;
-                    bool hasTint = tint.r != 255 || tint.g != 255
-                        || tint.b != 255 || tint.a != 255;
+                    bool hasTint = tint.r != 255 || tint.g != 255 || tint.b != 255 || tint.a != 255;
 
                     // Alpha-composite onto the canvas (back-to-front).
                     for (int sy = 0; sy < finalH; sy++)
                     {
                         int dy = offsetY + sy;
-                        if (dy < 0 || dy >= ch) continue;
+                        if (dy < 0 || dy >= ch)
+                            continue;
                         for (int sx = 0; sx < finalW; sx++)
                         {
                             int dx = offsetX + sx;
-                            if (dx < 0 || dx >= cw) continue;
+                            if (dx < 0 || dx >= cw)
+                                continue;
                             int si = sy * finalW + sx;
                             int di = dy * cw + dx;
                             var src = srcPixels[si];
-                            if (src.a == 0) continue;
+                            if (src.a == 0)
+                                continue;
                             if (hasTint)
                             {
                                 src = new Color32(
                                     (byte)(src.r * tint.r / 255),
                                     (byte)(src.g * tint.g / 255),
                                     (byte)(src.b * tint.b / 255),
-                                    (byte)(src.a * tint.a / 255));
-                                if (src.a == 0) continue;
+                                    (byte)(src.a * tint.a / 255)
+                                );
+                                if (src.a == 0)
+                                    continue;
                             }
                             if (src.a == 255)
                             {
@@ -635,14 +719,16 @@ namespace PlayLoRWithMe
                                     (byte)((src.r * sa + dst.r * da * (1f - sa)) / oa),
                                     (byte)((src.g * sa + dst.g * da * (1f - sa)) / oa),
                                     (byte)((src.b * sa + dst.b * da * (1f - sa)) / oa),
-                                    (byte)(oa * 255f));
+                                    (byte)(oa * 255f)
+                                );
                             }
                         }
                     }
                 }
                 finally
                 {
-                    if (crop != null) UnityEngine.Object.Destroy(crop);
+                    if (crop != null)
+                        UnityEngine.Object.Destroy(crop);
                 }
             }
 
@@ -692,7 +778,7 @@ namespace PlayLoRWithMe
                 catch (System.Exception ex)
                 {
                     Debug.LogWarning(
-                        $"[PlayLoRWithMe] AppearanceCache: book thumb {bid} failed: {ex.Message}"
+                        $"[PRWM] AppearanceCache: book thumb {bid} failed: {ex.Message}"
                     );
                 }
             }
@@ -705,55 +791,67 @@ namespace PlayLoRWithMe
         private class FashionBookBody
         {
             public int BookId;
+
             /// <summary>
             /// Non-empty for workshop books; used to disambiguate file names and metadata
             /// keys when multiple mods share the same integer BookId.
             /// </summary>
             public string PackageId = "";
+
             /// <summary>
             /// Gender variant suffix: null for neutral/ungendered, "f" for female, "m" for male.
             /// Used to produce distinct file names (e.g. fashionbodies/123_f.png).
             /// </summary>
             public string Variant = null;
+
             /// <summary>
             /// Explicit file stem override. When set, takes priority over the
             /// computed "{PackageId}_{BookId}" or "{BookId}" pattern.
             /// </summary>
             public string FileStemOverride = null;
+
             /// <summary>
             /// File stem for this entry: explicit override if set, else "{BookId}" for
             /// core books, "{PackageId}_{BookId}" for workshop books.
             /// </summary>
-            public string FileStem => FileStemOverride
+            public string FileStem =>
+                FileStemOverride
                 ?? (string.IsNullOrEmpty(PackageId) ? BookId.ToString() : $"{PackageId}_{BookId}");
             public bool ReplacesHead;
+
             // World position of customPivot (or Head SpriteSet renderer) within the
             // instantiated DefaultMotion prefab.  Face/hair sprites are placed at this
             // position in-game, so subtracting it from body sprite world positions brings
             // them into the same coordinate frame as the face/hair canvas.
             public Vector3 AnchorPos;
+
             // Uniform world-space scale of the character model.  Some books use a
             // non-unit scale (e.g. 0.7, 2.0), which makes sprite.bounds (local space)
             // disagree with the physical size of the sprite on screen.  Every canvas
             // calculation that uses sprite.bounds must multiply by this value.
             public float WorldScale = 1f;
+
             // Z-axis rotation of customPivot in degrees, normalized to (-180, 180].
             // Positive values are counter-clockwise on screen (Unity left-hand convention);
             // negate when converting to CSS rotate().
             public float PivotRotDeg = 0f;
+
             // Sprites behind the face overlay (sortingOrder < face threshold).
-            public List<(SpriteSet sprSet, Vector3 worldPos)> Sprites
-                = new List<(SpriteSet, Vector3)>();
+            public List<(SpriteSet sprSet, Vector3 worldPos)> Sprites =
+                new List<(SpriteSet, Vector3)>();
+
             // Sprites in front of the face overlay (sortingOrder >= face threshold).
             // Empty for replacesHead=true books (face overlay is not shown).
-            public List<(SpriteSet sprSet, Vector3 worldPos)> FrontSprites
-                = new List<(SpriteSet, Vector3)>();
+            public List<(SpriteSet sprSet, Vector3 worldPos)> FrontSprites =
+                new List<(SpriteSet, Vector3)>();
+
             // Skin-type sprites (neck, collarbone) — extracted separately so the
             // frontend can tint them with the librarian's individual skin color via
             // CSS multiply blending.  In-game, these are white silhouettes tinted at
             // runtime by CharacterMotion.CustomizeSkinColor().
-            public List<(SpriteSet sprSet, Vector3 worldPos)> SkinSprites
-                = new List<(SpriteSet, Vector3)>();
+            public List<(SpriteSet sprSet, Vector3 worldPos)> SkinSprites =
+                new List<(SpriteSet, Vector3)>();
+
             // True when the character model contains a CharacterAppearanceType.Hood sprite.
             // The game hides all back hair when any Hood sprite is present
             // (RefreshAppearanceByMotion forcibly deactivates backHair renderers).
@@ -765,16 +863,26 @@ namespace PlayLoRWithMe
         /// on failure. Callers add the result to the shared result list.
         /// </summary>
         private static FashionBookBody TryGatherOneBody(
-            int bid, BookXmlInfo bxi, string suffix, string variant,
-            AssetBundleManagerRemake abm, List<GameObject> instancesToDestroy)
+            int bid,
+            BookXmlInfo bxi,
+            string suffix,
+            string variant,
+            AssetBundleManagerRemake abm,
+            List<GameObject> instancesToDestroy
+        )
         {
             var skinName = bxi.GetCharacterSkin();
             var prefab = abm.LoadCharacterPrefab_DefaultMotion(skinName, suffix, out string _);
-            if (prefab == null) return null;
+            if (prefab == null)
+                return null;
 
             var go = UnityEngine.Object.Instantiate(prefab);
             var motion = go.GetComponentInChildren<CharacterMotion>();
-            if (motion == null) { UnityEngine.Object.Destroy(go); return null; }
+            if (motion == null)
+            {
+                UnityEngine.Object.Destroy(go);
+                return null;
+            }
 
             motion.SetSkinSprite(enable: true);
             motion.DisableSpritesByCustomizing(isLibrarian: true);
@@ -784,28 +892,29 @@ namespace PlayLoRWithMe
                 anchorPos = motion.customPivot.position;
             else
             {
-                var headSet = motion.motionSpriteSet.Find(
-                    ss => ss.sprType == CharacterAppearanceType.Head);
+                var headSet = motion.motionSpriteSet.Find(ss =>
+                    ss.sprType == CharacterAppearanceType.Head
+                );
                 anchorPos = headSet?.sprRenderer?.transform?.position ?? Vector3.zero;
             }
 
-            float rawZ = motion.customPivot != null
-                ? motion.customPivot.rotation.eulerAngles.z
-                : 0f;
+            float rawZ =
+                motion.customPivot != null ? motion.customPivot.rotation.eulerAngles.z : 0f;
             float pivotRotDeg = rawZ > 180f ? rawZ - 360f : rawZ;
 
             var body = new FashionBookBody
             {
-                BookId       = bid,
-                Variant      = variant,
+                BookId = bid,
+                Variant = variant,
                 ReplacesHead = bxi.skinType != "Lor",
-                AnchorPos    = anchorPos,
-                WorldScale   = motion.transform.lossyScale.y,
-                PivotRotDeg  = pivotRotDeg,
+                AnchorPos = anchorPos,
+                WorldScale = motion.transform.lossyScale.y,
+                PivotRotDeg = pivotRotDeg,
             };
 
             // Split enabled sprites into behind-face and in-front-of-face groups.
-            int faceLayerIdx = -1, faceOrder = int.MaxValue;
+            int faceLayerIdx = -1,
+                faceOrder = int.MaxValue;
             if (!body.ReplacesHead)
             {
                 var slayers = SortingLayer.layers;
@@ -815,13 +924,20 @@ namespace PlayLoRWithMe
 
                 foreach (var ss in motion.motionSpriteSet)
                 {
-                    if (ss.sprRenderer == null
+                    if (
+                        ss.sprRenderer == null
                         || ss.sprRenderer.enabled
                         || ss.sprRenderer.sprite == null
-                        || ss.sprType != CharacterAppearanceType.Head)
+                        || ss.sprType != CharacterAppearanceType.Head
+                    )
                         continue;
-                    int idx = layerIdxMap.TryGetValue(ss.sprRenderer.sortingLayerID, out var v) ? v : 0;
-                    if (idx > faceLayerIdx || (idx == faceLayerIdx && ss.sprRenderer.sortingOrder > faceOrder))
+                    int idx = layerIdxMap.TryGetValue(ss.sprRenderer.sortingLayerID, out var v)
+                        ? v
+                        : 0;
+                    if (
+                        idx > faceLayerIdx
+                        || (idx == faceLayerIdx && ss.sprRenderer.sortingOrder > faceOrder)
+                    )
                     {
                         faceLayerIdx = idx;
                         faceOrder = ss.sprRenderer.sortingOrder;
@@ -830,16 +946,21 @@ namespace PlayLoRWithMe
 
                 foreach (var ss in motion.motionSpriteSet)
                 {
-                    if (ss.sprRenderer == null
+                    if (
+                        ss.sprRenderer == null
                         || !ss.sprRenderer.enabled
-                        || ss.sprRenderer.sprite == null)
+                        || ss.sprRenderer.sprite == null
+                    )
                         continue;
                     var entry = (ss, ss.sprRenderer.transform.position);
                     bool inFront = false;
                     if (faceLayerIdx >= 0)
                     {
-                        int idx = layerIdxMap.TryGetValue(ss.sprRenderer.sortingLayerID, out var v) ? v : 0;
-                        inFront = idx > faceLayerIdx
+                        int idx = layerIdxMap.TryGetValue(ss.sprRenderer.sortingLayerID, out var v)
+                            ? v
+                            : 0;
+                        inFront =
+                            idx > faceLayerIdx
                             || (idx == faceLayerIdx && ss.sprRenderer.sortingOrder > faceOrder);
                     }
                     if (ss.sprType == CharacterAppearanceType.Skin)
@@ -852,15 +973,16 @@ namespace PlayLoRWithMe
                     if (ss.sprType == CharacterAppearanceType.Hood)
                         body.HasHood = true;
                 }
-
             }
             else
             {
                 foreach (var ss in motion.motionSpriteSet)
                 {
-                    if (ss.sprRenderer == null
+                    if (
+                        ss.sprRenderer == null
                         || !ss.sprRenderer.enabled
-                        || ss.sprRenderer.sprite == null)
+                        || ss.sprRenderer.sprite == null
+                    )
                         continue;
                     body.Sprites.Add((ss, ss.sprRenderer.transform.position));
                 }
@@ -888,20 +1010,25 @@ namespace PlayLoRWithMe
         /// to <see cref="TryGatherClothBody"/>.
         /// </summary>
         private static FashionBookBody TryGatherWorkshopBody(
-            int bid, BookXmlInfo bxi, string packageId,
-            List<GameObject> instancesToDestroy)
+            int bid,
+            BookXmlInfo bxi,
+            string packageId,
+            List<GameObject> instancesToDestroy
+        )
         {
             var loader = Singleton<CustomizingBookSkinLoader>.Instance;
             if (loader == null)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] workshop body {bid}: CustomizingBookSkinLoader is null");
+                Debug.LogWarning($"[PRWM] workshop body {bid}: CustomizingBookSkinLoader is null");
                 return null;
             }
             var skinName = bxi.GetCharacterSkin();
             var skinData = loader.GetWorkshopBookSkinData(packageId, skinName);
             if (skinData == null)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] workshop body {bid}: no skin data for pkg={packageId} skin={skinName}");
+                Debug.LogWarning(
+                    $"[PRWM] workshop body {bid}: no skin data for pkg={packageId} skin={skinName}"
+                );
                 return null;
             }
             return TryGatherClothBody(skinData, bid, packageId, $"book {bid}", instancesToDestroy);
@@ -916,14 +1043,17 @@ namespace PlayLoRWithMe
         /// not in <c>motionSpriteSet</c>.
         /// </summary>
         private static FashionBookBody TryGatherClothBody(
-            WorkshopSkinData skinData, int bid, string packageId, string label,
-            List<GameObject> instancesToDestroy)
+            WorkshopSkinData skinData,
+            int bid,
+            string packageId,
+            string label,
+            List<GameObject> instancesToDestroy
+        )
         {
-            var prefab = Resources.Load<GameObject>(
-                "Prefabs/Characters/[Prefab]Appearance_Custom");
+            var prefab = Resources.Load<GameObject>("Prefabs/Characters/[Prefab]Appearance_Custom");
             if (prefab == null)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: Appearance_Custom prefab not found");
+                Debug.LogWarning($"[PRWM] cloth body {label}: Appearance_Custom prefab not found");
                 return null;
             }
 
@@ -931,7 +1061,7 @@ namespace PlayLoRWithMe
             var setter = go.GetComponent<WorkshopSkinDataSetter>();
             if (setter == null)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: no WorkshopSkinDataSetter on prefab");
+                Debug.LogWarning($"[PRWM] cloth body {label}: no WorkshopSkinDataSetter on prefab");
                 UnityEngine.Object.Destroy(go);
                 return null;
             }
@@ -942,7 +1072,7 @@ namespace PlayLoRWithMe
             var appearance = go.GetComponent<CharacterAppearance>();
             if (appearance == null)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: no CharacterAppearance on prefab");
+                Debug.LogWarning($"[PRWM] cloth body {label}: no CharacterAppearance on prefab");
                 UnityEngine.Object.Destroy(go);
                 return null;
             }
@@ -952,13 +1082,14 @@ namespace PlayLoRWithMe
                 motion = appearance.GetCharacterMotion(ActionDetail.Default);
             if (motion == null)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: no Standing/Default motion found");
+                Debug.LogWarning($"[PRWM] cloth body {label}: no Standing/Default motion found");
                 UnityEngine.Object.Destroy(go);
                 return null;
             }
 
             // Find the cloth renderers and pivot on the Standing motion.
-            SpriteRenderer rearRenderer = null, frontRenderer = null;
+            SpriteRenderer rearRenderer = null,
+                frontRenderer = null;
             Transform customPivot = null;
             foreach (Transform child in motion.transform)
             {
@@ -972,18 +1103,16 @@ namespace PlayLoRWithMe
 
             if (rearRenderer == null || rearRenderer.sprite == null)
             {
-                Debug.LogWarning($"[PlayLoRWithMe] cloth body {label}: rear renderer={rearRenderer != null}, sprite={rearRenderer?.sprite != null}");
+                Debug.LogWarning(
+                    $"[PRWM] cloth body {label}: rear renderer={rearRenderer != null}, sprite={rearRenderer?.sprite != null}"
+                );
                 UnityEngine.Object.Destroy(go);
                 return null;
             }
 
-            Vector3 anchorPos = customPivot != null
-                ? customPivot.position
-                : Vector3.zero;
+            Vector3 anchorPos = customPivot != null ? customPivot.position : Vector3.zero;
 
-            float rawZ = customPivot != null
-                ? customPivot.rotation.eulerAngles.z
-                : 0f;
+            float rawZ = customPivot != null ? customPivot.rotation.eulerAngles.z : 0f;
             float pivotRotDeg = rawZ > 180f ? rawZ - 360f : rawZ;
 
             // headEnabled in the skin data means the head/face should be visible
@@ -996,13 +1125,13 @@ namespace PlayLoRWithMe
 
             var body = new FashionBookBody
             {
-                BookId       = bid,
-                PackageId    = packageId,
-                Variant      = null, // workshop skins are ungendered
+                BookId = bid,
+                PackageId = packageId,
+                Variant = null, // workshop skins are ungendered
                 ReplacesHead = !headEnabled,
-                AnchorPos    = anchorPos,
-                WorldScale   = motion.transform.lossyScale.y,
-                PivotRotDeg  = pivotRotDeg,
+                AnchorPos = anchorPos,
+                WorldScale = motion.transform.lossyScale.y,
+                PivotRotDeg = pivotRotDeg,
             };
 
             // Rear cloth sprite → behind-face layer.
@@ -1010,14 +1139,19 @@ namespace PlayLoRWithMe
             body.Sprites.Add((rearSet, rearRenderer.transform.position));
 
             // Front cloth sprite → in-front-of-face layer.
-            if (frontRenderer != null && frontRenderer.sprite != null
-                && frontRenderer.gameObject.activeSelf)
+            if (
+                frontRenderer != null
+                && frontRenderer.sprite != null
+                && frontRenderer.gameObject.activeSelf
+            )
             {
                 var frontSet = new SpriteSet(frontRenderer, CharacterAppearanceType.Body);
                 body.FrontSprites.Add((frontSet, frontRenderer.transform.position));
             }
 
-            Debug.Log($"[PlayLoRWithMe] workshop body {bid}: OK, rear sprite={rearRenderer.sprite.name}, front={frontRenderer?.sprite?.name ?? "none"}");
+            Debug.Log(
+                $"[PRWM] workshop body {bid}: OK, rear sprite={rearRenderer.sprite.name}, front={frontRenderer?.sprite?.name ?? "none"}"
+            );
             instancesToDestroy.Add(go);
             return body;
         }
@@ -1026,23 +1160,33 @@ namespace PlayLoRWithMe
         /// Gathers body sprites for a single book ID, handling gendered variants.
         /// </summary>
         private static void GatherBookBody(
-            int bid, List<FashionBookBody> result,
+            int bid,
+            List<FashionBookBody> result,
             List<GameObject> instancesToDestroy,
-            AssetBundleManagerRemake abm, HashSet<int> seen)
+            AssetBundleManagerRemake abm,
+            HashSet<int> seen
+        )
         {
             var bxi = Singleton<BookXmlList>.Instance?.GetData(bid);
             GatherBookBody(bid, bxi, result, instancesToDestroy, abm, seen);
         }
 
         private static void GatherBookBody(
-            int bid, BookXmlInfo bxi, List<FashionBookBody> result,
+            int bid,
+            BookXmlInfo bxi,
+            List<FashionBookBody> result,
             List<GameObject> instancesToDestroy,
-            AssetBundleManagerRemake abm, HashSet<int> seen)
+            AssetBundleManagerRemake abm,
+            HashSet<int> seen
+        )
         {
-            if (!seen.Add(bid)) return; // already gathered this book ID
+            if (!seen.Add(bid))
+                return; // already gathered this book ID
 
-            if (bxi == null) return;
-            if (string.IsNullOrEmpty(bxi.GetCharacterSkin())) return;
+            if (bxi == null)
+                return;
+            if (string.IsNullOrEmpty(bxi.GetCharacterSkin()))
+                return;
 
             if (bxi.gender == Gender.N || bxi.gender == Gender.Creature || bxi.gender == Gender.EGO)
             {
@@ -1055,9 +1199,11 @@ namespace PlayLoRWithMe
             else
             {
                 var bodyF = TryGatherOneBody(bid, bxi, "_F", "f", abm, instancesToDestroy);
-                if (bodyF != null) result.Add(bodyF);
+                if (bodyF != null)
+                    result.Add(bodyF);
                 var bodyM = TryGatherOneBody(bid, bxi, "_M", "m", abm, instancesToDestroy);
-                if (bodyM != null) result.Add(bodyM);
+                if (bodyM != null)
+                    result.Add(bodyM);
             }
         }
 
@@ -1067,7 +1213,8 @@ namespace PlayLoRWithMe
         )
         {
             var abm = Singleton<AssetBundleManagerRemake>.Instance;
-            if (abm == null) return;
+            if (abm == null)
+                return;
 
             var seen = new HashSet<int>();
             // Separate dedup set for workshop books keyed by "{packageId}:{id}" to avoid
@@ -1080,11 +1227,15 @@ namespace PlayLoRWithMe
             {
                 foreach (var bid in ccbm.GetBookIdList_CustomCoreBook(SephirahType.None, false))
                 {
-                    try { GatherBookBody(bid, result, instancesToDestroy, abm, seen); }
+                    try
+                    {
+                        GatherBookBody(bid, result, instancesToDestroy, abm, seen);
+                    }
                     catch (System.Exception ex)
                     {
                         Debug.LogWarning(
-                            $"[PlayLoRWithMe] AppearanceCache: fashion body gather {bid} failed: {ex.Message}");
+                            $"[PRWM] AppearanceCache: fashion body gather {bid} failed: {ex.Message}"
+                        );
                     }
                 }
             }
@@ -1101,7 +1252,8 @@ namespace PlayLoRWithMe
                     foreach (var unit in floor.GetUnitDataList())
                     {
                         var book = unit.bookItem;
-                        if (book?.ClassInfo == null) continue;
+                        if (book?.ClassInfo == null)
+                            continue;
                         var lid = book.GetBookClassInfoId();
                         int bid = lid.id;
                         var bxi = book.ClassInfo;
@@ -1112,8 +1264,13 @@ namespace PlayLoRWithMe
                                 if (seenWs.Add($"{lid.packageId}:{lid.id}"))
                                 {
                                     var wsBody = TryGatherWorkshopBody(
-                                        bid, bxi, lid.packageId, instancesToDestroy);
-                                    if (wsBody != null) result.Add(wsBody);
+                                        bid,
+                                        bxi,
+                                        lid.packageId,
+                                        instancesToDestroy
+                                    );
+                                    if (wsBody != null)
+                                        result.Add(wsBody);
                                 }
                             }
                             else
@@ -1124,7 +1281,8 @@ namespace PlayLoRWithMe
                         catch (System.Exception ex)
                         {
                             Debug.LogWarning(
-                                $"[PlayLoRWithMe] AppearanceCache: key page body gather {bid} failed: {ex.Message}");
+                                $"[PRWM] AppearanceCache: key page body gather {bid} failed: {ex.Message}"
+                            );
                         }
                     }
                 }
@@ -1133,18 +1291,24 @@ namespace PlayLoRWithMe
             // Workshop mod books from the book inventory — these have standard
             // character prefabs but are excluded from CustomCoreBookInventoryModel.
             var bookInv = Singleton<BookInventoryModel>.Instance;
-            Debug.Log($"[PlayLoRWithMe] AppearanceCache: bookInv={bookInv != null}, count={bookInv?.GetBookListAll()?.Count ?? -1}");
+            Debug.Log(
+                $"[PRWM] AppearanceCache: bookInv={bookInv != null}, count={bookInv?.GetBookListAll()?.Count ?? -1}"
+            );
             if (bookInv != null)
             {
                 int wsCount = 0;
                 foreach (var book in bookInv.GetBookListAll())
                 {
-                    if (!book.IsWorkshop) continue;
+                    if (!book.IsWorkshop)
+                        continue;
                     wsCount++;
                     var bxi = book.ClassInfo;
                     var lid = book.GetBookClassInfoId();
-                    Debug.Log($"[PlayLoRWithMe] AppearanceCache: ws book id={lid.id} pkg={lid.packageId} skinType={bxi?.skinType} charSkin={bxi?.GetCharacterSkin()} classInfo={bxi != null}");
-                    if (bxi == null || string.IsNullOrEmpty(bxi.GetCharacterSkin())) continue;
+                    Debug.Log(
+                        $"[PRWM] AppearanceCache: ws book id={lid.id} pkg={lid.packageId} skinType={bxi?.skinType} charSkin={bxi?.GetCharacterSkin()} classInfo={bxi != null}"
+                    );
+                    if (bxi == null || string.IsNullOrEmpty(bxi.GetCharacterSkin()))
+                        continue;
                     int bid = lid.id;
                     try
                     {
@@ -1152,14 +1316,23 @@ namespace PlayLoRWithMe
                         {
                             // Workshop books with custom skins use cloth overlays,
                             // not standard character prefabs.
-                            if (!seenWs.Add($"{lid.packageId}:{lid.id}")) continue;
-                            Debug.Log($"[PlayLoRWithMe] AppearanceCache: workshop Custom book {bid} pkg={lid.packageId} skin={bxi.GetCharacterSkin()}");
+                            if (!seenWs.Add($"{lid.packageId}:{lid.id}"))
+                                continue;
+                            Debug.Log(
+                                $"[PRWM] AppearanceCache: workshop Custom book {bid} pkg={lid.packageId} skin={bxi.GetCharacterSkin()}"
+                            );
                             var wsBody = TryGatherWorkshopBody(
-                                bid, bxi, lid.packageId, instancesToDestroy);
+                                bid,
+                                bxi,
+                                lid.packageId,
+                                instancesToDestroy
+                            );
                             if (wsBody != null)
                                 result.Add(wsBody);
                             else
-                                Debug.LogWarning($"[PlayLoRWithMe] AppearanceCache: TryGatherWorkshopBody returned null for {bid}");
+                                Debug.LogWarning(
+                                    $"[PRWM] AppearanceCache: TryGatherWorkshopBody returned null for {bid}"
+                                );
                         }
                         else
                         {
@@ -1169,10 +1342,13 @@ namespace PlayLoRWithMe
                     catch (System.Exception ex)
                     {
                         Debug.LogWarning(
-                            $"[PlayLoRWithMe] AppearanceCache: workshop body gather {bid} failed: {ex.Message}\n{ex.StackTrace}");
+                            $"[PRWM] AppearanceCache: workshop body gather {bid} failed: {ex.Message}\n{ex.StackTrace}"
+                        );
                     }
                 }
-                Debug.Log($"[PlayLoRWithMe] AppearanceCache: workshop books scanned, {wsCount} workshop books found");
+                Debug.Log(
+                    $"[PRWM] AppearanceCache: workshop books scanned, {wsCount} workshop books found"
+                );
             }
 
             // Workshop skins (cloth overlays from CustomizingResourceLoader).
@@ -1183,7 +1359,8 @@ namespace PlayLoRWithMe
             {
                 foreach (var skin in wsLoader.GetWorkshopSkinDataAll())
                 {
-                    if (skin?.dic == null || skin.dic.Count == 0) continue;
+                    if (skin?.dic == null || skin.dic.Count == 0)
+                        continue;
                     // File stem uses "ws_" prefix + contentFolderIdx to distinguish
                     // from book-based bodies.
                     var folderIdx = skin.contentFolderIdx;
@@ -1191,8 +1368,12 @@ namespace PlayLoRWithMe
                     {
                         var stem = $"ws_{folderIdx}";
                         var wsBody = TryGatherClothBody(
-                            skin, 0, "", $"skin {folderIdx}",
-                            instancesToDestroy);
+                            skin,
+                            0,
+                            "",
+                            $"skin {folderIdx}",
+                            instancesToDestroy
+                        );
                         if (wsBody != null)
                         {
                             wsBody.FileStemOverride = stem;
@@ -1202,11 +1383,11 @@ namespace PlayLoRWithMe
                     catch (System.Exception ex)
                     {
                         Debug.LogWarning(
-                            $"[PlayLoRWithMe] AppearanceCache: workshop skin {folderIdx} failed: {ex.Message}\n{ex.StackTrace}");
+                            $"[PRWM] AppearanceCache: workshop skin {folderIdx} failed: {ex.Message}\n{ex.StackTrace}"
+                        );
                     }
                 }
             }
-
         }
 
         /// <summary>
@@ -1227,7 +1408,8 @@ namespace PlayLoRWithMe
             float ppu
         )
         {
-            if (fashionBodies.Count == 0) return;
+            if (fashionBodies.Count == 0)
+                return;
             Directory.CreateDirectory(FashionBodyDir);
 
             foreach (var body in fashionBodies)
@@ -1235,7 +1417,7 @@ namespace PlayLoRWithMe
                 // gendered variants use a suffix: fashionbodies/123_f.png, 123_m.png
                 var suffix = body.Variant != null ? $"_{body.Variant}" : "";
                 var stem = body.FileStem;
-                var path      = Path.Combine(FashionBodyDir,      $"{stem}{suffix}.png");
+                var path = Path.Combine(FashionBodyDir, $"{stem}{suffix}.png");
                 var frontPath = Path.Combine(FashionBodyFrontDir, $"{stem}{suffix}.png");
 
                 var skinPath = Path.Combine(FashionBodyDir, $"{stem}{suffix}_skin.png");
@@ -1248,15 +1430,17 @@ namespace PlayLoRWithMe
                 // version had a `continue` here that left every cached book stuck on
                 // the placeholder, which made feet land at the PNG bottom edge instead
                 // of the authored feet position on every post-first-install startup.
-                bool backDone  = body.Sprites.Count      == 0 || File.Exists(path);
+                bool backDone = body.Sprites.Count == 0 || File.Exists(path);
                 bool frontDone = body.FrontSprites.Count == 0 || File.Exists(frontPath);
-                bool skinDone  = body.SkinSprites.Count  == 0 || File.Exists(skinPath);
+                bool skinDone = body.SkinSprites.Count == 0 || File.Exists(skinPath);
 
                 try
                 {
                     // Sort all lists back-to-front (painter's algorithm).
-                    System.Comparison<(SpriteSet sprSet, Vector3 worldPos)> bodySortCmp =
-                        (a, b) => a.sprSet.sprRenderer.sortingOrder.CompareTo(b.sprSet.sprRenderer.sortingOrder);
+                    System.Comparison<(SpriteSet sprSet, Vector3 worldPos)> bodySortCmp = (a, b) =>
+                        a.sprSet.sprRenderer.sortingOrder.CompareTo(
+                            b.sprSet.sprRenderer.sortingOrder
+                        );
                     body.Sprites.Sort(bodySortCmp);
                     body.FrontSprites.Sort(bodySortCmp);
                     body.SkinSprites.Sort(bodySortCmp);
@@ -1285,13 +1469,19 @@ namespace PlayLoRWithMe
                         // by symmetrizing the canvas X-bounds around AnchorPos.x (the
                         // head attach point from customPivot.position) — see below.
                         var allReplaceSprites = new List<(SpriteSet sprSet, Vector3 worldPos)>(
-                            body.Sprites.Count + body.FrontSprites.Count + body.SkinSprites.Count);
+                            body.Sprites.Count + body.FrontSprites.Count + body.SkinSprites.Count
+                        );
                         allReplaceSprites.AddRange(body.SkinSprites);
                         allReplaceSprites.AddRange(body.Sprites);
                         allReplaceSprites.AddRange(body.FrontSprites);
-                        if (allReplaceSprites.Count == 0) continue;
+                        if (allReplaceSprites.Count == 0)
+                            continue;
 
-                        var bodyBounds = ComputeSpriteBounds(allReplaceSprites, Vector3.zero, body.WorldScale);
+                        var bodyBounds = ComputeSpriteBounds(
+                            allReplaceSprites,
+                            Vector3.zero,
+                            body.WorldScale
+                        );
 
                         // Symmetrize X around the head attach point so the head
                         // lands at the horizontal center of the PNG.  In-game,
@@ -1300,12 +1490,13 @@ namespace PlayLoRWithMe
                         // the game's own character alignment.  Expand the canvas
                         // to the larger of the two sides so no content is clipped.
                         float headX = body.AnchorPos.x;
-                        float leftExtent  = headX - bodyBounds.min.x;
+                        float leftExtent = headX - bodyBounds.min.x;
                         float rightExtent = bodyBounds.max.x - headX;
                         float halfW = Mathf.Max(leftExtent, rightExtent);
                         bodyBounds.SetMinMax(
                             new Vector3(headX - halfW, bodyBounds.min.y, bodyBounds.min.z),
-                            new Vector3(headX + halfW, bodyBounds.max.y, bodyBounds.max.z));
+                            new Vector3(headX + halfW, bodyBounds.max.y, bodyBounds.max.z)
+                        );
 
                         int bW = Mathf.Max(1, Mathf.RoundToInt(bodyBounds.size.x * ppu));
                         int bH = Mathf.Max(1, Mathf.RoundToInt(bodyBounds.size.y * ppu));
@@ -1317,7 +1508,14 @@ namespace PlayLoRWithMe
                         if (!backDone)
                         {
                             var canvasPixels = BuildBodyCanvas(
-                                allReplaceSprites, bW, bH, bodyBounds, ppu, Vector3.zero, body.WorldScale);
+                                allReplaceSprites,
+                                bW,
+                                bH,
+                                bodyBounds,
+                                ppu,
+                                Vector3.zero,
+                                body.WorldScale
+                            );
                             File.WriteAllBytes(path, EncodeCanvasToPng(canvasPixels, bW, bH));
                         }
 
@@ -1342,13 +1540,21 @@ namespace PlayLoRWithMe
                         // inflating extH with transparent padding.
                         float extMaxY = faceHairBounds.max.y; // must match face/hair for alignment
                         float visMinYFace = faceHairBounds.min.y;
-                        foreach (var spriteList in new[]
-                            { body.Sprites, body.FrontSprites, body.SkinSprites })
+                        foreach (
+                            var spriteList in new[]
+                            {
+                                body.Sprites,
+                                body.FrontSprites,
+                                body.SkinSprites,
+                            }
+                        )
                         {
                             foreach (var (ss, wpos) in spriteList)
                             {
                                 var spr = ss.sprRenderer.sprite;
-                                float visBtm = wpos.y + spr.bounds.min.y * body.WorldScale
+                                float visBtm =
+                                    wpos.y
+                                    + spr.bounds.min.y * body.WorldScale
                                     + spr.textureRectOffset.y / spr.pixelsPerUnit * body.WorldScale;
                                 float visBtmFace = visBtm - anchor.y;
                                 if (visBtmFace < visMinYFace)
@@ -1369,25 +1575,56 @@ namespace PlayLoRWithMe
                         float extMinY = Mathf.Min(visMinYFace, -anchor.y);
                         var extBounds = new Bounds(
                             new Vector3(faceHairBounds.center.x, (extMinY + extMaxY) * 0.5f, 0f),
-                            new Vector3(faceHairBounds.size.x, extMaxY - extMinY, 0.2f));
+                            new Vector3(faceHairBounds.size.x, extMaxY - extMinY, 0.2f)
+                        );
                         int extH = Mathf.Max(1, Mathf.RoundToInt((extMaxY - extMinY) * ppu));
 
                         if (!backDone)
-                            File.WriteAllBytes(path,
-                                ComposeBodySprites(body.Sprites, faceHairW, extH, extBounds, ppu, anchor, body.WorldScale));
+                            File.WriteAllBytes(
+                                path,
+                                ComposeBodySprites(
+                                    body.Sprites,
+                                    faceHairW,
+                                    extH,
+                                    extBounds,
+                                    ppu,
+                                    anchor,
+                                    body.WorldScale
+                                )
+                            );
 
                         if (!frontDone)
                         {
                             Directory.CreateDirectory(FashionBodyFrontDir);
-                            File.WriteAllBytes(frontPath,
-                                ComposeBodySprites(body.FrontSprites, faceHairW, extH, extBounds, ppu, anchor, body.WorldScale));
+                            File.WriteAllBytes(
+                                frontPath,
+                                ComposeBodySprites(
+                                    body.FrontSprites,
+                                    faceHairW,
+                                    extH,
+                                    extBounds,
+                                    ppu,
+                                    anchor,
+                                    body.WorldScale
+                                )
+                            );
                         }
 
                         // Skin-type sprites (neck, collarbone) — saved separately so the
                         // frontend can tint them per-librarian with CSS multiply blending.
                         if (!skinDone)
-                            File.WriteAllBytes(skinPath,
-                                ComposeBodySprites(body.SkinSprites, faceHairW, extH, extBounds, ppu, anchor, body.WorldScale));
+                            File.WriteAllBytes(
+                                skinPath,
+                                ComposeBodySprites(
+                                    body.SkinSprites,
+                                    faceHairW,
+                                    extH,
+                                    extBounds,
+                                    ppu,
+                                    anchor,
+                                    body.WorldScale
+                                )
+                            );
 
                         // Feet sit at world Y = 0 (prefab origin authored at feet); in
                         // canvas space that's -anchor.y.  Expose as a fraction from the top
@@ -1400,7 +1637,7 @@ namespace PlayLoRWithMe
                 catch (System.Exception ex)
                 {
                     Debug.LogWarning(
-                        $"[PlayLoRWithMe] AppearanceCache: fashion body {body.BookId} failed: {ex.Message}"
+                        $"[PRWM] AppearanceCache: fashion body {body.BookId} failed: {ex.Message}"
                     );
                 }
             }
@@ -1416,11 +1653,22 @@ namespace PlayLoRWithMe
         private static void RecordFeetYFrac(string stem, float topY, float bottomY, float feetY)
         {
             float canvasH = topY - bottomY;
-            if (canvasH <= Mathf.Epsilon) return;
+            if (canvasH <= Mathf.Epsilon)
+                return;
             float frac = Mathf.Clamp01((topY - feetY) / canvasH);
-            if (!FashionMeta.TryGetValue(stem, out var m)) return;
-            FashionMeta[stem] = (m.TiltDeg, m.PivotFracX, m.PivotFracY,
-                m.HasFrontLayer, m.HidesBackHair, m.SkinGender, frac, m.BodyW, m.BodyH);
+            if (!FashionMeta.TryGetValue(stem, out var m))
+                return;
+            FashionMeta[stem] = (
+                m.TiltDeg,
+                m.PivotFracX,
+                m.PivotFracY,
+                m.HasFrontLayer,
+                m.HidesBackHair,
+                m.SkinGender,
+                frac,
+                m.BodyW,
+                m.BodyH
+            );
         }
 
         /// <summary>
@@ -1431,10 +1679,21 @@ namespace PlayLoRWithMe
         /// </summary>
         private static void RecordBodyDims(string stem, int w, int h)
         {
-            if (w <= 0 || h <= 0) return;
-            if (!FashionMeta.TryGetValue(stem, out var m)) return;
-            FashionMeta[stem] = (m.TiltDeg, m.PivotFracX, m.PivotFracY,
-                m.HasFrontLayer, m.HidesBackHair, m.SkinGender, m.FeetYFrac, w, h);
+            if (w <= 0 || h <= 0)
+                return;
+            if (!FashionMeta.TryGetValue(stem, out var m))
+                return;
+            FashionMeta[stem] = (
+                m.TiltDeg,
+                m.PivotFracX,
+                m.PivotFracY,
+                m.HasFrontLayer,
+                m.HidesBackHair,
+                m.SkinGender,
+                m.FeetYFrac,
+                w,
+                h
+            );
         }
 
         /// <summary>
@@ -1453,12 +1712,28 @@ namespace PlayLoRWithMe
             var bounds = new Bounds();
             foreach (var (ss, wpos) in sprites)
             {
-                var adj  = wpos - anchorAdjust;
-                var spr  = ss.sprRenderer.sprite;
-                var bMin = new Vector3(adj.x + spr.bounds.min.x * worldScale, adj.y + spr.bounds.min.y * worldScale, 0);
-                var bMax = new Vector3(adj.x + spr.bounds.max.x * worldScale, adj.y + spr.bounds.max.y * worldScale, 0);
-                if (first) { bounds = new Bounds((bMin + bMax) * 0.5f, bMax - bMin); first = false; }
-                else       { bounds.Encapsulate(bMin); bounds.Encapsulate(bMax); }
+                var adj = wpos - anchorAdjust;
+                var spr = ss.sprRenderer.sprite;
+                var bMin = new Vector3(
+                    adj.x + spr.bounds.min.x * worldScale,
+                    adj.y + spr.bounds.min.y * worldScale,
+                    0
+                );
+                var bMax = new Vector3(
+                    adj.x + spr.bounds.max.x * worldScale,
+                    adj.y + spr.bounds.max.y * worldScale,
+                    0
+                );
+                if (first)
+                {
+                    bounds = new Bounds((bMin + bMax) * 0.5f, bMax - bMin);
+                    first = false;
+                }
+                else
+                {
+                    bounds.Encapsulate(bMin);
+                    bounds.Encapsulate(bMax);
+                }
             }
             return bounds;
         }
@@ -1479,7 +1754,15 @@ namespace PlayLoRWithMe
             float worldScale = 1f
         )
         {
-            var canvas = BuildBodyCanvas(sprites, canvasW, canvasH, canvasBounds, ppu, anchorAdjust, worldScale);
+            var canvas = BuildBodyCanvas(
+                sprites,
+                canvasW,
+                canvasH,
+                canvasBounds,
+                ppu,
+                anchorAdjust,
+                worldScale
+            );
             return EncodeCanvasToPng(canvas, canvasW, canvasH);
         }
 
@@ -1506,7 +1789,7 @@ namespace PlayLoRWithMe
                 Texture2D crop = null;
                 try
                 {
-                    var sprite      = ss.sprRenderer.sprite;
+                    var sprite = ss.sprRenderer.sprite;
                     var adjustedPos = worldPos - anchorAdjust;
 
                     // Body sprites may have a different pixelsPerUnit than the canvas (which
@@ -1516,18 +1799,19 @@ namespace PlayLoRWithMe
                     // occupies the same number of canvas pixels as one world-unit of face/hair.
                     float ppuScale = ppu / sprite.pixelsPerUnit * worldScale;
                     var rawCrop = ReadSpriteCrop(sprite);
-                    int cropW, cropH;
+                    int cropW,
+                        cropH;
                     if (Mathf.Abs(ppuScale - 1f) < 0.01f)
                     {
-                        crop  = rawCrop;
+                        crop = rawCrop;
                         cropW = rawCrop.width;
                         cropH = rawCrop.height;
                     }
                     else
                     {
-                        cropW = Mathf.Max(1, Mathf.RoundToInt(rawCrop.width  * ppuScale));
+                        cropW = Mathf.Max(1, Mathf.RoundToInt(rawCrop.width * ppuScale));
                         cropH = Mathf.Max(1, Mathf.RoundToInt(rawCrop.height * ppuScale));
-                        crop  = ScaleTexture(rawCrop, cropW, cropH); // destroys rawCrop
+                        crop = ScaleTexture(rawCrop, cropW, cropH); // destroys rawCrop
                     }
 
                     // Canvas offset: world-space bottom-left of the sprite's logical rect,
@@ -1535,9 +1819,13 @@ namespace PlayLoRWithMe
                     // the coordinate frame of canvasBounds; sprite.bounds.min (local space)
                     // is scaled to world space by worldScale before conversion.
                     int boundsOffX = Mathf.RoundToInt(
-                        (adjustedPos.x + sprite.bounds.min.x * worldScale - canvasBounds.min.x) * ppu);
+                        (adjustedPos.x + sprite.bounds.min.x * worldScale - canvasBounds.min.x)
+                            * ppu
+                    );
                     int boundsOffY = Mathf.RoundToInt(
-                        (adjustedPos.y + sprite.bounds.min.y * worldScale - canvasBounds.min.y) * ppu);
+                        (adjustedPos.y + sprite.bounds.min.y * worldScale - canvasBounds.min.y)
+                            * ppu
+                    );
                     // textureRectOffset is in native sprite pixels; scale to canvas pixels.
                     var texOff = sprite.textureRectOffset;
                     int offsetX = boundsOffX + Mathf.RoundToInt(texOff.x * ppuScale);
@@ -1570,7 +1858,8 @@ namespace PlayLoRWithMe
                                         (src.r * src.a + dst.r * dst.a * (1f - src.a)) / outA,
                                         (src.g * src.a + dst.g * dst.a * (1f - src.a)) / outA,
                                         (src.b * src.a + dst.b * dst.a * (1f - src.a)) / outA,
-                                        outA);
+                                        outA
+                                    );
                             }
                         }
                     }
@@ -1610,8 +1899,13 @@ namespace PlayLoRWithMe
         /// </summary>
         private static Texture2D ScaleTexture(Texture2D src, int targetW, int targetH)
         {
-            var rt = RenderTexture.GetTemporary(targetW, targetH, 0,
-                RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            var rt = RenderTexture.GetTemporary(
+                targetW,
+                targetH,
+                0,
+                RenderTextureFormat.ARGB32,
+                RenderTextureReadWrite.sRGB
+            );
             var prev = RenderTexture.active;
             try
             {
@@ -1672,8 +1966,13 @@ namespace PlayLoRWithMe
             {
                 var origFilter = src.filterMode;
                 src.filterMode = FilterMode.Point;
-                rt = RenderTexture.GetTemporary(src.width, src.height, 0,
-                    RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+                rt = RenderTexture.GetTemporary(
+                    src.width,
+                    src.height,
+                    0,
+                    RenderTextureFormat.ARGB32,
+                    RenderTextureReadWrite.sRGB
+                );
                 Graphics.Blit(src, rt);
                 src.filterMode = origFilter;
 
@@ -1817,7 +2116,12 @@ namespace PlayLoRWithMe
                 int scaledW = Mathf.Max(1, Mathf.RoundToInt(cropW * ppuRatio));
                 int scaledH = Mathf.Max(1, Mathf.RoundToInt(cropH * ppuRatio));
 
-                var rt = RenderTexture.GetTemporary(scaledW, scaledH, 0, RenderTextureFormat.ARGB32);
+                var rt = RenderTexture.GetTemporary(
+                    scaledW,
+                    scaledH,
+                    0,
+                    RenderTextureFormat.ARGB32
+                );
                 var prev = RenderTexture.active;
                 try
                 {
@@ -1840,7 +2144,13 @@ namespace PlayLoRWithMe
                             int safeW2 = Mathf.Clamp(scaledW, 0, canvasW - offsetX);
                             int safeH2 = Mathf.Clamp(scaledH, 0, canvasH - offsetY);
                             if (safeW2 > 0 && safeH2 > 0)
-                                canvas.SetPixels32(offsetX, offsetY, safeW2, safeH2, scaled.GetPixels32());
+                                canvas.SetPixels32(
+                                    offsetX,
+                                    offsetY,
+                                    safeW2,
+                                    safeH2,
+                                    scaled.GetPixels32()
+                                );
 
                             canvas.Apply();
                             return canvas.EncodeToPNG();

@@ -23,8 +23,10 @@ namespace PlayLoRWithMe
         /// field, used to read the suggested-name pool without a public API.
         /// </summary>
         private static readonly FieldInfo _libNameDictField =
-            typeof(LibrariansNameXmlList).GetField("_dictionary",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+            typeof(LibrariansNameXmlList).GetField(
+                "_dictionary",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
 
         /// <summary>
         /// The 10 named Sephirah floors in canonical order; index is the floorIndex
@@ -43,6 +45,7 @@ namespace PlayLoRWithMe
             SephirahType.Hokma,
             SephirahType.Keter,
         };
+
         /// <summary>
         /// Serializes the full unfiltered game state. Used by the SSE path and as the
         /// baseline for delta diffing.
@@ -67,7 +70,7 @@ namespace PlayLoRWithMe
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"[PlayLoRWithMe] GameStateSerializer error: {ex}");
+                Debug.LogError($"[PRWM] GameStateSerializer error: {ex}");
                 return new JsonWriter().Add("scene", "error").Build();
             }
         }
@@ -148,17 +151,13 @@ namespace PlayLoRWithMe
         /// Serializes the title screen. Currently a no-op placeholder; the scene
         /// tag is already written by the dispatcher.
         /// </summary>
-        private static void WriteTitleScene(JsonWriter w)
-        {
-        }
+        private static void WriteTitleScene(JsonWriter w) { }
 
         /// <summary>
         /// Serializes the story/cutscene scene. Currently a no-op placeholder;
         /// the scene tag is already written by the dispatcher.
         /// </summary>
-        private static void WriteStoryScene(JsonWriter w)
-        {
-        }
+        private static void WriteStoryScene(JsonWriter w) { }
 
         /// <summary>
         /// Appends stage info and pre-battle unit previews for the BattleSetting phase.
@@ -320,7 +319,11 @@ namespace PlayLoRWithMe
                                                 .Add("rarity", xml.Rarity.ToString())
                                                 .Add("count", 1);
 
-                                            WriteDiceBehaviours(c, xml.DiceBehaviourList, abilityDescList);
+                                            WriteDiceBehaviours(
+                                                c,
+                                                xml.DiceBehaviourList,
+                                                abilityDescList
+                                            );
 
                                             var abilityDesc =
                                                 abilityDescList?.GetAbilityDescString(xml) ?? "";
@@ -445,7 +448,10 @@ namespace PlayLoRWithMe
                                                 k =>
                                                 {
                                                     k.Add("instanceId", book.instanceId)
-                                                        .Add("bookId", book.GetBookClassInfoId().id);
+                                                        .Add(
+                                                            "bookId",
+                                                            book.GetBookClassInfoId().id
+                                                        );
                                                     var kpPkg = book.GetBookClassInfoId().packageId;
                                                     if (!string.IsNullOrEmpty(kpPkg))
                                                         k.Add("bookPackageId", kpPkg);
@@ -456,11 +462,17 @@ namespace PlayLoRWithMe
                                                         // with the BattleSetting preview.
                                                         .Add("hp", unit.MaxHp)
                                                         .Add("breakGauge", book.Break)
-                                                        .Add("equipRangeType", book.ClassInfo.RangeType.ToString())
+                                                        .Add(
+                                                            "equipRangeType",
+                                                            book.ClassInfo.RangeType.ToString()
+                                                        )
                                                         // Rarity is emitted only on librarian-owned key pages so
                                                         // customization surfaces can render the colored outline.
                                                         // Battle-context emission sites omit this field.
-                                                        .Add("rarity", book.ClassInfo.Rarity.ToString())
+                                                        .Add(
+                                                            "rarity",
+                                                            book.ClassInfo.Rarity.ToString()
+                                                        )
                                                         // Multi-deck signal — true when the key page has the
                                                         // BookOption.MultiDeck flag (e.g. The Purple Tear). Drives
                                                         // the editor's tab strip; battle-context emission omits this.
@@ -493,7 +505,8 @@ namespace PlayLoRWithMe
                                                                         book.hBpResist.ToString()
                                                                     )
                                                         );
-                                                });
+                                                }
+                                            );
                                             // Fashion metadata for the equipped key page body preview.
                                             // Written as sibling fields on the librarian object (not
                                             // nested inside keyPage) because the keyPage object above
@@ -501,28 +514,59 @@ namespace PlayLoRWithMe
                                             {
                                                 var kpLid = book.GetBookClassInfoId();
                                                 var kpBxi = book.ClassInfo;
-                                                if (kpBxi != null && !string.IsNullOrEmpty(kpBxi.GetCharacterSkin()))
+                                                if (
+                                                    kpBxi != null
+                                                    && !string.IsNullOrEmpty(
+                                                        kpBxi.GetCharacterSkin()
+                                                    )
+                                                )
                                                 {
                                                     if (kpBxi.gender != Gender.N)
-                                                        o.Add("keyPageSkinGender", kpBxi.gender.ToString());
-                                                    o.Add("keyPageReplacesHead", kpBxi.skinType != "Lor");
-                                                    var kpStem = string.IsNullOrEmpty(kpLid.packageId)
-                                                        ? kpLid.id.ToString() : $"{kpLid.packageId}_{kpLid.id}";
-                                                    if (AppearanceCache.FashionMeta.TryGetValue(kpStem, out var kpMeta))
+                                                        o.Add(
+                                                            "keyPageSkinGender",
+                                                            kpBxi.gender.ToString()
+                                                        );
+                                                    o.Add(
+                                                        "keyPageReplacesHead",
+                                                        kpBxi.skinType != "Lor"
+                                                    );
+                                                    var kpStem = string.IsNullOrEmpty(
+                                                        kpLid.packageId
+                                                    )
+                                                        ? kpLid.id.ToString()
+                                                        : $"{kpLid.packageId}_{kpLid.id}";
+                                                    if (
+                                                        AppearanceCache.FashionMeta.TryGetValue(
+                                                            kpStem,
+                                                            out var kpMeta
+                                                        )
+                                                    )
                                                     {
                                                         if (Mathf.Abs(kpMeta.TiltDeg) > 0.05f)
-                                                            o.Add("keyPageHeadTiltDeg", kpMeta.TiltDeg)
-                                                             .Add("keyPagePivotFracX", kpMeta.PivotFracX)
-                                                             .Add("keyPagePivotFracY", kpMeta.PivotFracY);
+                                                            o.Add(
+                                                                    "keyPageHeadTiltDeg",
+                                                                    kpMeta.TiltDeg
+                                                                )
+                                                                .Add(
+                                                                    "keyPagePivotFracX",
+                                                                    kpMeta.PivotFracX
+                                                                )
+                                                                .Add(
+                                                                    "keyPagePivotFracY",
+                                                                    kpMeta.PivotFracY
+                                                                );
                                                         if (kpMeta.HasFrontLayer)
                                                             o.Add("keyPageHasFrontLayer", true);
                                                         if (kpMeta.HidesBackHair)
                                                             o.Add("keyPageHidesBackHair", true);
                                                         if (kpMeta.FeetYFrac < 0.999f)
-                                                            o.Add("keyPageFeetYFrac", kpMeta.FeetYFrac);
+                                                            o.Add(
+                                                                "keyPageFeetYFrac",
+                                                                kpMeta.FeetYFrac
+                                                            );
                                                         if (kpMeta.BodyW > 0 && kpMeta.BodyH > 0)
                                                             o.Add("keyPageBodyW", kpMeta.BodyW)
-                                                             .Add("keyPageBodyH", kpMeta.BodyH);
+                                                                .Add("keyPageBodyH", kpMeta.BodyH);
                                                     }
                                                 }
                                             }
@@ -552,7 +596,10 @@ namespace PlayLoRWithMe
                                                                 .Add("isNegative", p.isNegative);
                                                             if (!string.IsNullOrEmpty(p.desc))
                                                                 po.Add("desc", p.desc);
-                                                            var passiveXml = Singleton<PassiveXmlList>.Instance?.GetData(p.id);
+                                                            var passiveXml =
+                                                                Singleton<PassiveXmlList>.Instance?.GetData(
+                                                                    p.id
+                                                                );
                                                             if (passiveXml != null)
                                                                 po.Add("cost", passiveXml.cost);
                                                         });
@@ -562,69 +609,129 @@ namespace PlayLoRWithMe
 
                                             // Passive attribution (succession) metadata — slot capacity,
                                             // cost budget, source key pages, and attributed passive details.
-                                            o.Add("passiveSlotCount", book.ClassInfo?.SuccessionPossibleNumber ?? 0)
-                                             .Add("maxPassiveCost", book.GetMaxPassiveCost())
-                                             .Add("currentPassiveCost", book.GetCurrentPassiveCost());
+                                            o.Add(
+                                                    "passiveSlotCount",
+                                                    book.ClassInfo?.SuccessionPossibleNumber ?? 0
+                                                )
+                                                .Add("maxPassiveCost", book.GetMaxPassiveCost())
+                                                .Add(
+                                                    "currentPassiveCost",
+                                                    book.GetCurrentPassiveCost()
+                                                );
 
-                                            var sourceIds = book.originData?.equipedBookIdListInPassive;
+                                            var sourceIds =
+                                                book.originData?.equipedBookIdListInPassive;
                                             if (sourceIds != null && sourceIds.Count > 0)
                                             {
-                                                o.AddArray("sourceKeyPageIds", sArr =>
-                                                {
-                                                    foreach (var sid in sourceIds)
-                                                        sArr.AddInt(sid);
-                                                });
+                                                o.AddArray(
+                                                    "sourceKeyPageIds",
+                                                    sArr =>
+                                                    {
+                                                        foreach (var sid in sourceIds)
+                                                            sArr.AddInt(sid);
+                                                    }
+                                                );
                                             }
 
                                             // Attributed (succession-received) passives — passives whose
                                             // source book differs from this book's own instance.
-                                            var allPassives = typeof(BookModel)
-                                                .GetField("_activatedAllPassives", BindingFlags.NonPublic | BindingFlags.Instance)
-                                                ?.GetValue(book) as List<PassiveModel>;
+                                            var allPassives =
+                                                typeof(BookModel)
+                                                    .GetField(
+                                                        "_activatedAllPassives",
+                                                        BindingFlags.NonPublic
+                                                            | BindingFlags.Instance
+                                                    )
+                                                    ?.GetValue(book) as List<PassiveModel>;
                                             if (allPassives != null)
                                             {
                                                 var attributed = allPassives.FindAll(pm =>
                                                     pm.originData != null
-                                                    && pm.originData.currentpassive?.id != EmptyAttributionPassiveId
-                                                    && pm.originData.receivepassivebookId != pm.BookInstanceId);
+                                                    && pm.originData.currentpassive?.id
+                                                        != EmptyAttributionPassiveId
+                                                    && pm.originData.receivepassivebookId
+                                                        != pm.BookInstanceId
+                                                );
                                                 if (attributed.Count > 0)
                                                 {
-                                                    o.AddArray("attributedPassives", apArr =>
-                                                    {
-                                                        var descList = Singleton<PassiveDescXmlList>.Instance;
-                                                        foreach (var pm in attributed)
+                                                    o.AddArray(
+                                                        "attributedPassives",
+                                                        apArr =>
                                                         {
-                                                            var pmData = pm.originData;
-                                                            if (pmData?.currentpassive == null)
-                                                                continue;
-                                                            var pxml = pmData.currentpassive;
-                                                            // Resolve localized name/desc the same way BookPassiveInfo does —
-                                                            // the raw XML fields are blank for most vanilla entries.
-                                                            string pname = pxml.id.IsWorkshop()
-                                                                ? pxml.name
-                                                                : (descList?.GetName(pxml.id) ?? pxml.name);
-                                                            string pdesc = pxml.id.IsWorkshop()
-                                                                ? pxml.desc
-                                                                : (descList?.GetDesc(pxml.id) ?? pxml.desc);
-                                                            apArr.AddObject(ap =>
+                                                            var descList =
+                                                                Singleton<PassiveDescXmlList>.Instance;
+                                                            foreach (var pm in attributed)
                                                             {
-                                                                ap.AddObject("passive", pp =>
+                                                                var pmData = pm.originData;
+                                                                if (pmData?.currentpassive == null)
+                                                                    continue;
+                                                                var pxml = pmData.currentpassive;
+                                                                // Resolve localized name/desc the same way BookPassiveInfo does —
+                                                                // the raw XML fields are blank for most vanilla entries.
+                                                                string pname = pxml.id.IsWorkshop()
+                                                                    ? pxml.name
+                                                                    : (
+                                                                        descList?.GetName(pxml.id)
+                                                                        ?? pxml.name
+                                                                    );
+                                                                string pdesc = pxml.id.IsWorkshop()
+                                                                    ? pxml.desc
+                                                                    : (
+                                                                        descList?.GetDesc(pxml.id)
+                                                                        ?? pxml.desc
+                                                                    );
+                                                                apArr.AddObject(ap =>
                                                                 {
-                                                                    AddLorId(pp, "id", pxml.id);
-                                                                    pp.Add("name", pname)
-                                                                      .Add("rare", pxml.rare.ToString())
-                                                                      .Add("isNegative", pxml.isNegative);
-                                                                    if (!string.IsNullOrEmpty(pdesc))
-                                                                        pp.Add("desc", pdesc);
-                                                                    pp.Add("cost", pxml.cost);
+                                                                    ap.AddObject(
+                                                                        "passive",
+                                                                        pp =>
+                                                                        {
+                                                                            AddLorId(
+                                                                                pp,
+                                                                                "id",
+                                                                                pxml.id
+                                                                            );
+                                                                            pp.Add("name", pname)
+                                                                                .Add(
+                                                                                    "rare",
+                                                                                    pxml.rare.ToString()
+                                                                                )
+                                                                                .Add(
+                                                                                    "isNegative",
+                                                                                    pxml.isNegative
+                                                                                );
+                                                                            if (
+                                                                                !string.IsNullOrEmpty(
+                                                                                    pdesc
+                                                                                )
+                                                                            )
+                                                                                pp.Add(
+                                                                                    "desc",
+                                                                                    pdesc
+                                                                                );
+                                                                            pp.Add(
+                                                                                "cost",
+                                                                                pxml.cost
+                                                                            );
+                                                                        }
+                                                                    );
+                                                                    ap.Add(
+                                                                        "sourceInstanceId",
+                                                                        pmData.receivepassivebookId
+                                                                    );
+                                                                    var srcBook =
+                                                                        BookInventoryModel.Instance?.GetBookByInstanceId(
+                                                                            pmData.receivepassivebookId
+                                                                        );
+                                                                    if (srcBook != null)
+                                                                        ap.Add(
+                                                                            "sourceName",
+                                                                            srcBook.Name
+                                                                        );
                                                                 });
-                                                                ap.Add("sourceInstanceId", pmData.receivepassivebookId);
-                                                                var srcBook = BookInventoryModel.Instance?.GetBookByInstanceId(pmData.receivepassivebookId);
-                                                                if (srcBook != null)
-                                                                    ap.Add("sourceName", srcBook.Name);
-                                                            });
+                                                            }
                                                         }
-                                                    });
+                                                    );
                                                 }
                                             }
 
@@ -660,15 +767,25 @@ namespace PlayLoRWithMe
                                                         // "Philosophy" / "Arbiter") and tab-deactivation
                                                         // never reach the cache because their patches only
                                                         // run when the in-game panel renders.
-                                                        MultiDeckLabels.EnsureLabelsCached(book, unit);
+                                                        MultiDeckLabels.EnsureLabelsCached(
+                                                            book,
+                                                            unit
+                                                        );
                                                     }
                                                     int deckCount = isMulti
-                                                        ? MultiDeckLabels.GetEffectiveDeckCount(book)
+                                                        ? MultiDeckLabels.GetEffectiveDeckCount(
+                                                            book
+                                                        )
                                                         : 1;
                                                     string[] localizedLabels = null;
                                                     if (isMulti)
-                                                        MultiDeckLabels.TryGetLabels(book, out localizedLabels);
-                                                    int prevIdx = isMulti ? book.GetCurrentDeckIndex() : 0;
+                                                        MultiDeckLabels.TryGetLabels(
+                                                            book,
+                                                            out localizedLabels
+                                                        );
+                                                    int prevIdx = isMulti
+                                                        ? book.GetCurrentDeckIndex()
+                                                        : 0;
                                                     try
                                                     {
                                                         for (int di = 0; di < deckCount; di++)
@@ -677,88 +794,144 @@ namespace PlayLoRWithMe
                                                             List<LOR_DiceSystem.DiceCardXmlInfo> rawCards;
                                                             if (isMulti)
                                                             {
-                                                                if (idx != book.GetCurrentDeckIndex())
+                                                                if (
+                                                                    idx
+                                                                    != book.GetCurrentDeckIndex()
+                                                                )
                                                                     book.ChangeDeck(idx);
-                                                                rawCards = book.GetCardListFromCurrentDeck();
+                                                                rawCards =
+                                                                    book.GetCardListFromCurrentDeck();
                                                             }
                                                             else
                                                             {
-                                                                rawCards = book.GetCardListFromCurrentDeck();
+                                                                rawCards =
+                                                                    book.GetCardListFromCurrentDeck();
                                                             }
                                                             decksArr.AddObject(deckObj =>
                                                             {
-                                                            deckObj.Add("index", idx);
-                                                            // Cache hits may have null/empty entries for tabs
-                                                            // a mod hid; emit `label` only when we observed a
-                                                            // real string so the frontend's "Deck N" fallback
-                                                            // can take over for the hidden slots.
-                                                            if (localizedLabels != null
-                                                                && idx < localizedLabels.Length
-                                                                && !string.IsNullOrEmpty(localizedLabels[idx]))
-                                                                deckObj.Add("label", localizedLabels[idx]);
-                                                            deckObj.AddArray(
-                                                                "cards",
-                                                                darr =>
-                                                                {
-                                                                    if (rawCards == null)
-                                                                        return;
-                                                                    var counts = new Dictionary<string, int>();
-                                                                    var firstSeen =
-                                                                        new Dictionary<
-                                                                            string,
-                                                                            LOR_DiceSystem.DiceCardXmlInfo
-                                                                        >();
-                                                                    var order = new List<string>();
-                                                                    foreach (var xml in rawCards)
+                                                                deckObj.Add("index", idx);
+                                                                // Cache hits may have null/empty entries for tabs
+                                                                // a mod hid; emit `label` only when we observed a
+                                                                // real string so the frontend's "Deck N" fallback
+                                                                // can take over for the hidden slots.
+                                                                if (
+                                                                    localizedLabels != null
+                                                                    && idx < localizedLabels.Length
+                                                                    && !string.IsNullOrEmpty(
+                                                                        localizedLabels[idx]
+                                                                    )
+                                                                )
+                                                                    deckObj.Add(
+                                                                        "label",
+                                                                        localizedLabels[idx]
+                                                                    );
+                                                                deckObj.AddArray(
+                                                                    "cards",
+                                                                    darr =>
                                                                     {
-                                                                        if (xml == null)
-                                                                            continue;
-                                                                        var key = xml._id + "_" + xml.workshopID;
-                                                                        if (!counts.ContainsKey(key))
+                                                                        if (rawCards == null)
+                                                                            return;
+                                                                        var counts =
+                                                                            new Dictionary<
+                                                                                string,
+                                                                                int
+                                                                            >();
+                                                                        var firstSeen =
+                                                                            new Dictionary<
+                                                                                string,
+                                                                                LOR_DiceSystem.DiceCardXmlInfo
+                                                                            >();
+                                                                        var order =
+                                                                            new List<string>();
+                                                                        foreach (
+                                                                            var xml in rawCards
+                                                                        )
                                                                         {
-                                                                            counts[key] = 0;
-                                                                            firstSeen[key] = xml;
-                                                                            order.Add(key);
+                                                                            if (xml == null)
+                                                                                continue;
+                                                                            var key =
+                                                                                xml._id
+                                                                                + "_"
+                                                                                + xml.workshopID;
+                                                                            if (
+                                                                                !counts.ContainsKey(
+                                                                                    key
+                                                                                )
+                                                                            )
+                                                                            {
+                                                                                counts[key] = 0;
+                                                                                firstSeen[key] =
+                                                                                    xml;
+                                                                                order.Add(key);
+                                                                            }
+                                                                            counts[key]++;
                                                                         }
-                                                                        counts[key]++;
-                                                                    }
-                                                                    foreach (var key in order)
-                                                                    {
-                                                                        var xml = firstSeen[key];
-                                                                        var spec = xml.Spec;
-                                                                        darr.AddObject(c =>
+                                                                        foreach (var key in order)
                                                                         {
-                                                                            AddLorId(c, "cardId", xml.id);
-                                                                            c.Add("name", xml.Name)
-                                                                                .Add("cost", spec.Cost)
-                                                                                .Add(
-                                                                                    "range",
-                                                                                    spec.Ranged.ToString()
-                                                                                )
-                                                                                .Add(
-                                                                                    "rarity",
-                                                                                    xml.Rarity.ToString()
-                                                                                )
-                                                                                .Add("count", counts[key]);
+                                                                            var xml = firstSeen[
+                                                                                key
+                                                                            ];
+                                                                            var spec = xml.Spec;
+                                                                            darr.AddObject(c =>
+                                                                            {
+                                                                                AddLorId(
+                                                                                    c,
+                                                                                    "cardId",
+                                                                                    xml.id
+                                                                                );
+                                                                                c.Add(
+                                                                                        "name",
+                                                                                        xml.Name
+                                                                                    )
+                                                                                    .Add(
+                                                                                        "cost",
+                                                                                        spec.Cost
+                                                                                    )
+                                                                                    .Add(
+                                                                                        "range",
+                                                                                        spec.Ranged.ToString()
+                                                                                    )
+                                                                                    .Add(
+                                                                                        "rarity",
+                                                                                        xml.Rarity.ToString()
+                                                                                    )
+                                                                                    .Add(
+                                                                                        "count",
+                                                                                        counts[key]
+                                                                                    );
 
-                                                                            WriteDiceBehaviours(c, xml.DiceBehaviourList, abilityDescList);
+                                                                                WriteDiceBehaviours(
+                                                                                    c,
+                                                                                    xml.DiceBehaviourList,
+                                                                                    abilityDescList
+                                                                                );
 
-                                                                            var abilityDesc =
-                                                                                abilityDescList?.GetAbilityDescString(
-                                                                                    xml
-                                                                                ) ?? "";
-                                                                            if (!string.IsNullOrEmpty(abilityDesc))
-                                                                                c.Add("abilityDesc", abilityDesc);
-                                                                        });
+                                                                                var abilityDesc =
+                                                                                    abilityDescList?.GetAbilityDescString(
+                                                                                        xml
+                                                                                    ) ?? "";
+                                                                                if (
+                                                                                    !string.IsNullOrEmpty(
+                                                                                        abilityDesc
+                                                                                    )
+                                                                                )
+                                                                                    c.Add(
+                                                                                        "abilityDesc",
+                                                                                        abilityDesc
+                                                                                    );
+                                                                            });
+                                                                        }
                                                                     }
-                                                                }
-                                                            );
-                                                        });
+                                                                );
+                                                            });
                                                         }
                                                     }
                                                     finally
                                                     {
-                                                        if (isMulti && book.GetCurrentDeckIndex() != prevIdx)
+                                                        if (
+                                                            isMulti
+                                                            && book.GetCurrentDeckIndex() != prevIdx
+                                                        )
                                                             book.ChangeDeck(prevIdx);
                                                     }
                                                 }
@@ -773,15 +946,23 @@ namespace PlayLoRWithMe
                                                 "onlyCards",
                                                 oArr =>
                                                 {
-                                                    if (pageInventory == null || onlyCardIds == null)
+                                                    if (
+                                                        pageInventory == null
+                                                        || onlyCardIds == null
+                                                    )
                                                         return;
                                                     foreach (var id in onlyCardIds)
                                                     {
                                                         var lorId = new LorId(id);
-                                                        var count = pageInventory.GetCardCount(lorId);
+                                                        var count = pageInventory.GetCardCount(
+                                                            lorId
+                                                        );
                                                         if (count <= 0)
                                                             continue;
-                                                        var xml = ItemXmlDataList.instance.GetCardItem(lorId);
+                                                        var xml =
+                                                            ItemXmlDataList.instance.GetCardItem(
+                                                                lorId
+                                                            );
                                                         if (xml == null)
                                                             continue;
                                                         var spec = xml.Spec;
@@ -790,15 +971,27 @@ namespace PlayLoRWithMe
                                                             AddLorId(c, "cardId", xml.id);
                                                             c.Add("name", xml.Name)
                                                                 .Add("cost", spec.Cost)
-                                                                .Add("range", spec.Ranged.ToString())
-                                                                .Add("rarity", xml.Rarity.ToString())
+                                                                .Add(
+                                                                    "range",
+                                                                    spec.Ranged.ToString()
+                                                                )
+                                                                .Add(
+                                                                    "rarity",
+                                                                    xml.Rarity.ToString()
+                                                                )
                                                                 .Add("count", count)
                                                                 .Add("chapter", xml.Chapter);
                                                             var abilityDesc =
-                                                                abilityDescList?.GetAbilityDescString(xml) ?? "";
+                                                                abilityDescList?.GetAbilityDescString(
+                                                                    xml
+                                                                ) ?? "";
                                                             if (!string.IsNullOrEmpty(abilityDesc))
                                                                 c.Add("abilityDesc", abilityDesc);
-                                                            WriteDiceBehaviours(c, xml.DiceBehaviourList, abilityDescList);
+                                                            WriteDiceBehaviours(
+                                                                c,
+                                                                xml.DiceBehaviourList,
+                                                                abilityDescList
+                                                            );
                                                         });
                                                     }
                                                 }
@@ -808,9 +1001,18 @@ namespace PlayLoRWithMe
                                             // Always serialize so the UI can pre-fill current values.
                                             // If customizeData is null (non-customizable unit), emit zeros.
                                             var cd = unit.customizeData;
-                                            Color32 hair = cd != null ? (Color32)cd.hairColor : new Color32(13, 13, 13, 255);
-                                            Color32 skin = cd != null ? (Color32)cd.skinColor : new Color32(224, 188, 157, 255);
-                                            Color32 eyeC = cd != null ? (Color32)cd.eyeColor  : new Color32(13, 13, 13, 255);
+                                            Color32 hair =
+                                                cd != null
+                                                    ? (Color32)cd.hairColor
+                                                    : new Color32(13, 13, 13, 255);
+                                            Color32 skin =
+                                                cd != null
+                                                    ? (Color32)cd.skinColor
+                                                    : new Color32(224, 188, 157, 255);
+                                            Color32 eyeC =
+                                                cd != null
+                                                    ? (Color32)cd.eyeColor
+                                                    : new Color32(13, 13, 13, 255);
                                             // Patron librarians use SpecialCustomizedAppearance prefabs
                                             // with unique head sprites.  Only emit patronHeadId for IDs
                                             // that the game recognizes as patron heads — regular librarians
@@ -820,8 +1022,11 @@ namespace PlayLoRWithMe
                                             {
                                                 int sid = cd.specialCustomID.id;
                                                 bool isPatron =
-                                                    (cd.specialCustomID.IsBasic()
-                                                        && sid >= 1 && sid <= 10)
+                                                    (
+                                                        cd.specialCustomID.IsBasic()
+                                                        && sid >= 1
+                                                        && sid <= 10
+                                                    )
                                                     || sid == 9070402
                                                     || sid == 1309021
                                                     || sid == 9100501;
@@ -829,24 +1034,42 @@ namespace PlayLoRWithMe
                                                     patronId = sid;
                                             }
 
-                                            o.AddObject("appearance", a =>
-                                            {
-                                                a.Add("frontHairID", cd?.frontHairID ?? 0)
-                                                    .Add("backHairID", cd?.backHairID ?? 0)
-                                                    .Add("eyeID",       cd?.eyeID      ?? 0)
-                                                    .Add("browID",      cd?.browID     ?? 0)
-                                                    .Add("mouthID",     cd?.mouthID    ?? 0)
-                                                    .Add("headID",      cd?.headID     ?? 0)
-                                                    .Add("height",      cd?.height     ?? 175)
-                                                    .AddArray("hairColor", cArr =>
-                                                        cArr.AddInt(hair.r).AddInt(hair.g).AddInt(hair.b))
-                                                    .AddArray("skinColor", cArr =>
-                                                        cArr.AddInt(skin.r).AddInt(skin.g).AddInt(skin.b))
-                                                    .AddArray("eyeColor", cArr =>
-                                                        cArr.AddInt(eyeC.r).AddInt(eyeC.g).AddInt(eyeC.b));
-                                                if (patronId > 0)
-                                                    a.Add("patronHeadId", patronId);
-                                            });
+                                            o.AddObject(
+                                                "appearance",
+                                                a =>
+                                                {
+                                                    a.Add("frontHairID", cd?.frontHairID ?? 0)
+                                                        .Add("backHairID", cd?.backHairID ?? 0)
+                                                        .Add("eyeID", cd?.eyeID ?? 0)
+                                                        .Add("browID", cd?.browID ?? 0)
+                                                        .Add("mouthID", cd?.mouthID ?? 0)
+                                                        .Add("headID", cd?.headID ?? 0)
+                                                        .Add("height", cd?.height ?? 175)
+                                                        .AddArray(
+                                                            "hairColor",
+                                                            cArr =>
+                                                                cArr.AddInt(hair.r)
+                                                                    .AddInt(hair.g)
+                                                                    .AddInt(hair.b)
+                                                        )
+                                                        .AddArray(
+                                                            "skinColor",
+                                                            cArr =>
+                                                                cArr.AddInt(skin.r)
+                                                                    .AddInt(skin.g)
+                                                                    .AddInt(skin.b)
+                                                        )
+                                                        .AddArray(
+                                                            "eyeColor",
+                                                            cArr =>
+                                                                cArr.AddInt(eyeC.r)
+                                                                    .AddInt(eyeC.g)
+                                                                    .AddInt(eyeC.b)
+                                                        );
+                                                    if (patronId > 0)
+                                                        a.Add("patronHeadId", patronId);
+                                                }
+                                            );
 
                                             // Per-type custom battle dialogue text.
                                             // Only serialized when the librarian has a dialogue model
@@ -870,29 +1093,40 @@ namespace PlayLoRWithMe
                                                     "colleagueDeath",
                                                     "killsOpponent",
                                                 };
-                                                o.AddObject("dialogue", d =>
-                                                {
-                                                    for (int di = 0; di < dlgTypes.Length; di++)
+                                                o.AddObject(
+                                                    "dialogue",
+                                                    d =>
                                                     {
-                                                        var dlgData = dlgModel.GetDialogData(dlgTypes[di]);
-                                                        // Prefer custom text; fall back to the currently-active
-                                                        // preset text so the UI can pre-fill the field even when
-                                                        // no explicit customization has been made yet.
-                                                        string text = dlgData?.customText;
-                                                        if (string.IsNullOrEmpty(text))
-                                                            text = dlgData?.xmlData?.dialogContent;
-                                                        d.Add(
-                                                            dlgKeys[di],
-                                                            string.IsNullOrEmpty(text) ? null : text
-                                                        );
+                                                        for (int di = 0; di < dlgTypes.Length; di++)
+                                                        {
+                                                            var dlgData = dlgModel.GetDialogData(
+                                                                dlgTypes[di]
+                                                            );
+                                                            // Prefer custom text; fall back to the currently-active
+                                                            // preset text so the UI can pre-fill the field even when
+                                                            // no explicit customization has been made yet.
+                                                            string text = dlgData?.customText;
+                                                            if (string.IsNullOrEmpty(text))
+                                                                text = dlgData
+                                                                    ?.xmlData
+                                                                    ?.dialogContent;
+                                                            d.Add(
+                                                                dlgKeys[di],
+                                                                string.IsNullOrEmpty(text)
+                                                                    ? null
+                                                                    : text
+                                                            );
+                                                        }
                                                     }
-                                                });
+                                                );
                                             }
 
                                             // Title prefix/suffix gift IDs.
-                                            o.AddObject("titles", t =>
-                                                t.Add("prefixID", unit.prefixID)
-                                                    .Add("postfixID", unit.postfixID)
+                                            o.AddObject(
+                                                "titles",
+                                                t =>
+                                                    t.Add("prefixID", unit.prefixID)
+                                                        .Add("postfixID", unit.postfixID)
                                             );
 
                                             // Fashion projection: which custom core book is active (-1 = none).
@@ -907,7 +1141,9 @@ namespace PlayLoRWithMe
                                             // frontend can identify them unambiguously.
                                             if (customBook != null)
                                             {
-                                                var cbPkg = customBook.GetBookClassInfoId().packageId;
+                                                var cbPkg = customBook
+                                                    .GetBookClassInfoId()
+                                                    .packageId;
                                                 if (!string.IsNullOrEmpty(cbPkg))
                                                     o.Add("customBookPackageId", cbPkg);
                                             }
@@ -929,9 +1165,13 @@ namespace PlayLoRWithMe
 
                                             // The active skin's SkinGender determines whether the
                                             // body type toggle should be enabled in the frontend.
-                                            var activeSkinInfo = customBook?.ClassInfo ?? book.ClassInfo;
+                                            var activeSkinInfo =
+                                                customBook?.ClassInfo ?? book.ClassInfo;
                                             if (activeSkinInfo.gender != Gender.N)
-                                                o.Add("skinGender", activeSkinInfo.gender.ToString());
+                                                o.Add(
+                                                    "skinGender",
+                                                    activeSkinInfo.gender.ToString()
+                                                );
 
                                             // Gift accessories equipped and available for equipping.
                                             var inv = unit.giftInventory;
@@ -944,50 +1184,87 @@ namespace PlayLoRWithMe
                                             foreach (var g in equippedGifts)
                                                 equippedBySlot[(int)g.ClassInfo.Position] = g;
 
-                                            o.AddObject("gifts", gifts =>
-                                            {
-                                                gifts.AddArray("equipped", eqArr =>
+                                            o.AddObject(
+                                                "gifts",
+                                                gifts =>
                                                 {
-                                                    for (int si = 0; si < equippedBySlot.Length; si++)
-                                                    {
-                                                        var g = equippedBySlot[si];
-                                                        if (g == null)
+                                                    gifts.AddArray(
+                                                        "equipped",
+                                                        eqArr =>
                                                         {
-                                                            eqArr.AddNull();
-                                                        }
-                                                        else
-                                                        {
-                                                            eqArr.AddObject(go =>
+                                                            for (
+                                                                int si = 0;
+                                                                si < equippedBySlot.Length;
+                                                                si++
+                                                            )
                                                             {
-                                                                go.Add("id", g.GetGiftClassInfoId())
-                                                                    .Add("name", g.GetName())
-                                                                    .Add("desc", g.GiftDesc)
-                                                                    .Add("position", g.ClassInfo.Position.ToString());
-                                                                WriteGiftStat(go, g.ClassInfo.Stat);
-                                                                go.Add("visible", g.isShowEquipGift);
-                                                            });
+                                                                var g = equippedBySlot[si];
+                                                                if (g == null)
+                                                                {
+                                                                    eqArr.AddNull();
+                                                                }
+                                                                else
+                                                                {
+                                                                    eqArr.AddObject(go =>
+                                                                    {
+                                                                        go.Add(
+                                                                                "id",
+                                                                                g.GetGiftClassInfoId()
+                                                                            )
+                                                                            .Add(
+                                                                                "name",
+                                                                                g.GetName()
+                                                                            )
+                                                                            .Add("desc", g.GiftDesc)
+                                                                            .Add(
+                                                                                "position",
+                                                                                g.ClassInfo.Position.ToString()
+                                                                            );
+                                                                        WriteGiftStat(
+                                                                            go,
+                                                                            g.ClassInfo.Stat
+                                                                        );
+                                                                        go.Add(
+                                                                            "visible",
+                                                                            g.isShowEquipGift
+                                                                        );
+                                                                    });
+                                                                }
+                                                            }
                                                         }
-                                                    }
-                                                });
+                                                    );
 
-                                                gifts.AddArray("available", avArr =>
-                                                {
-                                                    foreach (var g in unequippedGifts)
-                                                    {
-                                                        // Skip gifts hidden from the appearance UI.
-                                                        if (g.ClassInfo.NoAppear)
-                                                            continue;
-                                                        avArr.AddObject(go =>
+                                                    gifts.AddArray(
+                                                        "available",
+                                                        avArr =>
                                                         {
-                                                            go.Add("id", g.GetGiftClassInfoId())
-                                                                .Add("name", g.GetName())
-                                                                .Add("desc", g.GiftDesc)
-                                                                .Add("position", g.ClassInfo.Position.ToString());
-                                                            WriteGiftStat(go, g.ClassInfo.Stat);
-                                                        });
-                                                    }
-                                                });
-                                            });
+                                                            foreach (var g in unequippedGifts)
+                                                            {
+                                                                // Skip gifts hidden from the appearance UI.
+                                                                if (g.ClassInfo.NoAppear)
+                                                                    continue;
+                                                                avArr.AddObject(go =>
+                                                                {
+                                                                    go.Add(
+                                                                            "id",
+                                                                            g.GetGiftClassInfoId()
+                                                                        )
+                                                                        .Add("name", g.GetName())
+                                                                        .Add("desc", g.GiftDesc)
+                                                                        .Add(
+                                                                            "position",
+                                                                            g.ClassInfo.Position.ToString()
+                                                                        );
+                                                                    WriteGiftStat(
+                                                                        go,
+                                                                        g.ClassInfo.Stat
+                                                                    );
+                                                                });
+                                                            }
+                                                        }
+                                                    );
+                                                }
+                                            );
                                         });
                                     }
                                 }
@@ -1001,12 +1278,14 @@ namespace PlayLoRWithMe
         /// <summary>Serializes a GiftStatEffect as a nested "stat" object.</summary>
         private static void WriteGiftStat(JsonWriter w, GiftStatEffect stat)
         {
-            w.AddObject("stat", s =>
-                s.Add("hp", stat.Hp)
-                    .Add("breakGauge", stat.Break)
-                    .Add("breakRecover", stat.BreakRecover)
-                    .Add("tune", stat.Tune)
-                    .Add("amp", stat.Amp)
+            w.AddObject(
+                "stat",
+                s =>
+                    s.Add("hp", stat.Hp)
+                        .Add("breakGauge", stat.Break)
+                        .Add("breakRecover", stat.BreakRecover)
+                        .Add("tune", stat.Tune)
+                        .Add("amp", stat.Amp)
             );
         }
 
@@ -1098,14 +1377,16 @@ namespace PlayLoRWithMe
                             if (givenToId >= 0)
                             {
                                 o.Add("canGivePassive", false);
-                                var targetBook = BookInventoryModel.Instance?.GetBookByInstanceId(givenToId);
+                                var targetBook = BookInventoryModel.Instance?.GetBookByInstanceId(
+                                    givenToId
+                                );
                                 if (targetBook?.owner != null)
                                     o.Add("passiveGivenTo", targetBook.owner.name);
                             }
                             else if (book.owner != null)
                             {
                                 o.Add("canGivePassive", false)
-                                 .Add("passiveGivenTo", book.owner.name);
+                                    .Add("passiveGivenTo", book.owner.name);
                             }
 
                             var inventoryPassiveList = book.CreatePassiveList();
@@ -1117,11 +1398,7 @@ namespace PlayLoRWithMe
                                         return;
                                     foreach (var p in inventoryPassiveList)
                                     {
-                                        if (
-                                            p == null
-                                            || p.isHide
-                                            || string.IsNullOrEmpty(p.name)
-                                        )
+                                        if (p == null || p.isHide || string.IsNullOrEmpty(p.name))
                                             continue;
                                         parr.AddObject(po =>
                                         {
@@ -1131,7 +1408,8 @@ namespace PlayLoRWithMe
                                                 .Add("isNegative", p.isNegative);
                                             if (!string.IsNullOrEmpty(p.desc))
                                                 po.Add("desc", p.desc);
-                                            var passiveXml = Singleton<PassiveXmlList>.Instance?.GetData(p.id);
+                                            var passiveXml =
+                                                Singleton<PassiveXmlList>.Instance?.GetData(p.id);
                                             if (passiveXml != null)
                                                 po.Add("cost", passiveXml.cost);
                                             if (passiveXml != null && !passiveXml.CanGivePassive)
@@ -1198,252 +1476,292 @@ namespace PlayLoRWithMe
         // Serializes global customization option tables (names, titles, dialogue presets).
         private static void WriteCustomizeOptions(JsonWriter w)
         {
-            w.AddObject("customizeOptions", o =>
-            {
-                // Suggested name pool via reflection (LibrariansNameXmlList._dictionary is private).
-                var nameXml = Singleton<LibrariansNameXmlList>.Instance;
-                var nameDict = _libNameDictField?.GetValue(nameXml) as Dictionary<int, string>;
-
-                o.AddArray("suggestedNames", arr =>
+            w.AddObject(
+                "customizeOptions",
+                o =>
                 {
-                    if (nameDict == null)
-                        return;
-                    foreach (var name in nameDict.Values)
-                        arr.AddString(name);
-                });
+                    // Suggested name pool via reflection (LibrariansNameXmlList._dictionary is private).
+                    var nameXml = Singleton<LibrariansNameXmlList>.Instance;
+                    var nameDict = _libNameDictField?.GetValue(nameXml) as Dictionary<int, string>;
 
-                // Gift-based prefix and suffix titles.
-                // prefixID / postfixID in UnitDataModel reference GiftXmlInfo IDs whose
-                // text is looked up via GiftXmlList.GetPrefix / GetPostfix.
-                var giftList = Singleton<GiftXmlList>.Instance?.GetAvailableList()
-                    ?? new System.Collections.Generic.List<GiftXmlInfo>();
-
-                o.AddArray("prefixTitles", arr =>
-                {
-                    foreach (var gift in giftList)
-                    {
-                        var text = Singleton<GiftXmlList>.Instance?.GetPrefix(gift.id) ?? "";
-                        if (
-                            string.IsNullOrEmpty(text)
-                            || text == "Unknown Gift Prefix"
-                        )
-                            continue;
-                        arr.AddObject(t =>
-                            t.Add("id", gift.id).Add("text", text)
-                        );
-                    }
-                });
-
-                o.AddArray("suffixTitles", arr =>
-                {
-                    foreach (var gift in giftList)
-                    {
-                        var text = Singleton<GiftXmlList>.Instance?.GetPostfix(gift.id) ?? "";
-                        if (
-                            string.IsNullOrEmpty(text)
-                            || text == "Unknown Gift Posfix"
-                        )
-                            continue;
-                        arr.AddObject(t =>
-                            t.Add("id", gift.id).Add("text", text)
-                        );
-                    }
-                });
-
-                // Fashion books: custom core books the player has unlocked and can use as
-                // appearance projections. Each entry carries rangeType and skinType so the
-                // frontend can filter by range-compatibility and show when the full head is
-                // replaced (skinType != "Lor" means the fashion skin overrides the head).
-                var ccbm = Singleton<CustomCoreBookInventoryModel>.Instance;
-                var fashionIds = ccbm?.GetBookIdList_CustomCoreBook(SephirahType.None, false)
-                    ?? new System.Collections.Generic.List<int>();
-                o.AddArray("fashionBooks", arr =>
-                {
-                    foreach (var bid in fashionIds)
-                    {
-                        var bxi = Singleton<BookXmlList>.Instance?.GetData(new LorId(bid));
-                        if (bxi == null || bxi.canNotEquip)
-                            continue;
-                        arr.AddObject(fb =>
+                    o.AddArray(
+                        "suggestedNames",
+                        arr =>
                         {
-                            fb.Add("id", bid)
-                                .Add("name", bxi.Name)
-                                .Add("rangeType", bxi.RangeType.ToString())
-                                .Add("replacesHead", bxi.skinType != "Lor");
-                            // SkinGender from the key page XML: controls whether the
-                            // body type toggle is available for this fashion book.
-                            if (bxi.gender != Gender.N)
-                                fb.Add("skinGender", bxi.gender.ToString());
-
-                            // Optional per-book appearance metadata from AppearanceCache.
-                            if (AppearanceCache.FashionMeta.TryGetValue(bid.ToString(), out var meta))
-                            {
-                                // Head tilt and pivot: omitted when tilt is zero.
-                                if (Mathf.Abs(meta.TiltDeg) > 0.05f)
-                                    fb.Add("headTiltDeg", meta.TiltDeg)
-                                        .Add("pivotFracX", meta.PivotFracX)
-                                        .Add("pivotFracY", meta.PivotFracY);
-                                // Front layer: some body sprites render in front of the face overlay.
-                                if (meta.HasFrontLayer)
-                                    fb.Add("hasFrontLayer", true);
-                                // Hood present: game hides all back hair renderers in this case.
-                                if (meta.HidesBackHair)
-                                    fb.Add("hidesBackHair", true);
-                                // Feet-Y fraction: emitted only when the body PNG extends below
-                                // feet (weapons/props), so feet-alignment math can offset inward.
-                                if (meta.FeetYFrac < 0.999f)
-                                    fb.Add("feetYFrac", meta.FeetYFrac);
-                                // Body PNG pixel dimensions: lets the preview compute the body
-                                // layer height and feet pivot without waiting on @load.
-                                if (meta.BodyW > 0 && meta.BodyH > 0)
-                                    fb.Add("bodyW", meta.BodyW)
-                                        .Add("bodyH", meta.BodyH);
-                            }
-                        });
-                    }
-
-                    // Second pass: workshop mod books that can be used as projections.
-                    // These have a non-empty packageId and are not tracked by
-                    // CustomCoreBookInventoryModel (which explicitly skips workshop books).
-                    var bookInv = Singleton<BookInventoryModel>.Instance;
-                    var allBooks = bookInv?.GetBookListAll();
-                    if (allBooks != null)
-                    {
-                        var seenWs = new HashSet<string>();
-                        foreach (var book in allBooks)
-                        {
-                            if (!book.IsWorkshop) continue;
-                            var lid = book.GetBookClassInfoId();
-                            var bxi = book.ClassInfo;
-                            if (bxi == null || bxi.canNotEquip) continue;
-                            if (string.IsNullOrEmpty(bxi.GetCharacterSkin())) continue;
-                            // Deduplicate by full LorId — same XML can appear as multiple instances.
-                            string key = $"{lid.packageId}:{lid.id}";
-                            if (!seenWs.Add(key)) continue;
-                            Debug.Log($"[PlayLoRWithMe] fashionBooks: ws book id={lid.id} pkg={lid.packageId} name={bxi.Name} range={bxi.RangeType} skinType={bxi.skinType}");
-                            arr.AddObject(fb =>
-                            {
-                                fb.Add("id", lid.id)
-                                    .Add("packageId", lid.packageId)
-                                    .Add("name", bxi.Name)
-                                    .Add("rangeType", bxi.RangeType.ToString())
-                                    .Add("replacesHead", bxi.skinType != "Lor");
-                                if (bxi.gender != Gender.N)
-                                    fb.Add("skinGender", bxi.gender.ToString());
-                                var wsStem = $"{lid.packageId}_{lid.id}";
-                                if (AppearanceCache.FashionMeta.TryGetValue(wsStem, out var meta))
-                                {
-                                    if (Mathf.Abs(meta.TiltDeg) > 0.05f)
-                                        fb.Add("headTiltDeg", meta.TiltDeg)
-                                            .Add("pivotFracX", meta.PivotFracX)
-                                            .Add("pivotFracY", meta.PivotFracY);
-                                    if (meta.HasFrontLayer)
-                                        fb.Add("hasFrontLayer", true);
-                                    if (meta.HidesBackHair)
-                                        fb.Add("hidesBackHair", true);
-                                    if (meta.FeetYFrac < 0.999f)
-                                        fb.Add("feetYFrac", meta.FeetYFrac);
-                                    if (meta.BodyW > 0 && meta.BodyH > 0)
-                                        fb.Add("bodyW", meta.BodyW)
-                                            .Add("bodyH", meta.BodyH);
-                                }
-                            });
-                        }
-                    }
-
-                });
-
-                // Workshop skins from CustomizingResourceLoader — cloth overlay skins that
-                // ship with workshop content folders.  Equipped via unit.workshopSkin (a
-                // contentFolderIdx string), completely separate from the fashion-book system.
-                o.AddArray("workshopSkins", ws =>
-                {
-                    var wsLoader = Singleton<CustomizingResourceLoader>.Instance;
-                    if (wsLoader == null)
-                        return;
-                    var allSkins = wsLoader.GetWorkshopSkinDataAll();
-                    if (allSkins == null)
-                        return;
-                    foreach (var skin in allSkins)
-                    {
-                        if (skin == null)
-                            continue;
-                        ws.AddObject(s =>
-                        {
-                            s.Add("id", skin.id)
-                                .Add("name", skin.dataName)
-                                .Add("contentFolderIdx", skin.contentFolderIdx);
-                            var wsStem = $"ws_{skin.contentFolderIdx}";
-                            if (AppearanceCache.FashionMeta.TryGetValue(wsStem, out var meta))
-                            {
-                                // ReplacesHead is encoded inversely in FashionMeta:
-                                // HidesBackHair is set when !ReplacesHead && HasHood,
-                                // but for workshop skins the authoritative source is
-                                // ClothCustomizeData.headEnabled (already baked into
-                                // the extracted body via FashionBookBody.ReplacesHead).
-                                // We can't recover ReplacesHead from FashionMeta alone,
-                                // so we check the skin data directly.
-                                bool headEnabled = true;
-                                if (skin.dic.TryGetValue(ActionDetail.Default, out var dc))
-                                    headEnabled = dc.headEnabled;
-                                else if (skin.dic.TryGetValue(ActionDetail.Standing, out var sc))
-                                    headEnabled = sc.headEnabled;
-                                s.Add("replacesHead", !headEnabled);
-                                if (meta.HasFrontLayer)
-                                    s.Add("hasFrontLayer", true);
-                                if (Mathf.Abs(meta.TiltDeg) > 0.05f)
-                                    s.Add("headTiltDeg", meta.TiltDeg)
-                                        .Add("pivotFracX", meta.PivotFracX)
-                                        .Add("pivotFracY", meta.PivotFracY);
-                                if (meta.FeetYFrac < 0.999f)
-                                    s.Add("feetYFrac", meta.FeetYFrac);
-                                if (meta.BodyW > 0 && meta.BodyH > 0)
-                                    s.Add("bodyW", meta.BodyW)
-                                        .Add("bodyH", meta.BodyH);
-                            }
-                        });
-                    }
-                });
-
-                // Dialogue preset text per dialog type for the frontend preset picker.
-                var dlgXml = Singleton<BattleDialogXmlList>.Instance;
-                var dlgTypeMap = new[]
-                {
-                    (LOR_XML.DialogType.START_BATTLE, "startBattle"),
-                    (LOR_XML.DialogType.BATTLE_VICTORY, "victory"),
-                    (LOR_XML.DialogType.DEATH, "death"),
-                    (LOR_XML.DialogType.COLLEAGUE_DEATH, "colleagueDeath"),
-                    (LOR_XML.DialogType.KILLS_OPPONENT, "killsOpponent"),
-                };
-                o.AddObject("dialoguePresets", dp =>
-                {
-                    foreach (var (dlgType, key) in dlgTypeMap)
-                    {
-                        dp.AddArray(key, arr =>
-                        {
-                            if (dlgXml == null)
+                            if (nameDict == null)
                                 return;
-                            try
-                            {
-                                var presets = dlgXml.GetDialogPresetByType(dlgType);
-                                foreach (var p in presets)
-                                    arr.AddString(p.dialogContent);
-                            }
-                            catch { /* "Librarian" group may not exist for non-standard saves */ }
-                        });
-                    }
-                });
+                            foreach (var name in nameDict.Values)
+                                arr.AddString(name);
+                        }
+                    );
 
-                // Shared face/hair canvas dimensions, sourced from AppearanceCache once
-                // extraction has run. Supplied so the frontend can size the head-tilt
-                // pivot synchronously instead of fetching dimensions.json after mount
-                // (which caused a head-snap on every fresh remount, e.g. floor-tab
-                // switches). Omitted before extraction completes — frontend keeps a
-                // safe square-canvas fallback for that initial window.
-                if (AppearanceCache.FaceHairCanvasW > 0 && AppearanceCache.FaceHairCanvasH > 0)
-                    o.Add("faceCanvasW", AppearanceCache.FaceHairCanvasW)
-                     .Add("faceCanvasH", AppearanceCache.FaceHairCanvasH);
-            });
+                    // Gift-based prefix and suffix titles.
+                    // prefixID / postfixID in UnitDataModel reference GiftXmlInfo IDs whose
+                    // text is looked up via GiftXmlList.GetPrefix / GetPostfix.
+                    var giftList =
+                        Singleton<GiftXmlList>.Instance?.GetAvailableList()
+                        ?? new System.Collections.Generic.List<GiftXmlInfo>();
+
+                    o.AddArray(
+                        "prefixTitles",
+                        arr =>
+                        {
+                            foreach (var gift in giftList)
+                            {
+                                var text =
+                                    Singleton<GiftXmlList>.Instance?.GetPrefix(gift.id) ?? "";
+                                if (string.IsNullOrEmpty(text) || text == "Unknown Gift Prefix")
+                                    continue;
+                                arr.AddObject(t => t.Add("id", gift.id).Add("text", text));
+                            }
+                        }
+                    );
+
+                    o.AddArray(
+                        "suffixTitles",
+                        arr =>
+                        {
+                            foreach (var gift in giftList)
+                            {
+                                var text =
+                                    Singleton<GiftXmlList>.Instance?.GetPostfix(gift.id) ?? "";
+                                if (string.IsNullOrEmpty(text) || text == "Unknown Gift Posfix")
+                                    continue;
+                                arr.AddObject(t => t.Add("id", gift.id).Add("text", text));
+                            }
+                        }
+                    );
+
+                    // Fashion books: custom core books the player has unlocked and can use as
+                    // appearance projections. Each entry carries rangeType and skinType so the
+                    // frontend can filter by range-compatibility and show when the full head is
+                    // replaced (skinType != "Lor" means the fashion skin overrides the head).
+                    var ccbm = Singleton<CustomCoreBookInventoryModel>.Instance;
+                    var fashionIds =
+                        ccbm?.GetBookIdList_CustomCoreBook(SephirahType.None, false)
+                        ?? new System.Collections.Generic.List<int>();
+                    o.AddArray(
+                        "fashionBooks",
+                        arr =>
+                        {
+                            foreach (var bid in fashionIds)
+                            {
+                                var bxi = Singleton<BookXmlList>.Instance?.GetData(new LorId(bid));
+                                if (bxi == null || bxi.canNotEquip)
+                                    continue;
+                                arr.AddObject(fb =>
+                                {
+                                    fb.Add("id", bid)
+                                        .Add("name", bxi.Name)
+                                        .Add("rangeType", bxi.RangeType.ToString())
+                                        .Add("replacesHead", bxi.skinType != "Lor");
+                                    // SkinGender from the key page XML: controls whether the
+                                    // body type toggle is available for this fashion book.
+                                    if (bxi.gender != Gender.N)
+                                        fb.Add("skinGender", bxi.gender.ToString());
+
+                                    // Optional per-book appearance metadata from AppearanceCache.
+                                    if (
+                                        AppearanceCache.FashionMeta.TryGetValue(
+                                            bid.ToString(),
+                                            out var meta
+                                        )
+                                    )
+                                    {
+                                        // Head tilt and pivot: omitted when tilt is zero.
+                                        if (Mathf.Abs(meta.TiltDeg) > 0.05f)
+                                            fb.Add("headTiltDeg", meta.TiltDeg)
+                                                .Add("pivotFracX", meta.PivotFracX)
+                                                .Add("pivotFracY", meta.PivotFracY);
+                                        // Front layer: some body sprites render in front of the face overlay.
+                                        if (meta.HasFrontLayer)
+                                            fb.Add("hasFrontLayer", true);
+                                        // Hood present: game hides all back hair renderers in this case.
+                                        if (meta.HidesBackHair)
+                                            fb.Add("hidesBackHair", true);
+                                        // Feet-Y fraction: emitted only when the body PNG extends below
+                                        // feet (weapons/props), so feet-alignment math can offset inward.
+                                        if (meta.FeetYFrac < 0.999f)
+                                            fb.Add("feetYFrac", meta.FeetYFrac);
+                                        // Body PNG pixel dimensions: lets the preview compute the body
+                                        // layer height and feet pivot without waiting on @load.
+                                        if (meta.BodyW > 0 && meta.BodyH > 0)
+                                            fb.Add("bodyW", meta.BodyW).Add("bodyH", meta.BodyH);
+                                    }
+                                });
+                            }
+
+                            // Second pass: workshop mod books that can be used as projections.
+                            // These have a non-empty packageId and are not tracked by
+                            // CustomCoreBookInventoryModel (which explicitly skips workshop books).
+                            var bookInv = Singleton<BookInventoryModel>.Instance;
+                            var allBooks = bookInv?.GetBookListAll();
+                            if (allBooks != null)
+                            {
+                                var seenWs = new HashSet<string>();
+                                foreach (var book in allBooks)
+                                {
+                                    if (!book.IsWorkshop)
+                                        continue;
+                                    var lid = book.GetBookClassInfoId();
+                                    var bxi = book.ClassInfo;
+                                    if (bxi == null || bxi.canNotEquip)
+                                        continue;
+                                    if (string.IsNullOrEmpty(bxi.GetCharacterSkin()))
+                                        continue;
+                                    // Deduplicate by full LorId — same XML can appear as multiple instances.
+                                    string key = $"{lid.packageId}:{lid.id}";
+                                    if (!seenWs.Add(key))
+                                        continue;
+                                    Debug.Log(
+                                        $"[PRWM] fashionBooks: ws book id={lid.id} pkg={lid.packageId} name={bxi.Name} range={bxi.RangeType} skinType={bxi.skinType}"
+                                    );
+                                    arr.AddObject(fb =>
+                                    {
+                                        fb.Add("id", lid.id)
+                                            .Add("packageId", lid.packageId)
+                                            .Add("name", bxi.Name)
+                                            .Add("rangeType", bxi.RangeType.ToString())
+                                            .Add("replacesHead", bxi.skinType != "Lor");
+                                        if (bxi.gender != Gender.N)
+                                            fb.Add("skinGender", bxi.gender.ToString());
+                                        var wsStem = $"{lid.packageId}_{lid.id}";
+                                        if (
+                                            AppearanceCache.FashionMeta.TryGetValue(
+                                                wsStem,
+                                                out var meta
+                                            )
+                                        )
+                                        {
+                                            if (Mathf.Abs(meta.TiltDeg) > 0.05f)
+                                                fb.Add("headTiltDeg", meta.TiltDeg)
+                                                    .Add("pivotFracX", meta.PivotFracX)
+                                                    .Add("pivotFracY", meta.PivotFracY);
+                                            if (meta.HasFrontLayer)
+                                                fb.Add("hasFrontLayer", true);
+                                            if (meta.HidesBackHair)
+                                                fb.Add("hidesBackHair", true);
+                                            if (meta.FeetYFrac < 0.999f)
+                                                fb.Add("feetYFrac", meta.FeetYFrac);
+                                            if (meta.BodyW > 0 && meta.BodyH > 0)
+                                                fb.Add("bodyW", meta.BodyW)
+                                                    .Add("bodyH", meta.BodyH);
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    );
+
+                    // Workshop skins from CustomizingResourceLoader — cloth overlay skins that
+                    // ship with workshop content folders.  Equipped via unit.workshopSkin (a
+                    // contentFolderIdx string), completely separate from the fashion-book system.
+                    o.AddArray(
+                        "workshopSkins",
+                        ws =>
+                        {
+                            var wsLoader = Singleton<CustomizingResourceLoader>.Instance;
+                            if (wsLoader == null)
+                                return;
+                            var allSkins = wsLoader.GetWorkshopSkinDataAll();
+                            if (allSkins == null)
+                                return;
+                            foreach (var skin in allSkins)
+                            {
+                                if (skin == null)
+                                    continue;
+                                ws.AddObject(s =>
+                                {
+                                    s.Add("id", skin.id)
+                                        .Add("name", skin.dataName)
+                                        .Add("contentFolderIdx", skin.contentFolderIdx);
+                                    var wsStem = $"ws_{skin.contentFolderIdx}";
+                                    if (
+                                        AppearanceCache.FashionMeta.TryGetValue(
+                                            wsStem,
+                                            out var meta
+                                        )
+                                    )
+                                    {
+                                        // ReplacesHead is encoded inversely in FashionMeta:
+                                        // HidesBackHair is set when !ReplacesHead && HasHood,
+                                        // but for workshop skins the authoritative source is
+                                        // ClothCustomizeData.headEnabled (already baked into
+                                        // the extracted body via FashionBookBody.ReplacesHead).
+                                        // We can't recover ReplacesHead from FashionMeta alone,
+                                        // so we check the skin data directly.
+                                        bool headEnabled = true;
+                                        if (skin.dic.TryGetValue(ActionDetail.Default, out var dc))
+                                            headEnabled = dc.headEnabled;
+                                        else if (
+                                            skin.dic.TryGetValue(ActionDetail.Standing, out var sc)
+                                        )
+                                            headEnabled = sc.headEnabled;
+                                        s.Add("replacesHead", !headEnabled);
+                                        if (meta.HasFrontLayer)
+                                            s.Add("hasFrontLayer", true);
+                                        if (Mathf.Abs(meta.TiltDeg) > 0.05f)
+                                            s.Add("headTiltDeg", meta.TiltDeg)
+                                                .Add("pivotFracX", meta.PivotFracX)
+                                                .Add("pivotFracY", meta.PivotFracY);
+                                        if (meta.FeetYFrac < 0.999f)
+                                            s.Add("feetYFrac", meta.FeetYFrac);
+                                        if (meta.BodyW > 0 && meta.BodyH > 0)
+                                            s.Add("bodyW", meta.BodyW).Add("bodyH", meta.BodyH);
+                                    }
+                                });
+                            }
+                        }
+                    );
+
+                    // Dialogue preset text per dialog type for the frontend preset picker.
+                    var dlgXml = Singleton<BattleDialogXmlList>.Instance;
+                    var dlgTypeMap = new[]
+                    {
+                        (LOR_XML.DialogType.START_BATTLE, "startBattle"),
+                        (LOR_XML.DialogType.BATTLE_VICTORY, "victory"),
+                        (LOR_XML.DialogType.DEATH, "death"),
+                        (LOR_XML.DialogType.COLLEAGUE_DEATH, "colleagueDeath"),
+                        (LOR_XML.DialogType.KILLS_OPPONENT, "killsOpponent"),
+                    };
+                    o.AddObject(
+                        "dialoguePresets",
+                        dp =>
+                        {
+                            foreach (var (dlgType, key) in dlgTypeMap)
+                            {
+                                dp.AddArray(
+                                    key,
+                                    arr =>
+                                    {
+                                        if (dlgXml == null)
+                                            return;
+                                        try
+                                        {
+                                            var presets = dlgXml.GetDialogPresetByType(dlgType);
+                                            foreach (var p in presets)
+                                                arr.AddString(p.dialogContent);
+                                        }
+                                        catch
+                                        { /* "Librarian" group may not exist for non-standard saves */
+                                        }
+                                    }
+                                );
+                            }
+                        }
+                    );
+
+                    // Shared face/hair canvas dimensions, sourced from AppearanceCache once
+                    // extraction has run. Supplied so the frontend can size the head-tilt
+                    // pivot synchronously instead of fetching dimensions.json after mount
+                    // (which caused a head-snap on every fresh remount, e.g. floor-tab
+                    // switches). Omitted before extraction completes — frontend keeps a
+                    // safe square-canvas fallback for that initial window.
+                    if (AppearanceCache.FaceHairCanvasW > 0 && AppearanceCache.FaceHairCanvasH > 0)
+                        o.Add("faceCanvasW", AppearanceCache.FaceHairCanvasW)
+                            .Add("faceCanvasH", AppearanceCache.FaceHairCanvasH);
+                }
+            );
         }
 
         /// <summary>
@@ -1520,7 +1838,9 @@ namespace PlayLoRWithMe
                                         .Add("isNegative", p.isNegative);
                                     if (!string.IsNullOrEmpty(p.desc))
                                         po.Add("desc", p.desc);
-                                    var passiveXml = Singleton<PassiveXmlList>.Instance?.GetData(p.id);
+                                    var passiveXml = Singleton<PassiveXmlList>.Instance?.GetData(
+                                        p.id
+                                    );
                                     if (passiveXml != null)
                                         po.Add("cost", passiveXml.cost);
                                 });
@@ -1717,7 +2037,6 @@ namespace PlayLoRWithMe
                     }
                 );
             }
-
         }
 
         /// <summary>
@@ -1766,11 +2085,15 @@ namespace PlayLoRWithMe
                 // the payload small.
                 var fixedTargets = unit.GetFixedTargets();
                 if (fixedTargets != null && fixedTargets.Count > 0)
-                    w.AddArray("fixedTargets", arr =>
-                    {
-                        foreach (var t in fixedTargets)
-                            if (t != null) arr.AddInt(t.id);
-                    });
+                    w.AddArray(
+                        "fixedTargets",
+                        arr =>
+                        {
+                            foreach (var t in fixedTargets)
+                                if (t != null)
+                                    arr.AddInt(t.id);
+                        }
+                    );
 
                 // Optional per-unit speed-die colours. `dieColor` tints the
                 // inner hex fill (frame sprite mean); `dieAccentColor` tints
@@ -1956,11 +2279,13 @@ namespace PlayLoRWithMe
                 return;
             w.AddObject(
                 "theme",
-                t => t.AddObject(
-                    "factionDieColors",
-                    c => c.Add("ally", ThemeProbe.AllyDieColor)
-                          .Add("enemy", ThemeProbe.EnemyDieColor)
-                )
+                t =>
+                    t.AddObject(
+                        "factionDieColors",
+                        c =>
+                            c.Add("ally", ThemeProbe.AllyDieColor)
+                                .Add("enemy", ThemeProbe.EnemyDieColor)
+                    )
             );
         }
 
@@ -2150,10 +2475,7 @@ namespace PlayLoRWithMe
                                 continue;
                             var desc = descList?.GetAbnormalityCard(ab.XmlInfo.Name);
                             var localizedName = desc?.cardName;
-                            if (
-                                string.IsNullOrEmpty(localizedName)
-                                || localizedName == "Not found"
-                            )
+                            if (string.IsNullOrEmpty(localizedName) || localizedName == "Not found")
                                 localizedName = ab.XmlInfo.Name;
                             arr.AddObject(o =>
                             {
@@ -2354,9 +2676,7 @@ namespace PlayLoRWithMe
         {
             if (behaviours == null)
                 return;
-            var list =
-                behaviours as IList<DiceBehaviour>
-                ?? new List<DiceBehaviour>(behaviours);
+            var list = behaviours as IList<DiceBehaviour> ?? new List<DiceBehaviour>(behaviours);
             if (list.Count == 0)
                 return;
             o.AddArray(
@@ -2421,9 +2741,8 @@ namespace PlayLoRWithMe
             if (!System.Enum.IsDefined(typeof(UI.UIStoryLine), book.ClassInfo.BookIcon))
                 return bookGroupKey;
 
-            var storyLine = (UI.UIStoryLine)System.Enum.Parse(
-                typeof(UI.UIStoryLine), book.ClassInfo.BookIcon
-            );
+            var storyLine = (UI.UIStoryLine)
+                System.Enum.Parse(typeof(UI.UIStoryLine), book.ClassInfo.BookIcon);
 
             // Mirrors the exact switch in UISettingInvenEquipPageListSlot.SetBooksData.
             // "Normal story" books use either chapter-header text keys or hardcoded
@@ -2482,9 +2801,7 @@ namespace PlayLoRWithMe
             var allStages = Singleton<StageClassInfoList>.Instance?.GetAllDataList();
             if (allStages != null)
             {
-                var stageInfo = allStages.Find(
-                    x => x.storyType == storyLine.ToString()
-                );
+                var stageInfo = allStages.Find(x => x.storyType == storyLine.ToString());
                 if (stageInfo != null)
                 {
                     string name = Singleton<StageNameXmlList>.Instance?.GetName(stageInfo);
