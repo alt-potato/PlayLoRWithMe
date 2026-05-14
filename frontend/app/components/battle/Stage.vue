@@ -436,7 +436,7 @@ provide(BATTLE_CTX, {
   gap: 0.4rem;
   background: var(--bg-gold);
   border-top: 2px solid var(--gold-dim);
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   font-family: var(--font-body);
   z-index: 99;
 }
@@ -466,7 +466,7 @@ provide(BATTLE_CTX, {
   background: transparent;
   border: 1px solid var(--border-mid);
   color: var(--text-2);
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   font-family: var(--font-body);
   padding: 0.1rem 0.4rem;
   cursor: pointer;
@@ -496,7 +496,7 @@ provide(BATTLE_CTX, {
 /* ── Error banner ──────────────────────────────────────────────────────────── */
 .banner-error {
   padding: 0.3rem 0.75rem;
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   font-family: var(--font-body);
   background: var(--bg-crimson-deep);
   border: 1px solid var(--crimson);
@@ -572,7 +572,7 @@ provide(BATTLE_CTX, {
   background: transparent;
   border: none;
   color: var(--text-3);
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   line-height: 1;
   padding: 0.15rem 0.1rem;
   cursor: pointer;
@@ -588,7 +588,7 @@ provide(BATTLE_CTX, {
 
 .wing-heading {
   font-family: var(--font-display);
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.16em;
@@ -626,7 +626,7 @@ provide(BATTLE_CTX, {
   background: transparent;
   border: 1px solid var(--border-mid);
   color: var(--border-hi);
-  font-size: 0.85rem;
+  font-size: var(--fs-xs);
   cursor: pointer;
   transition:
     border-color 0.15s,

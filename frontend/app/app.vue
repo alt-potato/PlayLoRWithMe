@@ -434,8 +434,11 @@ const rawJson = computed(() =>
   --cyan: #4fc3f7;
 
   /* ── Typography scale (base 18px) ──
-     Components using the scale should reference --fs-* tokens. Legacy rem
-     values still scale up proportionally because of the increased base. */
+     All components reference these tokens — never hard-code rem/px font
+     sizes. --fs-4xs is the floor; any size that would fall below it snaps
+     up to --fs-4xs. The floor is intentionally tunable: raise it if the
+     dense battle UI proves too small in practice. */
+  --fs-4xs: 0.62rem;   /* dense micro-labels (battle/unit UI) — scale floor */
   --fs-3xs: 0.68rem;   /* micro labels */
   --fs-2xs: 0.78rem;   /* small badges */
   --fs-xs:  0.86rem;   /* captions, chips */

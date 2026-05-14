@@ -50,7 +50,7 @@ const props = defineProps<{
 }
 .em-level {
   font-family: var(--font-body);
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   color: var(--text-2);
   white-space: nowrap;
   flex-shrink: 0;

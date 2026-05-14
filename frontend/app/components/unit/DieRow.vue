@@ -430,7 +430,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
      (e.g. preview-die contexts outside DisplayCard). */
   background: var(--die-faction-fill, var(--bg-card-2));
   font-family: var(--font-body);
-  font-size: 0.82rem;
+  font-size: var(--fs-2xs);
   /* Numeral colour picks up the per-unit accent (CDC's tint, e.g. #6666ff
      for WARP Cleanup Agents) when present, falling back to --text-1. */
   color: var(--die-accent-color, var(--text-1));
@@ -615,7 +615,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
   border: none;
   color: var(--text-3);
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: var(--fs-2xs);
   padding: 0 0.15rem;
   line-height: 1;
   font-family: var(--font-body);

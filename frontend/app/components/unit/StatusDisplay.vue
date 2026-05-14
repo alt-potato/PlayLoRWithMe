@@ -71,7 +71,7 @@ const sgColor = computed(() =>
   width: 4.2rem;
   text-align: right;
   font-family: var(--font-body);
-  font-size: 0.62rem;
+  font-size: var(--fs-4xs);
   flex-shrink: 0;
 }
 </style>

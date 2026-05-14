@@ -69,7 +69,7 @@ function step(field: "frontHairID" | "backHairID", delta: number): void {
 }
 
 .section-label {
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-3);
@@ -88,7 +88,7 @@ function step(field: "frontHairID" | "backHairID", delta: number): void {
   border: 1px solid var(--border-mid);
   background: var(--bg-card-2);
   color: var(--text-1);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   cursor: pointer;
   transition: border-color 0.1s, color 0.1s;
 }
@@ -106,13 +106,13 @@ function step(field: "frontHairID" | "backHairID", delta: number): void {
 .step-value {
   min-width: 2rem;
   text-align: center;
-  font-size: 0.85rem;
+  font-size: var(--fs-xs);
   color: var(--text-1);
   font-family: var(--font-display);
 }
 
 .step-range {
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
 }
 </style>

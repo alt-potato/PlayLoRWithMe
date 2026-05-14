@@ -323,21 +323,21 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
 }
 
 .cell-label {
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-3);
 }
 
 .cell-name {
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   color: var(--text-1);
   line-height: 1.3;
   word-break: break-word;
 }
 
 .cell-empty {
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   color: var(--text-3);
 }
 
@@ -347,7 +347,7 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
   right: 0.2rem;
   background: transparent;
   border: none;
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   cursor: pointer;
   color: var(--text-3);
   padding: 0;
@@ -375,7 +375,7 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
 
 .selection-header {
   padding: 0.3rem 0.6rem;
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -395,13 +395,13 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   color: var(--text-1);
   font-weight: 600;
 }
 
 .equipped-badge {
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   color: var(--gold);
   border: 1px solid var(--gold);
   border-radius: 3px;
@@ -410,7 +410,7 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
 }
 
 .gift-desc {
-  font-size: 0.62rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
   line-height: 1.4;
 }
@@ -422,7 +422,7 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
 }
 
 .stat-chip {
-  font-size: 0.58rem;
+  font-size: var(--fs-4xs);
   padding: 0.07rem 0.3rem;
   border-radius: 3px;
   border: 1px solid var(--border);
@@ -442,7 +442,7 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
 .unequip-btn {
   align-self: flex-start;
   padding: 0.2rem 0.5rem;
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   background: transparent;
   border: 1px solid var(--border-mid);
   border-radius: 3px;
@@ -472,7 +472,7 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
 
 .no-available {
   padding: 0.5rem 0.6rem;
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   color: var(--text-3);
   font-style: italic;
 }
@@ -519,7 +519,7 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
 }
 
 .gift-option-name {
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   color: var(--text-1);
   font-weight: 600;
   line-height: 1.2;
@@ -538,7 +538,7 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
 }
 
 .summary-title {
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-3);

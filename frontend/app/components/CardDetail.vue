@@ -138,7 +138,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
 .card-range {
   /* push cost-badge and close-btn to the right of the header row */
   margin-right: auto;
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
 }
 
 .cost-badge {
@@ -148,7 +148,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.82rem;
+  font-size: var(--fs-2xs);
   color: var(--gold-bright);
   font-family: var(--font-body);
   font-weight: bold;
@@ -159,7 +159,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
   background: transparent;
   border: none;
   color: var(--text-2);
-  font-size: 1rem;
+  font-size: var(--fs-md);
   cursor: pointer;
   padding: 0 0.2rem;
   line-height: 1;
@@ -171,7 +171,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
 
 .card-title {
   font-family: var(--font-display);
-  font-size: 0.95rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-1);
   letter-spacing: 0.03em;
@@ -184,7 +184,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
 }
 
 .tag {
-  font-size: 0.58rem;
+  font-size: var(--fs-4xs);
   padding: 0.08rem 0.35rem;
   border: 1px solid;
   font-family: var(--font-body);
@@ -226,7 +226,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
   background: var(--bg-info);
   border: 1px solid var(--border-info);
   color: var(--text-info);
-  font-size: 0.68rem;
+  font-size: var(--fs-3xs);
   font-family: var(--font-body);
 }
 .token-icon {
@@ -251,7 +251,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
 
 .ability-desc {
   font-family: var(--font-body);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   color: var(--text-2);
   line-height: 1.5;
   margin: 0;
@@ -288,7 +288,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
 }
 
 .die-img-placeholder {
-  font-size: 1rem;
+  font-size: var(--fs-md);
   color: var(--text-3);
 }
 
@@ -302,13 +302,13 @@ const borderColor = computed(() => cardBorderColor(props.card));
 
 .die-range {
   font-family: var(--font-body);
-  font-size: 1rem;
+  font-size: var(--fs-md);
   font-weight: 600;
 }
 
 .die-desc {
   font-family: var(--font-body);
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   color: var(--text-2);
   line-height: 1.4;
 }

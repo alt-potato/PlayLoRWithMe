@@ -86,7 +86,7 @@ const detailCard = ref<Card | null>(null);
 /* ── Section labels ───────────────────────────────────────────────────────── */
 .section-label {
   font-family: var(--font-display);
-  font-size: 0.5rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--text-3);
@@ -109,7 +109,7 @@ const detailCard = ref<Card | null>(null);
 .section-count {
   color: var(--text-3);
   font-family: var(--font-body);
-  font-size: 0.58rem;
+  font-size: var(--fs-4xs);
   letter-spacing: 0;
 }
 

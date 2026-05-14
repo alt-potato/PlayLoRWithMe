@@ -425,7 +425,7 @@ async function onConfirm() {
 
 .wing-heading {
   font-family: var(--font-display);
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.16em;
@@ -445,7 +445,7 @@ async function onConfirm() {
 }
 
 .wing-empty {
-  font-size: 0.68rem;
+  font-size: var(--fs-3xs);
   color: var(--text-3);
   font-style: italic;
   font-family: var(--font-body);
@@ -564,7 +564,7 @@ async function onConfirm() {
 .unit-name {
   flex-shrink: 0;
   font-family: var(--font-display);
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   font-weight: 600;
   color: var(--text-1);
   letter-spacing: 0.04em;
@@ -580,7 +580,7 @@ async function onConfirm() {
   flex-shrink: 0;
   margin-left: auto;
   font-family: var(--font-body);
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
   white-space: nowrap;
 }
@@ -593,7 +593,7 @@ async function onConfirm() {
 
 .unit-chevron {
   color: var(--text-3);
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   display: inline-block;
   flex-shrink: 0;
   transition: transform 0.18s ease;
@@ -637,7 +637,7 @@ async function onConfirm() {
 
 .stat-k {
   font-family: var(--font-display);
-  font-size: 0.46rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-3);
@@ -652,14 +652,14 @@ async function onConfirm() {
 
 .stat-v {
   font-family: var(--font-body);
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   color: var(--text-2);
   font-weight: 500;
 }
 
 .stat-sep {
   color: var(--border-hi);
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
 }
 
 /* ── HP bar ───────────────────────────────────────────────────────────────── */
@@ -721,7 +721,7 @@ async function onConfirm() {
 
 .owner-label {
   font-family: var(--font-body);
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   color: var(--gold);
   white-space: nowrap;
 }
@@ -738,7 +738,7 @@ async function onConfirm() {
 /* Claim/release buttons match .action-btn in SessionPanel */
 .claim-btn {
   font-family: var(--font-display);
-  font-size: 0.46rem;
+  font-size: var(--fs-4xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 0.1rem 0.4rem;
@@ -825,7 +825,7 @@ async function onConfirm() {
 
 .reception-label {
   font-family: var(--font-display);
-  font-size: 0.4rem;
+  font-size: var(--fs-4xs);
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 0.22em;
@@ -885,7 +885,7 @@ async function onConfirm() {
 
 .placeholder-mark {
   color: var(--gold-dim);
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
 }
 
 /* ── Roster enter/leave transitions ───────────────────────────────────────── */

@@ -107,7 +107,7 @@ const emit = defineEmits<{ confirm: [] }>();
 }
 
 .chip {
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   color: var(--text-2);
   font-family: var(--font-body);
   display: inline-flex;
@@ -120,7 +120,7 @@ const emit = defineEmits<{ confirm: [] }>();
 
 .chip .k {
   font-family: var(--font-display);
-  font-size: 0.58rem;
+  font-size: var(--fs-4xs);
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--text-2);
@@ -132,12 +132,12 @@ const emit = defineEmits<{ confirm: [] }>();
 
 .chip-sep {
   color: var(--border-hi);
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
 }
 
 .phase-text {
   color: var(--text-2);
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   font-family: var(--font-mono);
   white-space: nowrap;
 }
@@ -147,7 +147,7 @@ const emit = defineEmits<{ confirm: [] }>();
   background: var(--bg-green);
   border: 1px solid var(--green-hi);
   color: var(--green);
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   font-family: var(--font-display);
   letter-spacing: 0.08em;
   cursor: pointer;

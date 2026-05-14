@@ -75,7 +75,7 @@ function stateBucket(state: string | undefined): "positive" | "negative" | "fall
 }
 
 .abn-header {
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   color: var(--text-1);
   list-style: none;
   display: flex;
@@ -102,7 +102,7 @@ details.abn-entry > .abn-header {
   min-width: 1.1rem;
   text-align: left;
   font-family: var(--font-display);
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   letter-spacing: 0.04em;
   color: var(--text-2);
 }
@@ -122,7 +122,7 @@ details.abn-entry > .abn-header {
 }
 
 .chevron {
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
   flex-shrink: 0;
   display: inline-block;
@@ -134,7 +134,7 @@ details[open].abn-entry > .abn-header .chevron {
 }
 
 .abn-desc {
-  font-size: 0.68rem;
+  font-size: var(--fs-3xs);
   color: var(--text-2);
   line-height: 1.45;
   margin: 0.2rem 0 0.05rem;
@@ -142,7 +142,7 @@ details[open].abn-entry > .abn-header .chevron {
 }
 
 .abn-flavor {
-  font-size: 0.62rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
   font-style: italic;
   line-height: 1.4;

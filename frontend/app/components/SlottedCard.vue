@@ -60,19 +60,19 @@ defineProps<{
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.68rem;
+  font-size: var(--fs-3xs);
   color: var(--text-1);
   font-family: var(--font-body);
 }
 
 .sc-range {
   flex-shrink: 0;
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
 }
 
 .sc-target {
   flex-shrink: 0;
-  font-size: 0.62rem;
+  font-size: var(--fs-4xs);
   font-family: var(--font-body);
 }
 
@@ -102,13 +102,13 @@ defineProps<{
 .sc-die-placeholder {
   width: 0.75rem;
   text-align: center;
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
   flex-shrink: 0;
 }
 
 .sc-die-range {
   font-family: var(--font-body);
-  font-size: 0.48rem;
+  font-size: var(--fs-4xs);
 }
 </style>

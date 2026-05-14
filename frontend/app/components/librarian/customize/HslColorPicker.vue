@@ -183,7 +183,7 @@ const previewColor = computed(
 }
 
 .slider-label {
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
   width: 0.8rem;
   flex-shrink: 0;
@@ -191,7 +191,7 @@ const previewColor = computed(
 }
 
 .slider-val {
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
   width: 1.8rem;
   flex-shrink: 0;

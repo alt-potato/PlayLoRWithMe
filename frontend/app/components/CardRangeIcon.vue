@@ -164,7 +164,7 @@ const descriptor = computed(() => cardRangeIconDescriptor(props.range));
 
 .range-fallback {
   font-family: var(--font-body);
-  font-size: 0.44rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-3);

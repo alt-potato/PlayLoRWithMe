@@ -296,7 +296,7 @@ function handleClick() {
 }
 
 .hcard-range {
-  font-size: 1rem;
+  font-size: var(--fs-md);
 }
 
 .hcard-cost {
@@ -306,7 +306,7 @@ function handleClick() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.95rem;
+  font-size: var(--fs-sm);
   color: var(--gold-bright);
   font-family: var(--font-body);
   font-weight: bold;
@@ -318,7 +318,7 @@ function handleClick() {
   /* 0.7rem fits the longest common card names (e.g. "Unforgettable") on
      a single line within the 5.5rem preview; `overflow-wrap: break-word`
      is a safety net for any word that still overruns. */
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   color: var(--text-1);
   font-family: var(--font-body);
   text-align: center;
@@ -354,7 +354,7 @@ function handleClick() {
 .hcard-die-placeholder {
   width: 1.15rem;
   text-align: center;
-  font-size: 0.8rem;
+  font-size: var(--fs-2xs);
   color: var(--text-3);
   flex-shrink: 0;
 }
@@ -395,7 +395,7 @@ function handleClick() {
 .hcard-detail-ability {
   margin: 0;
   font-family: var(--font-body);
-  font-size: 0.68rem;
+  font-size: var(--fs-3xs);
   /* page-level text — near-white per in-game styling */
   color: var(--text-page);
   line-height: 1.1;
@@ -432,7 +432,7 @@ function handleClick() {
 
 .hcard-die-range {
   font-family: var(--font-body);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   line-height: 1;
 }
@@ -440,7 +440,7 @@ function handleClick() {
 .hcard-die-desc {
   margin: 0;
   font-family: var(--font-body);
-  font-size: 0.62rem;
+  font-size: var(--fs-4xs);
   line-height: 1.05;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -528,11 +528,11 @@ function handleClick() {
 }
 
 .hcard-token-stack {
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
 }
 
 .hcard-count {
-  font-size: 0.62rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
   font-family: var(--font-body);
   align-self: flex-end;

@@ -142,7 +142,7 @@ const previewLabel = computed(() => {
 }
 
 .section-label {
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-3);
@@ -160,7 +160,7 @@ const previewLabel = computed(() => {
   border: 1px solid var(--border-mid);
   background: var(--bg);
   color: var(--text-1);
-  font-size: 0.8rem;
+  font-size: var(--fs-2xs);
 }
 
 .icon-btn {
@@ -169,7 +169,7 @@ const previewLabel = computed(() => {
   border: 1px solid var(--border-mid);
   background: transparent;
   color: var(--text-2);
-  font-size: 0.9rem;
+  font-size: var(--fs-xs);
   cursor: pointer;
   transition: color 0.1s;
 }
@@ -195,7 +195,7 @@ const previewLabel = computed(() => {
   border: 1px solid var(--border);
   background: var(--bg-card-2);
   color: var(--text-2);
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   cursor: pointer;
   transition: color 0.1s, border-color 0.1s;
 }
@@ -217,7 +217,7 @@ const previewLabel = computed(() => {
   border: 1px solid var(--border-mid);
   background: var(--bg);
   color: var(--text-1);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
 }
 
 .name-preview {
@@ -226,7 +226,7 @@ const previewLabel = computed(() => {
   border: 1px solid var(--border);
   border-radius: 4px;
   font-family: var(--font-display);
-  font-size: 0.85rem;
+  font-size: var(--fs-xs);
   color: var(--gold);
   text-align: center;
   margin-top: 0.1rem;

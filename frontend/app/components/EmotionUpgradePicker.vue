@@ -201,7 +201,7 @@ const showTeamInfo = computed(() => props.selection.teamEmotionLevel !== undefin
 
 .ab-title {
   font-family: var(--font-display);
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--gold);
@@ -219,7 +219,7 @@ const showTeamInfo = computed(() => props.selection.teamEmotionLevel !== undefin
 
 .ab-team-lv {
   font-family: var(--font-display);
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   color: var(--gold);
   flex-shrink: 0;
 }
@@ -266,7 +266,7 @@ const showTeamInfo = computed(() => props.selection.teamEmotionLevel !== undefin
 }
 .ab-posneg-label {
   font-family: var(--font-body);
-  font-size: 0.58rem;
+  font-size: var(--fs-4xs);
 }
 
 .ab-posneg-label--pos {
@@ -314,7 +314,7 @@ const showTeamInfo = computed(() => props.selection.teamEmotionLevel !== undefin
 
 .ab-ally-prompt {
   font-family: var(--font-display);
-  font-size: 0.62rem;
+  font-size: var(--fs-4xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-3);
@@ -324,7 +324,7 @@ const showTeamInfo = computed(() => props.selection.teamEmotionLevel !== undefin
   background: transparent;
   border: 1px solid var(--border-mid);
   color: var(--text-2);
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   font-family: var(--font-body);
   padding: 0.15rem 0.45rem;
   cursor: pointer;
@@ -390,7 +390,7 @@ const showTeamInfo = computed(() => props.selection.teamEmotionLevel !== undefin
 
 .ab-ally-name {
   font-family: var(--font-display);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   color: var(--text-1);
   flex: 1;
   min-width: 0;
@@ -401,7 +401,7 @@ const showTeamInfo = computed(() => props.selection.teamEmotionLevel !== undefin
 
 .ab-ally-lvl {
   font-family: var(--font-body);
-  font-size: 0.62rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
   flex-shrink: 0;
 }

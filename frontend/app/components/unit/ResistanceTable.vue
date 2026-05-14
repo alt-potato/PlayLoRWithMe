@@ -97,7 +97,7 @@ defineProps<{ resistances: Resistances | undefined }>();
    */
   width: fit-content;
   align-self: flex-start;
-  font-size: 0.68rem;
+  font-size: var(--fs-3xs);
   font-family: var(--font-body);
 }
 .resist-table th {
@@ -133,7 +133,7 @@ defineProps<{ resistances: Resistances | undefined }>();
   min-width: 1.4rem;
   text-align: left;
   margin-left: 0.15rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-xs);
   line-height: 1;
 }
 </style>

@@ -83,7 +83,7 @@ function close() {
   border: 1px solid var(--border-gold, rgba(201, 162, 39, 0.4));
   padding: 0.5rem;
   font-family: var(--font-mono, monospace);
-  font-size: 0.8rem;
+  font-size: var(--fs-2xs);
   box-shadow: var(--shadow-md, 0 2px 10px rgba(0, 0, 0, 0.55));
 }
 .dev-picker-head {
@@ -99,7 +99,7 @@ function close() {
   color: var(--gold, #c9a227);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
 }
 .dev-picker-close {
   background: transparent;

@@ -417,7 +417,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
 
 .panel-title {
   flex: 1;
-  font-size: 0.9rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   font-family: var(--font-display);
   color: var(--gold);
@@ -427,7 +427,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
   background: transparent;
   border: none;
   color: var(--text-3);
-  font-size: 0.9rem;
+  font-size: var(--fs-xs);
   cursor: pointer;
   padding: 0.1rem 0.3rem;
   border-radius: 4px;
@@ -532,7 +532,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
 
 .tab-disabled-msg {
   color: var(--text-3);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   font-family: var(--font-body);
   padding: 2rem 0;
   text-align: center;
@@ -558,7 +558,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
 
 .save-error {
   flex: 1;
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   color: var(--crimson-hi);
 }
 
@@ -566,7 +566,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
 .complete-btn {
   padding: 0.35rem 0.9rem;
   border-radius: 4px;
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   cursor: pointer;
   transition: background 0.1s, color 0.1s, border-color 0.1s;
 }

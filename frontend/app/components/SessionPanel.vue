@@ -235,7 +235,7 @@ const unclaimedCount = computed(
   cursor: pointer;
   color: var(--text-2);
   font-family: var(--font-display);
-  font-size: 0.58rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   transition: color 0.15s;
@@ -251,7 +251,7 @@ const unclaimedCount = computed(
 
 .toggle-count {
   color: var(--gold);
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   font-family: var(--font-body);
   letter-spacing: 0;
 }
@@ -264,7 +264,7 @@ const unclaimedCount = computed(
   height: 1rem;
   background: var(--crimson);
   color: var(--text-red);
-  font-size: 0.52rem;
+  font-size: var(--fs-4xs);
   font-family: var(--font-body);
   letter-spacing: 0;
   padding: 0 0.2rem;
@@ -272,7 +272,7 @@ const unclaimedCount = computed(
 
 .toggle-chevron {
   color: var(--text-3);
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   display: inline-block;
   transition: transform 0.18s ease;
 }
@@ -310,7 +310,7 @@ const unclaimedCount = computed(
   margin-bottom: -1px;
   cursor: pointer;
   font-family: var(--font-display);
-  font-size: 0.5rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--text-3);
@@ -352,7 +352,7 @@ const unclaimedCount = computed(
 
 .player-name {
   font-family: var(--font-body);
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   color: var(--text-1);
   flex: 1;
   min-width: 0;
@@ -363,7 +363,7 @@ const unclaimedCount = computed(
 
 .player-you {
   font-family: var(--font-display);
-  font-size: 0.46rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--gold-dim);
@@ -374,7 +374,7 @@ const unclaimedCount = computed(
   background: none;
   border: none;
   color: var(--text-3);
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   cursor: pointer;
   padding: 0 0.1rem;
   line-height: 1;
@@ -393,7 +393,7 @@ const unclaimedCount = computed(
   border: 1px solid var(--gold-dim);
   color: var(--gold);
   font-family: var(--font-body);
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   padding: 0.1rem 0.3rem;
   outline: none;
 }
@@ -426,7 +426,7 @@ const unclaimedCount = computed(
 .librarian-name {
   flex: 1;
   font-family: var(--font-body);
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   color: var(--text-1);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -436,7 +436,7 @@ const unclaimedCount = computed(
 
 .owner-tag {
   font-family: var(--font-body);
-  font-size: 0.62rem;
+  font-size: var(--fs-4xs);
   color: var(--gold);
   white-space: nowrap;
 }
@@ -448,7 +448,7 @@ const unclaimedCount = computed(
 /* ── Action buttons ── */
 .action-btn {
   font-family: var(--font-display);
-  font-size: 0.48rem;
+  font-size: var(--fs-4xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 0.12rem 0.45rem;
@@ -489,7 +489,7 @@ const unclaimedCount = computed(
 
 .session-empty {
   padding: 0.5rem 0.6rem;
-  font-size: 0.68rem;
+  font-size: var(--fs-3xs);
   color: var(--text-3);
   font-style: italic;
   font-family: var(--font-body);

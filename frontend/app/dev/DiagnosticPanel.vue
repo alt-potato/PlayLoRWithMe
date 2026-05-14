@@ -83,7 +83,7 @@ const collapsed = ref(false);
   background: rgba(0, 0, 0, 0.85);
   color: #ddd;
   font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   border: 1px solid #555;
   padding: 0.3rem 0.5rem;
   display: flex;
@@ -106,7 +106,7 @@ const collapsed = ref(false);
   background: transparent;
   border: none;
   color: #ddd;
-  font-size: 0.85rem;
+  font-size: var(--fs-xs);
   font-family: inherit;
   cursor: pointer;
   padding: 0 0.2rem;
@@ -114,7 +114,7 @@ const collapsed = ref(false);
 }
 
 .diag-title {
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   letter-spacing: 0.1em;
   color: #999;
   margin-bottom: 0.15rem;

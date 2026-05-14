@@ -153,14 +153,14 @@ function applyPreset(key: string, preset: string): void {
 }
 
 .dlg-label {
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-3);
 }
 
 .preset-toggle {
-  font-size: 0.58rem;
+  font-size: var(--fs-4xs);
   padding: 0.1rem 0.3rem;
   background: transparent;
   border: 1px solid var(--border);
@@ -189,7 +189,7 @@ function applyPreset(key: string, preset: string): void {
   border: 1px solid var(--border-mid);
   background: var(--bg);
   color: var(--text-1);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   resize: vertical;
   box-sizing: border-box;
   font-family: var(--font-body);
@@ -219,7 +219,7 @@ function applyPreset(key: string, preset: string): void {
   border: none;
   border-radius: 3px;
   color: var(--text-2);
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   cursor: pointer;
   transition:
     background 0.1s,
@@ -238,7 +238,7 @@ function applyPreset(key: string, preset: string): void {
 }
 
 .preset-empty {
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   color: var(--text-3);
   font-style: italic;
   padding: 0.2rem 0.4rem;

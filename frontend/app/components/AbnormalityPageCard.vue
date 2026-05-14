@@ -118,7 +118,7 @@ function targetHint(targetType: string): string | null {
   align-items: center;
   justify-content: center;
   font-family: var(--font-display);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   flex-shrink: 0;
   padding: 0 0.25rem;
@@ -126,7 +126,7 @@ function targetHint(targetType: string): string | null {
 
 .ep-target {
   font-family: var(--font-body);
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
   font-style: italic;
   white-space: nowrap;
@@ -134,7 +134,7 @@ function targetHint(targetType: string): string | null {
 
 .ep-name {
   font-family: var(--font-display);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   color: var(--text-1);
   letter-spacing: 0.03em;
   line-height: 1.3;
@@ -142,7 +142,7 @@ function targetHint(targetType: string): string | null {
 
 .ep-desc {
   font-family: var(--font-body);
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   color: var(--text-2);
   margin: 0;
   line-height: 1.45;
@@ -150,7 +150,7 @@ function targetHint(targetType: string): string | null {
 
 .ep-flavor {
   font-family: var(--font-body);
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
   font-style: italic;
   margin: 0;

@@ -145,7 +145,7 @@ function dieState(
   font-family: var(--font-display);
   font-weight: 600;
   color: var(--text-1);
-  font-size: 0.88rem;
+  font-size: var(--fs-xs);
   letter-spacing: 0.04em;
   flex: 1;
   min-width: 0;
@@ -155,7 +155,7 @@ function dieState(
 }
 .mass-badge {
   font-family: var(--font-display);
-  font-size: 0.58rem;
+  font-size: var(--fs-4xs);
   padding: 0.1rem 0.4rem;
   background: var(--bg-mass);
   border: 1px solid var(--border-mass);
@@ -165,7 +165,7 @@ function dieState(
   letter-spacing: 0.08em;
 }
 .slot-label {
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   color: var(--text-2);
   white-space: nowrap;
   font-family: var(--font-body);
@@ -174,7 +174,7 @@ function dieState(
   background: transparent;
   border: none;
   color: var(--text-2);
-  font-size: 1rem;
+  font-size: var(--fs-md);
   cursor: pointer;
   padding: 0 0.2rem;
   line-height: 1;
@@ -205,14 +205,14 @@ function dieState(
   align-items: center;
   gap: 0.5rem;
   font-family: var(--font-display);
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--text-1);
   letter-spacing: 0.04em;
   margin-bottom: 0.65rem;
 }
 .untargetable-label {
-  font-size: 0.62rem;
+  font-size: var(--fs-4xs);
   color: var(--orange);
   font-weight: normal;
   font-family: var(--font-body);
@@ -273,7 +273,7 @@ function dieState(
   clip-path: var(--hex);
   background: var(--bg-card-2);
   font-family: var(--font-body);
-  font-size: 1.35rem;
+  font-size: var(--fs-xl);
   color: var(--text-1);
   pointer-events: none;
   transition:
@@ -301,7 +301,7 @@ function dieState(
   padding: 2rem 1rem;
   text-align: center;
   color: var(--text-2);
-  font-size: 0.85rem;
+  font-size: var(--fs-xs);
   font-family: var(--font-body);
   font-style: italic;
 }

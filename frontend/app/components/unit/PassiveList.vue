@@ -97,7 +97,7 @@ function passiveClass(p: Passive) {
 }
 
 .passive-header {
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   color: var(--text-1);
   list-style: none;
   display: flex;
@@ -120,7 +120,7 @@ details.passive-entry > .passive-header {
 }
 
 .chevron {
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
   flex-shrink: 0;
   display: inline-block;
@@ -132,7 +132,7 @@ details[open].passive-entry > .passive-header .chevron {
 }
 
 .passive-cost {
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   color: var(--text-2);
   flex-shrink: 0;
   min-width: 1.1rem;
@@ -159,7 +159,7 @@ details[open].passive-entry > .passive-header .chevron {
 }
 
 .passive-desc {
-  font-size: 0.68rem;
+  font-size: var(--fs-3xs);
   color: var(--text-2);
   line-height: 1.45;
   margin: 0.2rem 0 0.05rem;

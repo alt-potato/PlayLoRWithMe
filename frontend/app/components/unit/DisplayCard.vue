@@ -389,7 +389,7 @@ const detailsLabel = computed(() => {
   flex-direction: column;
   flex: 1;
   gap: 0.32rem;
-  font-size: 0.78rem;
+  font-size: var(--fs-2xs);
   font-family: var(--font-body);
   overflow: visible;
   width: 100%;
@@ -421,7 +421,7 @@ const detailsLabel = computed(() => {
 }
 .untargetable-chip {
   font-family: var(--font-body);
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   color: var(--crimson-hi);
   border: 1px solid var(--crimson-hi);
   padding: 0.05rem 0.35rem;
@@ -443,7 +443,7 @@ const detailsLabel = computed(() => {
 }
 .state-badge {
   font-family: var(--font-body);
-  font-size: 0.52rem;
+  font-size: var(--fs-4xs);
   padding: 0.1rem 0.3rem;
   color: #000;
   white-space: nowrap;
@@ -452,7 +452,7 @@ const detailsLabel = computed(() => {
 }
 .unit-name {
   font-family: var(--font-display);
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   font-weight: 600;
   letter-spacing: 0.05em;
   color: var(--text-1);
@@ -496,7 +496,7 @@ const detailsLabel = computed(() => {
   gap: 0.2rem;
 }
 .incoming-chip {
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   padding: 0.08rem 0.28rem;
   background: transparent;
   border: 1px solid;
@@ -517,7 +517,7 @@ const detailsLabel = computed(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.18rem;
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   padding: 0.08rem 0.25rem 0.08rem 0.15rem;
   background: var(--bg-gold);
   border: 1px solid var(--border-gold-buff);
@@ -550,7 +550,7 @@ const detailsLabel = computed(() => {
   padding: 0.3rem 0.45rem;
   background: var(--bg-surface);
   border: 1px solid var(--border-mid);
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   color: var(--text-2);
   line-height: 1.4;
   width: max-content;
@@ -586,7 +586,7 @@ const detailsLabel = computed(() => {
   display: flex;
   gap: 0.3rem;
   align-items: baseline;
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   color: var(--text-2);
 }
 .centry.unavailable {
@@ -600,7 +600,7 @@ const detailsLabel = computed(() => {
   height: 1.1rem;
   background: var(--bg-card-3);
   border: 1px solid var(--border-mid);
-  font-size: 0.58rem;
+  font-size: var(--fs-4xs);
   color: var(--gold);
   flex-shrink: 0;
   font-family: var(--font-body);
@@ -608,7 +608,7 @@ const detailsLabel = computed(() => {
 .centry-range {
   color: var(--text-3);
   margin-left: auto;
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   font-family: var(--font-body);
 }
 
@@ -634,14 +634,14 @@ const detailsLabel = computed(() => {
   align-items: center;
   gap: 0.3em;
   font-family: var(--font-display);
-  font-size: 0.58rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--text-2);
   transition: color 0.15s;
 }
 .hand-chevron {
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
   display: inline-block;
   transition: transform 0.18s ease;
@@ -652,7 +652,7 @@ details[open] > .section-label .hand-chevron {
 }
 .hand-count {
   color: var(--text-3);
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   letter-spacing: 0;
   text-transform: none;
 }
@@ -675,7 +675,7 @@ details[open] > .section-label .hand-chevron {
 }
 .ego-toggle {
   font-family: var(--font-display);
-  font-size: 0.52rem;
+  font-size: var(--fs-4xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 0.1rem 0.4rem;
@@ -705,7 +705,7 @@ details[open] > .section-label .hand-chevron {
 /* ── Detail sub-section labels ── */
 .det-label {
   font-family: var(--font-display);
-  font-size: 0.53rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--text-3);

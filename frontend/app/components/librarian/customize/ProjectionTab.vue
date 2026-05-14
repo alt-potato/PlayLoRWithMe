@@ -204,14 +204,14 @@ const hasBodyTypeToggle = computed(
 }
 
 .section-label {
-  font-size: 0.6rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-3);
 }
 
 .range-hint {
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   color: var(--text-3);
   text-transform: none;
   letter-spacing: 0;
@@ -228,7 +228,7 @@ const hasBodyTypeToggle = computed(
   border: 1px solid var(--border-mid);
   background: var(--bg-card-2);
   color: var(--text-2);
-  font-size: 0.75rem;
+  font-size: var(--fs-2xs);
   cursor: pointer;
   transition:
     color 0.1s,
@@ -265,17 +265,17 @@ const hasBodyTypeToggle = computed(
   border: 1px solid var(--border-mid);
   background: var(--bg);
   color: var(--text-1);
-  font-size: 0.8rem;
+  font-size: var(--fs-2xs);
   text-align: right;
 }
 
 .height-unit {
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   color: var(--text-2);
 }
 
 .empty-hint {
-  font-size: 0.7rem;
+  font-size: var(--fs-3xs);
   color: var(--text-3);
   font-style: italic;
   padding: 0.25rem 0;
@@ -288,7 +288,7 @@ const hasBodyTypeToggle = computed(
   border: 1px solid var(--border-mid);
   background: transparent;
   color: var(--text-3);
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   cursor: pointer;
@@ -323,7 +323,7 @@ const hasBodyTypeToggle = computed(
   border: 1px solid var(--border-mid);
   background: var(--bg-card-2);
   color: var(--text-3);
-  font-size: 0.65rem;
+  font-size: var(--fs-3xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   cursor: pointer;
@@ -365,7 +365,7 @@ const hasBodyTypeToggle = computed(
   border: 1px solid var(--border);
   background: var(--bg-card-2);
   color: var(--text-2);
-  font-size: 0.72rem;
+  font-size: var(--fs-3xs);
   cursor: pointer;
   text-align: left;
   transition:
@@ -400,7 +400,7 @@ const hasBodyTypeToggle = computed(
 
 /* Badge indicating the skin replaces the head model (skinType != "Lor"). */
 .replaces-head-badge {
-  font-size: 0.55rem;
+  font-size: var(--fs-4xs);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-3);
