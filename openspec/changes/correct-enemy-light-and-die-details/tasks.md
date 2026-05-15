@@ -12,10 +12,10 @@
 
 ## 3. Realign battle-sampler fixture with wire enum names
 
-- [ ] 3.1 In `frontend/app/dev/fixtures/battle-sampler.json`, replace every `detail: "Pierce"` with `detail: "Penetrate"` and every card-die `detail: "Blunt"` with `detail: "Hit"`. Leave `detail: "Slash"`, `detail: "Guard"`, `detail: "Evasion"`, and `detail: "Hit"` (already correct) alone.
-- [ ] 3.2 In the same fixture, strip the `type` and `detail` keys from every entry inside any `speedDice` array (they're now absent from `SpeedDieSchema`). Drop the invented `detail: "Counter"` on the Standby speed die in particular.
-- [ ] 3.3 In `schema/reference-state.json`, strip `type`/`detail` from every `speedDice` entry. (The enemy-light addition originally planned here was rolled into 1.3 because the schema change requires it for tests to pass.)
-- [ ] 3.4 Run `npm test` from `frontend/` and `cd mod && dotnet build`. Expect green tests and `0 Warning(s)  0 Error(s)`. Commit as one INVEST batch.
+- [x] 3.1 In `frontend/app/dev/fixtures/battle-sampler.json`, replace every `detail: "Pierce"` with `detail: "Penetrate"` and every card-die `detail: "Blunt"` with `detail: "Hit"`. Leave `detail: "Slash"`, `detail: "Guard"`, `detail: "Evasion"`, and `detail: "Hit"` (already correct) alone.
+- [x] 3.2 In the same fixture, strip the `type` and `detail` keys from every entry inside any `speedDice` array (they're now absent from `SpeedDieSchema`). Drop the invented `detail: "Counter"` on the Standby speed die in particular.
+- [x] 3.3 In `schema/reference-state.json`, strip `type`/`detail` from every `speedDice` entry. (The enemy-light addition originally planned here was rolled into 1.3 because the schema change requires it for tests to pass.)
+- [x] 3.4 Run `npm test` from `frontend/` and `cd mod && dotnet build`. Expect green tests and `0 Warning(s)  0 Error(s)`. Commit as one INVEST batch.
 
 ## 4. Regenerate canonical schema artifact
 

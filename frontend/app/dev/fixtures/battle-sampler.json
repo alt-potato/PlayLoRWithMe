@@ -15,7 +15,7 @@
     "chapter": 6,
     "wave": 2,
     "round": 4,
-    "name": "Reception of Daat — Melting Love"
+    "name": "Reception of Melting Love"
   },
   "allies": [
     {
@@ -30,10 +30,10 @@
       "turnState": "WAIT_CARD",
       "fixedTargets": [10],
       "speedDice": [
-        { "slot": 0, "value": 6, "type": "Atk", "detail": "Slash" },
-        { "slot": 1, "value": 4, "type": "Atk", "detail": "Pierce" },
-        { "slot": 2, "value": 3, "type": "Def", "detail": "Guard", "locked": true },
-        { "slot": 3, "value": 5, "type": "Def", "detail": "Evasion" }
+        { "slot": 0, "value": 6 },
+        { "slot": 1, "value": 4 },
+        { "slot": 2, "value": 3, "locked": true },
+        { "slot": 3, "value": 5 }
       ],
       "slottedCards": [
         {
@@ -45,10 +45,7 @@
           "targetSlot": 0,
           "clash": false,
           "range": "FarAreaEach",
-          "subTargets": [
-            { "targetUnitId": 11, "targetSlot": 0 },
-            { "targetUnitId": 12, "targetSlot": 0 }
-          ],
+          "subTargets": [{ "targetUnitId": 11, "targetSlot": 0 }],
           "dice": [
             { "type": "Atk", "detail": "Slash", "min": 4, "max": 7 },
             { "type": "Atk", "detail": "Hit", "min": 6, "max": 12 }
@@ -103,10 +100,7 @@
           "cost": 0,
           "range": "Near",
           "rarity": "Common",
-          "abilityDesc": "A scout's preparatory step.",
-          "dice": [
-            { "type": "Def", "detail": "Evasion", "min": 3, "max": 7 }
-          ]
+          "dice": [{ "type": "Def", "detail": "Evasion", "min": 3, "max": 7 }]
         },
         {
           "id": { "id": 2, "packageId": 0 },
@@ -117,7 +111,13 @@
           "rarity": "Uncommon",
           "abilityDesc": "[On Hit] Inflicts 1 Bleed.",
           "dice": [
-            { "type": "Atk", "detail": "Slash", "min": 4, "max": 9, "desc": "[On Hit] Inflict 1 Bleed on target." }
+            {
+              "type": "Atk",
+              "detail": "Slash",
+              "min": 4,
+              "max": 9,
+              "desc": "[On Hit] Inflict 1 Bleed on target."
+            }
           ]
         },
         {
@@ -128,9 +128,7 @@
           "range": "Special",
           "rarity": "Unique",
           "abilityDesc": "[On Use] Discards the highest-cost card in hand. Cannot be discarded.",
-          "dice": [
-            { "type": "Def", "detail": "Evasion", "min": 8, "max": 12 }
-          ]
+          "dice": [{ "type": "Def", "detail": "Evasion", "min": 8, "max": 12 }]
         },
         {
           "id": { "id": 5, "packageId": 0 },
@@ -139,12 +137,30 @@
           "cost": 4,
           "range": "Near",
           "rarity": "Rare",
-          "abilityDesc": "A four-die exchange engineered for protracted duels. [On Clash Win] Inflict 1 Bleed; [On Hit] Inflict 1 Burn for each die that hits this Scene.",
+          "abilityDesc": "[On Clash Win] Inflict 1 Bleed; [On Hit] Inflict 1 Burn for each die that hits this Scene.",
           "dice": [
-            { "type": "Def", "detail": "Guard", "min": 1, "max": 9, "desc": "[Counter] If this die survives, restore 2 HP and 2 Stagger Resist to user." },
-            { "type": "Atk", "detail": "Slash", "min": 1, "max": 9, "desc": "[On Clash Win] Inflict 1 Bleed on target." },
+            {
+              "type": "Def",
+              "detail": "Guard",
+              "min": 1,
+              "max": 9,
+              "desc": "[Counter] If this die survives, restore 2 HP and 2 Stagger Resist to user."
+            },
+            {
+              "type": "Atk",
+              "detail": "Slash",
+              "min": 1,
+              "max": 9,
+              "desc": "[On Clash Win] Inflict 1 Bleed on target."
+            },
             { "type": "Def", "detail": "Evasion", "min": 1, "max": 9 },
-            { "type": "Atk", "detail": "Hit", "min": 1, "max": 9, "desc": "[On Hit] If user has Bleed, transfer 1 stack to target." }
+            {
+              "type": "Atk",
+              "detail": "Hit",
+              "min": 1,
+              "max": 9,
+              "desc": "[On Hit] If user has Bleed, transfer 1 stack to target."
+            }
           ]
         },
         {
@@ -154,7 +170,6 @@
           "cost": 6,
           "range": "FarAreaEach",
           "rarity": "Unique",
-          "abilityDesc": "Page-exclusive. Strikes every enemy in range with two independent dice.",
           "dice": [
             { "type": "Atk", "detail": "Slash", "min": 4, "max": 7 },
             { "type": "Atk", "detail": "Hit", "min": 6, "max": 12 }
@@ -167,12 +182,11 @@
           "cost": 5,
           "range": "Near",
           "rarity": "Unique",
-          "abilityDesc": "Page-exclusive. Five-die ultimate for the Messenger book; chains across guard, evasion, and three offensive dice.",
           "dice": [
             { "type": "Def", "detail": "Guard", "min": 6, "max": 9 },
             { "type": "Def", "detail": "Evasion", "min": 8, "max": 8 },
             { "type": "Atk", "detail": "Slash", "min": 4, "max": 8 },
-            { "type": "Atk", "detail": "Pierce", "min": 4, "max": 8 },
+            { "type": "Atk", "detail": "Penetrate", "min": 4, "max": 8 },
             { "type": "Atk", "detail": "Hit", "min": 4, "max": 8 }
           ]
         },
@@ -185,9 +199,27 @@
           "rarity": "Unique",
           "abilityDesc": "EGO. Targets one enemy. Roll all dice; on each clash win, the next die in this card gains +2 power. Reduce user's current Light by 2; if user has fewer than 2 Light, this card cannot be played. At the end of the Scene, if no enemy is Staggered, gain 1 Positive Emotion Coin; otherwise gain 2 Negative Emotion Coins. This text is long enough to trigger vertical scrolling in the detail pane so we can validate overflow handling.",
           "dice": [
-            { "type": "Atk", "detail": "Slash", "min": 7, "max": 13, "desc": "[On Clash Win] Inflict 1 Erosion on target. [On Hit] Inflict 1 Fairy on target. These per-die descriptions are intentionally long so that the detail-pane die list exercises its wrapping path." },
-            { "type": "Atk", "detail": "Slash", "min": 7, "max": 13, "desc": "[On Clash Win] Survives clashes with non-Unique cards." },
-            { "type": "Atk", "detail": "Slash", "min": 7, "max": 13, "desc": "[On Hit] Apply Stagger Protection to user equal to half the rolled value." }
+            {
+              "type": "Atk",
+              "detail": "Slash",
+              "min": 7,
+              "max": 13,
+              "desc": "[On Clash Win] Inflict 1 Erosion on target. [On Hit] Inflict 1 Fairy on target. These per-die descriptions are intentionally long so that the detail-pane die list exercises its wrapping path."
+            },
+            {
+              "type": "Atk",
+              "detail": "Slash",
+              "min": 7,
+              "max": 13,
+              "desc": "[On Clash Win] Survives clashes with non-Unique cards."
+            },
+            {
+              "type": "Atk",
+              "detail": "Slash",
+              "min": 7,
+              "max": 13,
+              "desc": "[On Hit] Apply Stagger Protection to user equal to half the rolled value."
+            }
           ]
         }
       ]
@@ -203,8 +235,8 @@
       "targetable": true,
       "turnState": "BREAK",
       "speedDice": [
-        { "slot": 0, "value": 0, "type": "Atk", "detail": "Slash", "staggered": true, "locked": true },
-        { "slot": 1, "value": 0, "type": "Def", "detail": "Guard", "staggered": true }
+        { "slot": 0, "value": 0, "staggered": true, "locked": true },
+        { "slot": 1, "value": 0, "staggered": true }
       ],
       "slottedCards": [],
       "passives": [],
@@ -261,8 +293,8 @@
       "targetable": true,
       "turnState": "WAIT_CARD",
       "speedDice": [
-        { "slot": 0, "value": 5, "type": "Atk", "detail": "Pierce" },
-        { "slot": 1, "value": 3, "type": "Standby", "detail": "Counter" }
+        { "slot": 0, "value": 5 },
+        { "slot": 1, "value": 3 }
       ],
       "slottedCards": [
         {
@@ -274,9 +306,7 @@
           "targetSlot": 0,
           "clash": true,
           "range": "Near",
-          "dice": [
-            { "type": "Atk", "detail": "Pierce", "min": 3, "max": 5 }
-          ]
+          "dice": [{ "type": "Atk", "detail": "Penetrate", "min": 3, "max": 5 }]
         }
       ],
       "passives": [],
@@ -291,7 +321,10 @@
       ],
       "abnormalities": [],
       "emotionLevel": 0,
-      "emotionCoins": { "positive": 0, "negative": 0, "max": 5 }
+      "emotionCoins": { "positive": 0, "negative": 0, "max": 5 },
+      "light": 5,
+      "maxLight": 7,
+      "reservedLight": 0
     },
     {
       "id": 11,
@@ -304,15 +337,16 @@
       "targetable": true,
       "turnState": "WAIT_CARD",
       "dieColor": "#78c828",
-      "speedDice": [
-        { "slot": 0, "value": 4, "type": "Def", "detail": "Evasion" }
-      ],
+      "speedDice": [{ "slot": 0, "value": 4 }],
       "slottedCards": [],
       "passives": [],
       "buffs": [],
       "abnormalities": [],
       "emotionLevel": 0,
-      "emotionCoins": { "positive": 0, "negative": 0, "max": 5 }
+      "emotionCoins": { "positive": 0, "negative": 0, "max": 5 },
+      "light": 0,
+      "maxLight": 3,
+      "reservedLight": 0
     },
     {
       "id": 12,
@@ -324,15 +358,16 @@
       "staggerThreshold": 17,
       "targetable": false,
       "turnState": "WAIT_CARD",
-      "speedDice": [
-        { "slot": 0, "value": 2, "type": "Atk", "detail": "Blunt" }
-      ],
+      "speedDice": [{ "slot": 0, "value": 2 }],
       "slottedCards": [],
       "passives": [],
       "buffs": [],
       "abnormalities": [],
       "emotionLevel": 0,
-      "emotionCoins": { "positive": 0, "negative": 0, "max": 5 }
+      "emotionCoins": { "positive": 0, "negative": 0, "max": 5 },
+      "light": 0,
+      "maxLight": 3,
+      "reservedLight": 0
     }
   ]
 }

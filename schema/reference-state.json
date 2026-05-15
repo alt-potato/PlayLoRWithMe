@@ -196,7 +196,7 @@
           "targetable": true,
           "turnState": "WAIT_CARD",
           "speedDice": [
-            { "slot": 0, "value": 5, "type": "Atk", "detail": "Slash" }
+            { "slot": 0, "value": 5 }
           ],
           "slottedCards": [],
           "passives": [],
@@ -240,7 +240,7 @@
           "targetable": true,
           "turnState": "BREAK",
           "speedDice": [
-            { "slot": 0, "value": 0, "type": "Atk", "detail": "Slash", "staggered": true }
+            { "slot": 0, "value": 0, "staggered": true }
           ],
           "slottedCards": [],
           "passives": [],
@@ -265,7 +265,7 @@
           "targetable": true,
           "turnState": "WAIT_CARD",
           "speedDice": [
-            { "slot": 0, "value": 4, "type": "Atk", "detail": "Pierce" }
+            { "slot": 0, "value": 4 }
           ],
           "slottedCards": [
             {
