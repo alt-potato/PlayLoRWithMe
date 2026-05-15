@@ -24,6 +24,6 @@
 
 ## 5. Validate end-to-end
 
-- [ ] 5.1 Load the battle-sampler fixture in a dev build (`npm run dev` then `/?mock=battle-sampler`) and confirm: (a) every card die in hand and slotted card rows renders a real icon (no `·` placeholders for `Penetrate`/`Hit`/`Slash`/`Guard`/`Evasion` dice); (b) Melting Love's light pip row renders with 5/7 lit (5 gold + 2 unlit); (c) Pink Slimes show no light row (their `maxLight: 3` and `light: 0` mean 3 unlit pips — still acceptable, but verify the row renders rather than being absent).
-- [ ] 5.2 Run a live mod build (`./build_and_run.sh` if configured, otherwise `cd mod && dotnet build` and manually deploy). Open the dev console and confirm no `[wire-contract]` log entries fire on incoming `state` messages (the `SpeedDie` validation noise is gone).
+- [x] 5.1 Load the battle-sampler fixture in a dev build (`npm run dev` then `/?mock=battle-sampler`) and confirm: (a) every card die in hand and slotted card rows renders a real icon (no `·` placeholders for `Penetrate`/`Hit`/`Slash`/`Guard`/`Evasion` dice); (b) Melting Love's light pip row renders with 5/7 lit (5 gold + 2 unlit); (c) Pink Slimes show no light row (their `maxLight: 3` and `light: 0` mean 3 unlit pips — still acceptable, but verify the row renders rather than being absent).
+- [x] 5.2 Run a live mod build (`./build_and_run.sh` if configured, otherwise `cd mod && dotnet build` and manually deploy). Open the dev console and confirm no `[wire-contract]` log entries fire on incoming `state` messages (the `SpeedDie` validation noise is gone).
 - [x] 5.3 Final pass: `npm test` (frontend) and `dotnet build` (mod) both green. Open `openspec validate correct-enemy-light-and-die-details --strict --type change` and confirm the change validates.
