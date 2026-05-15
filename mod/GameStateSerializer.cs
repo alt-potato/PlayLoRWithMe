@@ -442,71 +442,33 @@ namespace PlayLoRWithMe
                                                 o.Add("lockedBy", lockerName);
 
                                             // Key page — reads base values directly from BookModel (no battle
-                                            // buffs applied outside of combat).
-                                            o.AddObject(
+                                            // buffs applied outside of combat). HP includes the unit's gift
+                                            // stat bonus, matching unit.MaxHp's formula and the BattleSetting
+                                            // preview.
+                                            WriteLibrarianKeyPage(
+                                                o,
                                                 "keyPage",
-                                                k =>
-                                                {
-                                                    k.Add("instanceId", book.instanceId)
-                                                        .Add(
-                                                            "bookId",
-                                                            book.GetBookClassInfoId().id
-                                                        );
-                                                    var kpPkg = book.GetBookClassInfoId().packageId;
-                                                    if (!string.IsNullOrEmpty(kpPkg))
-                                                        k.Add("bookPackageId", kpPkg);
-                                                    k.Add("name", book.Name)
-                                                        .Add("speedMin", book.SpeedMin)
-                                                        .Add("speedMax", book.SpeedMax)
-                                                        // unit.MaxHp includes gift/bonus HP consistent
-                                                        // with the BattleSetting preview.
-                                                        .Add("hp", unit.MaxHp)
-                                                        .Add("breakGauge", book.Break)
-                                                        .Add(
-                                                            "equipRangeType",
-                                                            book.ClassInfo.RangeType.ToString()
-                                                        )
-                                                        // Rarity is emitted only on librarian-owned key pages so
-                                                        // customization surfaces can render the colored outline.
-                                                        // Battle-context emission sites omit this field.
-                                                        .Add(
-                                                            "rarity",
-                                                            book.ClassInfo.Rarity.ToString()
-                                                        )
-                                                        // Multi-deck signal — true when the key page has the
-                                                        // BookOption.MultiDeck flag (e.g. The Purple Tear). Drives
-                                                        // the editor's tab strip; battle-context emission omits this.
-                                                        .Add("isMultiDeck", book.IsMultiDeck())
-                                                        .AddObject(
-                                                            "resistances",
-                                                            r =>
-                                                                r.Add(
-                                                                        "slashHp",
-                                                                        book.sHpResist.ToString()
-                                                                    )
-                                                                    .Add(
-                                                                        "pierceHp",
-                                                                        book.pHpResist.ToString()
-                                                                    )
-                                                                    .Add(
-                                                                        "bluntHp",
-                                                                        book.hHpResist.ToString()
-                                                                    )
-                                                                    .Add(
-                                                                        "slashBp",
-                                                                        book.sBpResist.ToString()
-                                                                    )
-                                                                    .Add(
-                                                                        "pierceBp",
-                                                                        book.pBpResist.ToString()
-                                                                    )
-                                                                    .Add(
-                                                                        "bluntBp",
-                                                                        book.hBpResist.ToString()
-                                                                    )
-                                                        );
-                                                }
+                                                book,
+                                                unit.MaxHp
                                             );
+
+                                            // Base (origin) key page — `defaultBook` is bound to the unit and
+                                            // cannot be transferred. The frontend uses this to surface the
+                                            // base in the editor and to detect "currently on base" via the
+                                            // shared instanceId.
+                                            var baseBook = unit.defaultBook;
+                                            if (baseBook != null)
+                                            {
+                                                int baseHp =
+                                                    baseBook.HP
+                                                    + (unit.giftInventory?.GetStatBonus_Hp() ?? 0);
+                                                WriteLibrarianKeyPage(
+                                                    o,
+                                                    "baseKeyPage",
+                                                    baseBook,
+                                                    baseHp
+                                                );
+                                            }
                                             // Fashion metadata for the equipped key page body preview.
                                             // Written as sibling fields on the librarian object (not
                                             // nested inside keyPage) because the keyPage object above
@@ -1760,6 +1722,57 @@ namespace PlayLoRWithMe
                     if (AppearanceCache.FaceHairCanvasW > 0 && AppearanceCache.FaceHairCanvasH > 0)
                         o.Add("faceCanvasW", AppearanceCache.FaceHairCanvasW)
                             .Add("faceCanvasH", AppearanceCache.FaceHairCanvasH);
+                }
+            );
+        }
+
+        /// <summary>
+        /// Writes a librarian-context key page object onto <paramref name="o"/>
+        /// under <paramref name="fieldName"/>. Shared between the equipped
+        /// <c>keyPage</c> and the origin <c>baseKeyPage</c> so the two stay
+        /// structurally identical and the frontend can compare them by
+        /// <c>instanceId</c> to detect the "on base" state.
+        /// <paramref name="hp"/> is passed in because each page has its own
+        /// raw HP value; gift bonuses are unit-wide and applied by the caller.
+        /// </summary>
+        private static void WriteLibrarianKeyPage(
+            JsonWriter o,
+            string fieldName,
+            BookModel book,
+            int hp
+        )
+        {
+            o.AddObject(
+                fieldName,
+                k =>
+                {
+                    k.Add("instanceId", book.instanceId).Add("bookId", book.GetBookClassInfoId().id);
+                    var pkg = book.GetBookClassInfoId().packageId;
+                    if (!string.IsNullOrEmpty(pkg))
+                        k.Add("bookPackageId", pkg);
+                    k.Add("name", book.Name)
+                        .Add("speedMin", book.SpeedMin)
+                        .Add("speedMax", book.SpeedMax)
+                        .Add("hp", hp)
+                        .Add("breakGauge", book.Break)
+                        .Add("equipRangeType", book.ClassInfo.RangeType.ToString())
+                        // Rarity is emitted only on librarian-owned key pages so customization
+                        // surfaces can render the colored outline. Battle-context emission sites
+                        // omit this field by calling their own writers.
+                        .Add("rarity", book.ClassInfo.Rarity.ToString())
+                        // Multi-deck signal — true when the key page has the BookOption.MultiDeck
+                        // flag (e.g. The Purple Tear). Drives the editor's tab strip.
+                        .Add("isMultiDeck", book.IsMultiDeck())
+                        .AddObject(
+                            "resistances",
+                            r =>
+                                r.Add("slashHp", book.sHpResist.ToString())
+                                    .Add("pierceHp", book.pHpResist.ToString())
+                                    .Add("bluntHp", book.hHpResist.ToString())
+                                    .Add("slashBp", book.sBpResist.ToString())
+                                    .Add("pierceBp", book.pBpResist.ToString())
+                                    .Add("bluntBp", book.hBpResist.ToString())
+                        );
                 }
             );
         }

@@ -393,6 +393,13 @@ export function useWebSocket() {
     return sendAction({ type: "equipKeyPage", floorIndex, unitIndex, bookInstanceId });
   }
 
+  function unequipKeyPage(
+    floorIndex: number,
+    unitIndex: number,
+  ): Promise<ActionResult> {
+    return sendAction({ type: "unequipKeyPage", floorIndex, unitIndex });
+  }
+
   function addCardToDeck(
     floorIndex: number,
     unitIndex: number,
@@ -523,6 +530,7 @@ export function useWebSocket() {
     unlockLibrarian,
     renameLibrarian,
     equipKeyPage,
+    unequipKeyPage,
     addCardToDeck,
     removeCardFromDeck,
     equipSourceBook,

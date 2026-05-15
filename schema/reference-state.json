@@ -41,6 +41,16 @@
                 "equipRangeType": "Hybrid",
                 "isMultiDeck": false
               },
+              "baseKeyPage": {
+                "name": "Malkuth's Page",
+                "speedDiceCount": 3,
+                "speedMin": 3,
+                "speedMax": 7,
+                "hp": 100,
+                "breakGauge": 80,
+                "equipRangeType": "Hybrid",
+                "isMultiDeck": false
+              },
               "passives": [
                 {
                   "id": { "id": 100001, "packageId": 0 },
@@ -79,6 +89,16 @@
                 "breakGauge": 70,
                 "equipRangeType": "Melee",
                 "isMultiDeck": true
+              },
+              "baseKeyPage": {
+                "name": "Basic Page",
+                "speedDiceCount": 2,
+                "speedMin": 1,
+                "speedMax": 5,
+                "hp": 50,
+                "breakGauge": 30,
+                "equipRangeType": "Melee",
+                "isMultiDeck": false
               },
               "passives": [],
               "decks": [

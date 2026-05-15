@@ -393,6 +393,10 @@ namespace PlayLoRWithMe
                     StateBroadcaster.RunOnMainThread(() => HandleEquipKeyPage(client, r, reqId));
                     break;
 
+                case "unequipKeyPage":
+                    StateBroadcaster.RunOnMainThread(() => HandleUnequipKeyPage(client, r, reqId));
+                    break;
+
                 case "addCardToDeck":
                     StateBroadcaster.RunOnMainThread(() => HandleAddCardToDeck(client, r, reqId));
                     break;
@@ -579,6 +583,60 @@ namespace PlayLoRWithMe
             }
 
             // Key page changes affect the card inventory, so do a full card panel refresh.
+            RefreshCharacterRenderer(
+                unit,
+                unit.OwnerSephirah,
+                FloorListSlotBase + ui,
+                refreshCardInventory: true
+            );
+
+            SaveAndBroadcast();
+            SendResult(client, reqId, true, null);
+        }
+
+        /// <summary>
+        /// Returns a librarian to their immutable base (origin) key page.
+        /// The engine implements this as <c>UnitDataModel.EquipBook(null)</c>,
+        /// which causes the <c>bookItem</c> getter to fall back to <c>defaultBook</c>.
+        /// Requires the caller to hold the edit lock for the librarian.
+        /// </summary>
+        private void HandleUnequipKeyPage(WebSocketClient client, JsonReader r, string reqId)
+        {
+            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
+            if (unit == null)
+                return;
+
+            var baseBook = unit.defaultBook;
+            if (baseBook == null)
+            {
+                // every librarian is constructed with a defaultBook in UnitDataModel.Init,
+                // so this should be unreachable — guard defensively rather than crash.
+                SendResult(client, reqId, false, "Librarian has no base key page");
+                return;
+            }
+
+            // already on base: bookItem getter returns _defaultBook when _bookItem is null.
+            // treat as a successful no-op so retries / double-clicks don't churn state.
+            if (unit.bookItem == baseBook)
+            {
+                SendResult(client, reqId, true, null);
+                return;
+            }
+
+            unit.EquipBook(null);
+
+            // EquipBook honors IsChangeItemLock() variants (Binah / Black Silence / Gebura),
+            // any of which can substitute a non-null book or refuse the call entirely.
+            // Verify the post-condition by identity instead of trusting the return value
+            // (which is always false — same caveat as HandleEquipKeyPage).
+            if (unit.bookItem != baseBook)
+            {
+                SendResult(client, reqId, false, "Unequip was blocked by game state");
+                return;
+            }
+
+            // Mirrors HandleEquipKeyPage — card inventory changes when the active
+            // book changes, so do a full panel refresh.
             RefreshCharacterRenderer(
                 unit,
                 unit.OwnerSephirah,

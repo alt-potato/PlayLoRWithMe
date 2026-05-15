@@ -1,15 +1,22 @@
 <!--
   KeyPageTab.vue
 
-  Key page picker tab inside the librarian EditPanel. Displays a chapter-filtered
-  grid of available key pages on the left and a detailed stat view on the right.
-  The currently selected tile defaults to the librarian's equipped key page.
+  Key page picker tab inside the librarian EditPanel. Chapter-filtered grid of
+  available inventory key pages on the left, detailed stat view on the right.
+
+  Every librarian carries an immutable origin/base key page
+  (`UnitDataModel.defaultBook` in the engine). The base is NOT rendered as a
+  selectable tile — it's a pure fallback that the engine auto-equips when
+  no inventory page is selected. The user returns to it by selecting their
+  currently-equipped inventory tile and pressing "Unequip"; the action button
+  re-labels itself based on which tile is selected.
 
   Props:
-    lib         – librarian being edited
-    state       – full game state (provides availableKeyPages)
-    editBusy    – true while an async action is in-flight (disables equip)
-    onEquipPage – callback to equip the selected key page
+    lib           – librarian being edited
+    state         – full game state (provides availableKeyPages)
+    editBusy      – true while an async action is in-flight (disables actions)
+    onEquipPage   – callback to equip the selected inventory key page
+    onUnequipPage – callback to return the librarian to their base
 -->
 <script setup lang="ts">
 import type { LibrarianEntry, AvailableKeyPage, GameState } from "~/types/game";
@@ -21,6 +28,7 @@ const props = defineProps<{
   state: GameState;
   editBusy: boolean;
   onEquipPage: (kp: AvailableKeyPage) => Promise<void>;
+  onUnequipPage: () => Promise<void>;
 }>();
 
 const availableKeyPages = computed(() => props.state.availableKeyPages ?? []);
@@ -81,21 +89,36 @@ const collapsedGroups = ref(new Set<string>());
 
 const toggleGroup = (bookIcon: string) => toggleSet(collapsedGroups, bookIcon);
 
-/** Selected key page for the detail view. Default = current equipped page from inventory. */
+/**
+ * Selected inventory tile's `instanceId`, or `null` for the default state.
+ * When `null`, the selection logically resolves to the currently-equipped
+ * page (which may be the base — `lib.keyPage` always reflects whatever the
+ * engine considers active).
+ */
 const selectedInstanceId = ref<number | null>(null);
 
+/** True when the librarian is currently on their base key page. */
+const isOnBase = computed(
+  () => props.lib.keyPage.instanceId === props.lib.baseKeyPage.instanceId,
+);
+
+/**
+ * Detail-pane content. Defaults to the currently-equipped page (which may be
+ * the base — when on-base, `lib.keyPage` IS the base, carrying the same
+ * fields as `lib.baseKeyPage`). Always returns a concrete `KeyPage` so the
+ * detail panel never blanks out — users want to see what they're wearing,
+ * regardless of whether it's an inventory page or the engine fallback.
+ */
 const selectedPage = computed((): AnyKeyPage => {
-  if (selectedInstanceId.value != null) {
-    const found = availableKeyPages.value.find(
-      (kp) => kp.instanceId === selectedInstanceId.value,
-    );
+  const id = selectedInstanceId.value ?? props.lib.keyPage.instanceId;
+  if (id != null) {
+    const found = availableKeyPages.value.find((kp) => kp.instanceId === id);
     if (found) return found;
   }
-  // Fallback: find the currently equipped key page in inventory, or show existing keyPage data.
-  const current = availableKeyPages.value.find(
-    (kp) => kp.instanceId === props.lib.keyPage.instanceId,
-  );
-  return current ?? props.lib.keyPage;
+  // The equipped page won't appear in `availableKeyPages` (that list only
+  // includes free-to-equip pages); fall back to the librarian-owned keyPage
+  // object, which always carries the full shape.
+  return props.lib.keyPage;
 });
 
 function selectPage(kp: AvailableKeyPage) {
@@ -104,25 +127,48 @@ function selectPage(kp: AvailableKeyPage) {
 
 const equipError = ref<string | null>(null);
 
-async function equip(kp: AvailableKeyPage) {
+/**
+ * Three button states. Note that "unequip" is reached only by selecting the
+ * librarian's currently-equipped inventory tile — there is no separate base
+ * tile or dedicated Unequip control.
+ *   "equip"  — selected is an inventory page not currently equipped.
+ *   "unequip"— selected is the currently-equipped inventory page (off-base).
+ *   "hidden" — no valid selection (on-base with nothing clicked, or selection
+ *              points at a stale instanceId).
+ */
+type ActionState = "equip" | "unequip" | "hidden";
+
+const actionState = computed((): ActionState => {
+  const id = selectedInstanceId.value ?? props.lib.keyPage.instanceId;
+  if (id == null) return "hidden";
+  if (id === props.lib.keyPage.instanceId) {
+    // selection (default or explicit) is the equipped page: only "unequip"
+    // makes sense, and only when there's actually something to unequip from
+    // (i.e. the equipped page isn't already the base).
+    return isOnBase.value ? "hidden" : "unequip";
+  }
+  const found = availableKeyPages.value.find((kp) => kp.instanceId === id);
+  return found ? "equip" : "hidden";
+});
+
+const actionLabel = computed(() =>
+  actionState.value === "unequip" ? "Unequip" : "Equip",
+);
+
+async function performAction() {
   equipError.value = null;
   try {
-    await props.onEquipPage(kp);
+    if (actionState.value === "unequip") {
+      await props.onUnequipPage();
+    } else if (actionState.value === "equip") {
+      const id = selectedInstanceId.value ?? props.lib.keyPage.instanceId;
+      const kp = availableKeyPages.value.find((k) => k.instanceId === id);
+      if (kp) await props.onEquipPage(kp);
+    }
   } catch (e) {
     equipError.value = String(e);
   }
 }
-
-const isCurrentEquipped = computed(() => {
-  if (selectedInstanceId.value == null) return true;
-  return selectedInstanceId.value === props.lib.keyPage.instanceId;
-});
-
-const selectedIsAvailable = computed(
-  () =>
-    selectedInstanceId.value != null &&
-    availableKeyPages.value.some((kp) => kp.instanceId === selectedInstanceId.value),
-);
 </script>
 
 <template>
@@ -180,12 +226,22 @@ const selectedIsAvailable = computed(
       <div class="col-header">Details</div>
       <LibrarianKeyPageDetail :key-page="selectedPage" />
       <div v-if="equipError" class="equip-error">{{ equipError }}</div>
+      <!--
+        The action button is the ONLY entry point to unequipping. Selecting
+        the librarian's currently-equipped tile (the default selection when
+        off-base) flips its label to "Unequip" and switches the button to
+        the destructive red variant. Any other tile reads "Equip". When
+        the librarian is already on their base, no action is available and
+        the button stays hidden.
+      -->
       <button
+        v-if="actionState !== 'hidden'"
         class="equip-btn"
-        :disabled="editBusy || isCurrentEquipped || !selectedIsAvailable"
-        @click="selectedIsAvailable && equip(availableKeyPages.find(kp => kp.instanceId === selectedInstanceId)!)"
+        :class="{ 'equip-btn--unequip': actionState === 'unequip' }"
+        :disabled="editBusy"
+        @click="performAction"
       >
-        {{ isCurrentEquipped ? "Equipped" : "Equip" }}
+        {{ actionLabel }}
       </button>
     </div>
   </div>
@@ -423,6 +479,22 @@ const selectedIsAvailable = computed(
 .equip-btn:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/*
+ * Unequip variant: destructive accent so the user sees at a glance that
+ * pressing this returns the librarian to their base (rather than equipping
+ * something new). Uses --crimson-hi for parity with other destructive cues
+ * in the editor (e.g. the equip-error text below).
+ */
+.equip-btn--unequip {
+  border-color: var(--crimson-hi);
+  color: var(--crimson-hi);
+}
+
+.equip-btn--unequip:not(:disabled):hover {
+  background: var(--crimson-hi);
+  color: var(--text-1);
 }
 
 .equip-error {

@@ -1898,6 +1898,75 @@
                       ],
                       "additionalProperties": false
                     },
+                    "baseKeyPage": {
+                      "type": "object",
+                      "properties": {
+                        "instanceId": {
+                          "type": "number"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "speedDiceCount": {
+                          "type": "number"
+                        },
+                        "speedMin": {
+                          "type": "number"
+                        },
+                        "speedMax": {
+                          "type": "number"
+                        },
+                        "resistances": {
+                          "type": "object",
+                          "properties": {
+                            "slashHp": {
+                              "type": "string"
+                            },
+                            "pierceHp": {
+                              "type": "string"
+                            },
+                            "bluntHp": {
+                              "type": "string"
+                            },
+                            "slashBp": {
+                              "type": "string"
+                            },
+                            "pierceBp": {
+                              "type": "string"
+                            },
+                            "bluntBp": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "hp": {
+                          "type": "number"
+                        },
+                        "breakGauge": {
+                          "type": "number"
+                        },
+                        "equipRangeType": {
+                          "type": "string"
+                        },
+                        "bookId": {
+                          "type": "number"
+                        },
+                        "bookPackageId": {
+                          "type": "string"
+                        },
+                        "rarity": {
+                          "type": "string"
+                        },
+                        "isMultiDeck": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
                     "passives": {
                       "type": "array",
                       "items": {
@@ -2570,6 +2639,7 @@
                     "unitIndex",
                     "name",
                     "keyPage",
+                    "baseKeyPage",
                     "passives",
                     "decks",
                     "lockedBy"
@@ -5002,6 +5072,75 @@
                               ],
                               "additionalProperties": false
                             },
+                            "baseKeyPage": {
+                              "type": "object",
+                              "properties": {
+                                "instanceId": {
+                                  "type": "number"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "speedDiceCount": {
+                                  "type": "number"
+                                },
+                                "speedMin": {
+                                  "type": "number"
+                                },
+                                "speedMax": {
+                                  "type": "number"
+                                },
+                                "resistances": {
+                                  "type": "object",
+                                  "properties": {
+                                    "slashHp": {
+                                      "type": "string"
+                                    },
+                                    "pierceHp": {
+                                      "type": "string"
+                                    },
+                                    "bluntHp": {
+                                      "type": "string"
+                                    },
+                                    "slashBp": {
+                                      "type": "string"
+                                    },
+                                    "pierceBp": {
+                                      "type": "string"
+                                    },
+                                    "bluntBp": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                "hp": {
+                                  "type": "number"
+                                },
+                                "breakGauge": {
+                                  "type": "number"
+                                },
+                                "equipRangeType": {
+                                  "type": "string"
+                                },
+                                "bookId": {
+                                  "type": "number"
+                                },
+                                "bookPackageId": {
+                                  "type": "string"
+                                },
+                                "rarity": {
+                                  "type": "string"
+                                },
+                                "isMultiDeck": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
                             "passives": {
                               "type": "array",
                               "items": {
@@ -5674,6 +5813,7 @@
                             "unitIndex",
                             "name",
                             "keyPage",
+                            "baseKeyPage",
                             "passives",
                             "decks",
                             "lockedBy"
@@ -6507,6 +6647,27 @@
             "postfixID",
             "customBookId",
             "appearanceType"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "unequipKeyPage"
+            },
+            "floorIndex": {
+              "type": "number"
+            },
+            "unitIndex": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "type",
+            "floorIndex",
+            "unitIndex"
           ],
           "additionalProperties": false
         },

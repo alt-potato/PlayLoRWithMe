@@ -176,6 +176,28 @@
               "bluntBp": "Normal"
             }
           },
+          "baseKeyPage": {
+            "instanceId": 101,
+            "name": "Page of Signet",
+            "speedDiceCount": 4,
+            "speedMin": 1,
+            "speedMax": 8,
+            "hp": 100,
+            "breakGauge": 100,
+            "equipRangeType": "Melee",
+            "rarity": "Unique",
+            "bookId": 10000006,
+            "bookPackageId": "AngelOfRuina",
+            "isMultiDeck": false,
+            "resistances": {
+              "slashHp": "Normal",
+              "pierceHp": "Normal",
+              "bluntHp": "Normal",
+              "slashBp": "Normal",
+              "pierceBp": "Normal",
+              "bluntBp": "Normal"
+            }
+          },
           "passives": [
             {
               "id": { "id": 30, "packageId": 0 },
@@ -271,6 +293,27 @@
               "slashHp": "Weak",
               "pierceHp": "Normal",
               "bluntHp": "Normal"
+            }
+          },
+          "baseKeyPage": {
+            "instanceId": 1002,
+            "name": "Basic Page",
+            "speedDiceCount": 2,
+            "speedMin": 1,
+            "speedMax": 5,
+            "hp": 50,
+            "breakGauge": 30,
+            "equipRangeType": "Melee",
+            "rarity": "Common",
+            "bookId": 31,
+            "isMultiDeck": false,
+            "resistances": {
+              "slashHp": "Normal",
+              "pierceHp": "Normal",
+              "bluntHp": "Normal",
+              "slashBp": "Normal",
+              "pierceBp": "Normal",
+              "bluntBp": "Normal"
             }
           },
           "passives": [
@@ -384,6 +427,27 @@
               "bluntBp": "Resist"
             }
           },
+          "baseKeyPage": {
+            "instanceId": 1003,
+            "name": "Basic Page",
+            "speedDiceCount": 2,
+            "speedMin": 1,
+            "speedMax": 5,
+            "hp": 50,
+            "breakGauge": 30,
+            "equipRangeType": "Melee",
+            "rarity": "Common",
+            "bookId": 31,
+            "isMultiDeck": false,
+            "resistances": {
+              "slashHp": "Normal",
+              "pierceHp": "Normal",
+              "bluntHp": "Normal",
+              "slashBp": "Normal",
+              "pierceBp": "Normal",
+              "bluntBp": "Normal"
+            }
+          },
           "passives": [
             {
               "id": { "id": 18, "packageId": 0 },
@@ -444,8 +508,46 @@
           "unitIndex": 3,
           "name": "Poussey",
           "keyPage": {
-            "name": "(No Page Equipped)",
-            "isMultiDeck": false
+            "instanceId": 1004,
+            "name": "Basic Page",
+            "speedDiceCount": 2,
+            "speedMin": 1,
+            "speedMax": 5,
+            "hp": 50,
+            "breakGauge": 30,
+            "equipRangeType": "Melee",
+            "rarity": "Common",
+            "bookId": 31,
+            "isMultiDeck": false,
+            "resistances": {
+              "slashHp": "Normal",
+              "pierceHp": "Normal",
+              "bluntHp": "Normal",
+              "slashBp": "Normal",
+              "pierceBp": "Normal",
+              "bluntBp": "Normal"
+            }
+          },
+          "baseKeyPage": {
+            "instanceId": 1004,
+            "name": "Basic Page",
+            "speedDiceCount": 2,
+            "speedMin": 1,
+            "speedMax": 5,
+            "hp": 50,
+            "breakGauge": 30,
+            "equipRangeType": "Melee",
+            "rarity": "Common",
+            "bookId": 31,
+            "isMultiDeck": false,
+            "resistances": {
+              "slashHp": "Normal",
+              "pierceHp": "Normal",
+              "bluntHp": "Normal",
+              "slashBp": "Normal",
+              "pierceBp": "Normal",
+              "bluntBp": "Normal"
+            }
           },
           "passives": [],
           "decks": [{ "index": 0, "cards": [] }],

@@ -17,6 +17,7 @@
     onUnlock           – release the edit lock
     onRename           – rename the librarian
     onEquipPage        – equip a key page
+    onUnequipPage      – return the librarian to their base (origin) key page
     onAddCard          – add a card to the deck
     onRemoveCard       – remove one copy from the deck
     onSetCustomization – save appearance, dialogue, and title changes
@@ -45,6 +46,7 @@ const props = defineProps<{
   onUnlock: () => Promise<{ ok: boolean; error?: string }>;
   onRename: (name: string) => Promise<{ ok: boolean; error?: string }>;
   onEquipPage: (kp: AvailableKeyPage) => Promise<void>;
+  onUnequipPage: () => Promise<void>;
   onAddCard: (card: AvailableCard, deckIndex: number) => Promise<ActionResult>;
   onRemoveCard: (card: DeckCardPreview, deckIndex: number) => Promise<ActionResult>;
   onSetCustomization: (
@@ -101,6 +103,11 @@ const editBusy = computed(() => lockBusy.value || renameBusy.value);
 
 async function onEquipPage(kp: AvailableKeyPage) {
   try { await props.onEquipPage(kp); }
+  catch { /* network errors handled by useWebSocket reconnect */ }
+}
+
+async function onUnequipPage() {
+  try { await props.onUnequipPage(); }
   catch { /* network errors handled by useWebSocket reconnect */ }
 }
 
@@ -191,6 +198,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
               :state="state"
               :edit-busy="editBusy || lockedByOther"
               :on-equip-page="onEquipPage"
+              :on-unequip-page="onUnequipPage"
             />
 
             <LibrarianDeckTab

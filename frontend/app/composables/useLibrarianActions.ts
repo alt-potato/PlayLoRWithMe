@@ -16,6 +16,12 @@ export interface LibrarianActions {
     unitIndex: number,
     bookInstanceId: number,
   ) => Promise<ActionResult>;
+  /**
+   * Returns the librarian to their immutable base (origin) key page. Engine
+   * implements this as `EquipBook(null)`, which falls back to `defaultBook`.
+   * No-op when the librarian is already on their base.
+   */
+  unequipKeyPage: (floorIndex: number, unitIndex: number) => Promise<ActionResult>;
   addCardToDeck: (
     floorIndex: number,
     unitIndex: number,

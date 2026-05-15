@@ -158,6 +158,10 @@ function onEquipPage(kp: AvailableKeyPage): Promise<void> {
   return forEditing((fi, ui) => actions.equipKeyPage(fi, ui, kp.instanceId));
 }
 
+function onUnequipPage(): Promise<void> {
+  return forEditing((fi, ui) => actions.unequipKeyPage(fi, ui));
+}
+
 // returns ActionResult so DeckTab can react to failures (drops the
 // optimistic pending tile silently on `ok: false`).
 //
@@ -551,6 +555,7 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
       :on-unlock="onUnlock"
       :on-rename="onRename"
       :on-equip-page="onEquipPage"
+      :on-unequip-page="onUnequipPage"
       :on-add-card="onAddCard"
       :on-remove-card="onRemoveCard"
       :on-set-customization="onSetCustomization"

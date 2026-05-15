@@ -96,6 +96,8 @@ export function useMockBackend(fixtureName: string) {
     log({ type: "renameLibrarian", floorIndex, unitIndex, name: name.trim() });
   const equipKeyPage = (floorIndex: number, unitIndex: number, bookInstanceId: number) =>
     log({ type: "equipKeyPage", floorIndex, unitIndex, bookInstanceId });
+  const unequipKeyPage = (floorIndex: number, unitIndex: number) =>
+    log({ type: "unequipKeyPage", floorIndex, unitIndex });
   const addCardToDeck = (
     floorIndex: number,
     unitIndex: number,
@@ -189,6 +191,7 @@ export function useMockBackend(fixtureName: string) {
     unlockLibrarian,
     renameLibrarian,
     equipKeyPage,
+    unequipKeyPage,
     addCardToDeck,
     removeCardFromDeck,
     equipSourceBook,

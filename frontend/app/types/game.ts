@@ -636,6 +636,17 @@ export const LibrarianEntrySchema = z.object({
   unitIndex: z.number(),
   name: z.string(),
   keyPage: KeyPageSchema,
+  /**
+   * The librarian's immutable base (origin) key page — `UnitDataModel.defaultBook`
+   * in the engine. The game auto-equips this whenever `_bookItem` is null, so
+   * "unequip" is implemented as falling back to this page. Carries the same
+   * shape as `keyPage`; when the librarian is currently on their base, the two
+   * objects agree on `instanceId` (and all detail fields).
+   *
+   * Librarian-management only — battle-unit `keyPage` payloads never include
+   * a sibling `baseKeyPage` field.
+   */
+  baseKeyPage: KeyPageSchema,
   passives: z.array(PassiveSchema),
   attributedPassives: z.optional(z.array(AttributedPassiveSchema)),
   passiveSlotCount: z.optional(z.number()),
@@ -983,6 +994,14 @@ export const ClientActionSchema = z.discriminatedUnion("type", [
     customBookPackageId: z.optional(z.string()),
     workshopSkin: z.optional(z.string()),
     appearanceType: z.string(),
+  }),
+  // Key-page management. `unequipKeyPage` returns the librarian to their
+  // immutable base (origin) key page — the engine implements unequip as
+  // EquipBook(null), which falls back to defaultBook.
+  z.object({
+    type: z.literal("unequipKeyPage"),
+    floorIndex: z.number(),
+    unitIndex: z.number(),
   }),
   // Deck add/remove. Optional deckIndex (0..3) targets a specific slot on
   // multi-deck key pages; omitted/0 targets the active deck on single-deck books.
