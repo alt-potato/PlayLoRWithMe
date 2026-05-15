@@ -209,12 +209,13 @@ const detailsLabel = computed(() => {
       </div>
 
       <!-- row 2: light pips, emotion level -->
+      <!-- light fields live on every unit; LightDisplay's own `max > 0` guard
+           keeps the row hidden for units (mostly enemies) with no light pool. -->
       <div class="unit-header-row reversible-container">
         <UnitLightDisplay
-          v-if="isAlly"
-          :current="ally.light"
-          :max="ally.maxLight"
-          :reserved="ally.reservedLight"
+          :current="unit.light"
+          :max="unit.maxLight"
+          :reserved="unit.reservedLight"
         />
         <UnitEmotionDisplay
           :positive="unit.emotionCoins.positive"

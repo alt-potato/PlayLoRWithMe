@@ -106,7 +106,10 @@
       "buffs": [],
       "abnormalities": [],
       "emotionLevel": 0,
-      "emotionCoins": { "positive": 0, "negative": 0, "max": 5 }
+      "emotionCoins": { "positive": 0, "negative": 0, "max": 5 },
+      "light": 3,
+      "maxLight": 7,
+      "reservedLight": 0
     }
   ]
 }

@@ -458,6 +458,15 @@
                 ],
                 "additionalProperties": false
               },
+              "light": {
+                "type": "number"
+              },
+              "maxLight": {
+                "type": "number"
+              },
+              "reservedLight": {
+                "type": "number"
+              },
               "enabled": {
                 "type": "boolean"
               },
@@ -554,15 +563,6 @@
                 "items": {
                   "type": "number"
                 }
-              },
-              "light": {
-                "type": "number"
-              },
-              "maxLight": {
-                "type": "number"
-              },
-              "reservedLight": {
-                "type": "number"
               },
               "hand": {
                 "type": "array",
@@ -1494,6 +1494,15 @@
                 ],
                 "additionalProperties": false
               },
+              "light": {
+                "type": "number"
+              },
+              "maxLight": {
+                "type": "number"
+              },
+              "reservedLight": {
+                "type": "number"
+              },
               "enabled": {
                 "type": "boolean"
               },
@@ -1607,7 +1616,10 @@
               "buffs",
               "abnormalities",
               "emotionLevel",
-              "emotionCoins"
+              "emotionCoins",
+              "light",
+              "maxLight",
+              "reservedLight"
             ],
             "additionalProperties": false
           }
@@ -3632,6 +3644,15 @@
                         ],
                         "additionalProperties": false
                       },
+                      "light": {
+                        "type": "number"
+                      },
+                      "maxLight": {
+                        "type": "number"
+                      },
+                      "reservedLight": {
+                        "type": "number"
+                      },
                       "enabled": {
                         "type": "boolean"
                       },
@@ -3728,15 +3749,6 @@
                         "items": {
                           "type": "number"
                         }
-                      },
-                      "light": {
-                        "type": "number"
-                      },
-                      "maxLight": {
-                        "type": "number"
-                      },
-                      "reservedLight": {
-                        "type": "number"
                       },
                       "hand": {
                         "type": "array",
@@ -4668,6 +4680,15 @@
                         ],
                         "additionalProperties": false
                       },
+                      "light": {
+                        "type": "number"
+                      },
+                      "maxLight": {
+                        "type": "number"
+                      },
+                      "reservedLight": {
+                        "type": "number"
+                      },
                       "enabled": {
                         "type": "boolean"
                       },
@@ -4781,7 +4802,10 @@
                       "buffs",
                       "abnormalities",
                       "emotionLevel",
-                      "emotionCoins"
+                      "emotionCoins",
+                      "light",
+                      "maxLight",
+                      "reservedLight"
                     ],
                     "additionalProperties": false
                   }

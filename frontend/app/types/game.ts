@@ -759,6 +759,16 @@ export const UnitSchema = z.object({
   emotionCoins: EmotionCoinsSchema,
   keyPage: z.optional(KeyPageSchema),
   /**
+   * Light-pool triple — present on every battle unit because the engine carries
+   * `PlayPoint`/`MaxPlayPoint` on `BattleUnitModel` regardless of faction. Most
+   * enemies have `maxLight === 0`, and `LightDisplay` short-circuits on that so
+   * the pip row stays hidden for those units. Allies and the (rarer) enemies
+   * with a real pool share the same wire shape and render.
+   */
+  light: z.number(),
+  maxLight: z.number(),
+  reservedLight: z.number(),
+  /**
    * False when the unit is dead or locked — only present in BattleSetting phase.
    * Undefined (absent) during battle means no restriction.
    */
@@ -801,11 +811,8 @@ export const UnitSchema = z.object({
 });
 export type Unit = z.infer<typeof UnitSchema>;
 
-/** Ally-only extras: light, hand, deck, EGO. */
+/** Ally-only extras: hand, deck, EGO. Light fields are inherited from UnitSchema. */
 export const AllyUnitSchema = z.extend(UnitSchema, {
-  light: z.number(),
-  maxLight: z.number(),
-  reservedLight: z.number(),
   /** Present when this ally is owned by the current session. */
   hand: z.optional(z.array(CardSchema)),
   deck: z.optional(z.array(CardSchema)),
