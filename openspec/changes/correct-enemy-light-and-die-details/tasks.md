@@ -19,11 +19,11 @@
 
 ## 4. Regenerate canonical schema artifact
 
-- [ ] 4.1 From `frontend/`, run `npm run generate-schema` so `schema/gamestate.schema.json` reflects the relocated light fields and the slimmed `SpeedDieSchema`. The schema-drift test that runs under `npm test` confirms the committed artifact is current.
-- [ ] 4.2 Run `npm test` from `frontend/` and `cd mod && dotnet build`. Expect green tests and `0 Warning(s)  0 Error(s)`. Commit the regenerated `schema/gamestate.schema.json` as a single INVEST batch (separate from the schema edits in §1 and §2 if their commits already shipped without it).
+- [x] 4.1 From `frontend/`, run `npm run generate-schema` so `schema/gamestate.schema.json` reflects the relocated light fields and the slimmed `SpeedDieSchema`. The schema-drift test that runs under `npm test` confirms the committed artifact is current. (No-op in practice — the `pretest` hook regenerated the artifact in lockstep with each schema edit during §1 and §2, so this manual rerun produced no diff.)
+- [x] 4.2 Run `npm test` from `frontend/` and `cd mod && dotnet build`. Expect green tests and `0 Warning(s)  0 Error(s)`. (Already validated as part of §1, §2, and §3; no fresh changes to commit here.)
 
 ## 5. Validate end-to-end
 
 - [ ] 5.1 Load the battle-sampler fixture in a dev build (`npm run dev` then `/?mock=battle-sampler`) and confirm: (a) every card die in hand and slotted card rows renders a real icon (no `·` placeholders for `Penetrate`/`Hit`/`Slash`/`Guard`/`Evasion` dice); (b) Melting Love's light pip row renders with 5/7 lit (5 gold + 2 unlit); (c) Pink Slimes show no light row (their `maxLight: 3` and `light: 0` mean 3 unlit pips — still acceptable, but verify the row renders rather than being absent).
 - [ ] 5.2 Run a live mod build (`./build_and_run.sh` if configured, otherwise `cd mod && dotnet build` and manually deploy). Open the dev console and confirm no `[wire-contract]` log entries fire on incoming `state` messages (the `SpeedDie` validation noise is gone).
-- [ ] 5.3 Final pass: `npm test` (frontend) and `dotnet build` (mod) both green. Open `openspec validate correct-enemy-light-and-die-details --strict` and confirm the change validates.
+- [x] 5.3 Final pass: `npm test` (frontend) and `dotnet build` (mod) both green. Open `openspec validate correct-enemy-light-and-die-details --strict --type change` and confirm the change validates.
