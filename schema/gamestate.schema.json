@@ -130,12 +130,6 @@
                     "value": {
                       "type": "number"
                     },
-                    "type": {
-                      "type": "string"
-                    },
-                    "detail": {
-                      "type": "string"
-                    },
                     "staggered": {
                       "type": "boolean"
                     },
@@ -148,9 +142,7 @@
                   },
                   "required": [
                     "slot",
-                    "value",
-                    "type",
-                    "detail"
+                    "value"
                   ],
                   "additionalProperties": false
                 }
@@ -1166,12 +1158,6 @@
                     "value": {
                       "type": "number"
                     },
-                    "type": {
-                      "type": "string"
-                    },
-                    "detail": {
-                      "type": "string"
-                    },
                     "staggered": {
                       "type": "boolean"
                     },
@@ -1184,9 +1170,7 @@
                   },
                   "required": [
                     "slot",
-                    "value",
-                    "type",
-                    "detail"
+                    "value"
                   ],
                   "additionalProperties": false
                 }
@@ -3316,12 +3300,6 @@
                             "value": {
                               "type": "number"
                             },
-                            "type": {
-                              "type": "string"
-                            },
-                            "detail": {
-                              "type": "string"
-                            },
                             "staggered": {
                               "type": "boolean"
                             },
@@ -3334,9 +3312,7 @@
                           },
                           "required": [
                             "slot",
-                            "value",
-                            "type",
-                            "detail"
+                            "value"
                           ],
                           "additionalProperties": false
                         }
@@ -4352,12 +4328,6 @@
                             "value": {
                               "type": "number"
                             },
-                            "type": {
-                              "type": "string"
-                            },
-                            "detail": {
-                              "type": "string"
-                            },
                             "staggered": {
                               "type": "boolean"
                             },
@@ -4370,9 +4340,7 @@
                           },
                           "required": [
                             "slot",
-                            "value",
-                            "type",
-                            "detail"
+                            "value"
                           ],
                           "additionalProperties": false
                         }

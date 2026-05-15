@@ -138,12 +138,18 @@ export const SlottedCardEntrySchema = z.object({
 });
 export type SlottedCardEntry = z.infer<typeof SlottedCardEntrySchema>;
 
-/** One speed die on a unit — carries its current rolled value and state. */
+/**
+ * One speed die on a unit — carries its current rolled value and state.
+ *
+ * Note: no `type`/`detail` here. Behaviour type (Atk/Def/Standby) and detail
+ * (Slash/Penetrate/Hit/Guard/Evasion) are properties of `DiceBehaviour` inside
+ * a card, not of the speed die itself. The C# serializer's `WriteSpeedDice`
+ * has never emitted them, so requiring them here would only generate
+ * dev-mode `[wire-contract]` log noise on every state push.
+ */
 export const SpeedDieSchema = z.object({
   slot: z.number(),
   value: z.number(),
-  type: z.string(),
-  detail: z.string(),
   /** True when the die is staggered (shown as ✕). */
   staggered: z.optional(z.boolean()),
   /**

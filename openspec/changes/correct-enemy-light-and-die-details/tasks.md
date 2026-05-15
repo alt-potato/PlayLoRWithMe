@@ -7,8 +7,8 @@
 
 ## 2. Drop vestigial SpeedDie schema fields
 
-- [ ] 2.1 In `frontend/app/types/game.ts`, remove `type: z.string()` and `detail: z.string()` from `SpeedDieSchema`. Leave the surrounding fields and JSDoc untouched. Confirm no consumer reads `speedDie.type` or `speedDie.detail` via repo-wide search (`grep -nE "speedDice.*\.(type|detail)|\.die\.(type|detail)"`).
-- [ ] 2.2 Run `npm test` from `frontend/` and `cd mod && dotnet build`. Expect green tests and `0 Warning(s)  0 Error(s)`. Commit as one INVEST batch.
+- [x] 2.1 In `frontend/app/types/game.ts`, remove `type: z.string()` and `detail: z.string()` from `SpeedDieSchema`. Leave the surrounding fields and JSDoc untouched. Confirm no consumer reads `speedDie.type` or `speedDie.detail` via repo-wide search (`grep -nE "speedDice.*\.(type|detail)|\.die\.(type|detail)"`).
+- [x] 2.2 Run `npm test` from `frontend/` and `cd mod && dotnet build`. Expect green tests and `0 Warning(s)  0 Error(s)`. Commit as one INVEST batch.
 
 ## 3. Realign battle-sampler fixture with wire enum names
 
