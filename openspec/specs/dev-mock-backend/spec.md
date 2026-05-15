@@ -12,7 +12,7 @@ When mock mode is active, `useWebSocket` MUST NOT open a WebSocket connection. I
 - `gameState` is populated from the fixture JSON file associated with the resolved fixture name.
 - `session` and `players` are populated with synthetic values sufficient for downstream components (including `SessionPanel`, `BATTLE_CTX`, and `LIBRARIAN_ACTIONS`) to render without errors.
 - `status` is set to `"connected"` at all times.
-- Every action function (`sendAction`, `claimUnit`, `releaseUnit`, `renamePlayer`, `lockLibrarian`, `unlockLibrarian`, `renameLibrarian`, `equipKeyPage`, `addCardToDeck`, `removeCardFromDeck`, `equipSourceBook`, `unequipSourceBook`, `attributePassive`, `removeAttributedPassive`) MUST resolve with `{ok: true}` without mutating state and MUST log the received payload to the browser console with a `[mock]` prefix.
+- Every action function (`sendAction`, `claimUnit`, `releaseUnit`, `renamePlayer`, `lockLibrarian`, `unlockLibrarian`, `renameLibrarian`, `equipKeyPage`, `unequipKeyPage`, `addCardToDeck`, `removeCardFromDeck`, `equipSourceBook`, `unequipSourceBook`, `attributePassive`, `removeAttributedPassive`) MUST resolve with `{ok: true}` without mutating state and MUST log the received payload to the browser console with a `[mock]` prefix.
 
 When `import.meta.dev === false`, the mock mode code path MUST NOT exist in the compiled output. Specifically, the `frontend/app/dev/` directory contents (fixtures, mock composable, fixture picker) MUST be tree-shaken out of the production bundle such that none of the tokens `useMockBackend`, `battle-sampler`, `DevFixturePicker`, or `__plwmMock` appear in `frontend/.output/public/_nuxt/*.js`.
 
