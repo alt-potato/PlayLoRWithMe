@@ -1,0 +1,91 @@
+{
+  "_comment": "Battle scene frozen on the EGO-card-selection overlay. Two emotion-level-5 EGO choices spanning ZAYIN and WAW rarities and one/two dice — exercises HandCard rendering in EmotionUpgradePicker EGO mode without a live mod connection.",
+  "scene": "battle",
+  "phase": "EgoSelectionPhase",
+  "stageState": "Battle",
+  "assetsReady": true,
+  "stage": {
+    "floor": 5,
+    "chapter": 4,
+    "wave": 3,
+    "round": 8,
+    "name": "Reception of Yujin"
+  },
+  "egoSelection": {
+    "choices": [
+      {
+        "id": 1,
+        "cardId": { "id": 90001, "packageId": "" },
+        "name": "Bird of Judgement",
+        "cost": 0,
+        "range": "Far",
+        "rarity": "ZAYIN",
+        "sephirah": "Malkuth",
+        "dice": [
+          {
+            "type": "Atk",
+            "detail": "Penetrate",
+            "min": 3,
+            "max": 5,
+            "desc": "On Hit: Inflict 2 Bleed (3 turns)."
+          }
+        ],
+        "desc": "A starting EGO awakened on the first floor. Pierces resistances cheaply at the cost of dice variance."
+      },
+      {
+        "id": 2,
+        "cardId": { "id": 90015, "packageId": "" },
+        "name": "Justitia",
+        "cost": 4,
+        "range": "FarArea",
+        "rarity": "WAW",
+        "sephirah": "Tiphereth",
+        "dice": [
+          {
+            "type": "Atk",
+            "detail": "Slash",
+            "min": 6,
+            "max": 10
+          },
+          {
+            "type": "Atk",
+            "detail": "Slash",
+            "min": 5,
+            "max": 8,
+            "desc": "On Crit: Recover 4 HP to the user."
+          }
+        ],
+        "desc": "Hits all enemies with two slash dice. Cost is steep — pick when light supply is plentiful."
+      }
+    ],
+    "teamEmotionLevel": 5,
+    "teamCoin": 7,
+    "teamCoinMax": 12,
+    "teamPositiveCoins": 4,
+    "teamNegativeCoins": 3
+  },
+  "allies": [
+    {
+      "id": 1,
+      "name": "Angela",
+      "hp": 78,
+      "maxHp": 100,
+      "staggerGauge": 72,
+      "maxStaggerGauge": 100,
+      "staggerThreshold": 50,
+      "targetable": true,
+      "turnState": "WAIT_CARD",
+      "speedDice": [],
+      "slottedCards": [],
+      "passives": [],
+      "buffs": [],
+      "abnormalities": [],
+      "emotionLevel": 5,
+      "emotionCoins": { "positive": 4, "negative": 3, "max": 12 },
+      "light": 3,
+      "maxLight": 4,
+      "reservedLight": 0
+    }
+  ],
+  "enemies": []
+}

@@ -312,6 +312,7 @@ namespace PlayLoRWithMe
                 case "removeCard":
                 case "confirm":
                 case "selectAbnormality":
+                case "selectEgo":
                     HandleWsAction(client, json, reqId);
                     break;
 

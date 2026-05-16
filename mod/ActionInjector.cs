@@ -111,6 +111,9 @@ namespace PlayLoRWithMe
                 case "selectAbnormality":
                     ok = DoSelectAbnormality(r, out error);
                     break;
+                case "selectEgo":
+                    ok = DoSelectEgo(r, out error);
+                    break;
                 default:
                     error = $"Unknown action: '{type}'";
                     Debug.LogWarning($"[PRWM] {error}");
@@ -396,6 +399,79 @@ namespace PlayLoRWithMe
             Debug.Log(
                 $"[PRWM] selectAbnormality: card={card.Name} target={target?.id.ToString() ?? "all"}"
             );
+            return true;
+        }
+
+        // -------------------------------------------------------------------------
+        // selectEgo
+        //
+        // Mirror of DoSelectAbnormality minus the target argument. OnPickEgoCard
+        // takes no BattleUnitModel — the EGO card is added to the floor's shared
+        // SpecialCardListModel, not equipped to any individual unit.
+        //
+        // The in-game OnSelectEgoCard click handler runs:
+        //   1. floor.OnPickEgoCard(card)
+        //   2. _emotionLevels[i].OnSelect()             // private; pulses the icon
+        //   3. StartCoroutine(OnSelectRoutine())        // private; ~0.5s fade then
+        //                                                //   SetRootCanvas(false)
+        //
+        // We can't replicate (2) and (3) without reflection on private state.
+        // Instead we mirror what the abnormality SelectOne path does: snap-dismiss
+        // via SetRootCanvas(false). That's the same final call the in-game
+        // DisableRoutine ends with, so the end-state matches; we just skip the
+        // 0.5s fade animation (acceptable for a remote pick).
+        //
+        // Crucially we do NOT call OnSelectHide here — OnSelectHide is designed
+        // for the abnormality SelectOne flow and swaps to the "please select a
+        // librarian" cardHidingGroup, which strands the EGO UI in the wrong state.
+        // -------------------------------------------------------------------------
+
+        private static bool DoSelectEgo(JsonReader r, out string error)
+        {
+            error = null;
+            if (!EgoSelectionState.IsActive)
+            {
+                error = "No ego selection active";
+                return false;
+            }
+            if (!r.TryGetInt("choiceId", out int choiceId))
+            {
+                error = "Missing choiceId";
+                return false;
+            }
+
+            EmotionEgoXmlInfo choice = null;
+            var choices = EgoSelectionState.Choices;
+            if (choices != null)
+                foreach (var c in choices)
+                    if (c?.id == choiceId)
+                    {
+                        choice = c;
+                        break;
+                    }
+
+            if (choice == null)
+            {
+                error = $"Choice {choiceId} not in current ego choices";
+                return false;
+            }
+
+            var floor = EgoSelectionState.Floor;
+            if (floor == null)
+            {
+                error = "Floor model unavailable";
+                return false;
+            }
+
+            floor.OnPickEgoCard(choice);
+
+            // Snap-dismiss the canvas so RoundEndPhase_ChoiceEmotionCard sees the
+            // selection and can queue the next level's choices in multi-level acts.
+            // SetRootCanvas(false) just sets _canvas.enabled = false; no coroutines.
+            var levelup = SingletonBehavior<BattleManagerUI>.Instance?.ui_levelup;
+            levelup?.SetRootCanvas(false);
+
+            Debug.Log($"[PRWM] selectEgo: choice={choiceId} cardId={choice._CardId}");
             return true;
         }
 

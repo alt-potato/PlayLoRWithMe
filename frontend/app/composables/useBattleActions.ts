@@ -223,6 +223,10 @@ export function useBattleActions({
     );
   }
 
+  async function onSelectEgo(choiceId: number) {
+    await doSendAction({ type: "selectEgo", choiceId });
+  }
+
   async function onConfirm() {
     await doSendAction({ type: "confirm" });
     selectingSlot.value = null;
@@ -261,6 +265,7 @@ export function useBattleActions({
     onAllyTargetClick,
     onRemoveCard,
     onSelectAbnormality,
+    onSelectEgo,
     onConfirm,
     cancelTargeting,
     cleanupErrorTimer,

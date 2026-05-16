@@ -165,6 +165,7 @@ const {
   onAllyTargetClick,
   onRemoveCard,
   onSelectAbnormality,
+  onSelectEgo,
   onConfirm,
   cancelTargeting,
   cleanupErrorTimer,
@@ -236,6 +237,7 @@ provide(BATTLE_CTX, {
   attackMap,
   allUnits,
   onSelectAbnormality,
+  onSelectEgo,
   session,
   isOwnUnit,
   isRestrictedTarget,
@@ -382,15 +384,22 @@ provide(BATTLE_CTX, {
     "
   />
 
-  <!-- Emotion level-up selection overlay (key page or abnormality card) -->
+  <!--
+    Emotion level-up selection overlay (abnormality card or EGO card).
+    Both selection fields are mutually exclusive at runtime; the picker
+    itself prefers abnormalitySelection when both are present, matching
+    the in-game StartPickEmotionCard ordering.
+  -->
   <LazyEmotionUpgradePicker
-    v-if="state?.abnormalitySelection"
-    :selection="state.abnormalitySelection"
+    v-if="state?.abnormalitySelection || state?.egoSelection"
+    :abnormality-selection="state.abnormalitySelection"
+    :ego-selection="state.egoSelection"
     :allies="state?.allies ?? []"
     :ally-colors="allyColors"
     @select="
       ({ cardId, targetUnitId }) => onSelectAbnormality(cardId, targetUnitId)
     "
+    @select-ego="({ choiceId }) => onSelectEgo(choiceId)"
   />
 
   <!-- Ally targeting banner -->

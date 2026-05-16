@@ -215,6 +215,40 @@ namespace PlayLoRWithMe
         }
 
         // ------------------------------------------------------------------
+        // EGO page selection — mirror of the abnormality patches above.
+        //
+        // RoundEndPhase_ChoiceEmotionCard dispatches to LevelUpUI.InitEgo when
+        // team.egoSelectionPoint > 0 (and the abnormality skill points are
+        // depleted). OnPickEgoCard fires for both in-game clicks and the mod's
+        // own selectEgo action handler, which calls floor.OnPickEgoCard(...).
+        // ------------------------------------------------------------------
+
+        [HarmonyPatch(typeof(LevelUpUI), "InitEgo")]
+        static class Patch_LevelUpInitEgo
+        {
+            static void Prefix(List<EmotionEgoXmlInfo> egoList)
+            {
+                EgoSelectionState.IsActive = true;
+                EgoSelectionState.Choices = egoList;
+                EgoSelectionState.Floor =
+                    Singleton<StageController>.Instance?.GetCurrentStageFloorModel();
+                Broadcast();
+            }
+        }
+
+        [HarmonyPatch(typeof(StageLibraryFloorModel), "OnPickEgoCard")]
+        static class Patch_OnPickEgoCard
+        {
+            static void Postfix()
+            {
+                EgoSelectionState.IsActive = false;
+                EgoSelectionState.Choices = null;
+                EgoSelectionState.Floor = null;
+                Broadcast();
+            }
+        }
+
+        // ------------------------------------------------------------------
         // Main-thread dispatcher — for Unity APIs that must run on the main
         // thread but are triggered from background threads (e.g. WebSocket).
         // ------------------------------------------------------------------
@@ -264,6 +298,19 @@ namespace PlayLoRWithMe
     {
         public static bool IsActive;
         public static List<EmotionCardXmlInfo> Choices;
+        public static StageLibraryFloorModel Floor;
+    }
+
+    /// <summary>
+    /// Mirror of <see cref="AbnormalitySelectionState"/> for the EGO-card branch of
+    /// the level-up UI (opened via <c>LevelUpUI.InitEgo</c>). Mutually exclusive with
+    /// the abnormality branch at runtime — <c>StartPickEmotionCard</c> only opens
+    /// one at a time — so the two states never both go IsActive in the same tick.
+    /// </summary>
+    internal static class EgoSelectionState
+    {
+        public static bool IsActive;
+        public static List<EmotionEgoXmlInfo> Choices;
         public static StageLibraryFloorModel Floor;
     }
 }

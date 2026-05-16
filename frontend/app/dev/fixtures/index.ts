@@ -14,6 +14,7 @@ import battleSampler from "./battle-sampler.json";
 import mainLibrarian from "./main-librarian.json";
 import battleSetting from "./battle-setting.json";
 import emotionUpgrade from "./emotion-upgrade.json";
+import egoUpgrade from "./ego-upgrade.json";
 
 // Each loader runs the JSON through `GameStateSchema` so a fixture that
 // drifts from the wire contract throws with a Zod path at load time rather
@@ -24,4 +25,5 @@ export const FIXTURE_LOADERS: Record<string, () => GameState> = {
   "main-librarian": () => z.parse(GameStateSchema, mainLibrarian),
   "battle-setting": () => z.parse(GameStateSchema, battleSetting),
   "emotion-upgrade": () => z.parse(GameStateSchema, emotionUpgrade),
+  "ego-upgrade": () => z.parse(GameStateSchema, egoUpgrade),
 };

@@ -635,6 +635,40 @@ export const AbnormalitySelectionSchema = z.object({
 });
 export type AbnormalitySelection = z.infer<typeof AbnormalitySelectionSchema>;
 
+// ── EGO selection phase ──────────────────────────────────────────────────────
+
+/**
+ * One EGO card offered by `LevelUpUI.InitEgo`. Mirrors the resolved
+ * `DiceCardXmlInfo` (the EGO card isn't owned by any unit at selection time,
+ * so cost is the static base spec cost rather than a per-owner reduced value).
+ * `id` is the `EmotionEgoXmlInfo.id` and is what `selectEgo` carries as
+ * `choiceId` — distinct from `cardId` which is the resolved `LorId`.
+ */
+export const EgoChoiceSchema = z.object({
+  id: z.number(),
+  // LorId.packageId is always a string ("" for vanilla, workshop key for
+  // modded). Use StringEntryIdSchema rather than EntryIdSchema for that reason.
+  cardId: StringEntryIdSchema,
+  name: z.string(),
+  cost: z.number(),
+  range: z.string(),
+  rarity: z.string(),
+  sephirah: z.string(),
+  dice: z.optional(z.array(DieSchema)),
+  desc: z.optional(z.string()),
+});
+export type EgoChoice = z.infer<typeof EgoChoiceSchema>;
+
+export const EgoSelectionSchema = z.object({
+  choices: z.array(EgoChoiceSchema),
+  teamEmotionLevel: z.optional(z.number()),
+  teamCoin: z.optional(z.number()),
+  teamCoinMax: z.optional(z.number()),
+  teamPositiveCoins: z.optional(z.number()),
+  teamNegativeCoins: z.optional(z.number()),
+});
+export type EgoSelection = z.infer<typeof EgoSelectionSchema>;
+
 // ── Librarian ────────────────────────────────────────────────────────────────
 
 export const LibrarianEntrySchema = z.object({
@@ -896,6 +930,8 @@ export const GameStateSchema = z.object({
   enemies: z.optional(z.array(UnitSchema)),
   /** Only present during the key-page selection phase. */
   abnormalitySelection: z.optional(AbnormalitySelectionSchema),
+  /** Only present during the EGO-card selection phase (mutually exclusive with abnormalitySelection at runtime). */
+  egoSelection: z.optional(EgoSelectionSchema),
   /** Present in main scene (non-BattleSetting) — floor roster with nested librarians. */
   floors: z.optional(z.array(FloorEntrySchema)),
   /** Key pages in the book inventory available to equip to a librarian. */
@@ -972,6 +1008,10 @@ export const ClientActionSchema = z.discriminatedUnion("type", [
     type: z.literal("selectAbnormality"),
     cardId: z.number(),
     targetUnitId: z.optional(z.number()),
+  }),
+  z.object({
+    type: z.literal("selectEgo"),
+    choiceId: z.number(),
   }),
   // setCustomization carries the full appearance/dialogue/title payload for
   // a single librarian (floorIndex + unitIndex address it). Field list mirrors

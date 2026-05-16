@@ -1,35 +1,67 @@
 <!--
   EmotionUpgradePicker.vue
 
-  Full-viewport overlay shown when the game prompts players to choose a
-  key page or abnormality card at an emotion level-up. Mirrors the in-game LevelUpUI.
+  Full-viewport overlay shown when the game prompts players to choose either:
+    • an abnormality page (via LevelUpUI.Init)        — `abnormalitySelection`
+    • an EGO card         (via LevelUpUI.InitEgo)     — `egoSelection`
+
+  Exactly one of the two selection props is populated at a time — RoundEndPhase_
+  ChoiceEmotionCard only opens one branch per pick. Header chrome (team-emotion
+  stats, backdrop, panel) is identical between modes; only the card-grid renderer
+  and per-tile click routing differ.
 
   Props:
-    selection  – the AbnormalitySelection object straight off gameState; carries
-                 the choice list and the optional team-level emotion stats
-                 surfaced in the header
-    allies     – ally unit list (for SelectOne targeting step)
-    allyColors – map of unitId → hex color
+    abnormalitySelection – populated in abnormality mode
+    egoSelection         – populated in EGO mode
+    allies               – ally unit list (for SelectOne targeting step;
+                           unused in EGO mode since OnPickEgoCard has no target)
+    allyColors           – map of unitId → hex color
 
   Emits:
-    select({ cardId, targetUnitId? })
+    select({ cardId, targetUnitId? }) – abnormality pick
+    selectEgo({ choiceId })           – EGO pick
 -->
 <script setup lang="ts">
-import type { AbnormalityChoice, AbnormalitySelection, AllyUnit } from "~/types/game";
+import type {
+  AbnormalityChoice,
+  AbnormalitySelection,
+  AllyUnit,
+  Card,
+  EgoChoice,
+  EgoSelection,
+} from "~/types/game";
 
 const props = defineProps<{
-  selection: AbnormalitySelection;
+  abnormalitySelection?: AbnormalitySelection;
+  egoSelection?: EgoSelection;
   allies: AllyUnit[];
   allyColors: Record<number, string>;
 }>();
 
 const emit = defineEmits<{
   select: [{ cardId: number; targetUnitId?: number }];
+  selectEgo: [{ choiceId: number }];
 }>();
+
+// Abnormality takes precedence if both happen to be present — matches the
+// in-game StartPickEmotionCard ordering (it always opens Init before InitEgo
+// in any given pick step).
+const mode = computed<"abnormality" | "ego" | null>(() => {
+  if (props.abnormalitySelection) return "abnormality";
+  if (props.egoSelection) return "ego";
+  return null;
+});
+
+// Shared header data — both selection schemas carry the same five team fields.
+const header = computed(() =>
+  mode.value === "abnormality"
+    ? props.abnormalitySelection
+    : props.egoSelection,
+);
 
 const pendingCard = ref<AbnormalityChoice | null>(null);
 
-function onCardClick(card: AbnormalityChoice) {
+function onAbnormalityCardClick(card: AbnormalityChoice) {
   if (card.targetType === "SelectOne") {
     if (pendingCard.value?.id === card.id) {
       pendingCard.value = null;
@@ -39,6 +71,11 @@ function onCardClick(card: AbnormalityChoice) {
   } else {
     emit("select", { cardId: card.id });
   }
+}
+
+function onEgoCardClick(choice: EgoChoice) {
+  // No ally-target step — OnPickEgoCard takes no BattleUnitModel.
+  emit("selectEgo", { choiceId: choice.id });
 }
 
 function onAllyClick(ally: AllyUnit) {
@@ -52,34 +89,62 @@ function onBack() {
 
 const totalCoins = computed(
   () =>
-    (props.selection.teamPositiveCoins ?? 0) +
-    (props.selection.teamNegativeCoins ?? 0),
+    (header.value?.teamPositiveCoins ?? 0) +
+    (header.value?.teamNegativeCoins ?? 0),
 );
 const posRatio = computed(() =>
   totalCoins.value > 0
-    ? (props.selection.teamPositiveCoins ?? 0) / totalCoins.value
+    ? (header.value?.teamPositiveCoins ?? 0) / totalCoins.value
     : 0.5,
 );
-const showTeamInfo = computed(() => props.selection.teamEmotionLevel !== undefined);
+const showTeamInfo = computed(() => header.value?.teamEmotionLevel !== undefined);
+
+const title = computed(() =>
+  mode.value === "ego" ? "EGO Card Selection" : "Emotion Card Selection",
+);
+
+/**
+ * Project an EgoChoice into the Card shape HandCard expects. The wire payload
+ * for an EgoChoice intentionally diverges from a battle Card (no `index`,
+ * `bufs`, `emotionLimit`, etc.) but carries every field HandCard reads:
+ * name, cost, range, rarity, dice (with per-die desc), and ability desc.
+ * We synthesize `index` (unused by HandCard for rendering) and the EGO
+ * option so `cardBorderColor` paints the crimson EGO accent.
+ */
+function egoChoiceToCard(choice: EgoChoice): Card {
+  return {
+    // HandCard reads .id only as a v-for key fallback; the numeric packageId
+    // here is a synthetic placeholder since EGO's cardId carries a string.
+    id: { id: choice.cardId.id, packageId: 0 },
+    index: choice.id,
+    name: choice.name,
+    cost: choice.cost,
+    range: choice.range,
+    rarity: choice.rarity,
+    options: ["Ego"],
+    abilityDesc: choice.desc,
+    dice: choice.dice,
+  };
+}
 </script>
 
 <template>
   <div class="ab-backdrop" @click.self="onBack">
     <div class="ab-panel">
       <header class="ab-header">
-        <span class="ab-title">Emotion Card Selection</span>
-        <div v-if="showTeamInfo" class="ab-team-info">
-          <span class="ab-team-lv">Lv {{ toRoman(selection.teamEmotionLevel!) }}</span>
+        <span class="ab-title">{{ title }}</span>
+        <div v-if="showTeamInfo && header" class="ab-team-info">
+          <span class="ab-team-lv">Lv {{ toRoman(header.teamEmotionLevel!) }}</span>
           <div
-            v-if="(selection.teamCoinMax ?? 0) > 0"
+            v-if="(header.teamCoinMax ?? 0) > 0"
             class="ab-coin-bar-wrap"
-            :title="`${selection.teamCoin} / ${selection.teamCoinMax} coins`"
+            :title="`${header.teamCoin} / ${header.teamCoinMax} coins`"
           >
             <div class="ab-coin-bar">
               <div
                 class="ab-coin-fill"
                 :style="{
-                  width: `${Math.min(100, ((selection.teamCoin ?? 0) / (selection.teamCoinMax ?? 1)) * 100)}%`,
+                  width: `${Math.min(100, ((header.teamCoin ?? 0) / (header.teamCoinMax ?? 1)) * 100)}%`,
                 }"
               />
             </div>
@@ -87,7 +152,7 @@ const showTeamInfo = computed(() => props.selection.teamEmotionLevel !== undefin
           <div
             v-if="totalCoins > 0"
             class="ab-posneg-wrap"
-            :title="`+${selection.teamPositiveCoins} / -${selection.teamNegativeCoins}`"
+            :title="`+${header.teamPositiveCoins} / -${header.teamNegativeCoins}`"
           >
             <div class="ab-posneg-bar">
               <div
@@ -96,20 +161,43 @@ const showTeamInfo = computed(() => props.selection.teamEmotionLevel !== undefin
               />
             </div>
             <span class="ab-posneg-label ab-posneg-label--pos"
-              >+{{ selection.teamPositiveCoins }}</span
+              >+{{ header.teamPositiveCoins }}</span
             >
             <span class="ab-posneg-label ab-posneg-label--neg"
-              >-{{ selection.teamNegativeCoins }}</span
+              >-{{ header.teamNegativeCoins }}</span
             >
           </div>
         </div>
       </header>
 
       <Transition name="ab-slide" mode="out-in">
-        <!-- Choice list -->
-        <div v-if="!pendingCard" key="choices" class="ab-choices">
+        <!--
+          EGO mode: same HandCard layout used everywhere else in the app,
+          forced to displayMode="full" so the per-die descriptions are visible
+          at rest (no hover required).
+        -->
+        <div
+          v-if="mode === 'ego' && egoSelection"
+          key="ego-choices"
+          class="ab-choices ab-choices--ego"
+        >
+          <HandCard
+            v-for="choice in egoSelection.choices"
+            :key="choice.id"
+            :card="egoChoiceToCard(choice)"
+            display-mode="full"
+            @click="onEgoCardClick(choice)"
+          />
+        </div>
+
+        <!-- Abnormality mode: choice list -->
+        <div
+          v-else-if="mode === 'abnormality' && abnormalitySelection && !pendingCard"
+          key="choices"
+          class="ab-choices"
+        >
           <AbnormalityPageCard
-            v-for="card in selection.choices"
+            v-for="card in abnormalitySelection.choices"
             :key="card.id"
             :name="card.name"
             :state="card.state"
@@ -117,12 +205,12 @@ const showTeamInfo = computed(() => props.selection.teamEmotionLevel !== undefin
             :target-type="card.targetType"
             :desc="card.desc"
             :flavor-text="card.flavorText"
-            @click="onCardClick(card)"
+            @click="onAbnormalityCardClick(card)"
           />
         </div>
 
-        <!-- Ally picker (SelectOne) -->
-        <div v-else key="allies" class="ab-ally-picker">
+        <!-- Ally picker (SelectOne, abnormality only) -->
+        <div v-else-if="pendingCard" key="allies" class="ab-ally-picker">
           <div class="ab-ally-subheader">
             <button class="ab-back" @click="onBack">← back</button>
             <span class="ab-ally-prompt">Select a Librarian</span>
@@ -185,6 +273,13 @@ const showTeamInfo = computed(() => props.selection.teamEmotionLevel !== undefin
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* EGO mode uses HandCard at displayMode="full", whose preview+detail spread
+   is wider than an AbnormalityPageCard. Give the panel more room so two or
+   three EGO tiles fit side-by-side on a typical screen. */
+.ab-panel:has(.ab-choices--ego) {
+  width: min(820px, 100%);
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
@@ -294,6 +389,12 @@ const showTeamInfo = computed(() => props.selection.teamEmotionLevel !== undefin
 }
 
 /* Card visuals are owned by AbnormalityPageCard; no .ab-card* rules needed here. */
+
+/* ── EGO mode tiles ──────────────────────────────────────────────────────── */
+.ab-choices--ego {
+  flex-wrap: wrap;
+  justify-content: center;
+}
 
 /* ── Ally picker ─────────────────────────────────────────────────────────── */
 .ab-ally-picker {

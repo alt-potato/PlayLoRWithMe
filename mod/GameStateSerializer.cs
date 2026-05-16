@@ -1983,6 +1983,11 @@ namespace PlayLoRWithMe
                 );
             }
 
+            if (EgoSelectionState.IsActive && EgoSelectionState.Choices != null)
+            {
+                WriteEgoSelection(w);
+            }
+
             if (AbnormalitySelectionState.IsActive && AbnormalitySelectionState.Choices != null)
             {
                 var descList = Singleton<AbnormalityCardDescXmlList>.Instance;
@@ -2050,6 +2055,83 @@ namespace PlayLoRWithMe
                     }
                 );
             }
+        }
+
+        /// <summary>
+        /// Writes the <c>egoSelection</c> field for the level-up UI's EGO branch.
+        /// Resolves each <see cref="EmotionEgoXmlInfo"/> to its <see cref="DiceCardXmlInfo"/>
+        /// via <see cref="ItemXmlDataList"/> and surfaces enough metadata for the picker tile
+        /// to render an informed pick (name, cost, range, rarity, dice, ability description).
+        /// Mirrors the team-emotion header the abnormality block emits.
+        /// </summary>
+        private static void WriteEgoSelection(JsonWriter w)
+        {
+            var abilityDescList = Singleton<BattleCardAbilityDescXmlList>.Instance;
+            w.AddObject(
+                "egoSelection",
+                sel =>
+                {
+                    sel.AddArray(
+                        "choices",
+                        arr =>
+                        {
+                            foreach (var ego in EgoSelectionState.Choices)
+                            {
+                                if (ego == null)
+                                    continue;
+                                var xml = ItemXmlDataList.instance.GetCardItem(ego.CardId);
+                                if (xml == null)
+                                    continue;
+                                arr.AddObject(o =>
+                                {
+                                    o.Add("id", ego.id);
+                                    AddLorId(o, "cardId", xml.id);
+                                    // Base spec cost — these EGO cards aren't owned by any unit
+                                    // at selection time, so per-owner cost reductions don't apply.
+                                    o.Add("name", xml.Name)
+                                        .Add("cost", xml.Spec.Cost)
+                                        .Add("range", xml.Spec.Ranged.ToString())
+                                        .Add("rarity", xml.Rarity.ToString())
+                                        .Add("sephirah", ego.Sephirah.ToString());
+                                    var abilityDesc =
+                                        abilityDescList?.GetAbilityDescString(xml) ?? "";
+                                    if (
+                                        !string.IsNullOrEmpty(abilityDesc)
+                                        && abilityDesc != "Not found"
+                                    )
+                                        o.Add("desc", abilityDesc);
+                                    WriteDiceBehaviours(o, xml.DiceBehaviourList, abilityDescList);
+                                });
+                            }
+                        }
+                    );
+
+                    // Team emotion state for the selection header — same shape the
+                    // abnormality selection emits so the frontend chrome is consistent.
+                    var floor = EgoSelectionState.Floor;
+                    if (floor != null)
+                    {
+                        var team = floor.team;
+                        sel.Add("teamEmotionLevel", team.emotionLevel)
+                            .Add("teamCoin", team.emotionCoinNumber)
+                            .Add("teamCoinMax", team.currentLevelNeedEmotionMaxCoin);
+
+                        int pos = 0,
+                            neg = 0;
+                        var bom = BattleObjectManager.instance;
+                        if (bom != null)
+                            foreach (var u in bom.GetAliveList(Faction.Player))
+                            {
+                                var ed = u?.emotionDetail;
+                                if (ed == null)
+                                    continue;
+                                pos += ed.PositiveCoins.Count;
+                                neg += ed.NegativeCoins.Count;
+                            }
+                        sel.Add("teamPositiveCoins", pos).Add("teamNegativeCoins", neg);
+                    }
+                }
+            );
         }
 
         /// <summary>

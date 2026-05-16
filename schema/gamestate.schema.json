@@ -1669,6 +1669,115 @@
           ],
           "additionalProperties": false
         },
+        "egoSelection": {
+          "type": "object",
+          "properties": {
+            "choices": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "cardId": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "number"
+                      },
+                      "packageId": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "packageId"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "cost": {
+                    "type": "number"
+                  },
+                  "range": {
+                    "type": "string"
+                  },
+                  "rarity": {
+                    "type": "string"
+                  },
+                  "sephirah": {
+                    "type": "string"
+                  },
+                  "dice": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string"
+                        },
+                        "detail": {
+                          "type": "string"
+                        },
+                        "min": {
+                          "type": "number"
+                        },
+                        "max": {
+                          "type": "number"
+                        },
+                        "desc": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "detail",
+                        "min",
+                        "max"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "desc": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "cardId",
+                  "name",
+                  "cost",
+                  "range",
+                  "rarity",
+                  "sephirah"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "teamEmotionLevel": {
+              "type": "number"
+            },
+            "teamCoin": {
+              "type": "number"
+            },
+            "teamCoinMax": {
+              "type": "number"
+            },
+            "teamPositiveCoins": {
+              "type": "number"
+            },
+            "teamNegativeCoins": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "choices"
+          ],
+          "additionalProperties": false
+        },
         "floors": {
           "type": "array",
           "items": {
@@ -4839,6 +4948,115 @@
                   ],
                   "additionalProperties": false
                 },
+                "egoSelection": {
+                  "type": "object",
+                  "properties": {
+                    "choices": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "number"
+                          },
+                          "cardId": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "number"
+                              },
+                              "packageId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "packageId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "cost": {
+                            "type": "number"
+                          },
+                          "range": {
+                            "type": "string"
+                          },
+                          "rarity": {
+                            "type": "string"
+                          },
+                          "sephirah": {
+                            "type": "string"
+                          },
+                          "dice": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "type": {
+                                  "type": "string"
+                                },
+                                "detail": {
+                                  "type": "string"
+                                },
+                                "min": {
+                                  "type": "number"
+                                },
+                                "max": {
+                                  "type": "number"
+                                },
+                                "desc": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "type",
+                                "detail",
+                                "min",
+                                "max"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "desc": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "cardId",
+                          "name",
+                          "cost",
+                          "range",
+                          "rarity",
+                          "sephirah"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "teamEmotionLevel": {
+                      "type": "number"
+                    },
+                    "teamCoin": {
+                      "type": "number"
+                    },
+                    "teamCoinMax": {
+                      "type": "number"
+                    },
+                    "teamPositiveCoins": {
+                      "type": "number"
+                    },
+                    "teamNegativeCoins": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "choices"
+                  ],
+                  "additionalProperties": false
+                },
                 "floors": {
                   "type": "array",
                   "items": {
@@ -6500,6 +6718,23 @@
           "required": [
             "type",
             "cardId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "selectEgo"
+            },
+            "choiceId": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "type",
+            "choiceId"
           ],
           "additionalProperties": false
         },

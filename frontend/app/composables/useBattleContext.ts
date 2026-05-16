@@ -106,6 +106,13 @@ export interface BattleCtx {
   /** Called when a remote player picks an abnormality page from the LevelUpUI. */
   onSelectAbnormality: (cardId: number, targetUnitId?: number) => Promise<void>;
 
+  /**
+   * Called when a remote player picks an EGO card from the LevelUpUI's
+   * `InitEgo` branch. EGO selection has no per-unit target step — the picked
+   * card is added to the floor's shared SpecialCardListModel.
+   */
+  onSelectEgo: (choiceId: number) => Promise<void>;
+
   /** The current session (null until the server sends a hello message). */
   session: Ref<SessionState | null>;
 

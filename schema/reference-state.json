@@ -320,6 +320,64 @@
       },
       "allies": [],
       "enemies": []
+    },
+
+    "battle_egoSelection": {
+      "scene": "battle",
+      "phase": "EgoSelectionPhase",
+      "egoSelection": {
+        "choices": [
+          {
+            "id": 10,
+            "cardId": { "id": 90001, "packageId": "" },
+            "name": "Bird of Judgement (ZAYIN)",
+            "cost": 0,
+            "range": "Far",
+            "rarity": "ZAYIN",
+            "sephirah": "Malkuth",
+            "dice": [
+              {
+                "type": "Atk",
+                "detail": "Penetrate",
+                "min": 3,
+                "max": 5,
+                "desc": "On Hit: Inflict 2 Bleed (3 turns)."
+              }
+            ],
+            "desc": "A starting EGO awakened on the first floor."
+          },
+          {
+            "id": 11,
+            "cardId": { "id": 90015, "packageId": "" },
+            "name": "Justitia (WAW)",
+            "cost": 4,
+            "range": "FarArea",
+            "rarity": "WAW",
+            "sephirah": "Tiphereth",
+            "dice": [
+              {
+                "type": "Atk",
+                "detail": "Slash",
+                "min": 6,
+                "max": 10
+              },
+              {
+                "type": "Atk",
+                "detail": "Slash",
+                "min": 5,
+                "max": 8
+              }
+            ]
+          }
+        ],
+        "teamEmotionLevel": 5,
+        "teamCoin": 7,
+        "teamCoinMax": 12,
+        "teamPositiveCoins": 4,
+        "teamNegativeCoins": 3
+      },
+      "allies": [],
+      "enemies": []
     }
   }
 }
