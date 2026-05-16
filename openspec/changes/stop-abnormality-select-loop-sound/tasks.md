@@ -1,0 +1,13 @@
+## 1. Hybrid dismissal in `DoSelectAbnormality`
+
+- [x] 1.1 In `mod/ActionInjector.cs::DoSelectAbnormality`, branch on `card.TargetType`. For `EmotionTargetType.All` and `EmotionTargetType.AllIncludingEnemy`, locate the matching `EmotionPassiveCardUI` in `levelup.candidates` (by `Card.id == cardId`) and call `levelup.OnSelectPassive(picked_ui)`. Do NOT also call `floor.OnPickPassiveCard` in this branch — `OnSelectPassive` does that itself, plus the audio cleanup and animated dismissal via `OnSelectRoutine` → `DisableRoutine`.
+- [x] 1.2 For `EmotionTargetType.SelectOne`, keep the existing `floor.OnPickPassiveCard(card, target)` call (byte-identical to `OnClickTargetUnit`'s commit). Then inline the same audio cleanup `OnSelectPassive` runs: call `levelup.OnDisable()` (releases `_loopSound`) and `BattleSoundManager.SetBgmVolumeRatio(1f)`. Then `levelup.SetRootCanvas(false)` to snap-dismiss the canvas — matching `OnClickTargetUnit`'s final step.
+- [x] 1.3 If the matching `EmotionPassiveCardUI` cannot be located for an `All`/`AllIncludingEnemy` card (defensive — should not happen since `Choices` comes from the same `candidates` array), fall back to the `SelectOne`-style manual path so audio is still cleaned up. Log a warning.
+- [x] 1.4 Update the inline comment block to document the hybrid: which target types route through `OnSelectPassive`, which use manual cleanup, and why (per `design.md` D1).
+- [x] 1.5 Build: run `cd mod && dotnet build`. Expect `0 Warning(s)  0 Error(s)`.
+
+## 2. Live-game verification
+
+- [x] 2.1 Manual (`All`-target / `AllIncludingEnemy`): in-game, reach a `RoundEndPhase` that surfaces an `All`-target abnormality. Pick the card through the frontend. Confirm: (a) `ABNORMALITY_SELECT_LOOP` stops within ~1s, (b) BGM returns to full volume, (c) the LevelUpUI dismisses cleanly via the ~0.5s animated `DisableRoutine`, (d) no "please select a librarian" prompt appears, (e) `RoundEndPhase_ChoiceEmotionCard` progresses normally.
+- [x] 2.2 Manual (`SelectOne` with target): pick a `SelectOne`-target abnormality through the frontend with an ally target. Confirm: (a) audio cleanup matches (a)/(b) above, (b) the LevelUpUI snap-dismisses (no animation), (c) no "please select a librarian" prompt appears, (d) no per-unit `abCardSelector` overlays flash on screen after the pick.
+- [ ] 2.3 Manual (multi-level emotion gain): in the same run, trigger an act that raises team emotion by ≥2. Confirm the second prompt re-opens cleanly and its loop sound starts fresh (no overlap with a residual first-pick sample). _Skipped at user request — hard to reproduce reliably; not blocking archive._

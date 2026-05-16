@@ -315,11 +315,84 @@ namespace PlayLoRWithMe
                 return false;
             }
 
-            floor.OnPickPassiveCard(card, target);
-            // Dismiss the in-game LevelUpUI so RoundEndPhase_ChoiceEmotionCard can detect
-            // the selection and queue the next level's choices if the emotion level rose
-            // by more than one in this act (multi-selection case).
-            SingletonBehavior<BattleManagerUI>.Instance?.ui_levelup?.SetRootCanvas(false);
+            var levelup = SingletonBehavior<BattleManagerUI>.Instance?.ui_levelup;
+
+            // Hybrid dismissal — mirrors the base game's per-EmotionTargetType paths:
+            //
+            //   All / AllIncludingEnemy: route through OnSelectPassive(picked_ui). The game
+            //     calls floor.OnPickPassiveCard itself (plus wave.ApplyEmotionCard for
+            //     AllIncludingEnemy), inlines the audio cleanup (releases _loopSound, restores
+            //     BGM to 1.0), and dismisses via OnSelectRoutine -> DisableRoutine over ~0.5s.
+            //     This is the truest base-game mirror and is the only branch that correctly
+            //     invokes wave.ApplyEmotionCard for AllIncludingEnemy cards.
+            //
+            //   SelectOne: the base game has no SelectOne-with-target codepath -- it always
+            //     forces a per-unit abCardSelector click. We can't replicate that for remote
+            //     picks where the target is already known, so we call floor.OnPickPassiveCard
+            //     directly (byte-identical to OnClickTargetUnit's commit), inline the same
+            //     two-line audio cleanup OnSelectPassive runs (via the public OnDisable for
+            //     _loopSound + an explicit SetBgmVolumeRatio for the BGM duck), then snap-
+            //     dismiss with SetRootCanvas(false) -- the same final call OnClickTargetUnit
+            //     makes after its commit.
+            //
+            // Routing SelectOne through OnSelectPassive would set _needUnitSelection = true
+            // and start OnSelectRoutine, which after a 0.1s yield would flash per-ally
+            // abCardSelector overlays even after we dismiss the canvas (Unity coroutines
+            // keep running on disabled canvases). Suppressing that requires reflection on
+            // the private _needUnitSelection field, which we avoid.
+            bool routedThroughOnSelectPassive = false;
+            if (
+                levelup != null
+                && (
+                    card.TargetType == EmotionTargetType.All
+                    || card.TargetType == EmotionTargetType.AllIncludingEnemy
+                )
+            )
+            {
+                EmotionPassiveCardUI picked = null;
+                if (levelup.candidates != null)
+                    foreach (var c in levelup.candidates)
+                        if (c?.Card != null && c.Card.id == cardId)
+                        {
+                            picked = c;
+                            break;
+                        }
+
+                if (picked != null)
+                {
+                    levelup.OnSelectPassive(picked);
+                    routedThroughOnSelectPassive = true;
+                }
+                else
+                {
+                    // defensive: shouldn't happen because Choices was populated from the same
+                    // candidates array. fall through to the manual path so audio still cleans up.
+                    Debug.LogWarning(
+                        $"[PRWM] selectAbnormality: no matching candidate UI for cardId={cardId}; "
+                            + "falling back to manual commit + cleanup."
+                    );
+                }
+            }
+
+            if (!routedThroughOnSelectPassive)
+            {
+                floor.OnPickPassiveCard(card, target);
+
+                if (levelup != null)
+                {
+                    // OnDisable is the public method whose entire body releases _loopSound. We
+                    // invoke it directly because SetRootCanvas alone leaves the GameObject
+                    // active and so does not trigger Unity's OnDisable lifecycle callback. A
+                    // subsequent Unity-driven invocation is a no-op (_loopSound is null).
+                    levelup.OnDisable();
+                    // Restore BGM that LevelUpUI.Init ducked to 0.5x. The base game's
+                    // OnSelectPassive does this inline; OnDisable does not handle it.
+                    SingletonBehavior<BattleSoundManager>.Instance?.SetBgmVolumeRatio(1f);
+                    // Snap-dismiss the canvas so RoundEndPhase_ChoiceEmotionCard sees the
+                    // selection and can queue the next level's choices in multi-level acts.
+                    levelup.SetRootCanvas(false);
+                }
+            }
             Debug.Log(
                 $"[PRWM] selectAbnormality: card={card.Name} target={target?.id.ToString() ?? "all"}"
             );
