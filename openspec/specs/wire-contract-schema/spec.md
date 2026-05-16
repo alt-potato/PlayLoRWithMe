@@ -48,6 +48,7 @@ A committed file `schema/reference-state.json` MUST contain at least one represe
 - `scene === "main"` with `uiPhase === "BattleSetting"` and without it
 - `scene === "battle"` with both ally and enemy units present
 - `scene === "battle"` with `abnormalitySelection` populated
+- `scene === "battle"` with `egoSelection` populated
 
 A unit test MUST iterate every case in the fixture and parse it through `GameStateSchema`. The test MUST fail with a visible Zod error path when any case violates the schema.
 
