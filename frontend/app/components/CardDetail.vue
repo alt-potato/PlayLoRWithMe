@@ -13,6 +13,7 @@
 -->
 <script setup lang="ts">
 import type { Card } from "~/types/game";
+import { rarityStyle } from "~/utils/rarityStyle";
 
 const props = defineProps<{ card: Card }>();
 defineEmits<{ close: [] }>();
@@ -22,11 +23,20 @@ const isEgo = computed(() =>
 );
 const isExhaust = computed(() => props.card.options?.includes("ExhaustOnUse"));
 const borderColor = computed(() => cardBorderColor(props.card));
+const sheetStyle = computed(() =>
+  rarityStyle({
+    rarity: props.card.rarity,
+    rarityColor: props.card.rarityColor,
+    rarityRangeIconColor: props.card.rarityRangeIconColor,
+    rarityAbilityColor: props.card.rarityAbilityColor,
+    rarityKeywordColor: props.card.rarityKeywordColor,
+  }),
+);
 </script>
 
 <template>
   <div class="backdrop" @click="$emit('close')" />
-  <div class="detail-sheet">
+  <div class="detail-sheet" :style="sheetStyle">
     <!-- Header -->
     <div class="sheet-header" :style="{ borderTopColor: borderColor }">
       <div class="header-top">
@@ -252,7 +262,8 @@ const borderColor = computed(() => cardBorderColor(props.card));
 .ability-desc {
   font-family: var(--font-body);
   font-size: var(--fs-2xs);
-  color: var(--text-2);
+  /* honours --rarity-ability-color when the card payload supplies it. */
+  color: var(--rarity-ability-color, var(--text-2));
   line-height: 1.5;
   margin: 0;
 }
@@ -309,7 +320,7 @@ const borderColor = computed(() => cardBorderColor(props.card));
 .die-desc {
   font-family: var(--font-body);
   font-size: var(--fs-3xs);
-  color: var(--text-2);
+  color: var(--rarity-ability-color, var(--text-2));
   line-height: 1.4;
 }
 </style>

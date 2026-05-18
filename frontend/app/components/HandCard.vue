@@ -35,6 +35,7 @@
 -->
 <script setup lang="ts">
 import type { Card } from "~/types/game";
+import { rarityStyle } from "~/utils/rarityStyle";
 
 const props = withDefaults(
   defineProps<{
@@ -141,6 +142,13 @@ function handleClick() {
     :style="{
       borderColor: selected && color ? color : cardBorderColor(card),
       '--glow': selected && color ? color + '44' : undefined,
+      ...rarityStyle({
+        rarity: card.rarity,
+        rarityColor: card.rarityColor,
+        rarityRangeIconColor: card.rarityRangeIconColor,
+        rarityAbilityColor: card.rarityAbilityColor,
+        rarityKeywordColor: card.rarityKeywordColor,
+      }),
     }"
     @click="handleClick"
     @mouseenter="onOverlayHoverStart"
@@ -396,8 +404,9 @@ function handleClick() {
   margin: 0;
   font-family: var(--font-body);
   font-size: var(--fs-3xs);
-  /* page-level text — near-white per in-game styling */
-  color: var(--text-page);
+  /* page-level text — near-white per in-game styling. honours
+     --rarity-ability-color when an ancestor sets it (custom-rarity override). */
+  color: var(--rarity-ability-color, var(--text-page));
   line-height: 1.1;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -447,15 +456,17 @@ function handleClick() {
 }
 
 /* per-die desc colour tints, mirroring in-game card text styling.
-   atk = light red, def = light blue, standby (counter) = light gold. */
+   atk = light red, def = light blue, standby (counter) = light gold.
+   --rarity-ability-color overrides the per-die-type tint when an ancestor
+   sets it (custom-rarity AbilityDescColor mirrors the in-game uniform colour). */
 .hcard-die-desc--atk {
-  color: var(--text-atk);
+  color: var(--rarity-ability-color, var(--text-atk));
 }
 .hcard-die-desc--def {
-  color: var(--text-def);
+  color: var(--rarity-ability-color, var(--text-def));
 }
 .hcard-die-desc--standby {
-  color: var(--text-standby);
+  color: var(--rarity-ability-color, var(--text-standby));
 }
 
 /* ── Detail pane visibility per displayMode ──

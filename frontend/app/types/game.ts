@@ -111,6 +111,12 @@ export const CardSchema = z.object({
   dice: z.optional(z.array(DieSchema)),
   bufs: z.optional(z.array(CardTokenSchema)),
   icon: z.optional(z.string()),
+  // CustomRarityUtil colour overrides (`#rrggbb`); emitted only for custom
+  // rarities resolved through the soft-dep probe, omitted for vanilla rarities.
+  rarityColor: z.optional(z.string()),
+  rarityRangeIconColor: z.optional(z.string()),
+  rarityAbilityColor: z.optional(z.string()),
+  rarityKeywordColor: z.optional(z.string()),
 });
 export type Card = z.infer<typeof CardSchema>;
 
@@ -135,6 +141,10 @@ export const SlottedCardEntrySchema = z.object({
   desc: z.optional(z.string()),
   flavorText: z.optional(z.string()),
   dice: z.optional(z.array(DieSchema)),
+  rarityColor: z.optional(z.string()),
+  rarityRangeIconColor: z.optional(z.string()),
+  rarityAbilityColor: z.optional(z.string()),
+  rarityKeywordColor: z.optional(z.string()),
 });
 export type SlottedCardEntry = z.infer<typeof SlottedCardEntrySchema>;
 
@@ -189,6 +199,10 @@ export const PassiveSchema = z.object({
   cost: z.optional(z.number()),
   /** False when the passive cannot be attributed to another key page (unique). Absent = true. */
   canTransfer: z.optional(z.boolean()),
+  rarityColor: z.optional(z.string()),
+  rarityRangeIconColor: z.optional(z.string()),
+  rarityAbilityColor: z.optional(z.string()),
+  rarityKeywordColor: z.optional(z.string()),
 });
 export type Passive = z.infer<typeof PassiveSchema>;
 
@@ -264,6 +278,10 @@ export const KeyPageSchema = z.object({
    * omit this for consistency with the other librarian-only fields.
    */
   isMultiDeck: z.optional(z.boolean()),
+  rarityColor: z.optional(z.string()),
+  rarityRangeIconColor: z.optional(z.string()),
+  rarityAbilityColor: z.optional(z.string()),
+  rarityKeywordColor: z.optional(z.string()),
 });
 export type KeyPage = z.infer<typeof KeyPageSchema>;
 
@@ -289,6 +307,10 @@ export const DeckCardPreviewSchema = z.object({
   count: z.number(),
   dice: z.optional(z.array(DieSchema)),
   abilityDesc: z.optional(z.string()),
+  rarityColor: z.optional(z.string()),
+  rarityRangeIconColor: z.optional(z.string()),
+  rarityAbilityColor: z.optional(z.string()),
+  rarityKeywordColor: z.optional(z.string()),
 });
 export type DeckCardPreview = z.infer<typeof DeckCardPreviewSchema>;
 
@@ -595,6 +617,10 @@ export const AvailableKeyPageSchema = z.object({
   passiveGivenTo: z.optional(z.string()),
   /** BookXmlInfo.Rarity: "Common" | "Uncommon" | "Rare" | "Unique" | "Special". */
   rarity: z.optional(z.string()),
+  rarityColor: z.optional(z.string()),
+  rarityRangeIconColor: z.optional(z.string()),
+  rarityAbilityColor: z.optional(z.string()),
+  rarityKeywordColor: z.optional(z.string()),
 });
 export type AvailableKeyPage = z.infer<typeof AvailableKeyPageSchema>;
 
@@ -609,6 +635,10 @@ export const AvailableCardSchema = z.object({
   abilityDesc: z.optional(z.string()),
   dice: z.optional(z.array(DieSchema)),
   chapter: z.optional(z.number()),
+  rarityColor: z.optional(z.string()),
+  rarityRangeIconColor: z.optional(z.string()),
+  rarityAbilityColor: z.optional(z.string()),
+  rarityKeywordColor: z.optional(z.string()),
 });
 export type AvailableCard = z.infer<typeof AvailableCardSchema>;
 
@@ -656,6 +686,10 @@ export const EgoChoiceSchema = z.object({
   sephirah: z.string(),
   dice: z.optional(z.array(DieSchema)),
   desc: z.optional(z.string()),
+  rarityColor: z.optional(z.string()),
+  rarityRangeIconColor: z.optional(z.string()),
+  rarityAbilityColor: z.optional(z.string()),
+  rarityKeywordColor: z.optional(z.string()),
 });
 export type EgoChoice = z.infer<typeof EgoChoiceSchema>;
 

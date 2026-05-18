@@ -15,6 +15,7 @@
 -->
 <script setup lang="ts">
 import type { Passive } from "~/types/game";
+import { rarityStyle } from "~/utils/rarityStyle";
 
 defineProps<{ passives: Passive[] }>();
 
@@ -23,18 +24,24 @@ defineSlots<{
 }>();
 
 function passiveClass(p: Passive) {
-  const cls: Record<string, boolean> = {
-    "passive-negative": !!p.isNegative,
-  };
-  if (p.rare) cls[`rarity-${p.rare.toLowerCase()}`] = true;
-  return cls;
+  return { "passive-negative": !!p.isNegative };
+}
+
+function passiveStyle(p: Passive) {
+  return rarityStyle({
+    rarity: p.rare,
+    rarityColor: p.rarityColor,
+    rarityRangeIconColor: p.rarityRangeIconColor,
+    rarityAbilityColor: p.rarityAbilityColor,
+    rarityKeywordColor: p.rarityKeywordColor,
+  });
 }
 </script>
 
 <template>
   <div class="passive-list">
     <template v-for="p in passives" :key="p.id.id + p.id.packageId">
-      <details v-if="p.desc" class="passive-entry" :class="passiveClass(p)">
+      <details v-if="p.desc" class="passive-entry" :class="passiveClass(p)" :style="passiveStyle(p)">
         <summary class="passive-header">
           <span v-if="p.cost != null" class="passive-cost">{{ p.cost }}</span>
           <span class="passive-name">{{ p.name }}</span>
@@ -45,7 +52,7 @@ function passiveClass(p: Passive) {
         </summary>
         <p class="passive-desc">{{ p.desc }}</p>
       </details>
-      <div v-else class="passive-entry" :class="passiveClass(p)">
+      <div v-else class="passive-entry" :class="passiveClass(p)" :style="passiveStyle(p)">
         <span class="passive-header">
           <span v-if="p.cost != null" class="passive-cost">{{ p.cost }}</span>
           <span class="passive-name">{{ p.name }}</span>
@@ -66,7 +73,7 @@ function passiveClass(p: Passive) {
 }
 
 .passive-entry {
-  border-left: 2px solid var(--border-mid);
+  border-left: 2px solid var(--rarity-color, var(--border-mid));
   padding-left: 0;
   padding-top: 0;
   padding-bottom: 0;
@@ -74,26 +81,6 @@ function passiveClass(p: Passive) {
 
 .passive-entry + .passive-entry {
   border-top: 1px solid var(--border);
-}
-
-.passive-entry.rarity-common {
-  border-left-color: var(--rarity-common);
-}
-
-.passive-entry.rarity-uncommon {
-  border-left-color: var(--rarity-uncommon);
-}
-
-.passive-entry.rarity-rare {
-  border-left-color: var(--rarity-rare);
-}
-
-.passive-entry.rarity-unique {
-  border-left-color: var(--rarity-unique);
-}
-
-.passive-entry.rarity-special {
-  border-left-color: var(--rarity-special);
 }
 
 .passive-header {

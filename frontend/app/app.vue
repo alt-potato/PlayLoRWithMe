@@ -425,6 +425,18 @@ const rawJson = computed(() =>
   --rarity-unique: #c9a227;
   --rarity-special: #c62828;
 
+  /* ── Rarity surface overrides ──
+     Sibling vars consumed by rarity-styled surfaces (border, range glyph,
+     ability text, bracketed keyword). Components set the inline `--rarity-*`
+     value on the card root from a per-rarity class lookup OR from a
+     payload-supplied hex override (the CustomRarityUtil soft-dep). These
+     defaults match the pre-change visual rendering — gold-on-dark range
+     glyphs, default text-2 description text, gold-bright keyword highlights
+     — so an absent override leaves the surface looking identical. */
+  --rarity-range-icon-color: var(--gold);
+  --rarity-ability-color: var(--text-2);
+  --rarity-keyword-color: var(--gold-bright);
+
   /* ── Speed-die faction fills ──
      Defaults approximate vanilla LoR; the mod overrides these at runtime via
      theme.factionDieColors sampled from SpeedDiceUI.Refs. Keep the defaults

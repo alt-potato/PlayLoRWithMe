@@ -242,9 +242,9 @@ describe("rarity helpers", () => {
     expect(rarityColor("???")).toBe("#3c3830");
   });
 
-  it("emits the --rarity-border CSS var only when rarity is provided", () => {
+  it("emits the --rarity-color CSS var only when rarity is provided", () => {
     expect(rarityBorderStyle("Rare")).toEqual({
-      "--rarity-border": "var(--rarity-rare)",
+      "--rarity-color": "var(--rarity-rare)",
     });
     expect(rarityBorderStyle(undefined)).toEqual({});
   });

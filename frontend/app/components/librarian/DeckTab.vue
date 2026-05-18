@@ -322,6 +322,10 @@ function availableToCard(c: AvailableCard, i: number): Card {
     rarity: c.rarity,
     dice: c.dice,
     abilityDesc: c.abilityDesc,
+    rarityColor: c.rarityColor,
+    rarityRangeIconColor: c.rarityRangeIconColor,
+    rarityAbilityColor: c.rarityAbilityColor,
+    rarityKeywordColor: c.rarityKeywordColor,
   };
 }
 

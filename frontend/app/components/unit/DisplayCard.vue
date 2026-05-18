@@ -104,6 +104,10 @@ function slottedToCard(sc: SlottedCardEntry): Card {
     desc: sc.desc,
     flavorText: sc.flavorText,
     dice: sc.dice,
+    rarityColor: sc.rarityColor,
+    rarityRangeIconColor: sc.rarityRangeIconColor,
+    rarityAbilityColor: sc.rarityAbilityColor,
+    rarityKeywordColor: sc.rarityKeywordColor,
   };
 }
 const egoMode = ref(false);

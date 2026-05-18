@@ -35,6 +35,13 @@ function previewToCard(p: DeckCardPreview, i: number): Card {
     rarity: p.rarity,
     dice: p.dice,
     abilityDesc: p.abilityDesc,
+    // CustomRarityUtil overrides — propagate so HandCard tints the deck-preview
+    // tile with the modder-declared colours instead of falling back to the
+    // unknown-rarity default.
+    rarityColor: p.rarityColor,
+    rarityRangeIconColor: p.rarityRangeIconColor,
+    rarityAbilityColor: p.rarityAbilityColor,
+    rarityKeywordColor: p.rarityKeywordColor,
   };
 }
 

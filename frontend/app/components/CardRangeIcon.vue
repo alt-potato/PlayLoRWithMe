@@ -144,7 +144,9 @@ const descriptor = computed(() => cardRangeIconDescriptor(props.range));
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--gold);
+  /* honours --rarity-range-icon-color when an ancestor sets it (e.g. HandCard
+     for a custom-rarity card); falls back to the global --gold default. */
+  color: var(--rarity-range-icon-color, var(--gold));
   line-height: 1;
   flex-shrink: 0;
 }

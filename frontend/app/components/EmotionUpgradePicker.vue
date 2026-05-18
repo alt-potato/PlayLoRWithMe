@@ -124,6 +124,10 @@ function egoChoiceToCard(choice: EgoChoice): Card {
     options: ["Ego"],
     abilityDesc: choice.desc,
     dice: choice.dice,
+    rarityColor: choice.rarityColor,
+    rarityRangeIconColor: choice.rarityRangeIconColor,
+    rarityAbilityColor: choice.rarityAbilityColor,
+    rarityKeywordColor: choice.rarityKeywordColor,
   };
 }
 </script>

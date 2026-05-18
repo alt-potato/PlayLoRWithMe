@@ -8,15 +8,25 @@
 -->
 <script setup lang="ts">
 import type { SlottedCardEntry } from "~/types/game";
+import { rarityStyle } from "~/utils/rarityStyle";
 
-defineProps<{
+const props = defineProps<{
   card: SlottedCardEntry;
   targetLabel?: string;
 }>();
+
+const cardStyle = computed(() =>
+  rarityStyle({
+    rarityColor: props.card.rarityColor,
+    rarityRangeIconColor: props.card.rarityRangeIconColor,
+    rarityAbilityColor: props.card.rarityAbilityColor,
+    rarityKeywordColor: props.card.rarityKeywordColor,
+  }),
+);
 </script>
 
 <template>
-  <div class="sc-card">
+  <div class="sc-card" :style="cardStyle">
     <div class="sc-top">
       <span class="sc-name">{{ card.name }}</span>
       <CardRangeIcon :range="card.range" class="sc-range" />

@@ -230,6 +230,18 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "rarityColor": {
+                      "type": "string"
+                    },
+                    "rarityRangeIconColor": {
+                      "type": "string"
+                    },
+                    "rarityAbilityColor": {
+                      "type": "string"
+                    },
+                    "rarityKeywordColor": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -284,6 +296,18 @@
                     },
                     "canTransfer": {
                       "type": "boolean"
+                    },
+                    "rarityColor": {
+                      "type": "string"
+                    },
+                    "rarityRangeIconColor": {
+                      "type": "string"
+                    },
+                    "rarityAbilityColor": {
+                      "type": "string"
+                    },
+                    "rarityKeywordColor": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -443,6 +467,18 @@
                   },
                   "isMultiDeck": {
                     "type": "boolean"
+                  },
+                  "rarityColor": {
+                    "type": "string"
+                  },
+                  "rarityRangeIconColor": {
+                    "type": "string"
+                  },
+                  "rarityAbilityColor": {
+                    "type": "string"
+                  },
+                  "rarityKeywordColor": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -529,6 +565,18 @@
                       }
                     },
                     "abilityDesc": {
+                      "type": "string"
+                    },
+                    "rarityColor": {
+                      "type": "string"
+                    },
+                    "rarityRangeIconColor": {
+                      "type": "string"
+                    },
+                    "rarityAbilityColor": {
+                      "type": "string"
+                    },
+                    "rarityKeywordColor": {
                       "type": "string"
                     }
                   },
@@ -673,6 +721,18 @@
                     },
                     "icon": {
                       "type": "string"
+                    },
+                    "rarityColor": {
+                      "type": "string"
+                    },
+                    "rarityRangeIconColor": {
+                      "type": "string"
+                    },
+                    "rarityAbilityColor": {
+                      "type": "string"
+                    },
+                    "rarityKeywordColor": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -801,6 +861,18 @@
                       }
                     },
                     "icon": {
+                      "type": "string"
+                    },
+                    "rarityColor": {
+                      "type": "string"
+                    },
+                    "rarityRangeIconColor": {
+                      "type": "string"
+                    },
+                    "rarityAbilityColor": {
+                      "type": "string"
+                    },
+                    "rarityKeywordColor": {
                       "type": "string"
                     }
                   },
@@ -931,6 +1003,18 @@
                     },
                     "icon": {
                       "type": "string"
+                    },
+                    "rarityColor": {
+                      "type": "string"
+                    },
+                    "rarityRangeIconColor": {
+                      "type": "string"
+                    },
+                    "rarityAbilityColor": {
+                      "type": "string"
+                    },
+                    "rarityKeywordColor": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -1059,6 +1143,18 @@
                       }
                     },
                     "icon": {
+                      "type": "string"
+                    },
+                    "rarityColor": {
+                      "type": "string"
+                    },
+                    "rarityRangeIconColor": {
+                      "type": "string"
+                    },
+                    "rarityAbilityColor": {
+                      "type": "string"
+                    },
+                    "rarityKeywordColor": {
                       "type": "string"
                     }
                   },
@@ -1258,6 +1354,18 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "rarityColor": {
+                      "type": "string"
+                    },
+                    "rarityRangeIconColor": {
+                      "type": "string"
+                    },
+                    "rarityAbilityColor": {
+                      "type": "string"
+                    },
+                    "rarityKeywordColor": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -1312,6 +1420,18 @@
                     },
                     "canTransfer": {
                       "type": "boolean"
+                    },
+                    "rarityColor": {
+                      "type": "string"
+                    },
+                    "rarityRangeIconColor": {
+                      "type": "string"
+                    },
+                    "rarityAbilityColor": {
+                      "type": "string"
+                    },
+                    "rarityKeywordColor": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -1471,6 +1591,18 @@
                   },
                   "isMultiDeck": {
                     "type": "boolean"
+                  },
+                  "rarityColor": {
+                    "type": "string"
+                  },
+                  "rarityRangeIconColor": {
+                    "type": "string"
+                  },
+                  "rarityAbilityColor": {
+                    "type": "string"
+                  },
+                  "rarityKeywordColor": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -1557,6 +1689,18 @@
                       }
                     },
                     "abilityDesc": {
+                      "type": "string"
+                    },
+                    "rarityColor": {
+                      "type": "string"
+                    },
+                    "rarityRangeIconColor": {
+                      "type": "string"
+                    },
+                    "rarityAbilityColor": {
+                      "type": "string"
+                    },
+                    "rarityKeywordColor": {
                       "type": "string"
                     }
                   },
@@ -1743,6 +1887,18 @@
                   },
                   "desc": {
                     "type": "string"
+                  },
+                  "rarityColor": {
+                    "type": "string"
+                  },
+                  "rarityRangeIconColor": {
+                    "type": "string"
+                  },
+                  "rarityAbilityColor": {
+                    "type": "string"
+                  },
+                  "rarityKeywordColor": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -1859,6 +2015,18 @@
                       }
                     },
                     "abilityDesc": {
+                      "type": "string"
+                    },
+                    "rarityColor": {
+                      "type": "string"
+                    },
+                    "rarityRangeIconColor": {
+                      "type": "string"
+                    },
+                    "rarityAbilityColor": {
+                      "type": "string"
+                    },
+                    "rarityKeywordColor": {
                       "type": "string"
                     }
                   },
@@ -1996,6 +2164,18 @@
                         },
                         "isMultiDeck": {
                           "type": "boolean"
+                        },
+                        "rarityColor": {
+                          "type": "string"
+                        },
+                        "rarityRangeIconColor": {
+                          "type": "string"
+                        },
+                        "rarityAbilityColor": {
+                          "type": "string"
+                        },
+                        "rarityKeywordColor": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -2065,6 +2245,18 @@
                         },
                         "isMultiDeck": {
                           "type": "boolean"
+                        },
+                        "rarityColor": {
+                          "type": "string"
+                        },
+                        "rarityRangeIconColor": {
+                          "type": "string"
+                        },
+                        "rarityAbilityColor": {
+                          "type": "string"
+                        },
+                        "rarityKeywordColor": {
+                          "type": "string"
                         }
                       },
                       "required": [
@@ -2113,6 +2305,18 @@
                           },
                           "canTransfer": {
                             "type": "boolean"
+                          },
+                          "rarityColor": {
+                            "type": "string"
+                          },
+                          "rarityRangeIconColor": {
+                            "type": "string"
+                          },
+                          "rarityAbilityColor": {
+                            "type": "string"
+                          },
+                          "rarityKeywordColor": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -2166,6 +2370,18 @@
                               },
                               "canTransfer": {
                                 "type": "boolean"
+                              },
+                              "rarityColor": {
+                                "type": "string"
+                              },
+                              "rarityRangeIconColor": {
+                                "type": "string"
+                              },
+                              "rarityAbilityColor": {
+                                "type": "string"
+                              },
+                              "rarityKeywordColor": {
+                                "type": "string"
                               }
                             },
                             "required": [
@@ -2282,6 +2498,18 @@
                                 },
                                 "abilityDesc": {
                                   "type": "string"
+                                },
+                                "rarityColor": {
+                                  "type": "string"
+                                },
+                                "rarityRangeIconColor": {
+                                  "type": "string"
+                                },
+                                "rarityAbilityColor": {
+                                  "type": "string"
+                                },
+                                "rarityKeywordColor": {
+                                  "type": "string"
                                 }
                               },
                               "required": [
@@ -2382,6 +2610,18 @@
                           },
                           "chapter": {
                             "type": "number"
+                          },
+                          "rarityColor": {
+                            "type": "string"
+                          },
+                          "rarityRangeIconColor": {
+                            "type": "string"
+                          },
+                          "rarityAbilityColor": {
+                            "type": "string"
+                          },
+                          "rarityKeywordColor": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -2880,6 +3120,18 @@
                     },
                     "canTransfer": {
                       "type": "boolean"
+                    },
+                    "rarityColor": {
+                      "type": "string"
+                    },
+                    "rarityRangeIconColor": {
+                      "type": "string"
+                    },
+                    "rarityAbilityColor": {
+                      "type": "string"
+                    },
+                    "rarityKeywordColor": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -2896,6 +3148,18 @@
                 "type": "string"
               },
               "rarity": {
+                "type": "string"
+              },
+              "rarityColor": {
+                "type": "string"
+              },
+              "rarityRangeIconColor": {
+                "type": "string"
+              },
+              "rarityAbilityColor": {
+                "type": "string"
+              },
+              "rarityKeywordColor": {
                 "type": "string"
               }
             },
@@ -2988,6 +3252,18 @@
               },
               "chapter": {
                 "type": "number"
+              },
+              "rarityColor": {
+                "type": "string"
+              },
+              "rarityRangeIconColor": {
+                "type": "string"
+              },
+              "rarityAbilityColor": {
+                "type": "string"
+              },
+              "rarityKeywordColor": {
+                "type": "string"
               }
             },
             "required": [
@@ -3509,6 +3785,18 @@
                                 ],
                                 "additionalProperties": false
                               }
+                            },
+                            "rarityColor": {
+                              "type": "string"
+                            },
+                            "rarityRangeIconColor": {
+                              "type": "string"
+                            },
+                            "rarityAbilityColor": {
+                              "type": "string"
+                            },
+                            "rarityKeywordColor": {
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -3563,6 +3851,18 @@
                             },
                             "canTransfer": {
                               "type": "boolean"
+                            },
+                            "rarityColor": {
+                              "type": "string"
+                            },
+                            "rarityRangeIconColor": {
+                              "type": "string"
+                            },
+                            "rarityAbilityColor": {
+                              "type": "string"
+                            },
+                            "rarityKeywordColor": {
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -3722,6 +4022,18 @@
                           },
                           "isMultiDeck": {
                             "type": "boolean"
+                          },
+                          "rarityColor": {
+                            "type": "string"
+                          },
+                          "rarityRangeIconColor": {
+                            "type": "string"
+                          },
+                          "rarityAbilityColor": {
+                            "type": "string"
+                          },
+                          "rarityKeywordColor": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -3808,6 +4120,18 @@
                               }
                             },
                             "abilityDesc": {
+                              "type": "string"
+                            },
+                            "rarityColor": {
+                              "type": "string"
+                            },
+                            "rarityRangeIconColor": {
+                              "type": "string"
+                            },
+                            "rarityAbilityColor": {
+                              "type": "string"
+                            },
+                            "rarityKeywordColor": {
                               "type": "string"
                             }
                           },
@@ -3952,6 +4276,18 @@
                             },
                             "icon": {
                               "type": "string"
+                            },
+                            "rarityColor": {
+                              "type": "string"
+                            },
+                            "rarityRangeIconColor": {
+                              "type": "string"
+                            },
+                            "rarityAbilityColor": {
+                              "type": "string"
+                            },
+                            "rarityKeywordColor": {
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -4080,6 +4416,18 @@
                               }
                             },
                             "icon": {
+                              "type": "string"
+                            },
+                            "rarityColor": {
+                              "type": "string"
+                            },
+                            "rarityRangeIconColor": {
+                              "type": "string"
+                            },
+                            "rarityAbilityColor": {
+                              "type": "string"
+                            },
+                            "rarityKeywordColor": {
                               "type": "string"
                             }
                           },
@@ -4210,6 +4558,18 @@
                             },
                             "icon": {
                               "type": "string"
+                            },
+                            "rarityColor": {
+                              "type": "string"
+                            },
+                            "rarityRangeIconColor": {
+                              "type": "string"
+                            },
+                            "rarityAbilityColor": {
+                              "type": "string"
+                            },
+                            "rarityKeywordColor": {
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -4338,6 +4698,18 @@
                               }
                             },
                             "icon": {
+                              "type": "string"
+                            },
+                            "rarityColor": {
+                              "type": "string"
+                            },
+                            "rarityRangeIconColor": {
+                              "type": "string"
+                            },
+                            "rarityAbilityColor": {
+                              "type": "string"
+                            },
+                            "rarityKeywordColor": {
                               "type": "string"
                             }
                           },
@@ -4537,6 +4909,18 @@
                                 ],
                                 "additionalProperties": false
                               }
+                            },
+                            "rarityColor": {
+                              "type": "string"
+                            },
+                            "rarityRangeIconColor": {
+                              "type": "string"
+                            },
+                            "rarityAbilityColor": {
+                              "type": "string"
+                            },
+                            "rarityKeywordColor": {
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -4591,6 +4975,18 @@
                             },
                             "canTransfer": {
                               "type": "boolean"
+                            },
+                            "rarityColor": {
+                              "type": "string"
+                            },
+                            "rarityRangeIconColor": {
+                              "type": "string"
+                            },
+                            "rarityAbilityColor": {
+                              "type": "string"
+                            },
+                            "rarityKeywordColor": {
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -4750,6 +5146,18 @@
                           },
                           "isMultiDeck": {
                             "type": "boolean"
+                          },
+                          "rarityColor": {
+                            "type": "string"
+                          },
+                          "rarityRangeIconColor": {
+                            "type": "string"
+                          },
+                          "rarityAbilityColor": {
+                            "type": "string"
+                          },
+                          "rarityKeywordColor": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -4836,6 +5244,18 @@
                               }
                             },
                             "abilityDesc": {
+                              "type": "string"
+                            },
+                            "rarityColor": {
+                              "type": "string"
+                            },
+                            "rarityRangeIconColor": {
+                              "type": "string"
+                            },
+                            "rarityAbilityColor": {
+                              "type": "string"
+                            },
+                            "rarityKeywordColor": {
                               "type": "string"
                             }
                           },
@@ -5022,6 +5442,18 @@
                           },
                           "desc": {
                             "type": "string"
+                          },
+                          "rarityColor": {
+                            "type": "string"
+                          },
+                          "rarityRangeIconColor": {
+                            "type": "string"
+                          },
+                          "rarityAbilityColor": {
+                            "type": "string"
+                          },
+                          "rarityKeywordColor": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -5138,6 +5570,18 @@
                               }
                             },
                             "abilityDesc": {
+                              "type": "string"
+                            },
+                            "rarityColor": {
+                              "type": "string"
+                            },
+                            "rarityRangeIconColor": {
+                              "type": "string"
+                            },
+                            "rarityAbilityColor": {
+                              "type": "string"
+                            },
+                            "rarityKeywordColor": {
                               "type": "string"
                             }
                           },
@@ -5275,6 +5719,18 @@
                                 },
                                 "isMultiDeck": {
                                   "type": "boolean"
+                                },
+                                "rarityColor": {
+                                  "type": "string"
+                                },
+                                "rarityRangeIconColor": {
+                                  "type": "string"
+                                },
+                                "rarityAbilityColor": {
+                                  "type": "string"
+                                },
+                                "rarityKeywordColor": {
+                                  "type": "string"
                                 }
                               },
                               "required": [
@@ -5344,6 +5800,18 @@
                                 },
                                 "isMultiDeck": {
                                   "type": "boolean"
+                                },
+                                "rarityColor": {
+                                  "type": "string"
+                                },
+                                "rarityRangeIconColor": {
+                                  "type": "string"
+                                },
+                                "rarityAbilityColor": {
+                                  "type": "string"
+                                },
+                                "rarityKeywordColor": {
+                                  "type": "string"
                                 }
                               },
                               "required": [
@@ -5392,6 +5860,18 @@
                                   },
                                   "canTransfer": {
                                     "type": "boolean"
+                                  },
+                                  "rarityColor": {
+                                    "type": "string"
+                                  },
+                                  "rarityRangeIconColor": {
+                                    "type": "string"
+                                  },
+                                  "rarityAbilityColor": {
+                                    "type": "string"
+                                  },
+                                  "rarityKeywordColor": {
+                                    "type": "string"
                                   }
                                 },
                                 "required": [
@@ -5445,6 +5925,18 @@
                                       },
                                       "canTransfer": {
                                         "type": "boolean"
+                                      },
+                                      "rarityColor": {
+                                        "type": "string"
+                                      },
+                                      "rarityRangeIconColor": {
+                                        "type": "string"
+                                      },
+                                      "rarityAbilityColor": {
+                                        "type": "string"
+                                      },
+                                      "rarityKeywordColor": {
+                                        "type": "string"
                                       }
                                     },
                                     "required": [
@@ -5561,6 +6053,18 @@
                                         },
                                         "abilityDesc": {
                                           "type": "string"
+                                        },
+                                        "rarityColor": {
+                                          "type": "string"
+                                        },
+                                        "rarityRangeIconColor": {
+                                          "type": "string"
+                                        },
+                                        "rarityAbilityColor": {
+                                          "type": "string"
+                                        },
+                                        "rarityKeywordColor": {
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
@@ -5661,6 +6165,18 @@
                                   },
                                   "chapter": {
                                     "type": "number"
+                                  },
+                                  "rarityColor": {
+                                    "type": "string"
+                                  },
+                                  "rarityRangeIconColor": {
+                                    "type": "string"
+                                  },
+                                  "rarityAbilityColor": {
+                                    "type": "string"
+                                  },
+                                  "rarityKeywordColor": {
+                                    "type": "string"
                                   }
                                 },
                                 "required": [
@@ -6159,6 +6675,18 @@
                             },
                             "canTransfer": {
                               "type": "boolean"
+                            },
+                            "rarityColor": {
+                              "type": "string"
+                            },
+                            "rarityRangeIconColor": {
+                              "type": "string"
+                            },
+                            "rarityAbilityColor": {
+                              "type": "string"
+                            },
+                            "rarityKeywordColor": {
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -6175,6 +6703,18 @@
                         "type": "string"
                       },
                       "rarity": {
+                        "type": "string"
+                      },
+                      "rarityColor": {
+                        "type": "string"
+                      },
+                      "rarityRangeIconColor": {
+                        "type": "string"
+                      },
+                      "rarityAbilityColor": {
+                        "type": "string"
+                      },
+                      "rarityKeywordColor": {
                         "type": "string"
                       }
                     },
@@ -6267,6 +6807,18 @@
                       },
                       "chapter": {
                         "type": "number"
+                      },
+                      "rarityColor": {
+                        "type": "string"
+                      },
+                      "rarityRangeIconColor": {
+                        "type": "string"
+                      },
+                      "rarityAbilityColor": {
+                        "type": "string"
+                      },
+                      "rarityKeywordColor": {
+                        "type": "string"
                       }
                     },
                     "required": [

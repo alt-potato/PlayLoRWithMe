@@ -98,6 +98,18 @@
     <Reference Include="UnityEngine.UI">
       <HintPath>$(LorManagedDir)\UnityEngine.UI.dll</HintPath>
     </Reference>
+    <!--
+      Optional soft-dependency: CustomRarityUtil (workshop id 2874916185).
+      Compiled against for type-safe API access to CardRarityXmlList; Private=False
+      so the optional DLL is never bundled into our build output. Runtime
+      soft-dep is enforced via CustomRarityProbe.HasCru — when the assembly
+      is absent the JIT never resolves CustomRarityUtil types and the mod
+      stays loadable.
+    -->
+    <Reference Include="CustomRarityUtil">
+      <HintPath>$(LorWorkshopDir)\2874916185\Assemblies\CustomRarityUtil.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActionInjector.cs" />
@@ -115,6 +127,7 @@
     <Compile Include="StateBroadcaster.cs" />
     <Compile Include="ThemeProbe.cs" />
     <Compile Include="CustomDiceColorProbe.cs" />
+    <Compile Include="CustomRarityProbe.cs" />
     <Compile Include="DeltaEngine.cs" />
     <Compile Include="SessionManager.cs" />
     <Compile Include="WebSocketClient.cs" />

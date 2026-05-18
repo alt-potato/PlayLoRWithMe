@@ -26,7 +26,10 @@ const segments = computed(() => splitKeywordSegments(props.text));
 
 <style scoped>
 .keyword {
-  color: var(--gold-bright);
+  /* honours --rarity-keyword-color when an ancestor sets it (a custom-rarity
+     card overriding the keyword colour); falls back to the global bright-gold
+     default declared in app.vue's :root. */
+  color: var(--rarity-keyword-color, var(--gold-bright));
   font-weight: 600;
 }
 </style>

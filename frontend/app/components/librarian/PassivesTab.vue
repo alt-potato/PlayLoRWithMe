@@ -25,6 +25,17 @@ import type {
   AttributedPassive,
 } from "~/types/game";
 import { toggleSet } from "~/utils/setReactive";
+import { rarityStyle } from "~/utils/rarityStyle";
+
+function rarityStyleFor(kp: AvailableKeyPage): Record<string, string> {
+  return rarityStyle({
+    rarity: kp.rarity,
+    rarityColor: kp.rarityColor,
+    rarityRangeIconColor: kp.rarityRangeIconColor,
+    rarityAbilityColor: kp.rarityAbilityColor,
+    rarityKeywordColor: kp.rarityKeywordColor,
+  });
+}
 
 const props = defineProps<{
   lib: LibrarianEntry;
@@ -538,7 +549,7 @@ function hasEmptySlots(): boolean {
                   'source-tile--expanded': isExpanded(kp),
                   'source-tile--pending-add': isPendingSourceAdd(kp),
                 }"
-                :style="rarityBorderStyle(kp.rarity)"
+                :style="rarityStyleFor(kp)"
                 @click="toggleSourceExpansion(kp)"
               >
                 <span class="source-tile-chevron">{{ isExpanded(kp) ? "▾" : "▸" }}</span>
@@ -950,9 +961,9 @@ function hasEmptySlots(): boolean {
   align-items: center;
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-md);
-  /* --rarity-border is set via :style when the key page has a rarity field; */
+  /* --rarity-color is set via :style when the key page has a rarity field; */
   /* falls back to the default border colour for combat-context payloads. */
-  border: 1px solid var(--rarity-border, var(--border));
+  border: 1px solid var(--rarity-color, var(--border));
   background: var(--bg-card);
   color: var(--text-1);
   cursor: pointer;
@@ -965,7 +976,8 @@ function hasEmptySlots(): boolean {
 
 .source-tile:hover {
   background: var(--bg-card-2);
-  border-color: var(--border-mid);
+  /* --rarity-color wins when set (custom rarity); otherwise hover lifts to --border-mid. */
+  border-color: var(--rarity-color, var(--border-mid));
 }
 
 .source-tile--equipped {
@@ -974,7 +986,9 @@ function hasEmptySlots(): boolean {
 }
 
 .source-tile--own {
-  border-color: var(--border-mid);
+  /* same precedence as base: rarity colour wins, default lifts to --border-mid
+     so the "this is your own primary" affordance still reads on vanilla pages. */
+  border-color: var(--rarity-color, var(--border-mid));
   background: var(--bg-card-2);
 }
 

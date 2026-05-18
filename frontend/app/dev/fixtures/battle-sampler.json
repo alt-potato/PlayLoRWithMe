@@ -66,6 +66,17 @@
           "desc": "Takes no more than 10 damage from a single attack. (Once per Scene)",
           "rare": "Rare",
           "cost": 3
+        },
+        {
+          "id": { "id": 999, "packageId": 0 },
+          "name": "Mythic Resonance",
+          "desc": "[On Scene Start] Tune all enemies by 1.",
+          "rare": "Mythic",
+          "cost": 5,
+          "rarityColor": "#ff3aef",
+          "rarityRangeIconColor": "#9b00ff",
+          "rarityAbilityColor": "#ffd7ff",
+          "rarityKeywordColor": "#33ddff"
         }
       ],
       "buffs": [
@@ -173,6 +184,28 @@
           "dice": [
             { "type": "Atk", "detail": "Slash", "min": 4, "max": 7 },
             { "type": "Atk", "detail": "Hit", "min": 6, "max": 12 }
+          ]
+        },
+        {
+          "id": { "id": 999, "packageId": 0 },
+          "index": 5,
+          "name": "Mystic Inversion",
+          "cost": 3,
+          "range": "Far",
+          "rarity": "Mythic",
+          "rarityColor": "#ff3aef",
+          "rarityRangeIconColor": "#9b00ff",
+          "rarityAbilityColor": "#ffd7ff",
+          "rarityKeywordColor": "#33ddff",
+          "abilityDesc": "[On Use] Phase-shift. [On Hit] Inflict 2 Untune.",
+          "dice": [
+            {
+              "type": "Atk",
+              "detail": "Penetrate",
+              "min": 5,
+              "max": 9,
+              "desc": "[On Hit] Inflict 2 Untune (3 turns)."
+            }
           ]
         },
         {

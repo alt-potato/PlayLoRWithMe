@@ -318,6 +318,7 @@ namespace PlayLoRWithMe
                                                 .Add("range", spec.Ranged.ToString())
                                                 .Add("rarity", xml.Rarity.ToString())
                                                 .Add("count", 1);
+                                            WriteRarityColorOverrides(c, xml.id?.packageId, xml.Rarity, xml);
 
                                             WriteDiceBehaviours(
                                                 c,
@@ -564,6 +565,12 @@ namespace PlayLoRWithMe
                                                                 );
                                                             if (passiveXml != null)
                                                                 po.Add("cost", passiveXml.cost);
+                                                            WriteRarityColorOverrides(
+                                                                po,
+                                                                p.id?.packageId,
+                                                                p.rare,
+                                                                passiveXml
+                                                            );
                                                         });
                                                     }
                                                 }
@@ -674,6 +681,12 @@ namespace PlayLoRWithMe
                                                                             pp.Add(
                                                                                 "cost",
                                                                                 pxml.cost
+                                                                            );
+                                                                            WriteRarityColorOverrides(
+                                                                                pp,
+                                                                                pxml.id?.packageId,
+                                                                                pxml.rare,
+                                                                                pxml
                                                                             );
                                                                         }
                                                                     );
@@ -861,6 +874,12 @@ namespace PlayLoRWithMe
                                                                                         "count",
                                                                                         counts[key]
                                                                                     );
+                                                                                WriteRarityColorOverrides(
+                                                                                    c,
+                                                                                    xml.id?.packageId,
+                                                                                    xml.Rarity,
+                                                                                    xml
+                                                                                );
 
                                                                                 WriteDiceBehaviours(
                                                                                     c,
@@ -943,6 +962,12 @@ namespace PlayLoRWithMe
                                                                 )
                                                                 .Add("count", count)
                                                                 .Add("chapter", xml.Chapter);
+                                                            WriteRarityColorOverrides(
+                                                                c,
+                                                                xml.id?.packageId,
+                                                                xml.Rarity,
+                                                                xml
+                                                            );
                                                             var abilityDesc =
                                                                 abilityDescList?.GetAbilityDescString(
                                                                     xml
@@ -1319,8 +1344,14 @@ namespace PlayLoRWithMe
                                 .Add("hp", book.HP)
                                 .Add("breakGauge", book.Break)
                                 .Add("equipRangeType", book.ClassInfo.RangeType.ToString())
-                                .Add("rarity", book.ClassInfo.Rarity.ToString())
-                                .AddObject(
+                                .Add("rarity", book.ClassInfo.Rarity.ToString());
+                            WriteRarityColorOverrides(
+                                o,
+                                book.ClassInfo.id?.packageId,
+                                book.ClassInfo.Rarity,
+                                book.ClassInfo
+                            );
+                            o.AddObject(
                                     "resistances",
                                     r =>
                                         r.Add("slashHp", book.sHpResist.ToString())
@@ -1376,6 +1407,7 @@ namespace PlayLoRWithMe
                                                 po.Add("cost", passiveXml.cost);
                                             if (passiveXml != null && !passiveXml.CanGivePassive)
                                                 po.Add("canTransfer", false);
+                                            WriteRarityColorOverrides(po, p.id?.packageId, p.rare, passiveXml);
                                         });
                                     }
                                 }
@@ -1420,6 +1452,7 @@ namespace PlayLoRWithMe
                                 .Add("rarity", xml.Rarity.ToString())
                                 .Add("count", item.num)
                                 .Add("chapter", xml.Chapter);
+                            WriteRarityColorOverrides(o, xml.id?.packageId, xml.Rarity, xml);
                             var abilityDesc = abilityDescList?.GetAbilityDescString(xml) ?? "";
                             if (!string.IsNullOrEmpty(abilityDesc))
                                 o.Add("abilityDesc", abilityDesc);
@@ -1762,8 +1795,14 @@ namespace PlayLoRWithMe
                         .Add("rarity", book.ClassInfo.Rarity.ToString())
                         // Multi-deck signal — true when the key page has the BookOption.MultiDeck
                         // flag (e.g. The Purple Tear). Drives the editor's tab strip.
-                        .Add("isMultiDeck", book.IsMultiDeck())
-                        .AddObject(
+                        .Add("isMultiDeck", book.IsMultiDeck());
+                    WriteRarityColorOverrides(
+                        k,
+                        book.ClassInfo.id?.packageId,
+                        book.ClassInfo.Rarity,
+                        book.ClassInfo
+                    );
+                    k.AddObject(
                             "resistances",
                             r =>
                                 r.Add("slashHp", book.sHpResist.ToString())
@@ -1856,6 +1895,7 @@ namespace PlayLoRWithMe
                                     );
                                     if (passiveXml != null)
                                         po.Add("cost", passiveXml.cost);
+                                    WriteRarityColorOverrides(po, p.id?.packageId, p.rare, passiveXml);
                                 });
                             }
                         }
@@ -1886,6 +1926,12 @@ namespace PlayLoRWithMe
                                         .Add("range", spec.Ranged.ToString())
                                         .Add("rarity", card.GetRarity().ToString())
                                         .Add("count", card.num);
+                                    WriteRarityColorOverrides(
+                                        c,
+                                        xml?.id?.packageId,
+                                        card.GetRarity(),
+                                        xml
+                                    );
 
                                     if (
                                         xml?.DiceBehaviourList != null
@@ -2093,6 +2139,7 @@ namespace PlayLoRWithMe
                                         .Add("range", xml.Spec.Ranged.ToString())
                                         .Add("rarity", xml.Rarity.ToString())
                                         .Add("sephirah", ego.Sephirah.ToString());
+                                    WriteRarityColorOverrides(o, xml.id?.packageId, xml.Rarity, xml);
                                     var abilityDesc =
                                         abilityDescList?.GetAbilityDescString(xml) ?? "";
                                     if (
@@ -2479,6 +2526,7 @@ namespace PlayLoRWithMe
                             var passiveXml = Singleton<PassiveXmlList>.Instance?.GetData(p.id);
                             if (passiveXml != null)
                                 o.Add("cost", passiveXml.cost);
+                            WriteRarityColorOverrides(o, p.id?.packageId, p.rare, passiveXml);
                         });
                     }
                 }
@@ -2702,6 +2750,12 @@ namespace PlayLoRWithMe
             o.Add("rarity", card.GetRarity().ToString())
                 .Add("emotionLimit", card.GetSpec().emotionLimit)
                 .Add("baseCost", card.GetSpec().Cost);
+            // emit on hand / deck / EGO / slotted card surfaces in one place; vanilla rarities
+            // skip the probe and emit no override fields, preserving the pre-change wire shape.
+            // Pass xml as the wrapper-hint — for rarity-changed cards (e.g. Black Silence
+            // retagged by BlackSilence.CardChange) the wrapper's RarityPackageId is the
+            // authoritative bucket key for the colour lookup.
+            WriteRarityColorOverrides(o, card.GetID()?.packageId, card.GetRarity(), xml);
 
             // Card tokens (placed by passives, abnormalities, or special card abilities)
             var bufs = card.GetBufList();
@@ -2806,6 +2860,41 @@ namespace PlayLoRWithMe
                 key,
                 o => o.Add("id", lorId?.id ?? -1).Add("packageId", lorId?.packageId ?? "")
             );
+        }
+
+        /// <summary>
+        /// Emits the four optional <c>rarity*Color</c> hex-string fields when the rarity
+        /// is custom (past <see cref="Rarity.Special"/>) AND CustomRarityUtil resolves a
+        /// matching entry. Vanilla rarities and missing probe results emit nothing, keeping
+        /// the wire format byte-identical to the pre-change shape for the common case.
+        /// <para/>
+        /// <paramref name="xmlForHint"/> is the underlying XML data object (DiceCardXmlInfo
+        /// / BookXmlInfo / PassiveXmlInfo). When the runtime type is a CustomRarityUtil
+        /// wrapper its <c>RarityPackageId</c> field is the authoritative lookup key,
+        /// especially for rarity-change mods that retag vanilla items under a different
+        /// mod's rarity registration. Pass <c>null</c> when the XML object is not handy;
+        /// the probe falls back to <paramref name="packageId"/> and a global walk.
+        /// </summary>
+        private static void WriteRarityColorOverrides(
+            JsonWriter o,
+            string packageId,
+            Rarity rarity,
+            object xmlForHint = null)
+        {
+            // skip the probe for vanilla rarities (Common..Special, enum values 0..4).
+            // custom rarities live at (Rarity)(4 + _RarityID), so they're 5+.
+            if ((int)rarity <= (int)Rarity.Special)
+                return;
+            var ovr = CustomRarityProbe.TryGet(packageId ?? "", rarity, xmlForHint);
+            if (ovr == null)
+                return;
+            o.Add("rarityColor", CustomRarityProbe.RarityOverride.ToHex(ovr.Frame))
+                .Add("rarityRangeIconColor", CustomRarityProbe.RarityOverride.ToHex(ovr.RangeIcon))
+                .Add("rarityAbilityColor", CustomRarityProbe.RarityOverride.ToHex(ovr.AbilityDesc))
+                .Add(
+                    "rarityKeywordColor",
+                    CustomRarityProbe.RarityOverride.ToHex(ovr.AbilityKeyword)
+                );
         }
 
         /// <summary>

@@ -215,17 +215,21 @@ export function rarityColor(rarity: string): string {
 }
 
 /**
- * Returns an inline-style object that sets `--rarity-border` to the rarity colour,
+ * Returns an inline-style object that sets `--rarity-color` to the rarity colour,
  * or `{}` when no rarity is provided. Surfaces that opt into the rarity outline
  * (key page tiles, key page detail pane, passive-source tiles) read the variable
- * via `border-color: var(--rarity-border, ...)` so the outline appears only when
+ * via `border-color: var(--rarity-color, ...)` so the outline appears only when
  * the wire payload carries `rarity`. Combat-context payloads omit the field, so
  * the surface falls back to its default border colour.
+ *
+ * This is the rarity-name-only shorthand; surfaces that also need to honour
+ * payload-supplied hex overrides (CustomRarityUtil custom rarities) should
+ * use {@link "~/utils/rarityStyle".rarityStyle} instead.
  */
 export function rarityBorderStyle(
   rarity: string | undefined,
 ): Record<string, string> {
-  return rarity ? { "--rarity-border": rarityColor(rarity) } : {};
+  return rarity ? { "--rarity-color": rarityColor(rarity) } : {};
 }
 
 /**
@@ -241,10 +245,14 @@ export function costStyle(card: Card): Record<string, string> | null {
   return null;
 }
 
-/** Border colour for a card — EGO overrides to crimson regardless of rarity. */
+/** Border colour for a card — EGO overrides to crimson regardless of rarity.
+ *  A payload-supplied `rarityColor` (CustomRarityUtil custom rarity) wins over
+ *  the vanilla-name lookup so custom-rarity cards show the modder-declared
+ *  border colour instead of falling back to the unknown-rarity default. */
 export function cardBorderColor(card: Card): string {
   if (card.options?.some((o: string) => o.startsWith("Ego") || o === "EGO"))
     return "#c62828";
+  if (card.rarityColor) return card.rarityColor;
   return rarityColor(card.rarity ?? "");
 }
 
@@ -318,6 +326,13 @@ export function previewToCard(p: DeckCardPreview, i: number): Card {
     rarity: p.rarity,
     dice: p.dice,
     abilityDesc: p.abilityDesc,
+    // CustomRarityUtil overrides — propagate so HandCard tints the deck-preview
+    // tile with the modder-declared colours instead of falling back to the
+    // unknown-rarity default.
+    rarityColor: p.rarityColor,
+    rarityRangeIconColor: p.rarityRangeIconColor,
+    rarityAbilityColor: p.rarityAbilityColor,
+    rarityKeywordColor: p.rarityKeywordColor,
   };
 }
 

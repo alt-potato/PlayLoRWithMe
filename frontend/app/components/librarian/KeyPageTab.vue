@@ -22,6 +22,17 @@
 import type { LibrarianEntry, AvailableKeyPage, GameState } from "~/types/game";
 import type { AnyKeyPage } from "~/components/librarian/KeyPageDetail.vue";
 import { toggleSet } from "~/utils/setReactive";
+import { rarityStyle } from "~/utils/rarityStyle";
+
+function rarityStyleFor(kp: AvailableKeyPage): Record<string, string> {
+  return rarityStyle({
+    rarity: kp.rarity,
+    rarityColor: kp.rarityColor,
+    rarityRangeIconColor: kp.rarityRangeIconColor,
+    rarityAbilityColor: kp.rarityAbilityColor,
+    rarityKeywordColor: kp.rarityKeywordColor,
+  });
+}
 
 const props = defineProps<{
   lib: LibrarianEntry;
@@ -207,7 +218,7 @@ async function performAction() {
                 'kp-tile--selected': selectedInstanceId === kp.instanceId,
                 'kp-tile--equipped': kp.instanceId === lib.keyPage.instanceId,
               }"
-              :style="rarityBorderStyle(kp.rarity)"
+              :style="rarityStyleFor(kp)"
               @click="selectPage(kp)"
             >
               <span class="kp-tile-name">{{ kp.name }}</span>
@@ -399,9 +410,9 @@ async function performAction() {
   align-items: center;
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-md);
-  /* --rarity-border is set via :style when the key page has a rarity field; */
+  /* --rarity-color is set via :style when the key page has a rarity field; */
   /* falls back to the default border colour for combat-context payloads. */
-  border: 1px solid var(--rarity-border, var(--border));
+  border: 1px solid var(--rarity-color, var(--border));
   background: var(--bg-card);
   color: var(--text-1);
   cursor: pointer;

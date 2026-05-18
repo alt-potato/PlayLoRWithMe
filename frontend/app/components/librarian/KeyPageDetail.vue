@@ -12,6 +12,7 @@
 -->
 <script setup lang="ts">
 import type { AvailableKeyPage, KeyPage, Passive, Resistances } from "~/types/game";
+import { rarityStyle as resolveRarityStyle } from "~/utils/rarityStyle";
 
 /** Union of both key page shapes — use optional fields for extras not on KeyPage. */
 export type AnyKeyPage = AvailableKeyPage | KeyPage;
@@ -19,7 +20,15 @@ export type AnyKeyPage = AvailableKeyPage | KeyPage;
 const props = defineProps<{ keyPage: AnyKeyPage; compact?: boolean }>();
 
 const kp = computed(() => props.keyPage);
-const rarityStyle = computed(() => rarityBorderStyle(kp.value.rarity));
+const rarityStyle = computed(() =>
+  resolveRarityStyle({
+    rarity: kp.value.rarity,
+    rarityColor: kp.value.rarityColor,
+    rarityRangeIconColor: kp.value.rarityRangeIconColor,
+    rarityAbilityColor: kp.value.rarityAbilityColor,
+    rarityKeywordColor: kp.value.rarityKeywordColor,
+  }),
+);
 const resistances = computed((): Resistances | undefined => kp.value.resistances);
 const passives = computed((): Passive[] => ("passives" in kp.value ? kp.value.passives : []));
 const hp = computed((): number | undefined => kp.value.hp);
@@ -66,9 +75,9 @@ const hasSpeed = computed(() => kp.value.speedMin != null && kp.value.speedMax !
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
-  /* --rarity-border is set via :style when the key page has a rarity field; */
+  /* --rarity-color is set via :style when the key page has a rarity field; */
   /* falls back to transparent for combat-context payloads so layout is stable. */
-  border: 1px solid var(--rarity-border, transparent);
+  border: 1px solid var(--rarity-color, transparent);
   border-radius: var(--radius-md);
   padding: var(--sp-2);
 }

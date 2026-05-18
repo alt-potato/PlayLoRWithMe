@@ -774,6 +774,45 @@
         "bluntBp": "Weak"
       },
       "passives": []
+    },
+    {
+      "instanceId": 299,
+      "name": "Page of the Veiled Archon",
+      "speedMin": 3,
+      "speedMax": 8,
+      "bookId": { "id": 88001, "packageId": "WorkshopMod" },
+      "chapter": 7,
+      "bookIcon": "Workshop",
+      "bookGroupName": "Workshop · Veiled Archon",
+      "hp": 120,
+      "breakGauge": 80,
+      "equipRangeType": "Hybrid",
+      "rarity": "Mythic",
+      "rarityColor": "#ff3aef",
+      "rarityRangeIconColor": "#9b00ff",
+      "rarityAbilityColor": "#ffd7ff",
+      "rarityKeywordColor": "#33ddff",
+      "resistances": {
+        "slashHp": "Normal",
+        "pierceHp": "Resist",
+        "bluntHp": "Endured",
+        "slashBp": "Normal",
+        "pierceBp": "Resist",
+        "bluntBp": "Endured"
+      },
+      "passives": [
+        {
+          "id": { "id": 999, "packageId": 0 },
+          "name": "Mythic Resonance",
+          "desc": "[On Scene Start] Tune all enemies by 1.",
+          "rare": "Mythic",
+          "cost": 5,
+          "rarityColor": "#ff3aef",
+          "rarityRangeIconColor": "#9b00ff",
+          "rarityAbilityColor": "#ffd7ff",
+          "rarityKeywordColor": "#33ddff"
+        }
+      ]
     }
   ],
   "availableCards": [
