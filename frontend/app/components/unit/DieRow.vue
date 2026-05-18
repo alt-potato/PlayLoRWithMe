@@ -186,10 +186,16 @@ const slotState = computed(() => {
 });
 
 const isTargeting = computed(() => selectingTargetFor.value !== null);
+// Unit-level targetable gate for the enemy faction. `isUnitTargetable` folds
+// the wire's `targetable` flag with a defensive `!isDead` guard so the green
+// hex affordance never appears on a unit that already shows the DEAD badge —
+// covers both steady state and the `_isKnockout` lag window where `hp <= 0`
+// can arrive in a state push before the wire's `targetable` flips to false.
+// `isRestrictedTarget` overlays BigBird_Eye's per-selection fixed-target list.
 const canBeTargeted = computed(
   () =>
     isTargeting.value &&
-    props.unit.targetable &&
+    isUnitTargetable(props.unit) &&
     !isRestrictedTarget(props.unit.id),
 );
 // Combines two unrelated sources of "this die can't be targeted":
@@ -237,11 +243,12 @@ function handleSlotClick(d: SpeedDie, sc: SlottedCardEntry | undefined) {
     // Enemy dice only matter while the user is targeting; outside of that the
     // tap is a no-op (not a rejection) so the row stays quiet on idle taps.
     if (!isTargeting.value) return;
-    const valid =
-      canBeTargeted.value &&
-      !d.staggered &&
-      !d.locked &&
-      d.controllable !== false;
+    // Mirrors vanilla's gate: `SpeedDiceUI.OnClickSpeedDice` early-returns only
+    // on per-die `!isControlable`, and `IsTargetableUnit`'s same-faction
+    // controllability / stun checks are skipped for cross-faction player→enemy
+    // attacks. Per-die staggered and the Stun lock overlay are valid targets
+    // (matches `TargetPicker.vue` and the CLAUDE.md convention).
+    const valid = canBeTargeted.value && isDieTargetable(d);
     if (!valid) {
       flashReject(d.slot);
       return;
@@ -265,7 +272,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
       slotState,
       {
         'slot-reversed': isReversed,
-        'slot-target': canBeTargeted && !isAlly && !die.staggered,
+        'slot-target': canBeTargeted && !isAlly && isDieTargetable(die),
       },
     ]"
     @click.stop="handleSlotClick(die, card)"
@@ -282,7 +289,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
       :class="[
         dieState,
         {
-          'hex-target': canBeTargeted && !isAlly && !die.staggered,
+          'hex-target': canBeTargeted && !isAlly && isDieTargetable(die),
           'hex-rejected': rejectedSlot === die.slot,
         },
       ]"
@@ -564,9 +571,12 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
 }
 
 /* ── Rejection flash ──
-   A transient red overlay played when a click can't be accepted (unowned
-   ally, mind-controlled unit, staggered/locked die, per-die clock EGO,
-   broken unit, untargetable enemy). Pseudo-element keeps the underlying
+   A transient red overlay played when a click can't be accepted. Ally side:
+   unowned, mind-controlled unit, staggered/locked die, per-die clock EGO,
+   broken unit. Enemy side: untargetable unit (Justitia-style invincibility,
+   NotTargetable buff, dead) or per-die `controllable === false` (clock EGO).
+   Per-die staggered and Stun lock are NOT rejection causes on the enemy side
+   — they're valid targets per vanilla. Pseudo-element keeps the underlying
    die state visible while signalling that the input was received. */
 .hex-wrap.hex-rejected::after {
   content: "";

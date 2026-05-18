@@ -273,6 +273,37 @@ export function isDead(unit: Unit): boolean {
   return unit.hp <= 0;
 }
 
+/**
+ * Returns true when an enemy unit accepts target-taps at the unit level.
+ *
+ * Mirrors vanilla `BattleUnitModel.IsTargetable(null)` (the wire's
+ * `targetable` field, false for `_isKnockout` / Justitia-style invincibility /
+ * NotTargetable buffs) plus a defensive `!isDead` guard so the affordance
+ * disappears the same frame the DEAD badge appears — closing the transient
+ * window where `hp <= 0` is observable before `_isKnockout` flips.
+ *
+ * Does NOT consult per-selection state (BigBird_Eye fixed-targets); that lives
+ * in `BattleCtx.isRestrictedTarget` because it depends on the currently
+ * selected actor.
+ */
+export function isUnitTargetable(unit: Unit): boolean {
+  return unit.targetable !== false && !isDead(unit);
+}
+
+/**
+ * Returns true when a single enemy speed die accepts a target-tap.
+ *
+ * Mirrors vanilla `SpeedDiceUI.OnClickSpeedDice`'s only early-return:
+ * `!view.model.speedDiceResult[idx].isControlable`. Per-die staggered
+ * (`_bBreakedDice`) and the Stun lock overlay (`hasStun && breaked`) do NOT
+ * gate the click in vanilla — `IsTargetableUnit`'s same-faction `isControlable`
+ * check is guarded by `actor.faction == target.faction` and is skipped
+ * entirely for player→enemy attacks.
+ */
+export function isDieTargetable(die: SpeedDie): boolean {
+  return die.controllable !== false;
+}
+
 const ROMAN = [
   "0",
   "I",

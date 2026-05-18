@@ -21,8 +21,10 @@ import {
   formatSpeedDieValue,
   SPEED_DIE_INFINITY_THRESHOLD,
   isDead,
+  isDieTargetable,
   isMassRange,
   isSlotFilled,
+  isUnitTargetable,
   rarityBorderStyle,
   rarityColor,
   resistLabel,
@@ -300,6 +302,48 @@ describe("isDead", () => {
 
   it("treats positive hp as alive", () => {
     expect(isDead(unit({ hp: 1 }))).toBe(false);
+  });
+});
+
+describe("isUnitTargetable", () => {
+  // Wire-default targetable is `true` (the serializer emits IsTargetable(null));
+  // tests use `targetable: true` to match the most-common state.
+  it("returns true for a healthy enemy with targetable: true", () => {
+    expect(isUnitTargetable(unit({ hp: 100, targetable: true }))).toBe(true);
+  });
+
+  it("returns false when the wire flips targetable to false (Justitia / NotTargetable buff)", () => {
+    expect(isUnitTargetable(unit({ hp: 100, targetable: false }))).toBe(false);
+  });
+
+  it("returns false for a dead unit even if the wire still reports targetable: true", () => {
+    // Covers the `_isKnockout` lag window: a state push can carry hp <= 0
+    // before the engine flips the targetable flag.
+    expect(isUnitTargetable(unit({ hp: 0, targetable: true }))).toBe(false);
+    expect(isUnitTargetable(unit({ hp: -5, targetable: true }))).toBe(false);
+  });
+});
+
+describe("isDieTargetable", () => {
+  // Mirrors SpeedDiceUI.OnClickSpeedDice's only early-return: `!isControlable`.
+  it("permits a normal die with controllable undefined", () => {
+    expect(isDieTargetable({ slot: 0, value: 5 } as SpeedDie)).toBe(true);
+  });
+
+  it("permits a staggered die", () => {
+    expect(isDieTargetable({ slot: 0, value: 0, staggered: true } as SpeedDie)).toBe(true);
+  });
+
+  it("permits a Stun-locked die (locked overlay does not gate clicks)", () => {
+    expect(isDieTargetable({ slot: 0, value: 5, locked: true } as SpeedDie)).toBe(true);
+  });
+
+  it("permits a die with controllable: true explicit", () => {
+    expect(isDieTargetable({ slot: 0, value: 5, controllable: true } as SpeedDie)).toBe(true);
+  });
+
+  it("rejects a die with controllable: false (clock-EGO / per-die !isControlable)", () => {
+    expect(isDieTargetable({ slot: 0, value: 5, controllable: false } as SpeedDie)).toBe(false);
   });
 });
 

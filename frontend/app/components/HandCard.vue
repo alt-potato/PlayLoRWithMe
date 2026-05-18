@@ -197,8 +197,12 @@ function handleClick() {
       hidden in compact mode at rest; revealed on hover via @media (hover: hover);
       always visible in full mode. Compact-mode reveal is positioned absolutely
       so revealing the pane never reflows neighbouring cards in the row.
+      Clicks propagate to the root `.hcard` so the entire card surface (preview
+      pane + detail pane) is a single tap target for selection — matches the
+      in-game battle card, where mousing over the card and clicking anywhere
+      on it selects it.
     -->
-    <div class="hcard-detail" @click.stop>
+    <div class="hcard-detail">
       <p v-if="card.abilityDesc" class="hcard-detail-ability">
         <KeywordText :text="card.abilityDesc" />
       </p>
