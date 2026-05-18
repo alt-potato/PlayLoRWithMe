@@ -7,7 +7,7 @@ import type {
   ClientAction,
 } from "../types/game";
 import { applyTheme } from "../utils/applyTheme";
-import { FIXTURE_LOADERS } from "./fixtures";
+import { FIXTURE_LOADERS, FIXTURE_STATUS_OVERRIDES } from "./fixtures";
 
 type Status = "connecting" | "connected" | "disconnected";
 
@@ -60,6 +60,10 @@ export function useMockBackend(fixtureName: string) {
     }
     const state = loader();
     gameState.value = state;
+    // per-fixture status override lets a fixture simulate a non-connected
+    // wire state (e.g. title-disconnected exercises the dot pulse animation
+    // without needing to kill a real WebSocket). default is "connected".
+    status.value = FIXTURE_STATUS_OVERRIDES[name] ?? "connected";
     // mirror useWebSocket so fixtures that include a theme block exercise the
     // CSS-var handshake; absent theme leaves the :root defaults in place.
     if (typeof document !== "undefined") {

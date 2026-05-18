@@ -1,0 +1,4 @@
+{
+  "_comment": "Title screen plus a forced 'disconnected' connection status — exercises the .conn-dot.disconnected pulse animation in app.vue against the empty/idle scene fallback in <main>. The mock backend's FIXTURE_STATUS_OVERRIDES table reroutes status:'disconnected' for this fixture name; the GameState payload itself is just the minimal title-scene shape.",
+  "scene": "title"
+}

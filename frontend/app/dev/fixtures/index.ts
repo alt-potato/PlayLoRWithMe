@@ -15,6 +15,7 @@ import mainLibrarian from "./main-librarian.json";
 import battleSetting from "./battle-setting.json";
 import emotionUpgrade from "./emotion-upgrade.json";
 import egoUpgrade from "./ego-upgrade.json";
+import titleDisconnected from "./title-disconnected.json";
 
 // Each loader runs the JSON through `GameStateSchema` so a fixture that
 // drifts from the wire contract throws with a Zod path at load time rather
@@ -26,4 +27,19 @@ export const FIXTURE_LOADERS: Record<string, () => GameState> = {
   "battle-setting": () => z.parse(GameStateSchema, battleSetting),
   "emotion-upgrade": () => z.parse(GameStateSchema, emotionUpgrade),
   "ego-upgrade": () => z.parse(GameStateSchema, egoUpgrade),
+  "title-disconnected": () => z.parse(GameStateSchema, titleDisconnected),
+};
+
+export type FixtureConnectionStatus = "connecting" | "connected" | "disconnected";
+
+/**
+ * Per-fixture overrides for the mock backend's `status` ref. Default is
+ * `"connected"`; entries here let a fixture exercise UI affordances that
+ * depend on the live connection state (e.g. the disconnected-dot pulse
+ * animation in `app.vue`). Connection status is intentionally kept OUT of
+ * the GameState JSON itself because it is an out-of-band wire concept, not
+ * part of the schema.
+ */
+export const FIXTURE_STATUS_OVERRIDES: Record<string, FixtureConnectionStatus> = {
+  "title-disconnected": "disconnected",
 };

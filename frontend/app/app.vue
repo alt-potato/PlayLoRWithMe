@@ -83,6 +83,20 @@ onMounted(() => {
   }
 });
 
+// Close the connection panel when clicking outside of it.
+const handleDocumentClick = (e: PointerEvent) => {
+  if (connPanelOpen.value) {
+    const wrapper = document.querySelector(".conn-status-inline") as HTMLElement;
+    if (wrapper && !wrapper.contains(e.target as Node)) {
+      connPanelOpen.value = false;
+    }
+  }
+};
+document.addEventListener("pointerdown", handleDocumentClick);
+onBeforeUnmount(() => {
+  document.removeEventListener("pointerdown", handleDocumentClick);
+});
+
 // Provide librarian-specific action callbacks via injection so that
 // LibrarianManager and its descendants can access them without prop drilling.
 provide(LIBRARIAN_ACTIONS, {
@@ -123,34 +137,6 @@ provide(FACE_CANVAS_DIMS, faceCanvasDims);
 // during play doesn't wipe the user's queued tile taps.
 provide(STATE_GENERATION, stateGeneration);
 
-// Status banner: surfaces a non-blocking "Connecting…" / "Reconnecting…"
-// message when the WebSocket has been off `connected` for more than the brief
-// debounce window. The 600 ms threshold filters out transient blips (a single
-// dropped frame and immediate reopen) so the banner never flashes for normal
-// network jitter.
-const STATUS_BANNER_DELAY_MS = 600;
-const showStatusBanner = ref(false);
-let statusBannerTimer: ReturnType<typeof setTimeout> | null = null;
-watch(status, (s) => {
-  if (statusBannerTimer) {
-    clearTimeout(statusBannerTimer);
-    statusBannerTimer = null;
-  }
-  if (s === "connected") {
-    showStatusBanner.value = false;
-    return;
-  }
-  statusBannerTimer = setTimeout(() => {
-    showStatusBanner.value = true;
-  }, STATUS_BANNER_DELAY_MS);
-});
-const statusBannerLabel = computed(() => {
-  // No prior gameState ⇒ this is the initial connect, not a recovery from a
-  // mid-session drop. The wording reflects that so first-time users aren't
-  // told something is being "reconnected" when nothing was ever connected.
-  if (!gameState.value) return "Connecting to game…";
-  return "Connection lost — reconnecting…";
-});
 
 // SessionPanel is hoisted into the global header so it is reachable from
 // every scene (title, main/librarian manager, battle setup, battle).
@@ -169,6 +155,9 @@ const isDebugOpen = ref(false);
 const rawJson = computed(() =>
   isDebugOpen.value && gameState.value ? JSON.stringify(gameState.value, null, 2) : "—",
 );
+
+// Connection panel state.
+const connPanelOpen = ref(false);
 </script>
 
 <template>
@@ -180,13 +169,19 @@ const rawJson = computed(() =>
       </div>
 
       <div class="topbar-right">
-        <span
-          class="conn-dot"
-          :class="status"
-          :title="statusTitle[status]"
-          :aria-label="statusTitle[status]"
-          role="status"
-        />
+        <div class="conn-status-inline">
+          <button
+            class="conn-panel"
+            :class="[status, { open: connPanelOpen }]"
+            @click="connPanelOpen = !connPanelOpen"
+            :title="statusTitle[status]"
+            :aria-label="statusTitle[status]"
+            :aria-expanded="connPanelOpen"
+          >
+            <span class="conn-label">{{ statusTitle[status] }}</span>
+            <span class="conn-dot" aria-hidden="true" />
+          </button>
+        </div>
         <SessionPanel
           :allies="allies"
           :players="players"
@@ -199,13 +194,6 @@ const rawJson = computed(() =>
         />
       </div>
     </header>
-
-    <Transition name="status-banner">
-      <div v-if="showStatusBanner" class="status-banner" role="status" aria-live="polite">
-        <span class="status-banner-dot" />
-        <span>{{ statusBannerLabel }}</span>
-      </div>
-    </Transition>
 
     <main>
       <!--
@@ -659,73 +647,9 @@ body {
   gap: var(--sp-4);
 }
 
-/* ── Connection dot ──
-   Replaces the old "Connecting…/Connected/Disconnected" text label. A
-   single solid circle with a tooltip is more glanceable than a thrashing
-   text state and avoids the visual noise of a pulsing animation. */
-.conn-dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  transition: background var(--duration-base) var(--ease-out),
-    box-shadow var(--duration-base) var(--ease-out);
-}
-.conn-dot.connecting {
-  background: var(--amber);
-  box-shadow: 0 0 0 2px rgba(240, 160, 32, 0.18);
-}
-.conn-dot.connected {
-  background: var(--green);
-  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.15);
-}
-.conn-dot.disconnected {
-  background: var(--crimson-hi);
-  box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.18);
-}
 
 main {
   flex: 1;
-}
-
-/* Connection status banner: thin amber strip under the topbar. Non-blocking
-   (no pointer-events override on main) so the user can keep interacting with
-   whatever last-known state is on screen while the socket recovers. */
-.status-banner {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-4);
-  background: var(--bg-gold);
-  border: 1px solid var(--border-gold);
-  border-top: 1px solid var(--gold-dim);
-  color: var(--gold-bright);
-  font-size: var(--fs-sm);
-  letter-spacing: 0.06em;
-  box-shadow: var(--shadow-inset), var(--shadow-sm);
-}
-.status-banner-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--amber);
-  box-shadow: 0 0 0 2px rgba(240, 160, 32, 0.18);
-  flex-shrink: 0;
-  animation: status-banner-pulse 1.4s var(--ease-out) infinite;
-}
-@keyframes status-banner-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.45; }
-}
-.status-banner-enter-from,
-.status-banner-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
-}
-.status-banner-enter-active,
-.status-banner-leave-active {
-  transition: opacity var(--duration-base) var(--ease-out),
-    transform var(--duration-base) var(--ease-out);
 }
 
 .scene-idle {
@@ -790,6 +714,92 @@ main {
   font-family: var(--font-mono);
 }
 
+/* ── Connection status: inline expanding panel ──
+   When closed, only the dot is visible — the button has no padding and no
+   background, so the panel itself is imperceptible. When open, the button
+   expands leftward into a pill containing [label, dot]. The dot's right
+   edge is anchored to the container's right edge in both states: `right`
+   and `padding-right` transition in lockstep so the offsets cancel and the
+   dot never shifts. The button is absolutely positioned so the expanding
+   panel overlays adjacent topbar items (e.g. SessionPanel) rather than
+   shifting them. The label has a generous max-width so the full status
+   string is never truncated; max-width is animated for the open/close
+   reveal only. */
+.conn-status-inline {
+  position: relative;
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+}
+
+.conn-panel {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out),
+    padding var(--duration-base) var(--ease-out),
+    right var(--duration-base) var(--ease-out);
+}
+
+.conn-panel.open {
+  right: calc(-1 * var(--sp-2));
+  padding: var(--sp-1) var(--sp-2) var(--sp-1) var(--sp-3);
+  background: var(--bg-card);
+  /* inset box-shadow for the faux-border so adding it does not shift
+     interior content (border would, even with box-sizing: border-box). */
+  box-shadow: inset 0 0 0 1px var(--border), var(--shadow-md);
+  z-index: 100;
+}
+
+.conn-label {
+  display: inline-block;
+  max-width: 0;
+  margin-right: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+  font-family: var(--font-body);
+  color: var(--text-1);
+  transition: max-width var(--duration-base) var(--ease-out),
+    margin-right var(--duration-base) var(--ease-out);
+}
+
+.conn-panel.open .conn-label {
+  /* large ceiling so the label is sized by its natural content width;
+     max-width is only animated for the reveal. */
+  max-width: 400px;
+  margin-right: var(--sp-2);
+}
+
+.conn-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out);
+}
+.conn-panel.connecting .conn-dot {
+  background: var(--amber);
+  box-shadow: 0 0 0 2px rgba(240, 160, 32, 0.18);
+}
+.conn-panel.connected .conn-dot {
+  background: var(--green);
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.15);
+}
+.conn-panel.disconnected .conn-dot {
+  background: var(--crimson-hi);
+  box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.18);
+}
 /* ── Responsive: tighter on small screens ── */
 @media (max-width: 600px) {
   .app {
@@ -808,3 +818,8 @@ main {
   }
 }
 </style>
+
+
+
+
+

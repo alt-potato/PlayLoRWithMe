@@ -14,6 +14,10 @@ import { effectScope, nextTick } from "vue";
 vi.mock("./fixtures", () => ({
   FIXTURE_LOADERS: {
     "test-fixture": () => ({ scene: "title" }),
+    "disconnected-fixture": () => ({ scene: "title" }),
+  },
+  FIXTURE_STATUS_OVERRIDES: {
+    "disconnected-fixture": "disconnected",
   },
 }));
 
@@ -39,6 +43,15 @@ describe("useMockBackend", () => {
     expect(backend.gameState.value).toEqual({ scene: "title" });
     expect(backend.status.value).toBe("connected");
     expect(backend.session.value?.sessionId).toBe("mock-session");
+    scope.stop();
+  });
+
+  it("applies the per-fixture status override (e.g. disconnected) when present", async () => {
+    const scope = effectScope();
+    const backend = scope.run(() => useMockBackend("disconnected-fixture"))!;
+    await nextTick();
+    expect(backend.gameState.value).toEqual({ scene: "title" });
+    expect(backend.status.value).toBe("disconnected");
     scope.stop();
   });
 
