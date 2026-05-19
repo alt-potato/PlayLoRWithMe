@@ -34,6 +34,8 @@ import {
   toRoman,
   turnColor,
   turnLabel,
+  buildAttackMap,
+  ARROW_COLORS,
 } from "./useBattleDisplay";
 import type { Card, SlottedCardEntry, SpeedDie, Unit } from "~/types/game";
 
@@ -408,5 +410,130 @@ describe("formatSpeedDieValue", () => {
     expect(formatSpeedDieValue(999)).toBe("∞");
     expect(formatSpeedDieValue(1000)).toBe("∞");
     expect(formatSpeedDieValue(2_147_483_647)).toBe("∞");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildAttackMap — lookup used to render incoming-attack chips on defender
+// dice. Critical correctness property: the only attackers that contribute are
+// those with an explicit `targetUnitId`, so the Crying-Children gated wire
+// (enemy slots emitted without `targetUnitId`) produces zero entries here
+// even though the slots still carry a card.
+// ---------------------------------------------------------------------------
+
+describe("buildAttackMap", () => {
+  const allyColors: Record<number, string> = { 1: "#aaa" };
+
+  function withSlot(u: Partial<Unit>, sc: SlottedCardEntry): Unit {
+    return unit({ ...u, slottedCards: [sc] });
+  }
+
+  it("skips slots with no targetUnitId (Crying-Children gated enemy slots)", () => {
+    const enemy = withSlot({ id: 10, name: "Crying Children" }, {
+      ...slotted(0, "Lunge"),
+      // No targetUnitId / targetSlot / clash — matches the mod's gated emission.
+    });
+    const m = buildAttackMap([], [enemy], allyColors);
+    expect(m).toEqual({});
+  });
+
+  it("registers a single attacker on the (targetUnit, targetSlot) cell", () => {
+    const ally = withSlot({ id: 1, name: "Malkuth" }, {
+      ...slotted(0, "Strike"),
+      targetUnitId: 10,
+      targetSlot: 0,
+      clash: false,
+    } as SlottedCardEntry);
+    const m = buildAttackMap([ally], [], allyColors);
+    expect(m[10]?.[0]).toEqual([{ name: "Malkuth", color: "#aaa", range: "Near" }]);
+  });
+
+  it("dead units never appear as attackers, even with a target set", () => {
+    const dead = withSlot({ id: 5, hp: 0 }, {
+      ...slotted(0, "Strike"),
+      targetUnitId: 10,
+      targetSlot: 0,
+      clash: false,
+    } as SlottedCardEntry);
+    const m = buildAttackMap([], [dead], allyColors);
+    expect(m).toEqual({});
+  });
+
+  it("gated wire (enemy slot omits targetUnitId) yields no enemy→ally entries", () => {
+    // Mirrors the mod's `enemyTargetsHidden` branch: enemy slot has the card
+    // but every target field is suppressed; ally slot keeps targetUnitId but
+    // clash is forced false. Verifies the frontend produces no incoming-attack
+    // chip on the ally die while still recording the ally's outgoing chip on
+    // the enemy die.
+    const ally = withSlot({ id: 1, name: "Outgoing" }, {
+      ...slotted(0, "Strike"),
+      targetUnitId: 10,
+      targetSlot: 0,
+      clash: false,
+    } as SlottedCardEntry);
+    const enemy = withSlot({ id: 10, name: "Crying Children" }, {
+      ...slotted(0, "Lunge"),
+    });
+    const m = buildAttackMap([ally], [enemy], allyColors);
+    expect(Object.keys(m)).toEqual(["10"]);
+    expect(m[1]).toBeUndefined();
+    expect(m[10]?.[0]).toHaveLength(1);
+    expect(m[10]?.[0]?.[0]?.name).toBe("Outgoing");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Slotted-card chip / arrow decoration — pure expressions used in DieRow.vue
+// (`sc.clash ? '⚔' : '↗'`), DisplayCard.vue (`sc?.clash` → clash colour) and
+// ArrowOverlay.vue (`sc.clash ? 'clash' : 'outgoing'`). Lock the contract
+// that gated ally slots (clash: false) render as outgoing, not clash.
+// ---------------------------------------------------------------------------
+
+describe("slotted-card clash-driven rendering invariants", () => {
+  function prefix(sc: SlottedCardEntry): string {
+    return sc.clash ? "⚔" : "↗";
+  }
+  function arrowType(sc: SlottedCardEntry): "clash" | "outgoing" | "incoming" {
+    return sc.clash ? "clash" : "outgoing";
+  }
+  function dieColor(sc: SlottedCardEntry): string {
+    return sc.clash ? ARROW_COLORS.clash : ARROW_COLORS.outgoing;
+  }
+
+  it("ally slot with clash:false renders as outgoing (↗, var(--outgoing))", () => {
+    const sc = {
+      ...slotted(0, "Strike"),
+      targetUnitId: 10,
+      targetSlot: 0,
+      clash: false,
+    } as SlottedCardEntry;
+    expect(prefix(sc)).toBe("↗");
+    expect(arrowType(sc)).toBe("outgoing");
+    expect(dieColor(sc)).toBe(ARROW_COLORS.outgoing);
+  });
+
+  it("steady-state ally slot with clash:true renders as clash (⚔)", () => {
+    const sc = {
+      ...slotted(0, "Strike"),
+      targetUnitId: 10,
+      targetSlot: 0,
+      clash: true,
+    } as SlottedCardEntry;
+    expect(prefix(sc)).toBe("⚔");
+    expect(arrowType(sc)).toBe("clash");
+    expect(dieColor(sc)).toBe(ARROW_COLORS.clash);
+  });
+
+  it("ally slot with absent clash field falls through to outgoing", () => {
+    // Wire shape produced when the mod omits clash entirely (e.g. a future
+    // additional gating signal). The boolean coercion must treat undefined
+    // the same as false.
+    const sc = {
+      ...slotted(0, "Strike"),
+      targetUnitId: 10,
+      targetSlot: 0,
+    } as SlottedCardEntry;
+    expect(prefix(sc)).toBe("↗");
+    expect(arrowType(sc)).toBe("outgoing");
   });
 });

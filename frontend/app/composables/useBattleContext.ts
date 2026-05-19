@@ -13,6 +13,7 @@
 
 import { inject, type InjectionKey, type Ref, type ComputedRef } from "vue";
 import type { AllyUnit, Unit, SessionState, ActionResult } from "~/types/game";
+import type { AttackMap } from "~/composables/useBattleDisplay";
 
 export interface BattleCtx {
   phase: ComputedRef<string>;
@@ -84,21 +85,10 @@ export interface BattleCtx {
 
   /**
    * For each unit id + die slot, list of {name, color, range} for every
-   * attacker (ally OR enemy) currently targeting that slot.
+   * attacker (ally OR enemy) currently targeting that slot. See
+   * {@link AttackMap} for the underlying shape.
    */
-  attackMap: ComputedRef<
-    Record<
-      number,
-      Record<
-        number,
-        Array<{
-          name: string;
-          color: string;
-          range: string;
-        }>
-      >
-    >
-  >;
+  attackMap: ComputedRef<AttackMap>;
 
   /** All units (allies + enemies) for name lookups. */
   allUnits: ComputedRef<(Unit | AllyUnit)[]>;

@@ -383,6 +383,51 @@ export function formatSpeedDieValue(value: number): string {
   return String(value);
 }
 
+/** One entry in `AttackMap` — one attacker hitting a specific (targetUnit, targetSlot) cell. */
+export interface AttackerEntry {
+  name: string;
+  color: string;
+  range: string;
+}
+
+/**
+ * `targetUnitId → targetSlot → attackers[]` lookup used to render incoming-attack
+ * chips on each defender die. Dead units never attack, slots without a target
+ * never contribute. Hidden-enemy-target encounters surface here naturally: the
+ * mod omits `targetUnitId` from gated enemy slots, so they produce zero entries.
+ */
+export type AttackMap = Record<number, Record<number, AttackerEntry[]>>;
+
+const ENEMY_ATTACK_CHIP_COLOR = "var(--crimson)";
+
+/**
+ * Builds the incoming-attack lookup from a battle state's ally + enemy lists.
+ * Pure function — extracted from `Stage.vue` so the gating contract can be
+ * unit-tested without mounting the full Vue tree.
+ */
+export function buildAttackMap(
+  allies: Unit[] | undefined,
+  enemies: Unit[] | undefined,
+  allyColors: Record<number, string>,
+): AttackMap {
+  const m: AttackMap = {};
+  for (const unit of [...(allies ?? []), ...(enemies ?? [])]) {
+    if (isDead(unit)) continue;
+    const color = allyColors[unit.id] ?? ENEMY_ATTACK_CHIP_COLOR;
+    const name = unit.name ?? (unit as AllyUnit).keyPage?.name ?? `#${unit.id}`;
+    for (const sc of unit.slottedCards ?? []) {
+      if (sc.targetUnitId == null) continue;
+      const bySlot = (m[sc.targetUnitId] ??= {});
+      (bySlot[sc.targetSlot ?? -1] ??= []).push({
+        name,
+        color,
+        range: sc.range ?? "",
+      });
+    }
+  }
+  return m;
+}
+
 /** Sort speed dice (staggered first, then descending value) and pair with slotted cards. */
 export function sortedSlots(
   unit: Unit,

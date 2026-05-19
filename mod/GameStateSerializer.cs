@@ -2004,6 +2004,25 @@ namespace PlayLoRWithMe
                     );
             }
 
+            // Mirror vanilla `BattleUnitTargetArrowManagerUI.Show{Enemy,Parrying}Arrow`,
+            // which short-circuit when `StageController.IsVisibleEnemyTarget()` is false
+            // (e.g. The Crying Children's Page encounter while `PassiveAbility_240428`
+            // Unhearing Child is alive and undestroyed). When the gate is closed the
+            // base game hides every enemy outgoing arrow and every parrying/clash arrow;
+            // we mirror that by suppressing enemy slottedCards target fields and forcing
+            // ally `clash: false`. Fail-open (gate emits fields) on any error, matching
+            // vanilla's `try/catch` fallback inside `IsVisibleEnemyTarget`.
+            bool enemyTargetsHidden = false;
+            try
+            {
+                if (sc != null && !sc.IsVisibleEnemyTarget())
+                    enemyTargetsHidden = true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[PRWM] IsVisibleEnemyTarget probe failed: {ex}");
+            }
+
             var bom = BattleObjectManager.instance;
             if (bom != null)
             {
@@ -2015,7 +2034,7 @@ namespace PlayLoRWithMe
                         {
                             // ownedUnitIds == null means no filtering (SSE / full-state path).
                             bool isOwned = ownedUnitIds == null || ownedUnitIds.Contains(unit.id);
-                            WriteUnit(arr, unit, isAlly: true, isOwned: isOwned);
+                            WriteUnit(arr, unit, isAlly: true, isOwned: isOwned, enemyTargetsHidden: enemyTargetsHidden);
                         }
                     }
                 );
@@ -2024,7 +2043,7 @@ namespace PlayLoRWithMe
                     arr =>
                     {
                         foreach (var unit in bom.GetList(Faction.Enemy))
-                            WriteUnit(arr, unit, isAlly: false, isOwned: false);
+                            WriteUnit(arr, unit, isAlly: false, isOwned: false, enemyTargetsHidden: enemyTargetsHidden);
                     }
                 );
             }
@@ -2188,7 +2207,8 @@ namespace PlayLoRWithMe
             JsonArrayWriter aw,
             BattleUnitModel unit,
             bool isAlly,
-            bool isOwned
+            bool isOwned,
+            bool enemyTargetsHidden = false
         )
         {
             if (unit == null)
@@ -2253,7 +2273,7 @@ namespace PlayLoRWithMe
                     WriteKeyPage(w, unit);
 
                 WriteSpeedDice(w, unit);
-                WriteSlottedCards(w, unit);
+                WriteSlottedCards(w, unit, isAlly, enemyTargetsHidden);
                 WritePassives(w, unit);
                 WriteBuffs(w, unit);
                 WriteEmotion(w, unit);
@@ -2438,7 +2458,17 @@ namespace PlayLoRWithMe
         /// </summary>
         /// <param name="w"></param>
         /// <param name="unit"></param>
-        private static void WriteSlottedCards(JsonWriter w, BattleUnitModel unit)
+        /// <param name="isAlly">True for player-faction units. Drives the enemy-targets gate.</param>
+        /// <param name="enemyTargetsHidden">When true (vanilla `StageController.IsVisibleEnemyTarget()` is false),
+        /// suppress enemy-side `targetUnitId`/`targetSlot`/`clash`/`subTargets` entirely, and force ally `clash: false`.
+        /// Mirrors `BattleUnitTargetArrowManagerUI.Show{Enemy,Parrying}Arrow` short-circuits in the base game
+        /// (e.g. while Unhearing Child / `PassiveAbility_240428` is alive on the Crying Children's Page).</param>
+        private static void WriteSlottedCards(
+            JsonWriter w,
+            BattleUnitModel unit,
+            bool isAlly,
+            bool enemyTargetsHidden
+        )
         {
             w.AddArray(
                 "slottedCards",
@@ -2447,6 +2477,12 @@ namespace PlayLoRWithMe
                     var slots = unit.cardSlotDetail?.cardAry;
                     if (slots == null)
                         return;
+                    // Enemy outgoing arrows are hidden entirely; ally outgoing arrows
+                    // still draw (vanilla `ShowAllyArrow` does not check the gate) but
+                    // the clash marker must drop because clash detection requires the
+                    // enemy-side data we are hiding.
+                    bool suppressTargetFields = enemyTargetsHidden && !isAlly;
+                    bool forceClashFalse = enemyTargetsHidden && isAlly;
                     for (int i = 0; i < slots.Count; i++)
                     {
                         var slot = slots[i];
@@ -2461,13 +2497,14 @@ namespace PlayLoRWithMe
                                 .Add("cost", slot.card.GetCost())
                                 .Add("range", slot.card.GetSpec().Ranged.ToString());
                             WriteCardFields(o, slot.card);
-                            if (slot.target != null)
+                            if (slot.target != null && !suppressTargetFields)
                             {
                                 // Mirror of the in-game clash check in UpdateTargetListData:
                                 // A[slotIdx] -> B[targetSlotOrder] is a clash iff B[targetSlotOrder] -> A[slotIdx].
                                 var opposing = slot.target.cardSlotDetail?.cardAry;
                                 bool isClash =
-                                    opposing != null
+                                    !forceClashFalse
+                                    && opposing != null
                                     && slot.targetSlotOrder < opposing.Count
                                     && opposing[slot.targetSlotOrder]?.card != null
                                     && opposing[slot.targetSlotOrder].target == unit

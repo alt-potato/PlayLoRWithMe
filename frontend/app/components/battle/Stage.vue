@@ -86,30 +86,9 @@ const selectingAllyTargetFor = ref<{
 
 const allyColors = computed(() => buildAllyColors(props.state?.allies ?? []));
 
-const attackMap = computed(() => {
-  const m: Record<
-    number,
-    Record<number, Array<{ name: string; color: string; range: string }>>
-  > = {};
-  const ac = allyColors.value;
-  const ENEMY_COLOR = "var(--crimson)";
-
-  for (const unit of [...(props.state?.allies ?? []), ...(props.state?.enemies ?? [])]) {
-    if (isDead(unit)) continue;
-    const color = ac[unit.id] ?? ENEMY_COLOR;
-    const name = unit.name ?? unit.keyPage?.name ?? `#${unit.id}`;
-    for (const sc of unit.slottedCards ?? []) {
-      if (sc.targetUnitId == null) continue;
-      const bySlot = (m[sc.targetUnitId] ??= {});
-      (bySlot[sc.targetSlot ?? -1] ??= []).push({
-        name,
-        color,
-        range: sc.range ?? "",
-      });
-    }
-  }
-  return m;
-});
+const attackMap = computed(() =>
+  buildAttackMap(props.state?.allies, props.state?.enemies, allyColors.value),
+);
 
 const allUnits = computed(() => [
   ...(props.state?.allies ?? []),

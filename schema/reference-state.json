@@ -291,6 +291,86 @@
       ]
     },
 
+    "battle_hiddenEnemyTargets": {
+      "_comment": "Crying Children-style gated state: enemy slotted card omits targetUnitId/targetSlot/clash/subTargets entirely (StageController.IsVisibleEnemyTarget() == false); ally slotted card still has targetUnitId/targetSlot but clash is forced false. Locks in the wire shape produced by GameStateSerializer.WriteSlottedCards when enemyTargetsHidden is true.",
+      "scene": "battle",
+      "phase": "ApplyLibrarianCardPhase",
+      "stage": { "floor": 1, "chapter": 1, "wave": 1, "round": 1 },
+      "allies": [
+        {
+          "id": 1,
+          "name": "Ally Outgoing",
+          "hp": 80,
+          "maxHp": 100,
+          "staggerGauge": 70,
+          "maxStaggerGauge": 80,
+          "staggerThreshold": 40,
+          "targetable": true,
+          "turnState": "WAIT_CARD",
+          "speedDice": [{ "slot": 0, "value": 5 }],
+          "slottedCards": [
+            {
+              "cardIndex": 0,
+              "slot": 0,
+              "name": "Strike",
+              "cost": 2,
+              "range": "Near",
+              "targetUnitId": 10,
+              "targetSlot": 0,
+              "clash": false
+            }
+          ],
+          "passives": [],
+          "buffs": [],
+          "abnormalities": [],
+          "emotionLevel": 0,
+          "emotionCoins": { "positive": 0, "negative": 0, "max": 5 },
+          "light": 2,
+          "maxLight": 3,
+          "reservedLight": 0,
+          "hand": []
+        }
+      ],
+      "enemies": [
+        {
+          "id": 10,
+          "name": "The Crying Children's Page",
+          "hp": 60,
+          "maxHp": 80,
+          "staggerGauge": 40,
+          "maxStaggerGauge": 60,
+          "staggerThreshold": 30,
+          "targetable": true,
+          "turnState": "WAIT_CARD",
+          "speedDice": [{ "slot": 0, "value": 4 }],
+          "slottedCards": [
+            {
+              "cardIndex": 0,
+              "slot": 0,
+              "name": "Lunge",
+              "cost": 1,
+              "range": "Near"
+            }
+          ],
+          "passives": [
+            {
+              "id": { "id": 240428, "packageId": 0 },
+              "name": "Unhearing Child",
+              "desc": "Cannot check or redirect the Crying Children's target.",
+              "cost": 0
+            }
+          ],
+          "buffs": [],
+          "abnormalities": [],
+          "emotionLevel": 0,
+          "emotionCoins": { "positive": 0, "negative": 0, "max": 5 },
+          "light": 2,
+          "maxLight": 4,
+          "reservedLight": 0
+        }
+      ]
+    },
+
     "battle_abnormalitySelection": {
       "scene": "battle",
       "phase": "AbnormalitySelectionPhase",

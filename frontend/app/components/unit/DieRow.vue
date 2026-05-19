@@ -49,6 +49,7 @@ type DieState =
   | "clash" // target set, clash
   | "broken"
   | "locked" // die disabled (paralysis-class buff or per-die isControlable=false)
+  | "hidden-target" // card slotted but target suppressed by the mod-side enemy-targets gate (Crying Children / Unhearing Child); render the rolled value normally with no directional decoration
   | "invalid";
 
 const isUnitBroken = computed(
@@ -145,6 +146,14 @@ const dieState: ComputedRef<DieState> = computed(() => {
     if (props.card.clash) return "clash";
     if (props.card.targetUnitId != null)
       return props.isAlly ? "unopposed-outgoing" : "unopposed-incoming";
+
+    // Card is slotted on an enemy die but `targetUnitId` was suppressed by the
+    // mod-side enemy-targets gate (vanilla `StageController.IsVisibleEnemyTarget()`
+    // is false — e.g. The Crying Children's Page / Unhearing Child / passive
+    // 240428). The base game still draws the rolled die value in this state,
+    // only the directional arrows go away, so we mirror that here: render the
+    // die normally (value visible, no incoming/outgoing/clash decoration).
+    if (!props.isAlly) return "hidden-target";
 
     return "invalid";
   }

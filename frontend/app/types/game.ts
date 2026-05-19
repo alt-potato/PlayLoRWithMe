@@ -133,9 +133,14 @@ export const SlottedCardEntrySchema = z.object({
   slot: z.number(),
   name: z.string(),
   cost: z.number(),
+  // All four target fields are optional together: present when the slot has a
+  // target AND the vanilla enemy-targets gate is open, absent for enemy slots
+  // when `StageController.IsVisibleEnemyTarget()` is false (e.g. Crying
+  // Children / Unhearing Child). Mod also forces `clash: false` on ally slots
+  // in that gated state since clash detection requires the hidden enemy side.
   targetUnitId: z.optional(z.number()),
   targetSlot: z.optional(z.number()),
-  clash: z.boolean(),
+  clash: z.optional(z.boolean()),
   subTargets: z.optional(z.array(SubTargetSchema)),
   range: z.string(),
   desc: z.optional(z.string()),
