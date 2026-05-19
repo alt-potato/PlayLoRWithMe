@@ -17,6 +17,7 @@ import emotionUpgrade from "./emotion-upgrade.json";
 import egoUpgrade from "./ego-upgrade.json";
 import titleDisconnected from "./title-disconnected.json";
 import battleHiddenEnemyTargets from "./battle-hidden-enemy-targets.json";
+import battleHiddenEnemyDieDescriptions from "./battle-hidden-enemy-die-descriptions.json";
 
 // Each loader runs the JSON through `GameStateSchema` so a fixture that
 // drifts from the wire contract throws with a Zod path at load time rather
@@ -31,6 +32,8 @@ export const FIXTURE_LOADERS: Record<string, () => GameState> = {
   "title-disconnected": () => z.parse(GameStateSchema, titleDisconnected),
   "battle-hidden-enemy-targets": () =>
     z.parse(GameStateSchema, battleHiddenEnemyTargets),
+  "battle-hidden-enemy-die-descriptions": () =>
+    z.parse(GameStateSchema, battleHiddenEnemyDieDescriptions),
 };
 
 export type FixtureConnectionStatus = "connecting" | "connected" | "disconnected";

@@ -2023,6 +2023,27 @@ namespace PlayLoRWithMe
                 Debug.LogError($"[PRWM] IsVisibleEnemyTarget probe failed: {ex}");
             }
 
+            // Mirror vanilla `BattleUnitProfileInfoUI`'s enemy-card preview, which calls
+            // `BattleDiceCardUI.SetCard(card, Option.HideDiceAbilityInfo)` when
+            // `StageController.IsHideEnemyDiceAbilityInfo()` is true (Crying Children's
+            // Page encounter, passive `PassiveAbility_240328` Unseeing Child). That option
+            // routes through `BattleDiceCard_BehaviourDescUI.SetBehaviourInfo` and replaces
+            // every per-die description text with the literal `"???"`. We mirror that
+            // exactly by masking the per-die `desc` of every enemy-owned slotted card
+            // when the gate is closed; card name / cost / range / ability text / dice
+            // type / dice values are untouched, matching the in-game behavior.
+            // Fail-open on any probe error.
+            bool dieDescriptionsHidden = false;
+            try
+            {
+                if (sc != null && sc.IsHideEnemyDiceAbilityInfo())
+                    dieDescriptionsHidden = true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[PRWM] IsHideEnemyDiceAbilityInfo probe failed: {ex}");
+            }
+
             var bom = BattleObjectManager.instance;
             if (bom != null)
             {
@@ -2034,7 +2055,14 @@ namespace PlayLoRWithMe
                         {
                             // ownedUnitIds == null means no filtering (SSE / full-state path).
                             bool isOwned = ownedUnitIds == null || ownedUnitIds.Contains(unit.id);
-                            WriteUnit(arr, unit, isAlly: true, isOwned: isOwned, enemyTargetsHidden: enemyTargetsHidden);
+                            WriteUnit(
+                                arr,
+                                unit,
+                                isAlly: true,
+                                isOwned: isOwned,
+                                enemyTargetsHidden: enemyTargetsHidden,
+                                dieDescriptionsHidden: dieDescriptionsHidden
+                            );
                         }
                     }
                 );
@@ -2043,7 +2071,14 @@ namespace PlayLoRWithMe
                     arr =>
                     {
                         foreach (var unit in bom.GetList(Faction.Enemy))
-                            WriteUnit(arr, unit, isAlly: false, isOwned: false, enemyTargetsHidden: enemyTargetsHidden);
+                            WriteUnit(
+                                arr,
+                                unit,
+                                isAlly: false,
+                                isOwned: false,
+                                enemyTargetsHidden: enemyTargetsHidden,
+                                dieDescriptionsHidden: dieDescriptionsHidden
+                            );
                     }
                 );
             }
@@ -2208,7 +2243,8 @@ namespace PlayLoRWithMe
             BattleUnitModel unit,
             bool isAlly,
             bool isOwned,
-            bool enemyTargetsHidden = false
+            bool enemyTargetsHidden = false,
+            bool dieDescriptionsHidden = false
         )
         {
             if (unit == null)
@@ -2273,7 +2309,7 @@ namespace PlayLoRWithMe
                     WriteKeyPage(w, unit);
 
                 WriteSpeedDice(w, unit);
-                WriteSlottedCards(w, unit, isAlly, enemyTargetsHidden);
+                WriteSlottedCards(w, unit, isAlly, enemyTargetsHidden, dieDescriptionsHidden);
                 WritePassives(w, unit);
                 WriteBuffs(w, unit);
                 WriteEmotion(w, unit);
@@ -2463,11 +2499,17 @@ namespace PlayLoRWithMe
         /// suppress enemy-side `targetUnitId`/`targetSlot`/`clash`/`subTargets` entirely, and force ally `clash: false`.
         /// Mirrors `BattleUnitTargetArrowManagerUI.Show{Enemy,Parrying}Arrow` short-circuits in the base game
         /// (e.g. while Unhearing Child / `PassiveAbility_240428` is alive on the Crying Children's Page).</param>
+        /// <param name="dieDescriptionsHidden">When true (vanilla `StageController.IsHideEnemyDiceAbilityInfo()` is true),
+        /// mask the per-die `desc` of every enemy-owned slotted card to the literal `"???"`. Mirrors
+        /// `BattleDiceCard_BehaviourDescUI.SetBehaviourInfo`'s `isHide` branch (e.g. while Unseeing Child /
+        /// `PassiveAbility_240328` is alive on the Crying Children's Page). Ally slotted cards are unaffected
+        /// because vanilla only gates enemy-owned card previews.</param>
         private static void WriteSlottedCards(
             JsonWriter w,
             BattleUnitModel unit,
             bool isAlly,
-            bool enemyTargetsHidden
+            bool enemyTargetsHidden,
+            bool dieDescriptionsHidden
         )
         {
             w.AddArray(
@@ -2483,6 +2525,11 @@ namespace PlayLoRWithMe
                     // enemy-side data we are hiding.
                     bool suppressTargetFields = enemyTargetsHidden && !isAlly;
                     bool forceClashFalse = enemyTargetsHidden && isAlly;
+                    // Vanilla only masks enemy-owned card previews (BattleUnitProfileInfoUI
+                    // checks `card.owner.faction == Faction.Enemy` before applying the gate),
+                    // so allied slotted-card descriptions remain visible even when an enemy
+                    // holds the Unseeing Child passive.
+                    bool maskDie = dieDescriptionsHidden && !isAlly;
                     for (int i = 0; i < slots.Count; i++)
                     {
                         var slot = slots[i];
@@ -2496,7 +2543,7 @@ namespace PlayLoRWithMe
                             o.Add("name", slot.card.GetName())
                                 .Add("cost", slot.card.GetCost())
                                 .Add("range", slot.card.GetSpec().Ranged.ToString());
-                            WriteCardFields(o, slot.card);
+                            WriteCardFields(o, slot.card, maskDie);
                             if (slot.target != null && !suppressTargetFields)
                             {
                                 // Mirror of the in-game clash check in UpdateTargetListData:
@@ -2779,7 +2826,7 @@ namespace PlayLoRWithMe
         ///
         /// Also includes tokens on cards, eg. Black Silence passive, Index unlock passive, Matchlight abnormality page.
         /// </summary>
-        private static void WriteCardFields(JsonWriter o, BattleDiceCardModel card)
+        private static void WriteCardFields(JsonWriter o, BattleDiceCardModel card, bool maskDie = false)
         {
             var xml = card.XmlData;
             var abilityDescList = Singleton<BattleCardAbilityDescXmlList>.Instance;
@@ -2847,17 +2894,24 @@ namespace PlayLoRWithMe
                 o.Add("abilityDesc", abilityDesc);
 
             // Dice behaviours
-            WriteDiceBehaviours(o, xml.DiceBehaviourList, abilityDescList);
+            WriteDiceBehaviours(o, xml.DiceBehaviourList, abilityDescList, maskDie);
         }
 
         /// <summary>
         /// Writes a "dice" array for a card's DiceBehaviourList.
         /// Skips the array entirely when the list is null or empty.
         /// </summary>
+        /// <param name="maskDie">When true, emit the literal `"???"` for each die's
+        /// `desc` instead of the real description string. Mirrors the in-game
+        /// `BattleDiceCard_BehaviourDescUI.SetBehaviourInfo` `isHide` branch, which
+        /// the base game activates for enemy-owned card previews while
+        /// `StageController.IsHideEnemyDiceAbilityInfo()` is true (Crying Children's
+        /// Page encounter, passive `PassiveAbility_240328`).</param>
         private static void WriteDiceBehaviours(
             JsonWriter o,
             IEnumerable<DiceBehaviour> behaviours,
-            BattleCardAbilityDescXmlList abilityDescList
+            BattleCardAbilityDescXmlList abilityDescList,
+            bool maskDie = false
         )
         {
             if (behaviours == null)
@@ -2876,6 +2930,11 @@ namespace PlayLoRWithMe
                                 .Add("detail", d.Detail.ToString())
                                 .Add("min", d.Min)
                                 .Add("max", d.Dice);
+                            if (maskDie)
+                            {
+                                die.Add("desc", "???");
+                                return;
+                            }
                             var desc = abilityDescList?.GetAbilityDesc(d) ?? "";
                             if (string.IsNullOrEmpty(desc))
                                 desc = d.Desc ?? "";
