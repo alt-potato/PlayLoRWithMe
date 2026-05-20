@@ -397,6 +397,17 @@ const renderedDeck = computed(() => {
   return out;
 });
 
+// Pair each rendered deck preview with its Card view-model, built once per
+// recompute so the template hands the same object to :card and @detail instead
+// of calling previewToCard(preview, i) twice per tile (two allocations per
+// render). Mirrors the filteredAsCards pattern used by the inventory grid.
+const renderedDeckTiles = computed(() =>
+  renderedDeck.value.map((preview, i) => ({
+    preview,
+    card: previewToCard(preview, i),
+  })),
+);
+
 /**
  * Optimistic remove: dims the tile in place and dispatches the action.
  * Short-circuits when every confirmed copy of this card on the active
@@ -489,12 +500,12 @@ async function handleRemoveCard(preview: DeckCardPreview) {
       </div>
       <div class="card-grid">
         <HandCard
-          v-for="(preview, i) in renderedDeck"
+          v-for="(tile, i) in renderedDeckTiles"
           :key="`copy-${i}`"
-          :card="previewToCard(preview, i)"
-          :unusable="editBusy || !preview.cardId"
-          @click="handleRemoveCard(preview)"
-          @detail="detailCard = previewToCard(preview, i)"
+          :card="tile.card"
+          :unusable="editBusy || !tile.preview.cardId"
+          @click="handleRemoveCard(tile.preview)"
+          @detail="detailCard = tile.card"
         />
         <!-- pending-add tiles for the active tab only render after the
              confirmed deck so the user sees the new card "land" at the end

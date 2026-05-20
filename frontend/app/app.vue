@@ -92,7 +92,11 @@ const handleDocumentClick = (e: PointerEvent) => {
     }
   }
 };
-document.addEventListener("pointerdown", handleDocumentClick);
+// Registered in onMounted (not at setup) so it stays client-only and doesn't
+// touch document during SSR/prerender.
+onMounted(() => {
+  document.addEventListener("pointerdown", handleDocumentClick);
+});
 onBeforeUnmount(() => {
   document.removeEventListener("pointerdown", handleDocumentClick);
 });

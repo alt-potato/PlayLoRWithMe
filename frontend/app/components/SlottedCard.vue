@@ -2,9 +2,8 @@
   Compact card + dice row shown inside speed die slots for both allies and enemies.
 
   Props:
-    sc          – slotted card object from game state (name, dice[], targetUnitId, …)
+    card        – slotted card object from game state (name, dice[], targetUnitId, …)
     targetLabel – formatted target string (e.g. "⚔ Roland ·2"), optional
-    clash       – true when this card is clashing
 -->
 <script setup lang="ts">
 import type { SlottedCardEntry } from "~/types/game";
@@ -84,10 +83,6 @@ const cardStyle = computed(() =>
   flex-shrink: 0;
   font-size: var(--fs-4xs);
   font-family: var(--font-body);
-}
-
-.sc-clash {
-  font-weight: bold;
 }
 
 .sc-dice {

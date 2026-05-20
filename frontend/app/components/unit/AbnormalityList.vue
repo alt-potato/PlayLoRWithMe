@@ -65,7 +65,7 @@ function stateBucket(state: string | undefined): "positive" | "negative" | "fall
 }
 
 .abn-entry.state-positive {
-  border-left-color: #4caf50;
+  border-left-color: var(--green);
 }
 .abn-entry.state-negative {
   border-left-color: var(--crimson-hi);
@@ -107,7 +107,7 @@ details.abn-entry > .abn-header {
   color: var(--text-2);
 }
 .abn-entry.state-positive .abn-level {
-  color: #4caf50;
+  color: var(--green);
 }
 .abn-entry.state-negative .abn-level {
   color: var(--crimson-hi);
