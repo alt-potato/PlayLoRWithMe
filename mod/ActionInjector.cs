@@ -54,21 +54,30 @@ namespace PlayLoRWithMe
         /// <summary>Called each frame from the Unity main thread to execute queued actions.</summary>
         public static void DrainQueue()
         {
-            while (_queue.TryDequeue(out var pending))
+            if (_queue.IsEmpty)
+                return;
+
+            // Coalesce every broadcast triggered while draining (each action fires
+            // both an AddCard/OnPick* postfix broadcast and the handler's own push)
+            // into a single snapshot emitted after the whole drain pass completes.
+            using (StateBroadcaster.DeferBroadcasts())
             {
-                try
+                while (_queue.TryDequeue(out var pending))
                 {
-                    pending.Ok = Execute(pending.Json, out pending.Error);
-                }
-                catch (Exception ex)
-                {
-                    pending.Ok = false;
-                    pending.Error = ex.Message;
-                    Debug.LogError($"[PRWM] ActionInjector: {ex.Message}\n{ex.StackTrace}");
-                }
-                finally
-                {
-                    pending.Callback?.Invoke(pending.Ok, pending.Error);
+                    try
+                    {
+                        pending.Ok = Execute(pending.Json, out pending.Error);
+                    }
+                    catch (Exception ex)
+                    {
+                        pending.Ok = false;
+                        pending.Error = ex.Message;
+                        Debug.LogError($"[PRWM] ActionInjector: {ex.Message}\n{ex.StackTrace}");
+                    }
+                    finally
+                    {
+                        pending.Callback?.Invoke(pending.Ok, pending.Error);
+                    }
                 }
             }
         }
@@ -120,7 +129,9 @@ namespace PlayLoRWithMe
                     return false;
             }
 
-            // Push a fresh snapshot so all clients immediately see the result.
+            // Push a fresh snapshot so all clients see the result. Coalesced with the
+            // AddCard/OnPick* postfix broadcast by the DeferBroadcasts scope in
+            // DrainQueue, so this collapses to one push per drain pass.
             StateBroadcaster.Broadcast();
             return ok;
         }

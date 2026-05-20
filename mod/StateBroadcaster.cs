@@ -24,6 +24,16 @@ namespace PlayLoRWithMe
         // thread, so it must be volatile for a timely cross-thread read.
         private static volatile int _mainThreadId = -1;
 
+        // Main-thread-only broadcast coalescing. While depth > 0, synchronous
+        // main-thread Broadcast() calls only set _broadcastPending instead of
+        // serializing; the outermost DeferBroadcasts scope flushes a single
+        // broadcast on close. Touched only on the main thread (DeferBroadcasts is
+        // entered from the action-drain path), so no synchronization is needed —
+        // background-thread Broadcast() calls take the RunOnMainThread branch and
+        // never reach this state.
+        private static int _broadcastDeferDepth = 0;
+        private static bool _broadcastPending = false;
+
         /// <summary>
         /// Broadcasts the current game state. Safe to call from any thread:
         /// if invoked from a non-main thread, the broadcast is deferred to the
@@ -37,11 +47,48 @@ namespace PlayLoRWithMe
         {
             if (_mainThreadId == -1 || Thread.CurrentThread.ManagedThreadId == _mainThreadId)
             {
+                // Coalesce while a DeferBroadcasts scope is open (e.g. a single
+                // action drain that would otherwise fire the AddCard / OnPick*
+                // postfix broadcast plus the handler's own push).
+                if (_broadcastDeferDepth > 0)
+                {
+                    _broadcastPending = true;
+                    return;
+                }
                 Server.Instance?.Broadcast();
             }
             else
             {
                 RunOnMainThread(() => Server.Instance?.Broadcast());
+            }
+        }
+
+        /// <summary>
+        /// Opens a scope (main thread only) that coalesces every <see cref="Broadcast"/>
+        /// call made within it into a single broadcast emitted when the outermost scope
+        /// closes. Collapses the multiple snapshots one action would otherwise trigger
+        /// and batches several actions drained in the same frame into one push.
+        /// </summary>
+        public static IDisposable DeferBroadcasts()
+        {
+            _broadcastDeferDepth++;
+            return new BroadcastDeferral();
+        }
+
+        private sealed class BroadcastDeferral : IDisposable
+        {
+            private bool _disposed;
+
+            public void Dispose()
+            {
+                if (_disposed)
+                    return;
+                _disposed = true;
+                if (--_broadcastDeferDepth == 0 && _broadcastPending)
+                {
+                    _broadcastPending = false;
+                    Server.Instance?.Broadcast();
+                }
             }
         }
 
