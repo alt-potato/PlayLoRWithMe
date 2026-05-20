@@ -161,7 +161,11 @@ function scheduleRecompute() {
   });
 }
 
-watch(() => [props.allies, props.enemies], recompute);
+// Watch the two sources directly (not wrapped in a new array literal, which
+// would compare unequal every tick and fire on every reactive change) and route
+// through scheduleRecompute so state-driven recomputes are rAF-batched and read
+// the DOM after Vue has flushed the new die positions.
+watch([() => props.allies, () => props.enemies], scheduleRecompute);
 
 onMounted(() => {
   recompute();

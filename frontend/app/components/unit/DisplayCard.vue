@@ -84,13 +84,6 @@ const borderStyle = computed<Record<string, string>>(() => {
   return style;
 });
 
-function dieColor(sc: SlottedCardEntry | undefined): string {
-  if (sc?.clash) return ARROW_COLORS.clash;
-  if (props.isAlly) return ARROW_COLORS.incoming;
-  if (sc?.targetUnitId != null) return ARROW_COLORS.outgoing;
-  return "var(--gold-dim)"; // Instance / untargeted — neutral color
-}
-
 const detailCard = ref<Card | null>(null);
 
 /** Converts a SlottedCardEntry to a Card for display in CardDetail. */
@@ -245,7 +238,6 @@ const detailsLabel = computed(() => {
         :unit="unit"
         :die="die"
         :card="card"
-        :color="dieColor(card)"
         :isReversed="side !== 'right'"
         :isAlly="isAlly"
         :onLongPress="() => { if (card) detailCard = slottedToCard(card); }"
