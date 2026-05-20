@@ -25,12 +25,12 @@
 
 ## 3. Test project scaffold
 
-- [ ] 3.1 Create `mod/mod.tests/mod.tests.csproj` (SDK-style, `net48`) with
+- [x] 3.1 Create `mod/mod.tests/mod.tests.csproj` (SDK-style, `net48`) with
   xUnit + xunit.runner.visualstudio + Microsoft.NET.Test.Sdk PackageReferences.
-- [ ] 3.2 Add linked `<Compile Include="..\X.cs" Link="src\X.cs" />` items for
+- [x] 3.2 Add linked `<Compile Include="..\X.cs" Link="src\X.cs" />` items for
   `JsonReader`, `JsonWriter`, `WebSocketCodec`, `WebSocketClient`,
   `SessionManager`, `DeltaEngine`, `ModLog`.
-- [ ] 3.3 Add one trivial smoke test; run `dotnet test` from `mod/mod.tests/` and
+- [x] 3.3 Add one trivial smoke test; run `dotnet test` from `mod/mod.tests/` and
   confirm it builds and runs with no `Assembly-CSharp`/Unity/Harmony reference.
   Commit.
 

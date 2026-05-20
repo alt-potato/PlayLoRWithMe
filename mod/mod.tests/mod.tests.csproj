@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Headless test project for the transport/protocol layer. It compiles the pure
+    source files directly (linked Compile items below) rather than referencing
+    PlayLoRWithMe.csproj, so Assembly-CSharp.dll, Harmony, and UnityEngine never
+    land on the load path. This keeps the suite runnable on a stock CI runner via
+    `dotnet test`. Same-assembly compilation also grants access to the production
+    `internal` types without InternalsVisibleTo.
+
+    net48 matches the Unity Mono runtime the mod targets, so BCL behaviors
+    (integer overflow, string handling, System.Net/Stream semantics) match
+    production exactly.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>PlayLoRWithMe.Tests</AssemblyName>
+    <RootNamespace>PlayLoRWithMe.Tests</RootNamespace>
+    <!-- The default SDK glob covers only this directory's *.cs (the test files);
+         production sources come in via the explicit linked items below. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\JsonReader.cs"      Link="src\JsonReader.cs" />
+    <Compile Include="..\JsonWriter.cs"      Link="src\JsonWriter.cs" />
+    <Compile Include="..\WebSocketCodec.cs"  Link="src\WebSocketCodec.cs" />
+    <Compile Include="..\WebSocketClient.cs" Link="src\WebSocketClient.cs" />
+    <Compile Include="..\SessionManager.cs"  Link="src\SessionManager.cs" />
+    <Compile Include="..\DeltaEngine.cs"     Link="src\DeltaEngine.cs" />
+    <Compile Include="..\ModLog.cs"          Link="src\ModLog.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
