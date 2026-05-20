@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using UnityEngine;
 
 namespace PlayLoRWithMe
 {
@@ -44,6 +43,12 @@ namespace PlayLoRWithMe
     {
         // Sessions expire this long after the last disconnect if not reconnected.
         private const int ExpiryMs = 5 * 60 * 1000;
+
+        // Raised when session/connection state changes in a way clients must see
+        // (e.g. a librarian edit lock cleared on disconnect). Wired to
+        // StateBroadcaster.Broadcast by Initializer; left as a no-op under test so
+        // SessionManager carries no hard reference to the Harmony/Unity layer.
+        public static Action OnSessionsChanged = () => { };
 
         private readonly ConcurrentDictionary<string, PlayerSession> _sessions =
             new ConcurrentDictionary<string, PlayerSession>();
@@ -125,7 +130,7 @@ namespace PlayLoRWithMe
                 staleClient.Close();
                 // Push the cleared lock state out so other clients stop
                 // showing a "locked by" badge on this librarian.
-                StateBroadcaster.Broadcast();
+                OnSessionsChanged();
             }
 
             // Notify everyone of the updated roster.
@@ -171,7 +176,7 @@ namespace PlayLoRWithMe
             // Push the cleared lock state out so other clients stop showing
             // a "locked by" badge on this librarian without waiting for an
             // unrelated state change.
-            StateBroadcaster.Broadcast();
+            OnSessionsChanged();
             BroadcastPlayerList();
         }
 
@@ -180,7 +185,7 @@ namespace PlayLoRWithMe
             if (_sessions.TryRemove(sessionId, out var session))
             {
                 session.ExpiryTimer?.Dispose();
-                Debug.Log($"[PRWM] Session expired: {sessionId} ({session.DisplayName})");
+                ModLog.Info($"[PRWM] Session expired: {sessionId} ({session.DisplayName})");
                 BroadcastPlayerList();
             }
         }

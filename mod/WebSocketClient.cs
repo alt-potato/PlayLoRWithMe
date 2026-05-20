@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
 using System.Threading;
-using UnityEngine;
 
 namespace PlayLoRWithMe
 {
@@ -117,7 +116,7 @@ namespace PlayLoRWithMe
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogWarning(
+                        ModLog.Warn(
                             $"[PRWM] WebSocket send failed for {SessionId}: {ex.Message}"
                         );
                         Close();
@@ -179,7 +178,7 @@ namespace PlayLoRWithMe
             catch (Exception ex)
             {
                 if (_closed == 0)
-                    Debug.LogWarning($"[PRWM] WebSocket receive error ({SessionId}): {ex.Message}");
+                    ModLog.Warn($"[PRWM] WebSocket receive error ({SessionId}): {ex.Message}");
             }
             finally
             {
@@ -200,7 +199,7 @@ namespace PlayLoRWithMe
             var lastPong = new DateTime(Interlocked.Read(ref _lastPongTicks), DateTimeKind.Utc);
             if (DateTime.UtcNow - lastPong > PongTimeout)
             {
-                Debug.Log($"[PRWM] WebSocket ping timeout ({SessionId}), closing.");
+                ModLog.Info($"[PRWM] WebSocket ping timeout ({SessionId}), closing.");
                 Close();
                 return;
             }
@@ -216,7 +215,7 @@ namespace PlayLoRWithMe
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[PRWM] WebSocket ping failed for {SessionId}: {ex.Message}");
+                ModLog.Warn($"[PRWM] WebSocket ping failed for {SessionId}: {ex.Message}");
                 Close();
             }
         }
@@ -265,7 +264,7 @@ namespace PlayLoRWithMe
             }
             catch (System.Exception ex)
             {
-                Debug.LogWarning($"[PRWM] WebSocket close-frame send failed: {ex.Message}");
+                ModLog.Warn($"[PRWM] WebSocket close-frame send failed: {ex.Message}");
             }
 
             try
@@ -274,7 +273,7 @@ namespace PlayLoRWithMe
             }
             catch (System.Exception ex)
             {
-                Debug.LogWarning($"[PRWM] WebSocket stream close failed: {ex.Message}");
+                ModLog.Warn($"[PRWM] WebSocket stream close failed: {ex.Message}");
             }
         }
     }

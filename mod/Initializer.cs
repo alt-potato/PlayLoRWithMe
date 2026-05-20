@@ -12,6 +12,13 @@ namespace PlayLoRWithMe
 
         public override void OnInitializeMod()
         {
+            // Bind the Unity-free transport facades to their real implementations.
+            // Must happen before _server.Start() so the WebSocket layer logs and
+            // session-change broadcasts behave exactly as before the decoupling.
+            ModLog.Info = Debug.Log;
+            ModLog.Warn = Debug.LogWarning;
+            SessionManager.OnSessionsChanged = StateBroadcaster.Broadcast;
+
             _server = new Server();
             try
             {

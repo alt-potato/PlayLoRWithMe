@@ -118,6 +118,7 @@
     <Compile Include="IconCache.cs" />
     <Compile Include="JsonReader.cs" />
     <Compile Include="JsonWriter.cs" />
+    <Compile Include="ModLog.cs" />
     <Compile Include="MultiDeckLabels.cs" />
     <Compile Include="MultiDeckLabelHook.cs" />
     <Compile Include="GameStateSerializer.cs" />
