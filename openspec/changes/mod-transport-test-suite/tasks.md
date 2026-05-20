@@ -67,12 +67,12 @@
 
 ## 7. SessionManager tests
 
-- [ ] 7.1 Claim then `IsAuthorized` true; `ReleaseUnit` then `IsAuthorized`
+- [x] 7.1 Claim then `IsAuthorized` true; `ReleaseUnit` then `IsAuthorized`
   false.
-- [ ] 7.2 Librarian lock is exclusive: second locker fails; holder-name queries
+- [x] 7.2 Librarian lock is exclusive: second locker fails; holder-name queries
   return the first session.
-- [ ] 7.3 `TranslateUnitIds` remaps existing claims via the old→new map.
-- [ ] 7.4 `RenameSession` updates the display name; `BuildPlayerListJson`
+- [x] 7.3 `TranslateUnitIds` remaps existing claims via the old→new map.
+- [x] 7.4 `RenameSession` updates the display name; `BuildPlayerListJson`
   reflects names and claimed units. `dotnet test` green. Commit.
 
 ## 8. Finalize
