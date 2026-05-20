@@ -90,7 +90,9 @@ namespace PlayLoRWithMe
             return stream;
         }
 
-        private static string ComputeAcceptKey(string clientKey)
+        // internal (not private) so the test assembly can assert the derivation
+        // directly against the RFC 6455 canonical example.
+        internal static string ComputeAcceptKey(string clientKey)
         {
             // RFC 6455 §4.2.2: accept key = base64(SHA-1(clientKey + WsGuid))
             using (var sha1 = SHA1.Create())

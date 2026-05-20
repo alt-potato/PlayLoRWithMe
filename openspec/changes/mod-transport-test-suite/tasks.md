@@ -36,12 +36,12 @@
 
 ## 4. WebSocketCodec tests
 
-- [ ] 4.1 `WriteFrame`→`ReadFrame` round-trip over a shared `MemoryStream` for
+- [x] 4.1 `WriteFrame`→`ReadFrame` round-trip over a shared `MemoryStream` for
   payload lengths {0, 125, 126, 65535, 65536}, asserting opcode + bytes.
-- [ ] 4.2 Decode a hand-built masked client frame; assert unmasked payload.
-- [ ] 4.3 `SendText` and `SendClose` produce the expected opcode and payload
+- [x] 4.2 Decode a hand-built masked client frame; assert unmasked payload.
+- [x] 4.3 `SendText` and `SendClose` produce the expected opcode and payload
   (UTF-8 text; close status code).
-- [ ] 4.4 Accept-key derivation matches the RFC 6455 canonical example
+- [x] 4.4 Accept-key derivation matches the RFC 6455 canonical example
   (`dGhlIHNhbXBsZSBub25jZQ==` → `s3pPLMBiTxaQ9kYGzzhZRbK+xOo=`). Expose the
   computation as `internal` if needed for direct assertion. `dotnet test` green.
   Commit.
