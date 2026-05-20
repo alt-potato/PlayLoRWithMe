@@ -25,21 +25,24 @@ export function applyDelta(base: GameState, delta: Record<string, unknown>): Gam
     result[key] = val;
   }
 
-  const removedAllies = (delta["_removed_allies"] as number[] | undefined) ?? [];
-  const removedEnemies = (delta["_removed_enemies"] as number[] | undefined) ?? [];
+  // Coerce wire-supplied list fields through Array.isArray so a malformed delta
+  // (e.g. a non-array _removed_allies) degrades to "no change" instead of
+  // throwing on .length / new Set(...) in production.
+  const removedAllies = asNumberArray(delta["_removed_allies"]);
+  const removedEnemies = asNumberArray(delta["_removed_enemies"]);
 
   if ("allies" in delta || removedAllies.length) {
     result["allies"] = mergeUnits(
-      (base.allies ?? []) as Unit[],
-      (delta["allies"] as Unit[] | undefined) ?? [],
+      asUnitArray(base.allies),
+      asUnitArray(delta["allies"]),
       removedAllies,
     ) as AllyUnit[];
   }
 
   if ("enemies" in delta || removedEnemies.length) {
     result["enemies"] = mergeUnits(
-      (base.enemies ?? []) as Unit[],
-      (delta["enemies"] as Unit[] | undefined) ?? [],
+      asUnitArray(base.enemies),
+      asUnitArray(delta["enemies"]),
       removedEnemies,
     );
   }
@@ -56,6 +59,16 @@ export function applyDelta(base: GameState, delta: Record<string, unknown>): Gam
     }
   }
   return result as unknown as GameState;
+}
+
+/** Returns the value as a number[] when it is an array, otherwise an empty array. */
+function asNumberArray(v: unknown): number[] {
+  return Array.isArray(v) ? (v as number[]) : [];
+}
+
+/** Returns the value as a Unit[] when it is an array, otherwise an empty array. */
+function asUnitArray(v: unknown): Unit[] {
+  return Array.isArray(v) ? (v as Unit[]) : [];
 }
 
 function mergeUnits(base: Unit[], changed: Unit[], removed: number[]): Unit[] {

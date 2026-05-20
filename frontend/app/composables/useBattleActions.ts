@@ -87,7 +87,7 @@ export function useBattleActions({
     isEgo: boolean,
     diceSlot: number,
   ) {
-    const unit = state.value?.allies?.find(
+    const unit = state.value.allies?.find(
       (u: AllyUnit) => u.id === unitId,
     );
     if (!unit) return;
@@ -236,7 +236,7 @@ export function useBattleActions({
   // ── Phase change reset ────────────────────────────────────────────────────
 
   watch(
-    () => state.value?.phase,
+    () => state.value.phase,
     () => {
       selectingSlot.value = null;
       selectingTargetFor.value = null;
@@ -256,6 +256,10 @@ export function useBattleActions({
       errorTimer = null;
     }
   }
+
+  // Belt-and-suspenders: tie the timer's lifetime to the owning effect scope so
+  // it's always cleared on unmount even if a consumer forgets cleanupErrorTimer.
+  onScopeDispose(cleanupErrorTimer);
 
   return {
     actionError,
