@@ -429,12 +429,17 @@ const connPanelOpen = ref(false);
   --rarity-ability-color: var(--text-2);
   --rarity-keyword-color: var(--gold-bright);
 
-  /* ── Speed-die faction fills ──
-     Defaults approximate vanilla LoR; the mod overrides these at runtime via
-     theme.factionDieColors sampled from SpeedDiceUI.Refs. Keep the defaults
-     in sync with the in-game prefab so a probe failure stays unobtrusive. */
-  --die-ally-fill: #3aaad8;
-  --die-enemy-fill: #d83a6d;
+  /* ── Speed-die faction colours ──
+     The mod samples one tint per faction from SpeedDiceUI.Refs; we split each
+     into a rendered background + numeral pair (see utils/color.ts
+     deriveDieColors) so the die matches the game's sprite-tinting — dark body,
+     bright numeral — and stays legible. These defaults are deriveDieColors()
+     of the vanilla base tints #3aaad8 (ally) / #e2a3c4 (enemy); applyTheme
+     overrides them at runtime. Keep them in sync with that helper. */
+  --die-ally-bg: #165771;
+  --die-ally-num: #22c0ff;
+  --die-enemy-bg: #902e61;
+  --die-enemy-num: #fc9bcd;
 
   --blue-hi: #1976d2;
   --cyan: #4fc3f7;

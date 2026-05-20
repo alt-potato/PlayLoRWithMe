@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { rgbToHsl, hslToRgb } from "./color";
+import {
+  rgbToHsl,
+  hslToRgb,
+  hexToRgb,
+  rgbToHex,
+  deriveDieColors,
+} from "./color";
 
 describe("rgbToHsl", () => {
   it("converts black", () => {
@@ -87,5 +93,79 @@ describe("round-trip", () => {
       const [h, s, l] = rgbToHsl(...rgb);
       expect(hslToRgb(h, s, l)).toEqual(rgb);
     }
+  });
+});
+
+describe("hexToRgb", () => {
+  it("parses #rrggbb", () => {
+    expect(hexToRgb("#e2a3c4")).toEqual([226, 163, 196]);
+  });
+
+  it("parses shorthand #rgb", () => {
+    expect(hexToRgb("#abc")).toEqual([170, 187, 204]);
+  });
+
+  it("tolerates a missing leading # and surrounding whitespace", () => {
+    expect(hexToRgb("  e2a3c4 ")).toEqual([226, 163, 196]);
+  });
+
+  it("returns null for malformed input", () => {
+    expect(hexToRgb("not-a-colour")).toBeNull();
+    expect(hexToRgb("#12")).toBeNull();
+    expect(hexToRgb("#1234")).toBeNull();
+  });
+});
+
+describe("rgbToHex", () => {
+  it("formats a tuple as lowercase #rrggbb", () => {
+    expect(rgbToHex([226, 163, 196])).toBe("#e2a3c4");
+  });
+
+  it("zero-pads single-digit channels", () => {
+    expect(rgbToHex([1, 2, 3])).toBe("#010203");
+  });
+
+  it("clamps out-of-range channels", () => {
+    expect(rgbToHex([300, -5, 128])).toBe("#ff0080");
+  });
+});
+
+describe("deriveDieColors", () => {
+  it("returns null for malformed hex", () => {
+    expect(deriveDieColors("nope")).toBeNull();
+  });
+
+  it("darkens the background and brightens/saturates the numeral", () => {
+    const tint = "#e2a3c4"; // vanilla enemy tint
+    const derived = deriveDieColors(tint)!;
+    expect(derived).not.toBeNull();
+
+    const [th, ts, tl] = rgbToHsl(...hexToRgb(tint)!);
+    const [bh, bs, bl] = rgbToHsl(...hexToRgb(derived.background)!);
+    const [nh, ns, nl] = rgbToHsl(...hexToRgb(derived.numeral)!);
+
+    // hue stays in the same family for both halves (allow rounding drift)
+    expect(Math.abs(bh - th)).toBeLessThanOrEqual(3);
+    expect(Math.abs(nh - th)).toBeLessThanOrEqual(3);
+
+    // background is markedly darker than the tint
+    expect(bl).toBeLessThan(tl);
+    // numeral is brighter than the background and more saturated than the tint
+    expect(nl).toBeGreaterThan(bl);
+    expect(ns).toBeGreaterThan(ts);
+  });
+
+  it("reproduces the documented enemy-tint split within tolerance", () => {
+    // #e2a3c4 renders in-game as ~#8f2d62 background / bright pink numeral.
+    const derived = deriveDieColors("#e2a3c4")!;
+    const bg = hexToRgb(derived.background)!;
+    const target: [number, number, number] = [0x8f, 0x2d, 0x62];
+    for (let i = 0; i < 3; i++) {
+      expect(Math.abs(bg[i as 0 | 1 | 2] - target[i as 0 | 1 | 2])).toBeLessThanOrEqual(4);
+    }
+    // numeral is a bright pink: high lightness, near-full saturation
+    const [, ns, nl] = rgbToHsl(...hexToRgb(derived.numeral)!);
+    expect(nl).toBeGreaterThanOrEqual(75);
+    expect(ns).toBeGreaterThanOrEqual(90);
   });
 });

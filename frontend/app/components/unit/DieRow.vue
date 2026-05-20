@@ -446,9 +446,12 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
      (e.g. preview-die contexts outside DisplayCard). */
   background: var(--die-faction-fill, var(--bg-card-2));
   font-family: var(--font-body);
-  font-size: var(--fs-2xs);
-  /* Numeral colour picks up the per-unit accent (CDC's tint, e.g. #6666ff
-     for WARP Cleanup Agents) when present, falling back to --text-1. */
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  /* Numeral colour is the bright, saturated half of the faction tint split
+     (see DisplayCard / utils/color.ts). Paired with the darkened --die-faction
+     -fill background it carries its own contrast, so no outline/halo is needed.
+     Falls back to --text-1 only if no ancestor sets the var. */
   color: var(--die-accent-color, var(--text-1));
   pointer-events: none;
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyTheme } from "./applyTheme";
+import { deriveDieColors } from "./color";
 
 // vitest defaults to a node environment, so we substitute a minimal stand-in
 // for CSSStyleDeclaration that supports the two methods applyTheme uses.
@@ -18,23 +19,33 @@ function makeFakeRoot(): HTMLElement {
 }
 
 describe("applyTheme", () => {
-  it("writes both faction die fills when theme is fully populated", () => {
+  it("splits each faction tint into a derived background + numeral pair", () => {
     const root = makeFakeRoot();
     const written = applyTheme(
       { factionDieColors: { ally: "#aabbcc", enemy: "#ddeeff" } },
       root,
     );
-    expect(written).toEqual(["--die-ally-fill", "--die-enemy-fill"]);
-    expect(root.style.getPropertyValue("--die-ally-fill")).toBe("#aabbcc");
-    expect(root.style.getPropertyValue("--die-enemy-fill")).toBe("#ddeeff");
+    expect(written).toEqual([
+      "--die-ally-bg",
+      "--die-ally-num",
+      "--die-enemy-bg",
+      "--die-enemy-num",
+    ]);
+    // Values are exactly what deriveDieColors produces for each tint.
+    const ally = deriveDieColors("#aabbcc")!;
+    const enemy = deriveDieColors("#ddeeff")!;
+    expect(root.style.getPropertyValue("--die-ally-bg")).toBe(ally.background);
+    expect(root.style.getPropertyValue("--die-ally-num")).toBe(ally.numeral);
+    expect(root.style.getPropertyValue("--die-enemy-bg")).toBe(enemy.background);
+    expect(root.style.getPropertyValue("--die-enemy-num")).toBe(enemy.numeral);
   });
 
   it("no-ops when the theme block is missing", () => {
     const root = makeFakeRoot();
     const written = applyTheme(undefined, root);
     expect(written).toEqual([]);
-    expect(root.style.getPropertyValue("--die-ally-fill")).toBe("");
-    expect(root.style.getPropertyValue("--die-enemy-fill")).toBe("");
+    expect(root.style.getPropertyValue("--die-ally-bg")).toBe("");
+    expect(root.style.getPropertyValue("--die-enemy-bg")).toBe("");
   });
 
   it("no-ops when factionDieColors is absent", () => {
@@ -43,7 +54,7 @@ describe("applyTheme", () => {
     expect(written).toEqual([]);
   });
 
-  it("writes only the present half when one colour is missing", () => {
+  it("writes only the present faction when one colour is missing", () => {
     const root = makeFakeRoot();
     // Cast through unknown because the schema marks the inner object
     // optional but each field required; we deliberately exercise the
@@ -53,8 +64,23 @@ describe("applyTheme", () => {
       enemy: string;
     } };
     const written = applyTheme(partial, root);
-    expect(written).toEqual(["--die-ally-fill"]);
-    expect(root.style.getPropertyValue("--die-ally-fill")).toBe("#112233");
-    expect(root.style.getPropertyValue("--die-enemy-fill")).toBe("");
+    expect(written).toEqual(["--die-ally-bg", "--die-ally-num"]);
+    expect(root.style.getPropertyValue("--die-ally-bg")).toBe(
+      deriveDieColors("#112233")!.background,
+    );
+    expect(root.style.getPropertyValue("--die-enemy-bg")).toBe("");
+  });
+
+  it("skips a faction whose tint is malformed", () => {
+    const root = makeFakeRoot();
+    const written = applyTheme(
+      { factionDieColors: { ally: "not-a-colour", enemy: "#ddeeff" } as unknown as {
+        ally: string;
+        enemy: string;
+      } },
+      root,
+    );
+    expect(written).toEqual(["--die-enemy-bg", "--die-enemy-num"]);
+    expect(root.style.getPropertyValue("--die-ally-bg")).toBe("");
   });
 });

@@ -1,26 +1,35 @@
 ## ADDED Requirements
 
-### Requirement: Speed-die inner hex SHALL be filled with the unit's faction colour
+### Requirement: Speed-die colours SHALL be derived from the faction tint to match in-game sprite tinting
 
-The inner hex element of every speed die in `DieRow.vue` MUST be filled with the per-faction colour shipped via `theme.factionDieColors`: ally rows use `--die-ally-fill`, enemy rows use `--die-enemy-fill`. Both vars MUST be declared in `app.vue`'s `:root` with hardcoded fallback values so the UI renders correctly before the `hello` payload arrives.
+The mod samples a single tint per faction (`theme.factionDieColors.ally` / `.enemy`). In-game that tint is multiplied onto pre-shaded die sprites, so the rendered background reads much darker than the tint and the rendered numeral reads brighter and more saturated. The frontend MUST reproduce this split rather than painting the raw tint flat: a `deriveDieColors` helper (in `utils/color.ts`) MUST convert a tint into a darkened background and a brightened, saturated numeral, both keeping the tint's hue.
 
-This faction fill is the *base* colour for the inner hex. Existing dice states that previously coloured the inner hex (open / pending / clash / unopposed / etc.) continue to override it for those states. The faction fill applies to the normal (empty / rolled / locked / untargetable) display path.
+The inner hex of every speed die in `DieRow.vue` MUST use the derived background (`--die-faction-fill`) and the derived numeral colour (`--die-accent-color`). The faction-level derived values MUST be declared in `app.vue`'s `:root` (`--die-{ally,enemy}-bg` / `--die-{ally,enemy}-num`, computed from the vanilla base tints) so the UI renders correctly before the `hello` payload arrives, and `applyTheme` MUST overwrite them from the sampled tints at runtime. A per-unit `dieColor` (CDC) is itself a single tint and MUST be split the same way; an explicit per-unit `dieAccentColor` overrides the derived numeral.
 
-#### Scenario: Ally die renders with the ally faction fill
+This derived background is the *base* colour for the inner hex. Existing dice states that previously coloured the inner hex (open / pending / clash / unopposed / etc.) continue to override it for those states. The derived colours apply to the normal (empty / rolled / locked / untargetable) display path. Because the background is darkened and the numeral is brightened, the pair carries its own contrast — no outline or halo on the numeral is required.
+
+#### Scenario: Ally die renders with the derived ally colours
 
 - **WHEN** a `DieRow` is rendered for an ally unit with `isAlly === true`, no card slotted, and no special state
-- **THEN** the `.hex-inner` element's background colour resolves to `var(--die-ally-fill, <hardcoded-default>)`
+- **THEN** the `.hex-inner` background resolves to the ally derived background (`--die-faction-fill`, defaulting to `var(--die-ally-bg)`)
+- **AND** the numeral colour resolves to the ally derived numeral (`--die-accent-color`, defaulting to `var(--die-ally-num)`)
 
-#### Scenario: Enemy die renders with the enemy faction fill
+#### Scenario: Enemy die renders with the derived enemy colours
 
 - **WHEN** a `DieRow` is rendered for an enemy unit with `isAlly === false` and no special state
-- **THEN** the `.hex-inner` element's background colour resolves to `var(--die-enemy-fill, <hardcoded-default>)`
+- **THEN** the `.hex-inner` background resolves to the enemy derived background and the numeral to the enemy derived numeral
+
+#### Scenario: deriveDieColors darkens the background and brightens the numeral
+
+- **WHEN** `deriveDieColors` is given a faction tint (e.g. the vanilla enemy tint `#e2a3c4`)
+- **THEN** it returns a background whose hue matches the tint and whose lightness is markedly lower (≈half)
+- **AND** a numeral whose hue matches the tint and whose saturation and lightness are higher than the background, so the value stays legible against it
 
 #### Scenario: Existing committed-state colours still take precedence
 
 - **WHEN** a die is in clash state (a slotted card with `clash === true`)
 - **THEN** the `.hex-wrap` outer background uses the existing clash colour
-- **AND** the inner hex follows the existing clash rule, not the faction fill
+- **AND** the inner hex follows the existing clash rule, not the derived faction colours
 
 ### Requirement: Locked dice SHALL display a lock glyph in place of the rolled value, and SHALL NOT be selectable for slotting
 
@@ -98,23 +107,24 @@ Sprite swaps and other UI changes mods may apply are out of scope; only the inne
 
 ### Requirement: Untargetable units SHALL display row-level and per-die affordances
 
-When `unit.targetable === false`, the unit's row in `Stage.vue` (or wherever the unit name and die rows are co-rendered) MUST display two affordances:
+When `unit.targetable === false`, the unit's card (`unit/DisplayCard.vue`) MUST display two affordances:
 
-1. A small "⚠ untargetable" chip near the unit's name
+1. A row-level opacity reduction on the card body (header excepted), signalling "not selectable"
 2. A crosshatch SVG mask overlay on each die in the row's `DieRow` components
 
-The row MUST also reduce its opacity to approximately `0.6` (or another value that signals "not selectable" without obscuring information). The crosshatch overlay MUST be additive — the underlying faction fill and rolled value MUST remain visible underneath the stripes. The crosshatch overlay MUST have `pointer-events: none`.
+The body opacity reduction MUST be approximately `0.6` (or another value that signals "not selectable" without obscuring information); the header (unit name and turn badge) stays at full opacity so the unit remains identifiable. The crosshatch overlay MUST be additive — the underlying faction fill and rolled value MUST remain visible underneath the stripes. The crosshatch overlay MUST have `pointer-events: none`.
+
+A text chip near the unit name was prototyped but removed: at the available header sizing it crowded the name on narrow viewports without adding information the row dim and per-die crosshatch do not already convey.
 
 The untargetable affordances MUST compose with the lock overlay: a die that is both locked and on an untargetable unit shows both the lock glyph and the crosshatch.
 
 The untargetable affordances MUST NOT replace the existing committed-state rendering: a broken die on an untargetable unit still renders as ✕; a slotted clash die still shows the clash colour. The crosshatch overlay applies on top of all states.
 
-#### Scenario: Untargetable enemy displays chip and crosshatch
+#### Scenario: Untargetable enemy displays row dim and crosshatch
 
 - **WHEN** an enemy unit has `unit.targetable === false`
-- **THEN** the unit's name area carries a "⚠ untargetable" chip
+- **THEN** the unit card's body opacity is reduced to approximately `0.6` while the header stays at full opacity
 - **AND** every die in the unit's `DieRow` has a crosshatch SVG mask overlay
-- **AND** the row's overall opacity is approximately `0.6`
 - **AND** each die's rolled value remains readable through the crosshatch
 
 #### Scenario: Untargetable + locked composes both overlays
@@ -131,9 +141,8 @@ The untargetable affordances MUST NOT replace the existing committed-state rende
 #### Scenario: Targetable unit shows no untargetable affordance
 
 - **WHEN** a unit has `unit.targetable === true` (or the field is absent / defaults to true)
-- **THEN** no chip is rendered near the name
-- **AND** no crosshatch overlay is rendered on the dice
-- **AND** the row's opacity is unchanged
+- **THEN** no crosshatch overlay is rendered on the dice
+- **AND** the card body opacity is unchanged
 
 ### Requirement: Out-of-battle preview dice SHALL use the faction fill but no overlays
 

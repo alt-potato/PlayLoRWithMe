@@ -22,16 +22,17 @@
 ## 4. DieRow visual updates
 
 - [x] 4.1 Refactor `components/unit/DieRow.vue` so the `.hex-inner` background uses `var(--die-ally-fill)` for ally rows and `var(--die-enemy-fill)` for enemy rows. Existing committed-state classes (broken / clash / unopposed-outgoing / unopposed-incoming / open / pending) continue to drive the outer `.hex-wrap` and their existing inner overrides.
+- [x] 4.1a Numeral legibility: the single sampled tint is multiplied onto pre-shaded sprites in-game (dark body, bright numeral), so paint that split rather than the flat tint. Added `deriveDieColors` in `utils/color.ts` (+ `hexToRgb`/`rgbToHex` and tests) returning a darkened background + brightened/saturated numeral; `applyTheme` and `app.vue` `:root` now expose `--die-{ally,enemy}-bg`/`-num`, and `DisplayCard` splits per-unit `dieColor` the same way (explicit `dieAccentColor` still wins). The dark-bg/bright-numeral pair carries its own contrast, so the earlier `--die-numeral-halo` text-shadow was removed.
 - [x] 4.2 Add a lock overlay element: `<span v-if="die.locked && !die.staggered" class="hex-overlay hex-lock"><svg .../></span>`. Style it as an absolutely-positioned, additive overlay on top of `.hex-inner` with `pointer-events: none`.
 - [x] 4.3 Add the locked-and-broken case: when `die.locked && die.staggered`, render the broken state as today AND also include the lock overlay (so the cause is visible).
 - [x] 4.4 Add a crosshatch overlay element: `<span v-if="isUntargetable" class="hex-overlay hex-untargetable"><svg .../></span>`. Style it as additive, `pointer-events: none`. Inject `isUntargetable` from a parent or compute from `unit.targetable === false`.
-- [ ] 4.5 Verify with the existing fixture that no committed-state appearance regresses; the new overlays must not visually displace any existing affordance.
+- [x] 4.5 Verify with the existing fixture that no committed-state appearance regresses; the new overlays must not visually displace any existing affordance.
 
 ## 5. Stage-level untargetable chip and row dim
 
-- [x] 5.1 In `components/battle/Stage.vue` (or wherever the unit name and die rows are co-rendered), add the "⚠ untargetable" chip near the name when `unit.targetable === false`. Match the existing chip styling vocabulary.
-- [x] 5.2 Apply a row-level opacity reduction (~`0.6`) on untargetable rows. Confirm the chip itself remains at full opacity so the cue stays legible.
-- [ ] 5.3 Verify on narrow viewports (mobile) that the chip fits without pushing the dice off-screen.
+- [x] 5.1 ~~Add the "⚠ untargetable" chip near the name~~ Reverted per user feedback: the chip was visually too large; removed entirely. The per-die crosshatch overlay (4.4) and the row dim (5.2) carry the untargetable cue instead.
+- [x] 5.2 Apply a row-level opacity reduction (~`0.6`) on untargetable rows. Header stays at full opacity so the cue stays legible.
+- [x] 5.3 N/A — chip removed (see 5.1), so no narrow-viewport fit concern remains.
 
 ## 6. Out-of-battle preview surfaces
 
@@ -43,11 +44,11 @@
 
 - [x] 7.1 Extend `frontend/app/dev/fixtures/battle-sampler.json` with: a die that has `locked: true, staggered: false`; a die that has `locked: true, staggered: true`; an enemy unit with `targetable: false` and at least one rolled die.
 - [x] 7.2 Add the `theme.factionDieColors` block to the hello-like setup the fixture loader uses (or wire the loader to inject the CSS vars manually for fixture mode).
-- [ ] 7.3 `npm run dev` from `frontend/`, load the fixture, visually confirm: faction-fill colours, lock glyph preserves colour underneath, crosshatch preserves colour and value underneath, chip is visible near the untargetable unit's name.
+- [x] 7.3 `npm run dev` from `frontend/`, load the fixture, visually confirm: faction-fill colours, lock glyph preserves colour underneath, crosshatch preserves colour and value underneath. (Chip removed per 5.1; row dim is the unit-level cue.)
 
 ## 8. Final validation
 
 - [x] 8.1 `cd mod && dotnet build` — `0 Warning(s) 0 Error(s)`.
 - [x] 8.2 `cd frontend && npm test` — all suites pass.
-- [ ] 8.3 Live test: launch LoR with the local mod build, take a stage with at least one paralysis-bearing unit or untargetable enemy, confirm the cues appear in the web UI.
+- [x] 8.3 Live test: launch LoR with the local mod build, take a stage with at least one paralysis-bearing unit or untargetable enemy, confirm the cues appear in the web UI.
 - [x] 8.4 Update `MEMORY.md` with any non-obvious reflection lookup pattern that future sessions would benefit from knowing (e.g. the `SpeedDiceUI.Refs.color_allyDice` field path).
