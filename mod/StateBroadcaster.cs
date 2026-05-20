@@ -45,6 +45,25 @@ namespace PlayLoRWithMe
             }
         }
 
+        /// <summary>
+        /// Clears both emotion-card selection states (abnormality and EGO branches).
+        /// Called on scene transitions that leave or re-enter a battle so a selection
+        /// abandoned without a pick cannot survive into another scene or reception —
+        /// the per-pick clear in <c>OnPickPassiveCard</c>/<c>OnPickEgoCard</c> only
+        /// runs when the player actually commits, so exiting to title mid-selection
+        /// would otherwise leave <c>IsActive</c> true with a dangling <c>Floor</c>.
+        /// </summary>
+        internal static void ResetEmotionSelectionState()
+        {
+            AbnormalitySelectionState.IsActive = false;
+            AbnormalitySelectionState.Choices = null;
+            AbnormalitySelectionState.Floor = null;
+
+            EgoSelectionState.IsActive = false;
+            EgoSelectionState.Choices = null;
+            EgoSelectionState.Floor = null;
+        }
+
         // Subscribe to UIController.PhaseEnterEvent once the instance is available.
         // Called from scene-activation patches where UIController.Instance is guaranteed set.
         private static void SubscribeToUIPhaseChanges()
@@ -71,6 +90,9 @@ namespace PlayLoRWithMe
             static void Postfix()
             {
                 SubscribeToUIPhaseChanges();
+                // Drop any emotion-card selection abandoned by a prior battle so it
+                // does not leak onto the title-scene snapshot or the next reception.
+                ResetEmotionSelectionState();
                 Broadcast();
             }
         }
@@ -82,6 +104,10 @@ namespace PlayLoRWithMe
             {
                 // Reset so TryTranslateClaimsForBattle runs once for this battle.
                 Server.Instance?.ResetClaimsTranslation();
+                // Start every reception with a clean selection state regardless of how
+                // the previous one ended (LevelUpUI.Init runs mid-battle, well after
+                // this activation, so this never clobbers a legitimately-open selection).
+                ResetEmotionSelectionState();
                 // Retry the theme probe — the SpeedDiceUI prefab may not have
                 // been loaded yet when ActivateUIController fired.
                 ThemeProbe.TryProbe();
@@ -102,6 +128,9 @@ namespace PlayLoRWithMe
                 // Best-effort sample of vanilla speed-die colours; may need to
                 // retry from ActivateBattleScene if no prefab is loaded yet.
                 ThemeProbe.TryProbe();
+                // The library/management scene is reached on a normal battle exit;
+                // clear any selection abandoned without a pick so it does not persist.
+                ResetEmotionSelectionState();
                 Broadcast();
             }
         }

@@ -318,6 +318,17 @@ namespace PlayLoRWithMe
                 return false;
             }
 
+            // Defense in depth: reject a stale or replayed pick whose stored floor is
+            // not the live current floor (e.g. a previous reception's floor left behind
+            // by an abandoned selection, or a malicious client replaying the action).
+            // StageLibraryFloorModel is a plain model, so this is reference equality;
+            // outside a battle the live floor is null and the check fails closed.
+            if (floor != Singleton<StageController>.Instance?.GetCurrentStageFloorModel())
+            {
+                error = "Abnormality selection no longer matches the current floor";
+                return false;
+            }
+
             var levelup = SingletonBehavior<BattleManagerUI>.Instance?.ui_levelup;
 
             // Hybrid dismissal — mirrors the base game's per-EmotionTargetType paths:
@@ -460,6 +471,14 @@ namespace PlayLoRWithMe
             if (floor == null)
             {
                 error = "Floor model unavailable";
+                return false;
+            }
+
+            // Defense in depth: reject a stale or replayed pick whose stored floor is
+            // not the live current floor (mirrors DoSelectAbnormality).
+            if (floor != Singleton<StageController>.Instance?.GetCurrentStageFloorModel())
+            {
+                error = "Ego selection no longer matches the current floor";
                 return false;
             }
 
