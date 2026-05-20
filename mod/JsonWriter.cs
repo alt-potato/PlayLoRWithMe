@@ -6,10 +6,32 @@ namespace PlayLoRWithMe
     /// <summary>
     /// Minimal JSON object builder with proper string escaping.
     /// </summary>
+    /// <remarks>
+    /// Nested objects/arrays append directly into the root writer's
+    /// <see cref="StringBuilder"/> rather than each allocating their own builder and
+    /// round-tripping through <c>ToString()</c>. A full game-state snapshot nests
+    /// floors -> units -> cards -> dice -> buffs, so sharing one builder avoids
+    /// hundreds of intermediate string allocations per broadcast.
+    /// </remarks>
     public sealed class JsonWriter
     {
-        private readonly StringBuilder _sb = new StringBuilder("{");
+        private readonly StringBuilder _sb;
         private bool _hasEntry;
+        private bool _closed;
+
+        /// <summary>Creates a root writer backed by a fresh builder.</summary>
+        public JsonWriter()
+        {
+            _sb = new StringBuilder();
+            _sb.Append('{');
+        }
+
+        /// <summary>Creates a nested writer that appends into a shared builder.</summary>
+        internal JsonWriter(StringBuilder shared)
+        {
+            _sb = shared;
+            _sb.Append('{');
+        }
 
         private JsonWriter Comma()
         {
@@ -95,31 +117,53 @@ namespace PlayLoRWithMe
         public JsonWriter AddObject(string key, Action<JsonWriter> build)
         {
             Key(key);
-            var nested = new JsonWriter();
+            var nested = new JsonWriter(_sb);
             build(nested);
-            _sb.Append(nested.Build());
+            nested.Close();
             return this;
         }
 
         public JsonWriter AddArray(string key, Action<JsonArrayWriter> build)
         {
             Key(key);
-            var arr = new JsonArrayWriter();
+            var arr = new JsonArrayWriter(_sb);
             build(arr);
-            _sb.Append(arr.Build());
+            arr.Close();
             return this;
         }
 
-        public string Build() => _sb.ToString() + '}';
+        /// <summary>Appends the closing brace into the shared builder exactly once.</summary>
+        internal void Close()
+        {
+            if (_closed)
+                return;
+            _closed = true;
+            _sb.Append('}');
+        }
+
+        /// <summary>Closes the object and returns the complete JSON string.</summary>
+        public string Build()
+        {
+            Close();
+            return _sb.ToString();
+        }
     }
 
     /// <summary>
-    /// Minimal JSON array builder.
+    /// Minimal JSON array builder. Always backed by a parent writer's shared
+    /// <see cref="StringBuilder"/>; created only via <see cref="JsonWriter.AddArray"/>.
     /// </summary>
     public sealed class JsonArrayWriter
     {
-        private readonly StringBuilder _sb = new StringBuilder("[");
+        private readonly StringBuilder _sb;
         private bool _hasEntry;
+        private bool _closed;
+
+        internal JsonArrayWriter(StringBuilder shared)
+        {
+            _sb = shared;
+            _sb.Append('[');
+        }
 
         private JsonArrayWriter Comma()
         {
@@ -149,9 +193,9 @@ namespace PlayLoRWithMe
         public JsonArrayWriter AddObject(Action<JsonWriter> build)
         {
             Comma();
-            var w = new JsonWriter();
+            var w = new JsonWriter(_sb);
             build(w);
-            _sb.Append(w.Build());
+            w.Close();
             return this;
         }
 
@@ -162,6 +206,13 @@ namespace PlayLoRWithMe
             return this;
         }
 
-        public string Build() => _sb.ToString() + ']';
+        /// <summary>Appends the closing bracket into the shared builder exactly once.</summary>
+        internal void Close()
+        {
+            if (_closed)
+                return;
+            _closed = true;
+            _sb.Append(']');
+        }
     }
 }
