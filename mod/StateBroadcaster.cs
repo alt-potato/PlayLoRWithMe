@@ -9,7 +9,7 @@ namespace PlayLoRWithMe
 {
     /// <summary>
     /// Harmony patches and event subscriptions that broadcast a game state snapshot
-    /// to all SSE clients whenever the active scene or phase changes.
+    /// to all connected WebSocket clients whenever the active scene or phase changes.
     /// </summary>
     public static class StateBroadcaster
     {
@@ -37,11 +37,11 @@ namespace PlayLoRWithMe
         {
             if (_mainThreadId == -1 || Thread.CurrentThread.ManagedThreadId == _mainThreadId)
             {
-                Server.Instance?.BroadcastFiltered();
+                Server.Instance?.Broadcast();
             }
             else
             {
-                RunOnMainThread(() => Server.Instance?.BroadcastFiltered());
+                RunOnMainThread(() => Server.Instance?.Broadcast());
             }
         }
 

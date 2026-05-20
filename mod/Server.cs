@@ -176,10 +176,13 @@ namespace PlayLoRWithMe
             }
         }
 
-        public void BroadcastFiltered()
+        /// <summary>
+        /// Serializes the current game state and pushes a per-session delta to every
+        /// connected client. All sessions receive the same unfiltered state; ownership
+        /// only controls interactivity on the frontend, not data visibility.
+        /// </summary>
+        public void Broadcast()
         {
-            // All sessions receive the full unfiltered state; ownership only
-            // controls interactivity on the frontend, not data visibility.
             string json = GameStateSerializer.Serialize();
             _lastFullJson = json;
             foreach (var session in _sessionManager.GetConnectedSessions())
@@ -274,8 +277,8 @@ namespace PlayLoRWithMe
             // Send the cached last-known state as the initial snapshot. This avoids
             // accessing Unity game objects from the listener thread (not thread-safe).
             // The next Broadcast() call from the Unity main thread will follow with a
-            // properly per-session filtered view; _pendingBroadcast ensures it fires
-            // soon even if no game event occurs.
+            // fresh snapshot; _pendingBroadcast ensures it fires soon even if no game
+            // event occurs.
             // Use the cached last-broadcast JSON if available (fast, main-thread-safe).
             // If no broadcast has occurred yet, send a minimal loading stub instead of
             // calling Serialize() — that accesses Unity objects which aren't thread-safe.
@@ -285,8 +288,8 @@ namespace PlayLoRWithMe
             if (initialMsg != null)
                 client.Send(initialMsg);
 
-            // Request a fresh filtered broadcast on the next Unity tick so any
-            // ownership-based data is sent promptly even if no game event fires.
+            // Request a fresh broadcast on the next Unity tick so the new client
+            // gets a real snapshot promptly even if no game event fires.
             Interlocked.Exchange(ref _pendingBroadcast, 1);
 
             // Blocks until the connection closes.
