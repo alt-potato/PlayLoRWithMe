@@ -48,12 +48,12 @@
 
 ## 5. JsonWriter / JsonReader tests
 
-- [ ] 5.1 Escaping: quotes, backslashes, and control characters produce valid
+- [x] 5.1 Escaping: quotes, backslashes, and control characters produce valid
   JSON escape sequences.
-- [ ] 5.2 Nested objects/arrays are balanced and parse back to the same shape.
-- [ ] 5.3 `Build()` called twice returns the identical string with no duplicated
+- [x] 5.2 Nested objects/arrays are balanced and parse back to the same shape.
+- [x] 5.3 `Build()` called twice returns the identical string with no duplicated
   closing braces.
-- [ ] 5.4 `JsonWriter` → `JsonReader` round-trip recovers string and int values
+- [x] 5.4 `JsonWriter` → `JsonReader` round-trip recovers string and int values
   (`GetString`, `TryGetInt`). `dotnet test` green. Commit.
 
 ## 6. DeltaEngine tests
