@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using LOR_DiceSystem;
 using UnityEngine;
@@ -25,6 +24,17 @@ namespace PlayLoRWithMe
         private static readonly FieldInfo _libNameDictField =
             typeof(LibrariansNameXmlList).GetField(
                 "_dictionary",
+                BindingFlags.NonPublic | BindingFlags.Instance
+            );
+
+        /// <summary>
+        /// Cached reflection lookup for the private <c>BookModel._activatedAllPassives</c>
+        /// field, read per book per main-scene broadcast to surface attributed
+        /// (succession-received) passives. Resolved once to avoid a per-book GetField.
+        /// </summary>
+        private static readonly FieldInfo _activatedAllPassivesField =
+            typeof(BookModel).GetField(
+                "_activatedAllPassives",
                 BindingFlags.NonPublic | BindingFlags.Instance
             );
 
@@ -593,13 +603,8 @@ namespace PlayLoRWithMe
                                             // Attributed (succession-received) passives — passives whose
                                             // source book differs from this book's own instance.
                                             var allPassives =
-                                                typeof(BookModel)
-                                                    .GetField(
-                                                        "_activatedAllPassives",
-                                                        BindingFlags.NonPublic
-                                                            | BindingFlags.Instance
-                                                    )
-                                                    ?.GetValue(book) as List<PassiveModel>;
+                                                _activatedAllPassivesField?.GetValue(book)
+                                                as List<PassiveModel>;
                                             if (allPassives != null)
                                             {
                                                 var attributed = allPassives.FindAll(pm =>
@@ -2573,8 +2578,13 @@ namespace PlayLoRWithMe
                     var list = unit.passiveDetail?.PassiveList;
                     if (list == null)
                         return;
-                    foreach (var p in list.Where(p => p != null && !p.destroyed && !p.isHide))
+                    // Plain loop with an inline guard rather than LINQ Where: this runs
+                    // per unit on every battle broadcast, so we avoid the iterator/closure
+                    // allocation.
+                    foreach (var p in list)
                     {
+                        if (p == null || p.destroyed || p.isHide)
+                            continue;
                         arr.AddObject(o =>
                         {
                             AddLorId(o, "id", p.id);
