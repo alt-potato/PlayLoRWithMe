@@ -316,7 +316,7 @@ namespace PlayLoRWithMe
                 case "confirm":
                 case "selectAbnormality":
                 case "selectEgo":
-                    HandleWsAction(client, json, reqId);
+                    HandleWsAction(client, r, json, reqId);
                     break;
 
                 case "claimUnit":
@@ -472,14 +472,20 @@ namespace PlayLoRWithMe
         // Dispatches a game action to ActionInjector. Non-blocking: enqueues the
         // action and returns immediately; the actionResult is sent back via the
         // WebSocket on the Unity main thread when DrainQueue runs.
-        private void HandleWsAction(WebSocketClient client, string json, string reqId)
+        private void HandleWsAction(
+            WebSocketClient client,
+            JsonReader r,
+            string json,
+            string reqId
+        )
         {
             // Authorization policy:
             //   claims disabled → any session may act on any unit
             //   claims enabled  → only the session that has claimed the unit may act on it;
             //                     unclaimed units are rejected
             // Actions without a unitId (confirm, selectAbnormality) bypass this gate.
-            var r = new JsonReader(json);
+            // The reader is reused from OnWebSocketMessage; json is still needed to
+            // enqueue the raw action for the Unity main thread.
             if (
                 ClaimsEnabled
                 && r.TryGetInt("unitId", out int unitId)
@@ -658,41 +664,10 @@ namespace PlayLoRWithMe
         /// </summary>
         private void HandleAddCardToDeck(WebSocketClient client, JsonReader r, string reqId)
         {
-            if (!r.TryGetInt("cardId", out int cardId))
+            if (
+                !TryResolveDeckEdit(client, r, reqId, out var book, out int deckIndex, out var lorId)
+            )
                 return;
-
-            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
-            if (unit == null)
-                return;
-
-            // packageId is an empty string for vanilla cards and a workshop ID for mods.
-            string packageId = r.GetString("packageId") ?? "";
-
-            var book = unit.bookItem;
-            if (book == null)
-            {
-                SendResult(client, reqId, false, "Deck not found");
-                return;
-            }
-
-            // Multi-deck addressing: optional deckIndex (0..3), defaults to active slot.
-            // Index range and IsMultiDeck are validated before any state mutation so
-            // a bad request can't transiently swap the active deck.
-            int deckIndex = r.TryGetInt("deckIndex", out int parsedIdx) ? parsedIdx : 0;
-            if (deckIndex < 0 || deckIndex >= 4)
-            {
-                SendResult(client, reqId, false, "deckIndex out of range");
-                return;
-            }
-            if (deckIndex != 0 && !book.IsMultiDeck())
-            {
-                SendResult(client, reqId, false, "key page is not multi-deck");
-                return;
-            }
-
-            var lorId = string.IsNullOrEmpty(packageId)
-                ? new LorId(cardId)
-                : new LorId(packageId, cardId);
 
             // Reject cards whose XML wasn't loaded — without errNull,
             // GetCardItem returns a fresh isError sentinel that would
@@ -715,25 +690,11 @@ namespace PlayLoRWithMe
                 return;
             }
 
-            // Switch active deck transiently so the existing add path
-            // (which operates on `_deck`) targets the requested slot.
-            // Restored in `finally` so a stance-change passive in battle
-            // observes only the user's intended active deck. Both this
-            // handler and any battle-thread code run on the Unity main
-            // thread, so no observer can interleave.
-            int prevIdx = book.GetCurrentDeckIndex();
-            CardEquipState result;
-            try
-            {
-                if (deckIndex != prevIdx)
-                    book.ChangeDeck(deckIndex);
-                result = book.AddCardFromInventoryToCurrentDeck(lorId);
-            }
-            finally
-            {
-                if (book.GetCurrentDeckIndex() != prevIdx)
-                    book.ChangeDeck(prevIdx);
-            }
+            var result = WithActiveDeck(
+                book,
+                deckIndex,
+                () => book.AddCardFromInventoryToCurrentDeck(lorId)
+            );
             bool ok = result == CardEquipState.Equippable;
 
             if (ok)
@@ -748,56 +709,105 @@ namespace PlayLoRWithMe
         /// </summary>
         private void HandleRemoveCardFromDeck(WebSocketClient client, JsonReader r, string reqId)
         {
+            if (
+                !TryResolveDeckEdit(client, r, reqId, out var book, out int deckIndex, out var lorId)
+            )
+                return;
+
+            bool removed = WithActiveDeck(
+                book,
+                deckIndex,
+                () => book.MoveCardFromCurrentDeckToInventory(lorId)
+            );
+
+            if (removed)
+                SaveAndBroadcast();
+
+            SendResult(client, reqId, removed, removed ? null : "Card not found in deck");
+        }
+
+        // Multi-deck key pages expose up to 4 deck slots (indices 0..3); index 0 is the
+        // always-present primary deck.
+        private const int DeckSlotCount = 4;
+
+        /// <summary>
+        /// Shared validation for deck add/remove: requires the edit lock, resolves the
+        /// book, validates the optional <c>deckIndex</c> against <c>IsMultiDeck</c>, and
+        /// builds the card <c>LorId</c>. On any failure it sends the error result and
+        /// returns false.
+        /// </summary>
+        private bool TryResolveDeckEdit(
+            WebSocketClient client,
+            JsonReader r,
+            string reqId,
+            out BookModel book,
+            out int deckIndex,
+            out LorId lorId
+        )
+        {
+            book = null;
+            deckIndex = 0;
+            lorId = default;
+
             if (!r.TryGetInt("cardId", out int cardId))
-                return;
+                return false;
 
-            var unit = ValidateLibrarianEdit(client, r, reqId, out int fi, out int ui);
+            var unit = ValidateLibrarianEdit(client, r, reqId, out _, out _);
             if (unit == null)
-                return;
+                return false;
 
+            // packageId is an empty string for vanilla cards and a workshop ID for mods.
             string packageId = r.GetString("packageId") ?? "";
 
-            var book = unit.bookItem;
+            book = unit.bookItem;
             if (book == null)
             {
                 SendResult(client, reqId, false, "Deck not found");
-                return;
+                return false;
             }
 
-            int deckIndex = r.TryGetInt("deckIndex", out int parsedIdx) ? parsedIdx : 0;
-            if (deckIndex < 0 || deckIndex >= 4)
+            // Multi-deck addressing: optional deckIndex, defaults to active slot. Index
+            // range and IsMultiDeck are validated before any state mutation so a bad
+            // request can't transiently swap the active deck.
+            deckIndex = r.TryGetInt("deckIndex", out int parsedIdx) ? parsedIdx : 0;
+            if (deckIndex < 0 || deckIndex >= DeckSlotCount)
             {
                 SendResult(client, reqId, false, "deckIndex out of range");
-                return;
+                return false;
             }
             if (deckIndex != 0 && !book.IsMultiDeck())
             {
                 SendResult(client, reqId, false, "key page is not multi-deck");
-                return;
+                return false;
             }
 
-            var lorId = string.IsNullOrEmpty(packageId)
+            lorId = string.IsNullOrEmpty(packageId)
                 ? new LorId(cardId)
                 : new LorId(packageId, cardId);
+            return true;
+        }
 
+        /// <summary>
+        /// Runs <paramref name="op"/> with the book's active deck transiently switched to
+        /// <paramref name="deckIndex"/>, restoring the previous active deck in a finally
+        /// so a stance-change passive in battle observes only the user's intended active
+        /// deck. Both this and any battle-thread code run on the Unity main thread, so no
+        /// observer can interleave between the swap and the restore.
+        /// </summary>
+        private static T WithActiveDeck<T>(BookModel book, int deckIndex, System.Func<T> op)
+        {
             int prevIdx = book.GetCurrentDeckIndex();
-            bool removed;
             try
             {
                 if (deckIndex != prevIdx)
                     book.ChangeDeck(deckIndex);
-                removed = book.MoveCardFromCurrentDeckToInventory(lorId);
+                return op();
             }
             finally
             {
                 if (book.GetCurrentDeckIndex() != prevIdx)
                     book.ChangeDeck(prevIdx);
             }
-
-            if (removed)
-                SaveAndBroadcast();
-
-            SendResult(client, reqId, removed, removed ? null : "Card not found in deck");
         }
 
         /// <summary>
@@ -1555,12 +1565,6 @@ namespace PlayLoRWithMe
             return w.Build();
         }
 
-        // Wraps the raw game-state JSON object in the {type, seq, data} envelope
-        // expected by the frontend. seq=0 is used for targeted sends (hello, resync)
-        // where the client should not validate sequence continuity.
-        private static string WrapStateMessage(string stateJson, int seq) =>
-            "{\"type\":\"state\",\"seq\":" + seq + ",\"data\":" + stateJson + "}";
-
         private static string BuildActionResult(string reqId, bool ok, string error)
         {
             var w = new JsonWriter().Add("type", "actionResult").Add("reqId", reqId).Add("ok", ok);
@@ -1590,9 +1594,16 @@ namespace PlayLoRWithMe
             if (string.IsNullOrEmpty(relative))
                 relative = "index.html";
 
-            string filePath = Path.GetFullPath(Path.Combine(WwwRootPath, relative));
+            // Canonicalize the root and require a trailing separator on the prefix so a
+            // sibling directory (e.g. "wwwroot_secret") can't satisfy a bare StartsWith
+            // against "wwwroot" and escape the served folder via "..".
+            string root = Path.GetFullPath(WwwRootPath);
+            string rootPrefix = root.EndsWith(Path.DirectorySeparatorChar.ToString())
+                ? root
+                : root + Path.DirectorySeparatorChar;
+            string filePath = Path.GetFullPath(Path.Combine(root, relative));
 
-            if (!filePath.StartsWith(WwwRootPath, StringComparison.OrdinalIgnoreCase))
+            if (!filePath.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
             {
                 ctx.Response.StatusCode = 403;
                 ctx.Response.Close();
