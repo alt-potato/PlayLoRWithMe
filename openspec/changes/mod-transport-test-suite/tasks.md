@@ -77,8 +77,9 @@
 
 ## 8. Finalize
 
-- [ ] 8.1 Document `dotnet test` (from `mod/mod.tests/`) in CLAUDE.md alongside
+- [x] 8.1 Document `dotnet test` (from `mod/mod.tests/`) in CLAUDE.md alongside
   the existing build instructions; note the suite needs no game assemblies.
-- [ ] 8.2 Full `cd mod && dotnet build` (0 Warning / 0 Error) + `dotnet test`
-  (all green). In-game smoke test: logging and player-list/connection broadcasts
-  behave as before. Commit.
+- [x] 8.2 Full `cd mod && dotnet build` (0 Warning / 0 Error) + `dotnet test`
+  (all green, 26 tests). In-game smoke test: logging and player-list/connection
+  broadcasts behave as before — delegated to the user (cannot drive the running
+  game from the CLI). Commit.
