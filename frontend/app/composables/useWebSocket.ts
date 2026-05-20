@@ -142,6 +142,11 @@ export function useWebSocket() {
   // the restore can't run from either handler in isolation — it has to
   // wait until both have arrived. This flag closes the gap.
   let playerListReceived = false;
+  // True while a resync has been requested but the replacement full-state
+  // message hasn't arrived yet. Debounces the gap-recovery path so a burst of
+  // gapped/out-of-order deltas requests one resync instead of N. Cleared when
+  // the next full "state" message lands (the resync response) or on disconnect.
+  let resyncPending = false;
 
   // Runs the on-connect display-name restore once both prerequisites are
   // satisfied: we know our session id (from `hello`) and we have the
@@ -177,6 +182,24 @@ export function useWebSocket() {
   // -------------------------------------------------------------------------
 
   function connect() {
+    // Guard against re-entry (fast open/error cycles, HMR): clear any pending
+    // reconnect timer and fully detach + close the previous socket first, so a
+    // late event from an orphaned socket can't schedule a second reconnect or
+    // leave a leaked connection open.
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+    if (ws) {
+      ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null;
+      try {
+        ws.close();
+      } catch {
+        // already closing/closed — nothing to do.
+      }
+      ws = null;
+    }
+
     status.value = "connecting";
 
     // Resume an existing session if we have one stored locally.
@@ -212,10 +235,14 @@ export function useWebSocket() {
     };
 
     ws.onclose = () => {
+      // Detach this (now dead) socket's handlers so a late buffered event
+      // can't re-enter handleMessage or schedule a duplicate reconnect.
+      if (ws) ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null;
       status.value = "disconnected";
       ws = null;
       nameRestoreAttempted = false;
       playerListReceived = false;
+      resyncPending = false;
       // Reject any outstanding action promises so callers don't hang.
       for (const [id, p] of pending) {
         clearTimeout(p.timer);
@@ -265,6 +292,9 @@ export function useWebSocket() {
         lastSeqRef.value = lastSeq;
         applyTheme(msg.data?.theme, document.documentElement);
         gameState.value = msg.data;
+        // A full state is the authoritative baseline (initial, reconnect, or
+        // resync response), so any outstanding resync request is now satisfied.
+        resyncPending = false;
         // Only bump on the first state arrival per connection; mid-session
         // resyncs are reconciled by per-feature diff watchers instead of
         // wiping all optimistic UI state (e.g. pending deck-edit tiles).
@@ -275,16 +305,17 @@ export function useWebSocket() {
         break;
 
       case "delta": {
+        // Stale/duplicate delta (retransmit or out-of-order arrival): not a gap,
+        // so drop it silently rather than triggering a needless resync.
+        if (msg.seq <= lastSeq) break;
         if (gameState.value && msg.seq === lastSeq + 1) {
           gameState.value = applyDelta(gameState.value, msg.data);
           applyTheme(gameState.value.theme, document.documentElement);
           lastSeq = msg.seq;
           lastSeqRef.value = lastSeq;
         } else {
-          // Gap detected — request a full resync.
-          send({ type: "resync" });
-          resyncCount.value += 1;
-          lastResyncAt.value = Date.now();
+          // Genuine forward gap — request a full resync (debounced).
+          requestResync();
         }
         break;
       }
@@ -337,6 +368,16 @@ export function useWebSocket() {
   function send(msg: Record<string, unknown>) {
     if (ws?.readyState === WebSocket.OPEN)
       ws.send(JSON.stringify(msg));
+  }
+
+  // Requests a full-state resync at most once until the response arrives,
+  // so a run of gapped deltas can't trigger a resync storm.
+  function requestResync() {
+    if (resyncPending) return;
+    resyncPending = true;
+    send({ type: "resync" });
+    resyncCount.value += 1;
+    lastResyncAt.value = Date.now();
   }
 
   /**
@@ -509,7 +550,13 @@ export function useWebSocket() {
     closing = true;
     clearInterval(watchdogTimer);
     if (reconnectTimer) clearTimeout(reconnectTimer);
-    ws?.close();
+    if (ws) {
+      // Detach handlers before closing so an in-flight message can't run
+      // handleMessage (mutating refs / touching the DOM) after teardown.
+      ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null;
+      ws.close();
+      ws = null;
+    }
   });
 
   return {
