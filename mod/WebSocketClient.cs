@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -33,6 +34,14 @@ namespace PlayLoRWithMe
         private readonly object _sendLock = new object();
         private readonly Timer _pingTimer;
 
+        // Outbound text frames are written by a single dedicated thread so callers
+        // (notably the Unity main thread driving broadcasts) never block on socket
+        // I/O. A slow or half-dead client can only back this queue up; it can no
+        // longer stall the game loop. The dedicated writer also keeps frame order.
+        private readonly BlockingCollection<string> _sendQueue =
+            new BlockingCollection<string>();
+        private readonly Thread _sendThread;
+
         // Interlocked.CompareExchange provides an atomic check-and-set in Close(),
         // preventing two threads from both sending close frames / disposing the stream.
         private int _closed = 0;
@@ -57,6 +66,12 @@ namespace PlayLoRWithMe
             _stream = stream;
             _onMessage = onMessage;
             _pingTimer = new Timer(_ => SendPing(), null, PingInterval, PingInterval);
+            _sendThread = new Thread(SendLoop)
+            {
+                IsBackground = true,
+                Name = $"PRWM-WS-Send-{sessionId}",
+            };
+            _sendThread.Start();
         }
 
         // -------------------------------------------------------------------------
@@ -64,7 +79,9 @@ namespace PlayLoRWithMe
         // -------------------------------------------------------------------------
 
         /// <summary>
-        /// Sends a UTF-8 JSON text frame. Thread-safe; no-op if the client is dead.
+        /// Queues a UTF-8 JSON text frame for the dedicated writer thread. Thread-safe,
+        /// non-blocking, and a no-op if the client is dead. The actual socket write
+        /// happens off the calling thread in <see cref="SendLoop"/>.
         /// </summary>
         public void Send(string json)
         {
@@ -72,13 +89,46 @@ namespace PlayLoRWithMe
                 return;
             try
             {
-                lock (_sendLock)
-                    WebSocketCodec.SendText(_stream, json);
+                _sendQueue.Add(json);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException)
             {
-                Debug.LogWarning($"[PRWM] WebSocket send failed for {SessionId}: {ex.Message}");
-                Close();
+                // CompleteAdding ran concurrently (client closing) — drop the frame.
+            }
+        }
+
+        /// <summary>
+        /// Drains the outbound queue on the dedicated writer thread, writing each frame
+        /// under the send lock so it can't interleave with ping/pong/close frames. Ends
+        /// when <see cref="Close"/> calls CompleteAdding and the queue empties.
+        /// </summary>
+        private void SendLoop()
+        {
+            try
+            {
+                foreach (string json in _sendQueue.GetConsumingEnumerable())
+                {
+                    if (_closed != 0)
+                        break;
+                    try
+                    {
+                        lock (_sendLock)
+                            WebSocketCodec.SendText(_stream, json);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning(
+                            $"[PRWM] WebSocket send failed for {SessionId}: {ex.Message}"
+                        );
+                        Close();
+                        break;
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // GetConsumingEnumerable can throw if the collection is completed/disposed
+                // mid-enumeration during Close — nothing left to send, so just exit.
             }
         }
 
@@ -204,6 +254,8 @@ namespace PlayLoRWithMe
             if (Interlocked.CompareExchange(ref _closed, 1, 0) != 0)
                 return;
 
+            // Stop accepting new frames and let the writer thread drain and exit.
+            _sendQueue.CompleteAdding();
             _pingTimer?.Dispose();
 
             try

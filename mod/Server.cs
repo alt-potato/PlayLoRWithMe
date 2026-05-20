@@ -152,7 +152,19 @@ namespace PlayLoRWithMe
                 string method = ctx.Request.HttpMethod;
 
                 if (method == "GET" && path == "/ws")
-                    HandleWebSocket(ctx); // blocks until client disconnects
+                {
+                    // Run the long-lived WebSocket connection on a dedicated background
+                    // thread rather than tying up a shared ThreadPool worker for the
+                    // whole session, which would starve the pool (and stall static-file
+                    // requests / new accepts) as clients accumulate.
+                    var wsThread = new Thread(() => HandleWebSocket(ctx))
+                    {
+                        IsBackground = true,
+                        Name = "PRWM-WS-Recv",
+                    };
+                    wsThread.Start();
+                    return;
+                }
                 else if (method == "GET")
                     ServeStaticFile(ctx, path);
                 else
