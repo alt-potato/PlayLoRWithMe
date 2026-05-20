@@ -58,11 +58,11 @@
 
 ## 6. DeltaEngine tests
 
-- [ ] 6.1 First `BuildMessage` for a fresh session emits full state.
-- [ ] 6.2 Second message contains only changed fields/allies/enemies.
-- [ ] 6.3 An ally/enemy absent from the new state is reported as removed.
-- [ ] 6.4 Sequence numbers strictly increase per session.
-- [ ] 6.5 Two sessions at different stream positions each diff against their own
+- [x] 6.1 First `BuildMessage` for a fresh session emits full state.
+- [x] 6.2 Second message contains only changed fields/allies/enemies.
+- [x] 6.3 An ally/enemy absent from the new state is reported as removed.
+- [x] 6.4 Sequence numbers strictly increase per session.
+- [x] 6.5 Two sessions at different stream positions each diff against their own
   last-seen state. `dotnet test` green. Commit.
 
 ## 7. SessionManager tests
