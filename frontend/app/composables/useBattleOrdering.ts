@@ -29,11 +29,17 @@ export function useBattleOrdering({ allies, enemies }: BattleOrderingOptions) {
     units: (Unit | AllyUnit)[] | undefined,
   ) {
     if (!units) return;
-    const ids = units.map((u) => u.id);
-    order.value = [
-      ...order.value.filter((id) => ids.includes(id)),
-      ...ids.filter((id) => !order.value.includes(id)),
-    ];
+    const current = order.value;
+    // Set lookups keep this O(n): the watched computeds get a fresh identity on
+    // every state push, so this runs each frame in battle.
+    const liveIds = new Set(units.map((u) => u.id));
+    const currentSet = new Set(current);
+    const kept = current.filter((id) => liveIds.has(id));
+    const added = units.map((u) => u.id).filter((id) => !currentSet.has(id));
+    // Short-circuit when membership is unchanged: kept preserves order and equals
+    // current, so reassigning would needlessly invalidate the makeSorted computeds.
+    if (added.length === 0 && kept.length === current.length) return;
+    order.value = [...kept, ...added];
   }
 
   watch(allies, (u) => syncOrder(allyOrder, u), { immediate: true });
@@ -41,14 +47,18 @@ export function useBattleOrdering({ allies, enemies }: BattleOrderingOptions) {
 
   /** Creates a computed that sorts units by dead-to-bottom then manual order. */
   function makeSorted(units: Ref<(Unit | AllyUnit)[]>, order: Ref<number[]>) {
-    return computed(() =>
-      [...units.value].sort((a, b) => {
+    return computed(() => {
+      // Build a rank lookup once per recompute instead of an O(n) indexOf inside
+      // the comparator (which made the sort O(n^2 log n)). Absent ids rank -1 to
+      // match the previous indexOf semantics.
+      const rank = new Map(order.value.map((id, i) => [id, i] as const));
+      return [...units.value].sort((a, b) => {
         const ad = isDead(a) ? 1 : 0,
           bd = isDead(b) ? 1 : 0;
         if (ad !== bd) return ad - bd;
-        return order.value.indexOf(a.id) - order.value.indexOf(b.id);
-      }),
-    );
+        return (rank.get(a.id) ?? -1) - (rank.get(b.id) ?? -1);
+      });
+    });
   }
 
   const sortedAllies = makeSorted(allies, allyOrder);
