@@ -146,6 +146,8 @@ function targetHint(targetType: string): string | null {
   color: var(--text-2);
   margin: 0;
   line-height: 1.45;
+  /* preserve newlines from the game text; incidental whitespace still collapses */
+  white-space: pre-line;
 }
 
 .ep-flavor {
@@ -158,5 +160,7 @@ function targetHint(targetType: string): string | null {
   border-top: 1px solid var(--border-mid);
   padding-top: 0.35rem;
   margin-top: 0.15rem;
+  /* preserve newlines from the game text; incidental whitespace still collapses */
+  white-space: pre-line;
 }
 </style>

@@ -266,6 +266,8 @@ const sheetStyle = computed(() =>
   color: var(--rarity-ability-color, var(--text-2));
   line-height: 1.5;
   margin: 0;
+  /* preserve newlines from the game text; incidental whitespace still collapses */
+  white-space: pre-line;
 }
 
 .dice-list {
@@ -322,5 +324,7 @@ const sheetStyle = computed(() =>
   font-size: var(--fs-3xs);
   color: var(--rarity-ability-color, var(--text-2));
   line-height: 1.4;
+  /* preserve newlines from the game text; incidental whitespace still collapses */
+  white-space: pre-line;
 }
 </style>

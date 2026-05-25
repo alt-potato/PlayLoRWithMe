@@ -151,5 +151,7 @@ details[open].passive-entry > .passive-header .chevron {
   line-height: 1.45;
   margin: 0.2rem 0 0.05rem;
   padding-left: 0.4rem;
+  /* preserve newlines from the game text; incidental whitespace still collapses */
+  white-space: pre-line;
 }
 </style>
