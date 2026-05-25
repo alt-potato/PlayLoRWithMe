@@ -19,24 +19,26 @@
         "emotionLevel": 3,
         "targetType": "All",
         "state": "Positive",
-        "desc": "Take 25% less damage from attacks while not Staggered. At the start of the Scene, recover HP equal to the number of allies present.",
+        "desc": "[All Allies]\nTake 25% less damage from attacks while not Staggered.\nAt the start of the Scene, recover HP equal to the number of allies present.",
         "flavorText": "It's a by-product of some horrid experiment that eventually failed. People who touch this slime complain of strange sensations on their skin."
       },
       {
         "id": 2,
-        "name": "Devil's Pendant",
+        "name": "Devil’s Pendant",
         "emotionLevel": 3,
         "targetType": "SelectOne",
         "state": "Negative",
-        "desc": "Gain 1-2 Speed. Offensive dice min/max +2/+1. Defensive dice min/max -1/-2. Transferred to allies holding Angel's Pendant or Duality."
+        "desc": "[Single Ally]\nIf an ally has 'Angel’s Pendant' or 'Duality' Abnormality pages, transfer this page to them.\nThe selected librarian dies if they have 'Angel’s Pendant' but not 'Duality' Abnormality pages.\nGain 1-2 Speed.\nOffensive dice min/max value +2/+1. Defensive dice min/max value -1/-2.",
+        "flavorText": "Some say just looking at it will fill up your mind with negativity. After all, it was the polar opposite of its other half."
       },
       {
         "id": 3,
-        "name": "Angel's Pendant",
+        "name": "Angel’s Pendant",
         "emotionLevel": 3,
         "targetType": "Ally",
         "state": "Positive",
-        "desc": "Restore 1 Light at the start of the Scene. When this character rolls a max/min value, recover 1-2 HP/Stagger Resist."
+        "desc": "[Single Ally]\nIf an ally has 'Devil’s Pendant' or 'Duality' Abnormality pages, transfer this page to them.\nAt the start of the Scene, restore 1 Light.\nWhen a die this character plays rolls max/min value, recover 1-2 HP/Stagger Resist.",
+        "flavorText": "Those who came near it yearned for its energy; they said it cleared their minds, and gave warmth to their hearts."
       }
     ],
     "teamEmotionLevel": 3,

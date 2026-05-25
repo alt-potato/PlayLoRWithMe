@@ -39,13 +39,6 @@ const emit = defineEmits<{ click: [] }>();
 function stateColor(state: string): string {
   return state === "Positive" ? "#4caf50" : "#c62828";
 }
-
-/** Short targeting hint shown top-right; null for the common "All" case. */
-function targetHint(targetType: string): string | null {
-  if (targetType === "SelectOne") return "1 ally";
-  if (targetType === "AllIncludingEnemy") return "all+enemies";
-  return null;
-}
 </script>
 
 <template>
@@ -64,9 +57,6 @@ function targetHint(targetType: string): string | null {
         }"
         >{{ toRoman(emotionLevel) }}</span
       >
-      <span v-if="targetHint(targetType)" class="ep-target">
-        {{ targetHint(targetType) }}
-      </span>
     </div>
     <span class="ep-name">{{ name }}</span>
     <p v-if="desc" class="ep-desc">{{ desc }}</p>
@@ -82,11 +72,7 @@ function targetHint(targetType: string): string | null {
   flex-direction: column;
   gap: 0.35rem;
   padding: 0.55rem 0.6rem 0.6rem;
-  background: linear-gradient(
-    160deg,
-    var(--bg-card-2) 0%,
-    var(--bg-card-3) 100%
-  );
+  background: linear-gradient(160deg, var(--bg-card-2) 0%, var(--bg-card-3) 100%);
   border: 1px solid; /* color set inline via stateColor */
   text-align: left;
   transition:
