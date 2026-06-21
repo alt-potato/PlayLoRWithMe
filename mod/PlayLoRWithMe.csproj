@@ -125,6 +125,7 @@
     <Compile Include="Initializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Server.cs" />
+    <Compile Include="ServerLibrarianHandlers.cs" />
     <Compile Include="StateBroadcaster.cs" />
     <Compile Include="ThemeProbe.cs" />
     <Compile Include="CustomDiceColorProbe.cs" />
