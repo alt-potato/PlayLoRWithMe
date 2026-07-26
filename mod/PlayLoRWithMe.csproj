@@ -114,6 +114,10 @@
   <ItemGroup>
     <Compile Include="ActionInjector.cs" />
     <Compile Include="AppearanceCache.cs" />
+    <Compile Include="AppearanceCache.BodyComposite.cs" />
+    <Compile Include="AppearanceCache.FashionBodies.cs" />
+    <Compile Include="AppearanceCache.PatronHeads.cs" />
+    <Compile Include="AppearanceCache.Sprites.cs" />
     <Compile Include="GiftCache.cs" />
     <Compile Include="IconCache.cs" />
     <Compile Include="JsonReader.cs" />
