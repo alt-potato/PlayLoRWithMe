@@ -122,6 +122,10 @@
     <Compile Include="MultiDeckLabels.cs" />
     <Compile Include="MultiDeckLabelHook.cs" />
     <Compile Include="GameStateSerializer.cs" />
+    <Compile Include="GameStateSerializer.Battle.cs" />
+    <Compile Include="GameStateSerializer.Inventory.cs" />
+    <Compile Include="GameStateSerializer.Librarian.cs" />
+    <Compile Include="GameStateSerializer.Library.cs" />
     <Compile Include="Initializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Server.cs" />
