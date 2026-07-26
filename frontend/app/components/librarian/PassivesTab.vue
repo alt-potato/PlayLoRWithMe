@@ -22,7 +22,6 @@ import type {
   GameState,
   AvailableKeyPage,
   Passive,
-  AttributedPassive,
 } from "~/types/game";
 import { toggleSet } from "~/utils/setReactive";
 import { rarityStyle } from "~/utils/rarityStyle";
@@ -59,124 +58,50 @@ const availableKeyPages = computed(() => props.state.availableKeyPages ?? []);
 
 // ── Staged state (Save/Cancel model) ────────────────────────────────────────
 
-const stagedSourceIds = ref<Set<number>>(new Set());
-const stagedAttributions = ref<AttributedPassive[]>([]);
-
-function initStaged() {
-  stagedSourceIds.value = new Set(props.lib.sourceKeyPageIds ?? []);
-  stagedAttributions.value = [...(props.lib.attributedPassives ?? [])];
-}
-
-initStaged();
-
-// Server resets passives when the primary key-page changes, so staged state
-// must follow.
-watch(() => props.lib.keyPage?.instanceId, () => { initStaged(); });
-
-// UI reads staged values, not server values.
-const sourceKeyPageIds = computed(() => stagedSourceIds.value);
-const attributedPassives = computed(() => stagedAttributions.value);
-
-const innatePassives = computed(() => {
-  const all = props.lib.passives ?? [];
-  const attr = props.lib.attributedPassives ?? [];
-  if (!attr.length) return all;
-  // Remove one matching passive per actually-attributed entry (handles duplicates).
-  // Innate derivation uses the *actual* server-side attribution list, since the
-  // server authoritatively decides which of the key-page's passive slots are
-  // filled by attribution vs. innate.
-  const remaining = [...all];
-  for (const ap of attr) {
-    const key = `${ap.passive.id.id}:${ap.passive.id.packageId}`;
-    const idx = remaining.findIndex(
-      (p) => `${p.id.id}:${p.id.packageId}` === key,
-    );
-    if (idx >= 0) remaining.splice(idx, 1);
-  }
-  return remaining;
-});
-const passiveSlotCount = computed(() => props.lib.passiveSlotCount ?? 0);
-const maxPassiveCost = computed(() => props.lib.maxPassiveCost ?? 0);
-
-const emptySlotCount = computed(
-  () => passiveSlotCount.value - innatePassives.value.length - attributedPassives.value.length,
-);
-
-// ── Pending diff (staged vs server) ─────────────────────────────────────────
-
-const actualSourceIds = computed(() => new Set(props.lib.sourceKeyPageIds ?? []));
-
-function attrKey(sourceId: number, p: Passive): string {
-  return `${sourceId}:${p.id.id}:${p.id.packageId}`;
-}
-
-const actualAttrKeys = computed(() => new Set(
-  (props.lib.attributedPassives ?? []).map((ap) => attrKey(ap.sourceInstanceId, ap.passive)),
-));
-
-const pendingSourceAdds = computed(() => {
-  const out = new Set<number>();
-  for (const id of stagedSourceIds.value) if (!actualSourceIds.value.has(id)) out.add(id);
-  return out;
-});
-const pendingSourceRemoves = computed(() => {
-  const out = new Set<number>();
-  for (const id of actualSourceIds.value) if (!stagedSourceIds.value.has(id)) out.add(id);
-  return out;
-});
-const pendingAttrAdds = computed(() =>
-  stagedAttributions.value.filter(
-    (ap) => !actualAttrKeys.value.has(attrKey(ap.sourceInstanceId, ap.passive)),
-  ),
-);
-const pendingAttrRemoves = computed(() => {
-  const stagedKeys = new Set(
-    stagedAttributions.value.map((ap) => attrKey(ap.sourceInstanceId, ap.passive)),
-  );
-  return (props.lib.attributedPassives ?? []).filter(
-    (ap) => !stagedKeys.has(attrKey(ap.sourceInstanceId, ap.passive)),
-  );
+// The staging state machine (staged edits, pending diff, commit/cancel) lives
+// in the composable; this component only supplies server truth and the
+// mutation callbacks. Callbacks are wrapped rather than passed by reference
+// because props are re-bound on every parent update and must be read at call
+// time.
+const staging = usePassiveStaging({
+  lib: computed(() => props.lib),
+  availableKeyPages,
+  actions: {
+    equipSourceBook: (id) => props.onEquipSourceBook(id),
+    unequipSourceBook: (id) => props.onUnequipSourceBook(id),
+    attributePassive: (sourceId, passiveId, packageId) =>
+      props.onAttributePassive(sourceId, passiveId, packageId),
+    removeAttributedPassive: (sourceId, passiveId, packageId) =>
+      props.onRemoveAttributedPassive(sourceId, passiveId, packageId),
+  },
 });
 
-const isDirty = computed(
-  () =>
-    pendingSourceAdds.value.size > 0 ||
-    pendingSourceRemoves.value.size > 0 ||
-    pendingAttrAdds.value.length > 0 ||
-    pendingAttrRemoves.value.length > 0,
-);
+const {
+  sourceKeyPageIds,
+  attributedPassives,
+  innatePassives,
+  emptySlotCount,
+  maxPassiveCost,
+  stagedPassiveCost,
+  sourcePassiveCounts,
+  sourceSummaryRows,
+  pendingAttrRemoves,
+  isDirty,
+  isPendingAttrAdd,
+  hasDuplicate,
+  wouldExceedCost,
+  hasEmptySlots,
+  attributePassive,
+  removeAttributed,
+  undoRemoveAttributed,
+  undoUnequipSource,
+  saveChanges,
+  cancelChanges,
+  actionError,
+  saveBusy,
+} = staging;
 
-function isPendingSourceAdd(kp: AvailableKeyPage): boolean {
-  return pendingSourceAdds.value.has(kp.instanceId);
-}
-function isPendingAttrAdd(ap: AttributedPassive): boolean {
-  return !actualAttrKeys.value.has(attrKey(ap.sourceInstanceId, ap.passive));
-}
-
-// Staged cost = server current minus the costs of pending removals plus the
-// costs of pending additions. Server `currentPassiveCost` already reflects the
-// actual attribution set; we adjust by the diff.
-const stagedPassiveCost = computed(() => {
-  let cost = props.lib.currentPassiveCost ?? 0;
-  for (const ap of pendingAttrRemoves.value) cost -= ap.passive.cost ?? 0;
-  for (const ap of pendingAttrAdds.value) cost += ap.passive.cost ?? 0;
-  return cost;
-});
-
-// Duplicate prevention: a passive (by id+packageId) can appear at most once
-// across innate + attributed. Check the staged view so users can re-attribute
-// a passive they just pending-removed from a different source.
-const stagedPassiveIds = computed(() => {
-  const set = new Set<string>();
-  for (const p of innatePassives.value) set.add(`${p.id.id}:${p.id.packageId}`);
-  for (const ap of stagedAttributions.value)
-    set.add(`${ap.passive.id.id}:${ap.passive.id.packageId}`);
-  return set;
-});
-
-function hasDuplicate(p: Passive): boolean {
-  return stagedPassiveIds.value.has(`${p.id.id}:${p.id.packageId}`);
-}
+const localBusy = computed(() => props.editBusy || saveBusy.value);
 
 // ── Chapter filter (reused from KeyPageTab) ─────────────────────────────────
 
@@ -288,7 +213,11 @@ const expandedSources = ref(new Set<number>());
 const toggleSourceExpansion = (kp: AvailableKeyPage) => toggleSet(expandedSources, kp.instanceId);
 
 function isSource(kp: AvailableKeyPage): boolean {
-  return sourceKeyPageIds.value.has(kp.instanceId);
+  return staging.isStagedSource(kp.instanceId);
+}
+
+function isPendingSourceAdd(kp: AvailableKeyPage): boolean {
+  return staging.isPendingSourceAdd(kp.instanceId);
 }
 
 function isExpanded(kp: AvailableKeyPage): boolean {
@@ -326,143 +255,21 @@ const sourceNameMap = computed(() => {
   return map;
 });
 
-/** Count of passives attributed from each source (staged view). */
-const sourcePassiveCounts = computed(() => {
-  const map = new Map<number, number>();
-  for (const ap of attributedPassives.value) {
-    map.set(ap.sourceInstanceId, (map.get(ap.sourceInstanceId) ?? 0) + 1);
-  }
-  return map;
-});
+// ── Staging wrappers (staged edit plus its view-only side effect) ───────────
 
-/** Source summary rows: staged sources first, then pending-remove sources. */
-interface SourceSummaryRow {
-  id: number;
-  pendingRemove: boolean;
-}
-const sourceSummaryRows = computed((): SourceSummaryRow[] => {
-  const rows: SourceSummaryRow[] = [];
-  for (const id of sourceKeyPageIds.value) rows.push({ id, pendingRemove: false });
-  for (const id of pendingSourceRemoves.value) rows.push({ id, pendingRemove: true });
-  return rows;
-});
-
-/** Undo a pending source removal by re-adding it to the staged set. */
-function undoUnequipSource(instanceId: number) {
-  const next = new Set(stagedSourceIds.value);
-  next.add(instanceId);
-  stagedSourceIds.value = next;
-}
-
-// ── Local stagers ───────────────────────────────────────────────────────────
-
-const actionError = ref<string | null>(null);
-const saveBusy = ref(false);
-const localBusy = computed(() => props.editBusy || saveBusy.value);
-
+/** Stages the source and auto-opens its passive list so it can be attributed. */
 function equipSource(kp: AvailableKeyPage) {
-  const next = new Set(stagedSourceIds.value);
-  next.add(kp.instanceId);
-  stagedSourceIds.value = next;
+  staging.equipSource(kp.instanceId);
   const exp = new Set(expandedSources.value);
   exp.add(kp.instanceId);
   expandedSources.value = exp;
 }
 
 function unequipSource(instanceId: number) {
-  const next = new Set(stagedSourceIds.value);
-  next.delete(instanceId);
-  stagedSourceIds.value = next;
-  // Cascade: drop any staged attributions from this source.
-  stagedAttributions.value = stagedAttributions.value.filter(
-    (ap) => ap.sourceInstanceId !== instanceId,
-  );
+  staging.unequipSource(instanceId);
   const exp = new Set(expandedSources.value);
   exp.delete(instanceId);
   expandedSources.value = exp;
-}
-
-function attributePassive(sourceInstanceId: number, p: Passive) {
-  const sourceName = availableKeyPages.value.find(
-    (kp) => kp.instanceId === sourceInstanceId,
-  )?.name;
-  stagedAttributions.value = [
-    ...stagedAttributions.value,
-    { sourceInstanceId, passive: p, sourceName },
-  ];
-}
-
-function removeAttributed(ap: AttributedPassive) {
-  const key = attrKey(ap.sourceInstanceId, ap.passive);
-  const idx = stagedAttributions.value.findIndex(
-    (x) => attrKey(x.sourceInstanceId, x.passive) === key,
-  );
-  if (idx >= 0) {
-    const next = [...stagedAttributions.value];
-    next.splice(idx, 1);
-    stagedAttributions.value = next;
-  }
-}
-
-/** Restore a pending-remove attribution to the staged set. */
-function undoRemoveAttributed(ap: AttributedPassive) {
-  stagedAttributions.value = [...stagedAttributions.value, ap];
-}
-
-// ── Save / Cancel ───────────────────────────────────────────────────────────
-
-async function saveChanges() {
-  if (!isDirty.value) return;
-  saveBusy.value = true;
-  actionError.value = null;
-  try {
-    // Order matters: drop attributions before unequipping their source, and
-    // equip new sources before attributing from them.
-    for (const ap of pendingAttrRemoves.value) {
-      await props.onRemoveAttributedPassive(
-        ap.sourceInstanceId,
-        ap.passive.id.id,
-        // EntryId.packageId is numeric on the wire, but the C# handler reads
-        // passivePackageId as a string (JsonReader stringifies all scalars
-        // anyway, so this just makes the contract explicit).
-        String(ap.passive.id.packageId),
-      );
-    }
-    for (const id of pendingSourceRemoves.value) {
-      await props.onUnequipSourceBook(id);
-    }
-    for (const id of pendingSourceAdds.value) {
-      await props.onEquipSourceBook(id);
-    }
-    for (const ap of pendingAttrAdds.value) {
-      await props.onAttributePassive(
-        ap.sourceInstanceId,
-        ap.passive.id.id,
-        String(ap.passive.id.packageId),
-      );
-    }
-  } catch (e) {
-    actionError.value = String(e);
-  } finally {
-    saveBusy.value = false;
-  }
-  // Re-sync staged state to whatever the server actually accepted.
-  await nextTick();
-  initStaged();
-}
-
-function cancelChanges() {
-  initStaged();
-  actionError.value = null;
-}
-
-/** Whether the cost cap would be exceeded by attributing a passive with this cost. */
-function wouldExceedCost(passiveCost: number): boolean {
-  return stagedPassiveCost.value + passiveCost > maxPassiveCost.value;
-}
-
-function hasEmptySlots(): boolean {
-  return emptySlotCount.value > 0;
 }
 </script>
 
