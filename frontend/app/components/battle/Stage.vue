@@ -345,23 +345,25 @@ provide(BATTLE_CTX, {
         </div>
       </div>
     </section>
-  </div>
 
-  <!-- Arrow SVG overlay -- desktop only, reactively tracked -->
-  <ArrowOverlay
-    v-if="showArrows && state.allies && state.enemies"
-    :allies="state.allies"
-    :enemies="state.enemies"
-    :show-incoming="showIncoming"
-    :show-clash="showClash"
-    :show-outgoing="showOutgoing"
-    :focus-unit-id="
-      selectingSlot?.unitId ??
-      selectingTargetFor?.unitId ??
-      selectingAllyTargetFor?.unitId ??
-      null
-    "
-  />
+    <!-- Arrow SVG overlay -- desktop only, reactively tracked. Lives inside
+      .stage (its positioning anchor) so arrows scroll with the content, and
+      receives the sorted arrays so manual reorders trigger a recompute. -->
+    <ArrowOverlay
+      v-if="showArrows && state.allies && state.enemies"
+      :allies="sortedAllies"
+      :enemies="sortedEnemies"
+      :show-incoming="showIncoming"
+      :show-clash="showClash"
+      :show-outgoing="showOutgoing"
+      :focus-unit-id="
+        selectingSlot?.unitId ??
+        selectingTargetFor?.unitId ??
+        selectingAllyTargetFor?.unitId ??
+        null
+      "
+    />
+  </div>
 
   <!--
     Emotion level-up selection overlay (abnormality card or EGO card).
@@ -497,6 +499,8 @@ provide(BATTLE_CTX, {
 /* ── Stage layout ────────────────────────────────────────────────────── */
 
 .stage {
+  /* positioning anchor for the absolutely-positioned ArrowOverlay */
+  position: relative;
   margin-left: 0.6em;
   margin-right: 0.6em;
   display: flex;
