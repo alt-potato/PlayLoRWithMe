@@ -135,6 +135,7 @@
     <Compile Include="Server.cs" />
     <Compile Include="ServerLibrarianHandlers.cs" />
     <Compile Include="StateBroadcaster.cs" />
+    <Compile Include="StoryLog.cs" />
     <Compile Include="ThemeProbe.cs" />
     <Compile Include="CustomDiceColorProbe.cs" />
     <Compile Include="CustomRarityProbe.cs" />

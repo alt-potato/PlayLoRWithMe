@@ -9,26 +9,34 @@ namespace PlayLoRWithMe
         private static readonly HashSet<string> _written = new HashSet<string>();
         private static readonly HashSet<string> _cardWritten = new HashSet<string>();
         private static readonly HashSet<string> _stageWritten = new HashSet<string>();
+        private static readonly HashSet<string> _portraitWritten = new HashSet<string>();
         private static string BuficonDir => Path.Combine(Server.WwwRootPath, "assets", "buficons");
         private static string CardIconDir =>
             Path.Combine(Server.WwwRootPath, "assets", "cardicons");
         private static string StageIconDir =>
             Path.Combine(Server.WwwRootPath, "assets", "stageicons");
+        private static string PortraitDir =>
+            Path.Combine(Server.WwwRootPath, "assets", "portraits");
 
         /// <summary>
         /// Extracts a sprite to PNG and caches it in the given directory.
-        /// Returns the sprite name (icon ID) on success, or null if the sprite is null.
+        /// Returns the icon ID on success, or null if the sprite is null.
         /// </summary>
+        /// <param name="id">
+        /// Overrides the sprite's own name as the icon ID and filename. Needed where the
+        /// caller's key is not usable as a filename; defaults to <c>sprite.name</c>.
+        /// </param>
         private static string EnsureSprite(
             Sprite sprite,
             string dir,
             HashSet<string> written,
-            string label
+            string label,
+            string id = null
         )
         {
             if (sprite == null)
                 return null;
-            var id = sprite.name;
+            id = id ?? sprite.name;
             if (written.Contains(id))
                 return id;
             try
@@ -53,6 +61,15 @@ namespace PlayLoRWithMe
 
         internal static string EnsureStageIcon(Sprite sprite) =>
             EnsureSprite(sprite, StageIconDir, _stageWritten, "stage");
+
+        /// <summary>
+        /// Extracts a story-character portrait under an explicit ID. Portraits are keyed
+        /// by the dialogue's model name, which is not guaranteed to be ASCII and so cannot
+        /// serve as a filename directly — callers pass a slug from
+        /// <see cref="StoryLog.SlugifyPortraitKey"/>.
+        /// </summary>
+        internal static string EnsurePortrait(Sprite sprite, string id) =>
+            EnsureSprite(sprite, PortraitDir, _portraitWritten, "portrait", id);
 
         // Extracts the sprite's pixel region via RenderTexture — handles non-readable
         // textures and sprite-sheet atlases safely on the Unity main thread.

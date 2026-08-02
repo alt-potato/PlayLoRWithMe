@@ -19,37 +19,43 @@
 
 ## 2. Portrait extraction
 
-- [ ] 2.1 Add `PortraitDir` (`wwwroot/assets/portraits/`) and
+- [x] 2.1 Add `PortraitDir` (`wwwroot/assets/portraits/`) and
       `EnsurePortrait(Sprite)` to `mod/IconCache.cs`, delegating to the existing `EnsureSprite`
       primitive with a `"portrait"` label.
-- [ ] 2.2 Add a resolver in the patch layer that loads
+- [x] 2.2 Add a resolver in the patch layer that loads
       `Resources.Load<Sprite>("StoryResource/CharacterPortraits/" + model)` and returns the
       slug from `EnsurePortrait`, or `null` when the sprite is missing. Cache negative lookups
       so a missing portrait is not re-loaded on every line by the same speaker.
-- [ ] 2.3 `cd mod && dotnet build` runs `0 Warning(s) 0 Error(s)`.
+- [x] 2.3 `cd mod && dotnet build` runs `0 Warning(s) 0 Error(s)`. Also registered
+      `StoryLog.cs` in `PlayLoRWithMe.csproj`, which lists compile items explicitly rather
+      than globbing.
 
 ## 3. Harmony capture patches
 
-- [ ] 3.1 Add `Patch_DialogLogInit`: postfix on `DialogLogManager.Init` → `StoryLog.Clear()`.
+- [x] 3.1 Add `Patch_DialogLogInit`: postfix on `DialogLogManager.Init` → `StoryLog.Clear()`.
       No broadcast — `InitDialogs` is followed by dialogue appends that will push anyway.
-- [ ] 3.2 Add `Patch_DialogLogAddDialog`: postfix on `DialogLogManager.AddDialog` → resolve the
+- [x] 3.2 Add `Patch_DialogLogAddDialog`: postfix on `DialogLogManager.AddDialog` → resolve the
       portrait slug, strip rich text from `Content`, append, `Broadcast()`. A `Teller` of
       `"Monologue"` is passed through as-is; the frontend owns that presentation rule.
-- [ ] 3.3 Add `Patch_DialogLogAddExtraLog`: postfix on `DialogLogManager.AddExtraLog` →
+- [x] 3.3 Add `Patch_DialogLogAddExtraLog`: postfix on `DialogLogManager.AddExtraLog` →
       `StoryLog.AppendChoice(text, isRed)`, `Broadcast()`.
-- [ ] 3.4 Add `Patch_StoryRootEndStory` and `Patch_BattleStoryEndStory`: postfix on
+- [x] 3.4 Add `Patch_StoryRootEndStory` and `Patch_BattleStoryEndStory`: postfix on
       `StoryRoot.EndStory` / `BattleStoryUI.EndStory` → `StoryLog.Clear()` + `Broadcast()`, so
-      the log disappears when the cutscene closes.
+      the log disappears when the cutscene closes. `StoryRoot.EndStory` guards its body with
+      `(forcely || inGame) && storyUI.activeSelf` and is a no-op when that fails, so the
+      postfix re-checks `storyUI.activeSelf` and skips the clear — otherwise a rejected call
+      would wipe the log of a cutscene still on screen.
 - [ ] 3.5 Verify in-game that a standalone cutscene and a mid-battle cutscene both populate and
       both clear. This needs a running game — if it cannot be driven from the CLI, stop and ask
       the maintainer to exercise both paths.
 
 ## 4. Serializer and wire contract
 
-- [ ] 4.1 Add `WriteStoryLog(JsonWriter)` to `mod/GameStateSerializer.cs`, emitting the
-      `storyLog` array only when the log is non-empty. Call it from `BuildJson` at top level,
-      not from `WriteStoryScene` — a `BattleStoryUI` cutscene reports `scene: "battle"`.
-- [ ] 4.2 Replace the `WriteStoryScene` no-op placeholder comment, which currently claims the
+- [x] 4.1 Emit the `storyLog` array only when the log is non-empty, called from `BuildJson` at
+      top level rather than from `WriteStoryScene` — a `BattleStoryUI` cutscene reports
+      `scene: "battle"`. The writer lives on `StoryLog.WriteTo` rather than as a
+      `WriteStoryLog` helper in the serializer, so it stays inside the tested Unity-free file.
+- [x] 4.2 Replace the `WriteStoryScene` no-op placeholder comment, which currently claims the
       story scene emits nothing beyond its scene tag.
 - [ ] 4.3 Add `StoryLogEntrySchema` to `frontend/app/types/game.ts` and
       `storyLog: z.optional(z.array(StoryLogEntrySchema))` to `GameStateSchema`.
