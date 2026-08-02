@@ -245,6 +245,20 @@ provide(BATTLE_CTX, {
     (i don't think i actually use the terms "left" and "right" here, but preempting, yknow?)
   -->
   <div class="stage" @click="cancelTargeting">
+    <!--
+      Cutscene dialogue overlaying the battle. A BattleStoryUI cutscene reports
+      scene "battle", so the log arrives on the battle payload rather than as a
+      scene change. Collapsible because OpenStory's blockBattle flag is not always
+      true — the host may still be able to act underneath. Clicks are stopped so
+      using the panel doesn't cancel an in-progress targeting selection.
+    -->
+    <LazyStoryLogPanel
+      v-if="state.storyLog?.length"
+      :entries="state.storyLog"
+      collapsible
+      @click.stop
+    />
+
     <section class="wing wing--enemy">
       <h2 class="wing-heading">Guests</h2>
       <div

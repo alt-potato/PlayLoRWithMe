@@ -1,0 +1,77 @@
+/**
+ * Regression guards for LogPanel's template and styling rules.
+ *
+ * The panel's decision logic lives in `utils/storyLog.ts` and is unit-tested
+ * directly. What remains here is template- and CSS-level: which classes a row
+ * gets, that content preserves newlines, that a failed portrait is handled, and
+ * that the width cap is a ceiling rather than a proportional scale. Those cannot
+ * regress silently without a mount test, and `@vue/test-utils` is not a project
+ * dependency — so, following the precedent set by `HandCard.test.ts`, we assert
+ * against the SFC source instead.
+ */
+
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
+import { resolve } from "path";
+
+const source = readFileSync(resolve(__dirname, "LogPanel.vue"), "utf-8");
+
+describe("LogPanel rendering rules", () => {
+  it("renders the name line only when showsSpeaker allows it", () => {
+    // Monologue and choice suppression both route through this one helper, so
+    // the template must not reimplement the condition.
+    expect(source).toMatch(/v-if="showsSpeaker\(entry\)"/);
+  });
+
+  it("orders the name line as title-then-teller, matching the in-game log", () => {
+    const nameLine = source.match(
+      /<p v-if="showsSpeaker\(entry\)"[\s\S]*?<\/p>/,
+    );
+    expect(nameLine, "expected a .slog-name block").not.toBeNull();
+    expect(nameLine![0].indexOf("slog-title")).toBeLessThan(
+      nameLine![0].indexOf("slog-teller"),
+    );
+  });
+
+  it("accents choice rows and distinguishes the red variant", () => {
+    expect(source).toMatch(/'slog-row--choice': isChoiceEntry\(entry\)/);
+    expect(source).toMatch(
+      /'slog-row--red': isChoiceEntry\(entry\) && entry\.choiceIsRed/,
+    );
+  });
+
+  it("renders content with pre-line so mirrored newlines survive", () => {
+    const contentRule = source.match(/\.slog-content \{[\s\S]*?\}/);
+    expect(contentRule, "expected a .slog-content style block").not.toBeNull();
+    expect(contentRule![0]).toMatch(/white-space:\s*pre-line/);
+  });
+
+  it("falls back to a name-only row when a portrait fails to load", () => {
+    expect(source).toMatch(/@error="onPortraitError\(entry\)"/);
+    expect(source).toMatch(/v-if="visiblePortrait\(entry\)"/);
+  });
+
+  it("treats the game's log width as a ceiling, not a proportional scale", () => {
+    const rootRule = source.match(/\.slog \{[\s\S]*?\n\}/);
+    expect(rootRule, "expected a .slog style block").not.toBeNull();
+    expect(rootRule![0]).toMatch(/--story-log-max-width:\s*1500px/);
+    expect(rootRule![0]).toMatch(/max-width:\s*var\(--story-log-max-width\)/);
+    // A percentage width would reintroduce the rejected proportional scaling.
+    expect(rootRule![0]).toMatch(/width:\s*100%/);
+  });
+
+  it("exposes a collapse control only in the overlay variant", () => {
+    expect(source).toMatch(/<header v-if="collapsible"/);
+  });
+
+  it("does not offer any control over cutscene playback", () => {
+    // The panel is a read-only mirror; the host drives the cutscene. The collapse
+    // toggle is the only interactive control, and it must stay purely local — no
+    // action dispatch reaches the server from here.
+    const template = source.slice(source.indexOf("<template>"));
+    const buttons = template.match(/<button\b/g) ?? [];
+    expect(buttons).toHaveLength(1);
+    expect(template).toMatch(/<button[^>]*class="slog-toggle"/);
+    expect(source).not.toMatch(/sendAction/);
+  });
+});

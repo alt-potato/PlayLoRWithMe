@@ -1,0 +1,34 @@
+{
+  "_comment": "Story scene carrying a mirrored cutscene dialogue log — exercises components/story/LogPanel.vue via the scene === 'story' branch in app.vue. Covers every row variant the panel distinguishes: a speaker with both title and portrait, a speaker with a portrait but no title, embedded newlines rendered via white-space: pre-line, a speaker whose portrait slug resolves to nothing (404 fallback to name-only), a Monologue row whose name line is suppressed, and both choice-outcome accents.",
+  "scene": "story",
+  "storyLog": [
+    {
+      "teller": "Roland",
+      "title": "Ex-Grade 1 Fixer",
+      "content": "So this is the Library. Cosier than the rumours made it sound.",
+      "portrait": "Roland_3a1f77c2"
+    },
+    {
+      "teller": "Angela",
+      "content": "You are late.\nThe guests have already arrived.",
+      "portrait": "Angela_9c04be51"
+    },
+    {
+      "teller": "Malkuth",
+      "title": "Floor of General Works",
+      "content": "Welcome back, Roland. Please try not to break anything this time.",
+      "portrait": "does_not_exist_00000000"
+    },
+    {
+      "teller": "Monologue",
+      "content": "The lights dim. Somewhere far below, a page turns on its own."
+    },
+    {
+      "teller": "Roland",
+      "title": "Ex-Grade 1 Fixer",
+      "content": "...Fine. Let's get on with it."
+    },
+    { "content": "Forgive", "isChoice": true, "choiceIsRed": false },
+    { "content": "Kill", "isChoice": true, "choiceIsRed": true }
+  ]
+}

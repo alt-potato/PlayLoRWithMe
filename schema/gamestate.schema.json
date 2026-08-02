@@ -3486,6 +3486,36 @@
             "dialoguePresets"
           ],
           "additionalProperties": false
+        },
+        "storyLog": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "teller": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "portrait": {
+                "type": "string"
+              },
+              "isChoice": {
+                "type": "boolean"
+              },
+              "choiceIsRed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "content"
+            ],
+            "additionalProperties": false
+          }
         }
       },
       "required": [
@@ -7039,6 +7069,36 @@
                     "dialoguePresets"
                   ],
                   "additionalProperties": false
+                },
+                "storyLog": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "content": {
+                        "type": "string"
+                      },
+                      "teller": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "portrait": {
+                        "type": "string"
+                      },
+                      "isChoice": {
+                        "type": "boolean"
+                      },
+                      "choiceIsRed": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "content"
+                    ],
+                    "additionalProperties": false
+                  }
                 }
               },
               "required": [

@@ -237,6 +237,16 @@ const connPanelOpen = ref(false);
         :rename-player="renamePlayer"
       />
 
+      <!--
+        Cutscene dialogue. Gated on a non-empty log so a cutscene that has not yet
+        spoken a line falls through to the scene placeholder below rather than
+        rendering an empty panel.
+      -->
+      <LazyStoryLogPanel
+        v-else-if="gameState?.scene === 'story' && gameState.storyLog?.length"
+        :entries="gameState.storyLog"
+      />
+
       <div v-else-if="gameState" class="scene-idle">
         <div class="scene-name">{{ gameState.scene }}</div>
         <div v-if="gameState.uiPhase" class="scene-sub">

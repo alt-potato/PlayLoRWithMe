@@ -57,44 +57,49 @@
       `WriteStoryLog` helper in the serializer, so it stays inside the tested Unity-free file.
 - [x] 4.2 Replace the `WriteStoryScene` no-op placeholder comment, which currently claims the
       story scene emits nothing beyond its scene tag.
-- [ ] 4.3 Add `StoryLogEntrySchema` to `frontend/app/types/game.ts` and
+- [x] 4.3 Add `StoryLogEntrySchema` to `frontend/app/types/game.ts` and
       `storyLog: z.optional(z.array(StoryLogEntrySchema))` to `GameStateSchema`.
-- [ ] 4.4 Regenerate `schema/gamestate.schema.json` and extend `schema/reference-state.json`
+- [x] 4.4 Regenerate `schema/gamestate.schema.json` and extend `schema/reference-state.json`
       with a `storyLog` sample.
-- [ ] 4.5 `cd frontend && npm test` passes, including the schema drift test.
+- [x] 4.5 `cd frontend && npm test` passes, including the schema drift test.
 
 ## 5. Log panel component
 
-- [ ] 5.1 Create `frontend/app/components/story/LogPanel.vue` taking `entries: StoryLogEntry[]`.
+- [x] 5.1 Create `frontend/app/components/story/LogPanel.vue` taking `entries: StoryLogEntry[]`.
       Row layout mirrors `CharacterDialogLog`: portrait left, name line (title smaller and
       first, speaker larger and second), content below.
-- [ ] 5.2 Implement the two vanilla presentation rules: `Teller === "Monologue"` renders no name
+- [x] 5.2 Implement the two vanilla presentation rules: `Teller === "Monologue"` renders no name
       line; choice rows render centered with a red or blue accent per `choiceIsRed`.
-- [ ] 5.3 Render `content` with `white-space: pre-line`, consistent with the passive and
+- [x] 5.3 Render `content` with `white-space: pre-line`, consistent with the passive and
       card-description convention.
-- [ ] 5.4 Add `--story-log-max-width: 1500px` as a token and apply it as a ceiling only. Below
+- [x] 5.4 Add `--story-log-max-width: 1500px` as a token and apply it as a ceiling only. Below
       that width the panel fills the space available to it; do not scale it to the game's
       canvas proportion.
-- [ ] 5.5 Render portraits from `/assets/portraits/<portrait>.png`, falling back to a name-only
+- [x] 5.5 Render portraits from `/assets/portraits/<portrait>.png`, falling back to a name-only
       row when `portrait` is absent or the image fails to load.
-- [ ] 5.6 Implement newest-at-bottom auto-scroll, suppressed while the reader has scrolled away
+- [x] 5.6 Implement newest-at-bottom auto-scroll, suppressed while the reader has scrolled away
       from the bottom.
-- [ ] 5.7 Add the `LogPanel` Vitest suite per the design's testing table.
+- [x] 5.7 Add the `LogPanel` Vitest suite per the design's testing table. Split from what the
+      design assumed: `@vue/test-utils` is not a project dependency, so the decision logic
+      moved into `utils/storyLog.ts` and is unit-tested directly (13 tests), while the
+      template/CSS rules it cannot reach — choice accents, `pre-line`, portrait fallback, the
+      width ceiling — are asserted against the SFC source, following the precedent
+      `HandCard.test.ts` already set (8 tests).
 
 ## 6. Surfacing
 
-- [ ] 6.1 Route `scene === "story"` in `app.vue` to `LazyStoryLogPanel`, keeping the existing
+- [x] 6.1 Route `scene === "story"` in `app.vue` to `LazyStoryLogPanel`, keeping the existing
       `.scene-idle` placeholder as the empty state for a cutscene with no lines logged yet.
-- [ ] 6.2 Mount the panel as a collapsible overlay in `battle/Stage.vue`, shown whenever
+- [x] 6.2 Mount the panel as a collapsible overlay in `battle/Stage.vue`, shown whenever
       `storyLog` is present. Defaults to open; collapsing reveals the stage underneath.
-- [ ] 6.3 Add the `story-cutscene.json` dev fixture covering a dialogue row with a portrait, one
+- [x] 6.3 Add the `story-cutscene.json` dev fixture covering a dialogue row with a portrait, one
       without, a monologue row, and both choice colours. Confirm `fixtures.test.ts` validates it.
 - [ ] 6.4 Check the panel at phone width: rows stay legible, the portrait does not crowd out the
       content, and the battle overlay's collapse control stays reachable.
-- [ ] 6.5 `cd mod && dotnet build` runs `0 Warning(s) 0 Error(s)` and `cd frontend && npm test`
+- [x] 6.5 `cd mod && dotnet build` runs `0 Warning(s) 0 Error(s)` and `cd frontend && npm test`
       passes.
 
 ## 7. Documentation
 
-- [ ] 7.1 Add `StoryLog.cs` to the mod file table in `CLAUDE.md`, and `story/LogPanel.vue` to the
+- [x] 7.1 Add `StoryLog.cs` to the mod file table in `CLAUDE.md`, and `story/LogPanel.vue` to the
       frontend table. Note the new `storyLog` field in the wire-format section.

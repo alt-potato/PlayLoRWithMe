@@ -952,6 +952,29 @@ export const ThemeSchema = z.object({
 });
 export type Theme = z.infer<typeof ThemeSchema>;
 
+/**
+ * One line from the game's cutscene dialogue log, mirrored so players can read at
+ * their own pace while the host clicks through. Entries are either a spoken line
+ * (`teller` set) or a story-choice outcome (`isChoice` set) — never both.
+ *
+ * `content` arrives with Unity rich-text markup already stripped by the mod, but
+ * with newlines preserved, so it must render with `white-space: pre-line`.
+ */
+export const StoryLogEntrySchema = z.object({
+  content: z.string(),
+  /** Speaker name. Absent on choice rows. The literal "Monologue" renders with no name. */
+  teller: z.optional(z.string()),
+  /** Speaker honorific/subtitle, rendered smaller and ahead of `teller`. */
+  title: z.optional(z.string()),
+  /** ASCII slug resolving to `/assets/portraits/<portrait>.png`; absent when the speaker has none. */
+  portrait: z.optional(z.string()),
+  /** Marks a story-choice outcome row rather than a spoken line. */
+  isChoice: z.optional(z.boolean()),
+  /** Accent colour for a choice row. Meaningful only alongside `isChoice`. */
+  choiceIsRed: z.optional(z.boolean()),
+});
+export type StoryLogEntry = z.infer<typeof StoryLogEntrySchema>;
+
 /** Top-level WebSocket `state` payload. */
 export const GameStateSchema = z.object({
   scene: SceneNameSchema,
@@ -979,6 +1002,12 @@ export const GameStateSchema = z.object({
   availableCards: z.optional(z.array(AvailableCardSchema)),
   /** Global customization option tables (names, title lists, dialogue presets). */
   customizeOptions: z.optional(CustomizeOptionsSchema),
+  /**
+   * Present only while a cutscene is on screen. Top-level rather than scene-scoped
+   * because a `BattleStoryUI` cutscene overlays a live battle and so reports
+   * `scene: "battle"`. Absence of the field is the signal to drop the log panel.
+   */
+  storyLog: z.optional(z.array(StoryLogEntrySchema)),
 });
 export type GameState = z.infer<typeof GameStateSchema>;
 
