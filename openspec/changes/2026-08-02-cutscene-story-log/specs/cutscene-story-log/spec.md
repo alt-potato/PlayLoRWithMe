@@ -348,6 +348,16 @@ means the log reaches the bottom of the page rather than stopping short of it.
 Whatever layout context this requires MUST be scoped to the scene that needs it, rather than
 applied to the shared page region, so that scenes relying on normal block flow are unaffected.
 
+The height the panel divides up MUST be definite. A shell bounded only by a minimum height
+still grows with its content, and every `flex` child grows with it, so the panel would remain
+unbounded and its scroller would never scroll no matter how the panel itself is declared.
+
+Auto-scroll MUST also respond to the content's height changing, not only to an entry arriving.
+A rewrapped line or a late-loading font grows the column after the entry has been handled,
+which would otherwise leave the newest line just below the fold. Browser scroll anchoring MUST
+be disabled on the scroller, since it holds the view on an existing node when content is
+appended — the opposite of following the newest line.
+
 #### Scenario: The panel is viewed on a wide display
 
 - **WHEN** the viewport is wider than the reading column
@@ -376,6 +386,12 @@ applied to the shared page region, so that scenes relying on normal block flow a
 - **WHEN** enough entries accumulate to exceed the panel's height
 - **THEN** the panel scrolls internally
 - **AND** the page itself does not grow to accommodate the log
+- **AND** an arriving line is scrolled into view
+
+#### Scenario: Content reflows after a line has been handled
+
+- **WHEN** the column's height changes without an entry arriving, such as a line rewrapping
+- **THEN** a viewer who was following the newest line is returned to it
 
 ### Requirement: Place captions SHALL be mirrored inline for the story scene
 

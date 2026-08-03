@@ -200,3 +200,20 @@
 - [x] 11.3 Keep the geometry log as a runtime contract check, since the shared-canvas
       assumption the framing depends on cannot be asserted at build time.
 - [x] 11.4 `cd mod && dotnet build`, `cd frontend && npm test` and `npm run check` pass.
+
+## 12. Auto-scroll fix
+
+- [x] 12.1 Give the shell a definite height on the story scene (`app--fill`). The previous pass
+      made `main` a flex column and the panel `flex: 1`, but `.app` is bounded by
+      `min-height: 100dvh`, so the shell still grew with its content and every flex child grew
+      with it. The scroller was therefore never bounded, never scrolled, and `scrollTop` was a
+      silent no-op — the same root cause as before, fixed one level too low.
+- [x] 12.2 Re-stick on content height changes via a `ResizeObserver` on the column, so a
+      rewrapped line or a late-loading font cannot leave the newest line below the fold after
+      the entry watcher has already run.
+- [x] 12.3 Set `overflow-anchor: none` on the scroller. Anchoring holds the view on an existing
+      node when content is appended, which is the opposite of following the newest line; the
+      earlier `auto` was both inert (it is the default) and wrongly commented as helping.
+- [x] 12.4 Re-stick when the overlay is expanded, so it lands on the newest line rather than
+      wherever collapsing left the scroll position.
+- [x] 12.5 `cd frontend && npm test` and `npm run check` pass; `cd mod && dotnet build` passes.

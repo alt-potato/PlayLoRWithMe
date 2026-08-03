@@ -29,6 +29,7 @@ const props = withDefaults(
 
 const collapsed = ref(false);
 const scrollEl = ref<HTMLElement | null>(null);
+const innerEl = ref<HTMLElement | null>(null);
 
 // Whether the reader is following the newest line. Tracked as state updated on
 // scroll rather than measured when a line arrives, because by then the DOM has
@@ -54,15 +55,43 @@ function onPortraitError(entry: StoryLogEntry) {
   if (entry.portrait) failedPortraits.value.add(entry.portrait);
 }
 
+function stickToBottom() {
+  const el = scrollEl.value;
+  if (el) el.scrollTop = el.scrollHeight;
+}
+
 watch(
   () => props.entries.length,
   async () => {
     if (!pinned.value || collapsed.value) return;
     await nextTick();
-    const el = scrollEl.value;
-    if (el) el.scrollTop = el.scrollHeight;
+    stickToBottom();
   },
 );
+
+// Expanding again should land on the newest line, not wherever the collapse left
+// the scroll position.
+watch(collapsed, async (isCollapsed) => {
+  if (isCollapsed || !pinned.value) return;
+  await nextTick();
+  stickToBottom();
+});
+
+// Re-stick on any height change of the column, not only on a new entry. A line
+// that rewraps, a late-loading web font, or a portrait settling all grow the
+// content after the entry watcher has already run, which would otherwise leave
+// the newest line sitting just below the fold.
+let contentObserver: ResizeObserver | null = null;
+
+onMounted(() => {
+  if (typeof ResizeObserver === "undefined" || !innerEl.value) return;
+  contentObserver = new ResizeObserver(() => {
+    if (pinned.value && !collapsed.value) stickToBottom();
+  });
+  contentObserver.observe(innerEl.value);
+});
+
+onBeforeUnmount(() => contentObserver?.disconnect());
 </script>
 
 <template>
@@ -79,7 +108,7 @@ watch(
       column inside it is what bounds the reading measure.
     -->
     <div v-show="!collapsed" ref="scrollEl" class="slog-scroll" @scroll.passive="onScroll">
-      <div class="slog-inner">
+      <div ref="innerEl" class="slog-inner">
         <article
           v-for="(entry, index) in entries"
           :key="index"
@@ -237,9 +266,10 @@ watch(
   overflow-y: auto;
   min-height: 0;
   padding: var(--sp-3);
-  /* Keeps the newest line in view as content grows, so the viewport stays stuck
-     to the bottom without fighting the JS auto-scroll. */
-  overflow-anchor: auto;
+  /* Scroll anchoring holds the view on an existing node when content is appended,
+     which is the opposite of sticking to the bottom. Position is managed here
+     instead, so the browser's own adjustment is switched off. */
+  overflow-anchor: none;
 }
 
 /* The reading column. Centred inside the full-width scroller, which is what puts

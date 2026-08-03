@@ -173,7 +173,7 @@ const connPanelOpen = ref(false);
 </script>
 
 <template>
-  <div class="app">
+  <div class="app" :class="{ 'app--fill': showStoryLog }">
     <header class="topbar">
       <div class="topbar-left">
         <span class="brand-mark" aria-hidden="true" />
@@ -635,6 +635,15 @@ body {
   min-height: 100dvh;
   padding: var(--sp-2);
   gap: var(--sp-2);
+}
+
+/* Pins the shell to exactly one viewport so a scene using `main--fill` gets a
+   definite height to divide up. `min-height` alone is not enough: the shell would
+   still grow with its content, `main`'s flex:1 would grow with it, and a scene
+   asking to fill would never actually be bounded — its own scroller would never
+   scroll and the page would scroll instead. */
+.app--fill {
+  height: 100dvh;
 }
 
 /* ── Top ribbon ──

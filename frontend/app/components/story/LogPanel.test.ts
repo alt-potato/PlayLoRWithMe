@@ -176,6 +176,18 @@ describe("LogPanel rendering rules", () => {
     );
   });
 
+  it("re-sticks on content height changes, not only on a new entry", () => {
+    // A rewrapped line or a late web font grows the column after the entry
+    // watcher has run, leaving the newest line below the fold.
+    expect(source).toMatch(/new ResizeObserver/);
+    expect(source).toMatch(/contentObserver\?\.disconnect\(\)/);
+  });
+
+  it("disables scroll anchoring, which would hold the view against the stick", () => {
+    const scroll = source.match(/\.slog-scroll \{[\s\S]*?\n\}/);
+    expect(scroll![0]).toMatch(/overflow-anchor:\s*none/);
+  });
+
   it("keeps the battle overlay opaque, since a cutscene blocks combat input", () => {
     const overlay = source.match(/\.slog--overlay \{[\s\S]*?\n\}/);
     expect(overlay, "expected a .slog--overlay style block").not.toBeNull();
