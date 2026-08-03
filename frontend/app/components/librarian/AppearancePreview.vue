@@ -39,6 +39,7 @@ import type { Ref } from "vue";
 import type { AppearanceData, FashionBook, GiftSlot } from "~/types/game";
 import { ASSETS_READY } from "~/composables/useAssetsReady";
 import { FACE_CANVAS_DIMS } from "~/composables/useFaceCanvasDims";
+import { useSpriteLayer } from "~/composables/useSpriteLayer";
 import {
   computeFaceRotStyle,
   computeFashionBodyHeightCss,
@@ -229,8 +230,11 @@ const fashionBodyUrl = computed(() =>
     ? `/assets/fashionbodies/${fashionFileStem.value}${fashionVariantSuffix.value}.png`
     : null,
 );
+// See useSpriteLayer.ts: the failed flag resets whenever fashionBodyUrl itself
+// changes (file stem or variant), instead of a hand-listed watch per ingredient.
+const { failed: fashionBodyFailed, markFailed: markFashionBodyFailed } =
+  useSpriteLayer(fashionBodyUrl);
 
-const fashionBodyFailed = ref(false);
 /**
  * Pixel dimensions of the fashion body PNG, supplied by the server in
  * `FashionBook.bodyW/bodyH`.  Derived synchronously from props so the
@@ -245,13 +249,6 @@ const fashionBodyDims = computed<{ w: number; h: number } | null>(() => {
   if (!fb || !fb.bodyW || !fb.bodyH) return null;
   return { w: fb.bodyW, h: fb.bodyH };
 });
-watch(fashionFileStem, () => {
-  fashionBodyFailed.value = false;
-});
-// also reset when variant changes (different PNG)
-watch(fashionVariantSuffix, () => {
-  fashionBodyFailed.value = false;
-});
 
 /**
  * URL of the fashion front-layer composite PNG (in front of face), or null when
@@ -262,11 +259,8 @@ const fashionFrontUrl = computed(() =>
     ? `/assets/fashionbodies_front/${fashionFileStem.value}${fashionVariantSuffix.value}.png`
     : null,
 );
-
-const fashionFrontFailed = ref(false);
-watch(fashionFileStem, () => {
-  fashionFrontFailed.value = false;
-});
+const { failed: fashionFrontFailed, markFailed: markFashionFrontFailed } =
+  useSpriteLayer(fashionFrontUrl);
 
 /**
  * URL of the fashion skin-layer composite PNG — exposed body areas (neck, collarbone)
@@ -279,14 +273,8 @@ const fashionSkinUrl = computed(() =>
     ? `/assets/fashionbodies/${fashionFileStem.value}${fashionVariantSuffix.value}_skin.png`
     : null,
 );
-
-const fashionSkinFailed = ref(false);
-watch(fashionFileStem, () => {
-  fashionSkinFailed.value = false;
-});
-watch(fashionVariantSuffix, () => {
-  fashionSkinFailed.value = false;
-});
+const { failed: fashionSkinFailed, markFailed: markFashionSkinFailed } =
+  useSpriteLayer(fashionSkinUrl);
 
 /**
  * Patron librarians have two composite PNGs extracted from their
@@ -304,16 +292,10 @@ const patronRearUrl = computed(() =>
     ? `${BASE}head_special_${props.appearance.patronHeadId}_rear.png`
     : null,
 );
-
-const patronFrontFailed = ref(false);
-const patronRearFailed = ref(false);
-watch(
-  () => props.appearance.patronHeadId,
-  () => {
-    patronFrontFailed.value = false;
-    patronRearFailed.value = false;
-  },
-);
+const { failed: patronFrontFailed, markFailed: markPatronFrontFailed } =
+  useSpriteLayer(patronFrontUrl);
+const { failed: patronRearFailed, markFailed: markPatronRearFailed } =
+  useSpriteLayer(patronRearUrl);
 
 /**
  * Whether the fashion book replaces the entire head model.
@@ -479,7 +461,7 @@ const visibleGifts = computed(() => {
         alt=""
         loading="lazy"
         decoding="async"
-        @error="patronRearFailed = true"
+        @error="markPatronRearFailed()"
       />
 
       <!--
@@ -506,7 +488,7 @@ const visibleGifts = computed(() => {
         alt=""
         loading="lazy"
         decoding="async"
-        @error="fashionSkinFailed = true"
+        @error="markFashionSkinFailed()"
       />
 
       <!--
@@ -533,7 +515,7 @@ const visibleGifts = computed(() => {
         alt=""
         loading="lazy"
         decoding="async"
-        @error="fashionBodyFailed = true"
+        @error="markFashionBodyFailed()"
       />
 
       <!--
@@ -552,7 +534,7 @@ const visibleGifts = computed(() => {
         alt=""
         loading="lazy"
         decoding="async"
-        @error="patronFrontFailed = true"
+        @error="markPatronFrontFailed()"
       />
 
       <!--
@@ -600,7 +582,7 @@ const visibleGifts = computed(() => {
         alt=""
         loading="lazy"
         decoding="async"
-        @error="fashionFrontFailed = true"
+        @error="markFashionFrontFailed()"
       />
 
       <!--
