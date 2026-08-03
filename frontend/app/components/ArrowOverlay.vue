@@ -257,7 +257,7 @@ function visible(a: Arrow): boolean {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 50;
+  z-index: var(--z-arrows);
   /* arrowheads at a die's very edge may poke past the stage bounds */
   overflow: visible;
 }

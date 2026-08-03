@@ -376,8 +376,8 @@ const isBusy = computed(() => props.busy || saveBusy.value);
 .customize-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  z-index: 300;
+  background: var(--bg-scrim);
+  z-index: var(--z-modal-nested);
   display: flex;
   align-items: flex-end;
   justify-content: center;

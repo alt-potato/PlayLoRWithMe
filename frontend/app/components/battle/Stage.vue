@@ -442,7 +442,7 @@ provide(BATTLE_CTX, {
   border-top: 2px solid var(--gold-dim);
   font-size: var(--fs-3xs);
   font-family: var(--font-body);
-  z-index: 99;
+  z-index: var(--z-banner);
 }
 .targeting-card {
   color: var(--gold-bright);

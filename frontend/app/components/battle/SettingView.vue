@@ -754,7 +754,7 @@ async function onConfirm() {
 }
 
 .claim-btn:hover {
-  background: rgba(201, 162, 39, 0.12);
+  background: var(--gold-a12);
   border-color: var(--gold);
 }
 

@@ -363,8 +363,8 @@ const connPanelOpen = ref(false);
   --border-mid: #323944;
   --border-hi: #475060;
   /* faint gold hairline for ornamental dividers */
-  --border-gold: rgba(201, 162, 39, 0.28);
-  --border-gold-hi: rgba(232, 194, 71, 0.5);
+  --border-gold: var(--gold-a28);
+  --border-gold-hi: var(--gold-bright-a50);
   /* solid buff borders for status-chip outlines */
   --border-gold-buff: #4a2800;
   --border-crimson-buff: #5c1a1a;
@@ -374,12 +374,31 @@ const connPanelOpen = ref(false);
   --gold-dim: #7a6118;
   --gold-bright: #e8c247;
   --gold-ink: #2a2210;
-  --gold-glow: rgba(201, 162, 39, 0.15);
+  --gold-glow: var(--gold-a15);
+
+  /* Alpha variants of --gold (and --gold-bright), named by opacity so every
+     hand-tinted gold wash in the app (hover fills, glows, selection rings)
+     reads from one place instead of each component restating the r,g,b
+     channels itself. Declared once here; every consumer below and across
+     components references these instead of a literal rgba(201, 162, 39, …). */
+  --gold-a03: rgba(201, 162, 39, 0.03);
+  --gold-a08: rgba(201, 162, 39, 0.08);
+  --gold-a12: rgba(201, 162, 39, 0.12);
+  --gold-a15: rgba(201, 162, 39, 0.15);
+  --gold-a18: rgba(201, 162, 39, 0.18);
+  --gold-a25: rgba(201, 162, 39, 0.25);
+  --gold-a28: rgba(201, 162, 39, 0.28);
+  --gold-bright-a50: rgba(232, 194, 71, 0.5);
 
   /* ── Combat red ── */
   --crimson: #8b1a1a;
   --crimson-hi: #c62828;
   --crimson-dim: #3d0a0a;
+
+  /* Alpha variants of --crimson-hi, same rationale as the gold family above. */
+  --crimson-hi-a08: rgba(198, 40, 40, 0.08);
+  --crimson-hi-a12: rgba(198, 40, 40, 0.12);
+  --crimson-hi-a18: rgba(198, 40, 40, 0.18);
 
   /* Deeper crimson surface for ego-tag and error-banner backgrounds */
   --bg-crimson-deep: #1a0505;
@@ -404,7 +423,11 @@ const connPanelOpen = ref(false);
   --bg-green: #0a1a0a;
   --bg-green-2: #0c1e0c;
   --bg-green-3: #102010;
+  /* one-off alpha variant — conn-panel's "connected" status dot glow */
+  --green-a15: rgba(76, 175, 80, 0.15);
   --amber: #f0a020;
+  /* one-off alpha variant — conn-panel's "connecting" status dot glow */
+  --amber-a18: rgba(240, 160, 32, 0.18);
   --red-hi: #e53935;
   --text-red: #ef9a9a;
   --orange: #ff9800;
@@ -497,9 +520,25 @@ const connPanelOpen = ref(false);
   --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.4);
   --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.55);
   --shadow-lg: 0 6px 24px rgba(0, 0, 0, 0.65);
-  --shadow-gold: 0 0 0 1px rgba(201, 162, 39, 0.18),
-    0 0 18px rgba(201, 162, 39, 0.08);
+  --shadow-gold: 0 0 0 1px var(--gold-a18),
+    0 0 18px var(--gold-a08);
   --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+  /* ── Backdrop scrims ──
+     Full-viewport dimming layers behind sheets/modals. --bg-scrim is the
+     shared "dim the page behind a modal" role; three components (EditPanel,
+     CustomizePanel, EmotionUpgradePicker) previously hand-typed near-duplicate
+     values (0.6 / 0.7 / 0.78) for this exact role — collapsed to one value
+     here since the drift was unintentional. --bg-scrim-cool keeps its own
+     tint (rgb(2, 3, 12) rather than pure black) because CardDetail and
+     TargetPicker already agreed on it exactly — a deliberate cooler backdrop
+     for the mobile bottom-sheet pickers, not drift. --bg-hud is unrelated to
+     the modal-dimming role: it is the dev DiagnosticPanel's own translucent
+     panel fill (not a full-page dim), kept as a distinct value so tokenizing
+     it does not change its contrast. */
+  --bg-scrim: rgba(0, 0, 0, 0.7);
+  --bg-scrim-cool: rgba(2, 3, 12, 0.7);
+  --bg-hud: rgba(0, 0, 0, 0.85);
 
   /* ── Motion ── */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -544,6 +583,32 @@ const connPanelOpen = ref(false);
 
   /* Broken die inner hex fill (distinct from --crimson-dim outer) */
   --bg-broken: #230808;
+
+  /* ── Z-index scale ──
+     Named layers instead of raw numbers, ordered low to high, so stacking
+     intent lives in one place rather than in 17 separate component-local
+     literals. A token later in this list always renders above one earlier
+     in it.
+
+     --z-modal and --z-modal-battle are deliberately different values even
+     though both are full-viewport blocking overlays: EditPanel (library
+     scene) and EmotionUpgradePicker (battle scene) can never be open at the
+     same time, so they never actually compete for a layer, but reusing the
+     same number by coincidence would leave the next reader unable to tell
+     that apart from an unresolved collision. --z-modal-battle sits below
+     --z-modal-nested on purpose — nothing in the battle scene needs to
+     stack above a nested librarian modal, so the scale stays monotonic. */
+  --z-raised: 5;             /* content lifted above its immediate siblings — cutscene log overlay (story/LogPanel), per-die rejection flash (unit/DieRow) */
+  --z-tooltip: 10;           /* floating detail popover anchored to inline content (buff-expanded tooltip, unit/DisplayCard) */
+  --z-hover-lift: 20;        /* hovered hand card lifted above later siblings so its detail pane paints on top (HandCard) */
+  --z-arrows: 50;            /* targeting-arrow SVG overlay above the battle stage (ArrowOverlay) */
+  --z-banner: 99;            /* fixed bottom targeting banner — above the stage, below the topbar (battle/Stage.vue) */
+  --z-overlay: 100;          /* topbar popovers and mobile bottom-sheet backdrops (app.vue conn-panel, SessionPanel, CardDetail, TargetPicker) */
+  --z-overlay-surface: 101;  /* sheet surface stacked directly above --z-overlay's backdrop (CardDetail, TargetPicker) */
+  --z-modal: 200;            /* full-viewport librarian modal (librarian/EditPanel) */
+  --z-modal-battle: 250;     /* full-viewport battle overlay (EmotionUpgradePicker) — see rationale above */
+  --z-modal-nested: 300;     /* nested modal stacked above --z-modal (librarian/CustomizePanel, opened from EditPanel) */
+  --z-dev: 9999;             /* dev-only tooling, always on top (dev/DevFixturePicker, dev/DiagnosticPanel) */
 }
 
 *,
@@ -572,7 +637,7 @@ body {
   background-image:
     radial-gradient(
       ellipse 80% 60% at 50% 0%,
-      rgba(201, 162, 39, 0.03),
+      var(--gold-a03),
       transparent 70%
     );
   background-attachment: fixed;
@@ -810,7 +875,7 @@ main.main--fill {
   /* inset box-shadow for the faux-border so adding it does not shift
      interior content (border would, even with box-sizing: border-box). */
   box-shadow: inset 0 0 0 1px var(--border), var(--shadow-md);
-  z-index: 100;
+  z-index: var(--z-overlay);
 }
 
 .conn-label {
@@ -844,15 +909,15 @@ main.main--fill {
 }
 .conn-panel.connecting .conn-dot {
   background: var(--amber);
-  box-shadow: 0 0 0 2px rgba(240, 160, 32, 0.18);
+  box-shadow: 0 0 0 2px var(--amber-a18);
 }
 .conn-panel.connected .conn-dot {
   background: var(--green);
-  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.15);
+  box-shadow: 0 0 0 2px var(--green-a15);
 }
 .conn-panel.disconnected .conn-dot {
   background: var(--crimson-hi);
-  box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.18);
+  box-shadow: 0 0 0 2px var(--crimson-hi-a18);
 }
 /* ── Responsive: tighter on small screens ── */
 @media (max-width: 600px) {

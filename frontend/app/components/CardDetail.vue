@@ -105,8 +105,8 @@ const sheetStyle = computed(() =>
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(2, 3, 12, 0.7);
-  z-index: 100;
+  background: var(--bg-scrim-cool);
+  z-index: var(--z-overlay);
 }
 
 .detail-sheet {
@@ -119,7 +119,7 @@ const sheetStyle = computed(() =>
   background: var(--bg-surface);
   border-top: 3px solid var(--gold-dim);
   border-radius: 10px 10px 0 0;
-  z-index: 101;
+  z-index: var(--z-overlay-surface);
   padding-bottom: env(safe-area-inset-bottom, 0);
   /* Reset inherited text-align so the sheet is always left-aligned regardless
      of where in the DOM it is rendered (e.g. inside a right-aligned ally card). */

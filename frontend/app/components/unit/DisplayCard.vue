@@ -541,7 +541,7 @@ const detailsLabel = computed(() => {
   width: max-content;
   max-width: 16rem;
   position: absolute;
-  z-index: 10;
+  z-index: var(--z-tooltip);
 }
 .buff-expanded-icon {
   width: 2rem;

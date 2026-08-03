@@ -244,7 +244,7 @@ const hasBodyTypeToggle = computed(
 .type-btn.active {
   border-color: var(--gold);
   color: var(--gold);
-  background: rgba(201, 162, 39, 0.08);
+  background: var(--gold-a08);
 }
 
 .type-btn:disabled {
@@ -338,7 +338,7 @@ const hasBodyTypeToggle = computed(
 .ftoggle-btn.active {
   border-color: var(--gold);
   color: var(--gold);
-  background: rgba(201, 162, 39, 0.08);
+  background: var(--gold-a08);
 }
 
 .fashion-list {
@@ -382,7 +382,7 @@ const hasBodyTypeToggle = computed(
 .fashion-item.active {
   border-color: var(--gold);
   color: var(--gold);
-  background: rgba(201, 162, 39, 0.08);
+  background: var(--gold-a08);
 }
 
 .fashion-item:disabled {

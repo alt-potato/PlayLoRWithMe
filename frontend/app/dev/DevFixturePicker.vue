@@ -77,7 +77,7 @@ function close() {
   position: fixed;
   bottom: 1rem;
   right: 1rem;
-  z-index: 9999;
+  z-index: var(--z-dev, 9999);
   min-width: 180px;
   background: var(--bg-card, #0e1217);
   border: 1px solid var(--border-gold, rgba(201, 162, 39, 0.4));

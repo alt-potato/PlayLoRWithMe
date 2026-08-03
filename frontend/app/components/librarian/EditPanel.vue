@@ -273,7 +273,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
     </div>
   </Teleport>
 
-  <!-- Customize overlay — stacks above EditPanel (z-index: 300) -->
+  <!-- Customize overlay — stacks above EditPanel: --z-modal-nested sits above --z-modal (see app.vue :root) -->
   <LazyLibrarianCustomizePanel
     v-if="showCustomize"
     :lib="lib"
@@ -291,8 +291,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
 .edit-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  z-index: 200;
+  background: var(--bg-scrim);
+  z-index: var(--z-modal);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -349,7 +349,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
 .lock-badge {
   font-size: var(--fs-3xs);
   color: var(--crimson-hi);
-  background: rgba(198, 40, 40, 0.12);
+  background: var(--crimson-hi-a12);
   border-radius: var(--radius-md);
   padding: var(--sp-1) var(--sp-2);
 }
@@ -410,7 +410,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
   padding: var(--sp-2) var(--sp-4);
   font-size: var(--fs-xs);
   color: var(--crimson-hi);
-  background: rgba(198, 40, 40, 0.08);
+  background: var(--crimson-hi-a08);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }

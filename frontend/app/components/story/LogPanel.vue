@@ -221,7 +221,7 @@ onBeforeUnmount(() => contentObserver?.disconnect());
 .slog--overlay {
   position: absolute;
   inset: 0 0 auto 0;
-  z-index: 5;
+  z-index: var(--z-raised);
   max-height: 60%;
   /* Fully opaque: a cutscene blocks combat input, so there is nothing useful to
      read through the panel. Collapsing it is the way to see the stage. */

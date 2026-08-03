@@ -112,8 +112,8 @@ function dieState(
 .backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(2, 3, 12, 0.7);
-  z-index: 100;
+  background: var(--bg-scrim-cool);
+  z-index: var(--z-overlay);
 }
 
 .sheet {
@@ -126,7 +126,7 @@ function dieState(
   background: var(--bg-surface);
   border-top: 2px solid var(--gold-dim);
   border-radius: 10px 10px 0 0;
-  z-index: 101;
+  z-index: var(--z-overlay-surface);
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 

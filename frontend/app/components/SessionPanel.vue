@@ -286,7 +286,7 @@ const unclaimedCount = computed(
   position: absolute;
   top: calc(100% + 0.35rem);
   right: 0;
-  z-index: 100;
+  z-index: var(--z-overlay);
   min-width: 16rem;
   background: var(--bg-card);
   border: 1px solid var(--border-mid);
@@ -466,7 +466,7 @@ const unclaimedCount = computed(
 }
 
 .action-btn:hover {
-  background: rgba(201, 162, 39, 0.12);
+  background: var(--gold-a12);
   border-color: var(--gold);
 }
 
