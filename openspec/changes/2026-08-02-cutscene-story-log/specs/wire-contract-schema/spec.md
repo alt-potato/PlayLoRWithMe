@@ -18,6 +18,8 @@
   dialogue row
 - `choiceIsRed: z.optional(z.boolean())` — the accent colour for a choice row; meaningful only
   when `isChoice` is true
+- `isPlace: z.optional(z.boolean())` — marks a place caption recording a change of location.
+  Mutually exclusive with `isChoice`, and carries no `teller`, `title`, or `portrait`
 
 The field MUST be optional at the `GameState` level so that every payload outside a cutscene
 continues to parse unchanged. The C# serializer MUST emit `storyLog` only when the log is
@@ -41,6 +43,13 @@ growth.
   `{content: "Forgive", isChoice: true, choiceIsRed: false}`
 - **THEN** the parse succeeds
 - **AND** `teller`, `title`, and `portrait` are `undefined`
+
+#### Scenario: Schema parses a payload with a place caption
+
+- **WHEN** `GameStateSchema` parses a payload whose `storyLog` contains
+  `{content: "The Library", isPlace: true}`
+- **THEN** the parse succeeds
+- **AND** `teller`, `title`, `portrait`, and `isChoice` are `undefined`
 
 #### Scenario: Schema parses a payload outside a cutscene
 

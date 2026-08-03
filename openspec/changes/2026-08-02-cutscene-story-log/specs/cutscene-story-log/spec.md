@@ -190,13 +190,30 @@ Title and speaker MUST share the same display typeface, differing in size only. 
 composes the whole name line from one string and varies the size tag alone, so a differing
 typeface would not mirror it.
 
-Dialogue text MUST render in the same serif display face as the name line. The game renders
-story text in a serif and swaps only the localized font, never to a sans face.
+Dialogue text, speaker names, and titles MUST all render in a reading serif rather than the
+UI's display face. The game renders story text in a serif and swaps only the localized font,
+never to a sans face — but the display face is Trajan-derived, so its lowercase reads as small
+capitals, which suits short headings and misrepresents both dialogue and character names.
+
+The name line MUST be a reserved row rather than a conditional one. Rows that render no name
+into it — monologue rows — MUST still occupy it, so their content sits at the same height as
+every other row's, as the in-game layout does.
+
+The name line MUST carry a visual separator in the interface's gold accent. The base game
+tabs a trapezoid into the top of the portrait hexagon and runs it the length of the name; that
+shape depends on the name plate abutting the portrait, which does not hold here because the
+name occupies its own column, so an equivalent gold rule MAY be substituted.
+
+Dialogue MUST additionally be bounded to a comfortable reading measure, independent of the
+panel's own width cap. The cap alone does not deliver one: it sits near a typical laptop
+viewport, so lines still run the full width of the screen. Long unbroken runs MUST wrap rather
+than force horizontal scrolling.
 
 Portraits MUST be framed in a pointy-top hexagon, matching how the in-game log crops them. The
 frame MUST be built from two clipped layers rather than a CSS border, because a clip path cuts
-a real border away; the outer layer's fill stands in as the outline. The frame MUST be sized on
-both axes, since a pointy-top hexagon is taller than it is wide.
+a real border away; the outer layer's fill stands in as the outline. That outline MUST use the
+interface's gold accent, matching the base game. The frame MUST be sized on both axes, since a
+pointy-top hexagon is taller than it is wide.
 
 The crop MUST be biased toward the speaker's face rather than fitting the whole bust. Portrait
 art is a head-and-shoulders bust whose face centres at roughly a third of the image height, so
@@ -225,8 +242,20 @@ NOT reserve a frame — vanilla renders them through a separate slot that has no
 #### Scenario: A speaker has both a title and a name
 
 - **WHEN** an entry carries both `title` and `teller`
-- **THEN** both render in the display typeface
+- **THEN** both render in the same reading serif
 - **AND** the title renders smaller and ahead of the name
+- **AND** the name line carries a gold separator rule
+
+#### Scenario: A monologue row sits among speaker rows
+
+- **WHEN** a monologue entry renders between two rows that have speakers
+- **THEN** its name line is still occupied, rendering no name text
+- **AND** its content sits at the same height as the surrounding rows' content
+
+#### Scenario: A long passage is rendered on a wide display
+
+- **WHEN** an entry's content is long enough to exceed a comfortable line length
+- **THEN** the text wraps at the reading measure rather than at the panel's width cap
 
 #### Scenario: A portrait is rendered
 
@@ -270,6 +299,11 @@ entry as lines arrive. Auto-scroll MUST be suppressed while the viewer has scrol
 the bottom, so that reading back through earlier dialogue is not interrupted by the host
 advancing — the case this feature exists to serve.
 
+The panel MUST scroll within itself rather than growing the page. Auto-scroll depends on it: an
+element that is not itself scrolling silently ignores a scroll position being set, so an
+unbounded panel would let the page scroll instead and the newest line would never be brought
+into view.
+
 #### Scenario: The panel is viewed on a wide display
 
 - **WHEN** the viewport is wider than the game's normal dialogue box
@@ -290,3 +324,54 @@ advancing — the case this feature exists to serve.
 
 - **WHEN** the viewer has scrolled up and a new entry arrives
 - **THEN** the scroll position is left unchanged
+
+#### Scenario: The log grows past the available height
+
+- **WHEN** enough entries accumulate to exceed the panel's height
+- **THEN** the panel scrolls internally
+- **AND** the page itself does not grow to accommodate the log
+
+### Requirement: Place captions SHALL be mirrored inline for the story scene
+
+The mod MUST capture the story scene's current location and emit it as an entry flagged
+`isPlace`, inserted inline so that a change of location lands between the lines it separates
+rather than being reported out of sequence. The story scene displays this location above the
+dialogue, and it can change partway through an episode.
+
+A caption MUST be emitted only when the location differs from the last one emitted. The game
+holds the current location in a label that every line reads back identically, so an unguarded
+capture would emit a caption per line. The record of the last emitted location MUST be reset
+whenever the log is cleared, or the first caption of a new episode would be suppressed as a
+duplicate of the previous episode's last.
+
+Capture MUST be restricted to the standalone story scene. A mid-battle cutscene drives a
+different `StoryManager` whose location label is never populated, so reading it could surface a
+stale location during combat. Blank locations MUST NOT produce an entry.
+
+Place captions are interstitials: they MUST NOT reserve a portrait frame or a name row, and
+MUST render distinctly from both spoken lines and choice outcomes.
+
+#### Scenario: An episode opens at a location
+
+- **WHEN** the first line of an episode is captured and a location is set
+- **THEN** a `isPlace` entry carrying that location precedes the line
+
+#### Scenario: The location changes mid-episode
+
+- **WHEN** a later line is captured after the location has changed
+- **THEN** a new `isPlace` entry is inserted immediately before that line
+
+#### Scenario: The location is unchanged between lines
+
+- **WHEN** successive lines are captured with the location unchanged
+- **THEN** no further `isPlace` entry is emitted
+
+#### Scenario: A new episode reopens at the same location
+
+- **WHEN** the log is cleared and a line is captured at the location the previous episode ended at
+- **THEN** a `isPlace` entry is emitted for it
+
+#### Scenario: A mid-battle cutscene runs
+
+- **WHEN** dialogue is captured from a cutscene driven by `BattleStoryUI`
+- **THEN** no `isPlace` entry is emitted

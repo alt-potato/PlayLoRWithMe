@@ -6,7 +6,10 @@ import {
   PORTRAIT_BASE_PATH,
   isChoiceEntry,
   isPinnedToBottom,
+  isPlaceEntry,
+  isSpokenEntry,
   portraitUrl,
+  reservesNameRow,
   showsPortraitFrame,
   showsSpeaker,
 } from "./storyLog";
@@ -21,6 +24,12 @@ const choice = (over: Partial<StoryLogEntry> = {}): StoryLogEntry => ({
   content: "Forgive",
   isChoice: true,
   choiceIsRed: false,
+  ...over,
+});
+
+const place = (over: Partial<StoryLogEntry> = {}): StoryLogEntry => ({
+  content: "The Library",
+  isPlace: true,
   ...over,
 });
 
@@ -41,15 +50,47 @@ describe("showsSpeaker", () => {
     expect(showsSpeaker(spoken({ teller: MONOLOGUE_TELLER }))).toBe(false);
   });
 
-  it("suppresses the name for choice rows", () => {
+  it("suppresses the name for interstitial rows", () => {
     expect(showsSpeaker(choice())).toBe(false);
-    // Even if a teller somehow rides along on a choice row.
+    expect(showsSpeaker(place())).toBe(false);
+    // Even if a teller somehow rides along on an interstitial row.
     expect(showsSpeaker(choice({ teller: "Roland" }))).toBe(false);
+    expect(showsSpeaker(place({ teller: "Roland" }))).toBe(false);
   });
 
   it("suppresses the name when the teller is absent or empty", () => {
     expect(showsSpeaker({ content: "x" })).toBe(false);
     expect(showsSpeaker(spoken({ teller: "" }))).toBe(false);
+  });
+});
+
+describe("isPlaceEntry / isSpokenEntry", () => {
+  it("classifies the three row kinds as mutually exclusive", () => {
+    expect(isPlaceEntry(place())).toBe(true);
+    expect(isChoiceEntry(place())).toBe(false);
+    expect(isSpokenEntry(place())).toBe(false);
+
+    expect(isSpokenEntry(spoken())).toBe(true);
+    expect(isPlaceEntry(spoken())).toBe(false);
+    expect(isSpokenEntry(choice())).toBe(false);
+  });
+
+  it("treats a monologue as a spoken row despite having no visible speaker", () => {
+    expect(isSpokenEntry(spoken({ teller: MONOLOGUE_TELLER }))).toBe(true);
+  });
+});
+
+describe("reservesNameRow", () => {
+  it("reserves the row for every spoken line, including monologue", () => {
+    // Monologue renders nothing into the row but must still occupy it, or its
+    // content would sit at a different height than surrounding rows.
+    expect(reservesNameRow(spoken())).toBe(true);
+    expect(reservesNameRow(spoken({ teller: MONOLOGUE_TELLER }))).toBe(true);
+  });
+
+  it("does not reserve it for interstitials", () => {
+    expect(reservesNameRow(choice())).toBe(false);
+    expect(reservesNameRow(place())).toBe(false);
   });
 });
 
@@ -65,8 +106,9 @@ describe("showsPortraitFrame", () => {
     expect(showsPortraitFrame(spoken({ teller: MONOLOGUE_TELLER }))).toBe(true);
   });
 
-  it("omits the frame for choice rows, which vanilla renders through another slot", () => {
+  it("omits the frame for interstitials", () => {
     expect(showsPortraitFrame(choice())).toBe(false);
+    expect(showsPortraitFrame(place())).toBe(false);
   });
 });
 
@@ -82,8 +124,9 @@ describe("portraitUrl", () => {
     expect(portraitUrl(spoken({ portrait: "" }))).toBeNull();
   });
 
-  it("returns null for choice rows", () => {
+  it("returns null for interstitial rows", () => {
     expect(portraitUrl(choice({ portrait: "Roland_3a1f77c2" }))).toBeNull();
+    expect(portraitUrl(place({ portrait: "Roland_3a1f77c2" }))).toBeNull();
   });
 
   it("encodes the slug so a malformed value cannot escape the path segment", () => {

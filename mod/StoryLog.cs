@@ -23,6 +23,9 @@ namespace PlayLoRWithMe
         /// <summary>True for a story-choice outcome row rather than a spoken line.</summary>
         public bool IsChoice;
 
+        /// <summary>True for a place caption marking a change of location mid-episode.</summary>
+        public bool IsPlace;
+
         /// <summary>Accent colour for a choice row. Meaningful only when <see cref="IsChoice"/>.</summary>
         public bool ChoiceIsRed;
     }
@@ -48,6 +51,11 @@ namespace PlayLoRWithMe
         // happen on an HTTP thread serving a newly connected client's full-state hello.
         private static readonly object _gate = new object();
         private static readonly List<StoryLogEntry> _entries = new List<StoryLogEntry>();
+
+        // Last place caption emitted, so a caption is logged only when it actually
+        // changes. The game holds the current place in a label that every line reads
+        // back the same value from, so without this every line would emit one.
+        private static string _lastPlace;
 
         /// <summary>Longest sanitized portion of a portrait slug, before the hash suffix.</summary>
         private const int MaxSlugStemLength = 48;
@@ -95,10 +103,34 @@ namespace PlayLoRWithMe
                 _entries.Add(entry);
         }
 
+        /// <summary>
+        /// Records a change of location, inserted inline so it lands between the lines
+        /// it separates. No-ops when the place is unchanged or blank, which is how the
+        /// caller can pass the current place with every line.
+        /// </summary>
+        internal static void AppendPlace(string placeName)
+        {
+            var name = StripRichText(placeName);
+            if (string.IsNullOrEmpty(name))
+                return;
+            lock (_gate)
+            {
+                if (name == _lastPlace)
+                    return;
+                _lastPlace = name;
+                _entries.Add(new StoryLogEntry { Content = name, IsPlace = true });
+            }
+        }
+
         internal static void Clear()
         {
             lock (_gate)
+            {
                 _entries.Clear();
+                // Must reset with the entries, or the first place of the next episode
+                // would be suppressed as a duplicate of the last one of the previous.
+                _lastPlace = null;
+            }
         }
 
         /// <summary>
@@ -132,6 +164,8 @@ namespace PlayLoRWithMe
                                     o.Add("isChoice", true);
                                     o.Add("choiceIsRed", e.ChoiceIsRed);
                                 }
+                                if (e.IsPlace)
+                                    o.Add("isPlace", true);
                             });
                         }
                     }

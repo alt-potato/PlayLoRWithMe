@@ -217,6 +217,66 @@ namespace PlayLoRWithMe.Tests
         }
 
         [Fact]
+        public void AppendPlace_EmitsAPlaceRow()
+        {
+            StoryLog.AppendPlace("Floor of General Works");
+
+            string json = WriteState();
+
+            Assert.Contains("\"content\":\"Floor of General Works\"", json);
+            Assert.Contains("\"isPlace\":true", json);
+        }
+
+        [Fact]
+        public void AppendPlace_IgnoresRepeatsOfTheCurrentPlace()
+        {
+            // The caller passes the current place with every line, so only an actual
+            // change may produce a row.
+            StoryLog.AppendPlace("The Library");
+            StoryLog.AppendPlace("The Library");
+            StoryLog.AppendPlace("The Library");
+
+            Assert.Equal(1, CountOccurrences(WriteState(), "\"isPlace\":true"));
+        }
+
+        [Fact]
+        public void AppendPlace_EmitsAgainWhenTheLocationChanges()
+        {
+            StoryLog.AppendPlace("The Library");
+            StoryLog.AppendPlace("Backstreets");
+
+            Assert.Equal(2, CountOccurrences(WriteState(), "\"isPlace\":true"));
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        public void AppendPlace_IgnoresBlankPlaces(string place)
+        {
+            StoryLog.AppendPlace(place);
+
+            Assert.True(StoryLog.IsEmpty);
+        }
+
+        [Fact]
+        public void AppendPlace_RepeatsAfterClearSoANewEpisodeStillGetsItsFirstPlace()
+        {
+            StoryLog.AppendPlace("The Library");
+            StoryLog.Clear();
+            StoryLog.AppendPlace("The Library");
+
+            Assert.Contains("\"isPlace\":true", WriteState());
+        }
+
+        [Fact]
+        public void AppendPlace_StripsMarkupLikeSpokenLines()
+        {
+            StoryLog.AppendPlace("<b>The Library</b>");
+
+            Assert.Contains("\"content\":\"The Library\"", WriteState());
+        }
+
+        [Fact]
         public void WriteTo_PreservesAppendOrder()
         {
             StoryLog.Append("A", null, "first", null);
@@ -258,6 +318,14 @@ namespace PlayLoRWithMe.Tests
             Assert.DoesNotContain("\"teller\"", json);
             Assert.DoesNotContain("\"title\"", json);
             Assert.DoesNotContain("\"portrait\"", json);
+        }
+
+        private static int CountOccurrences(string haystack, string needle)
+        {
+            int count = 0;
+            for (int i = haystack.IndexOf(needle); i >= 0; i = haystack.IndexOf(needle, i + 1))
+                count++;
+            return count;
         }
 
         /// <summary>Builds a minimal state object the way the serializer does, for assertion.</summary>

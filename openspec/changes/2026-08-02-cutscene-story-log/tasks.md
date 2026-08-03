@@ -117,3 +117,30 @@
 
 - [x] 7.1 Add `StoryLog.cs` to the mod file table in `CLAUDE.md`, and `story/LogPanel.vue` to the
       frontend table. Note the new `storyLog` field in the wire-format section.
+
+## 8. Second fidelity pass
+
+- [x] 8.1 Reserve the name row for every spoken line so monologue rows keep their content
+      aligned with the rest, instead of collapsing when there is no name to show.
+- [x] 8.2 Recolour the portrait hex outline to the interface gold accent, matching the base game.
+- [x] 8.3 Separate the name line with a gold hairline rule. The base game tabs a trapezoid into
+      the top of the hexagon and runs it the length of the name; that shape depends on the name
+      plate abutting the portrait, which does not hold here since the name has its own column.
+- [x] 8.4 Reduce the portrait zoom — the head read too large inside the frame.
+- [x] 8.5 Bound dialogue to a reading measure (`--story-log-measure`) and allow long unbroken
+      runs to wrap. The 1277px panel cap sits near a typical laptop viewport, so on its own it
+      left lines running the full width of the screen.
+- [x] 8.6 Bound the story-scene scroller (`--story-log-scroll-max-h`) so the panel scrolls
+      internally. Unbounded it grew to fit and the page scrolled instead, which silently broke
+      auto-scroll: setting scrollTop on a non-scrolling element does nothing. Also set
+      `overflow-anchor: auto` so the viewport sticks to the bottom natively.
+- [x] 8.7 Replace the display face with a new `--font-serif` reading serif for dialogue, names,
+      and titles. Cinzel is Trajan-derived and its lowercase reads as small capitals, which
+      suits headings but misrepresents prose and character names. System faces only, so nothing
+      new is downloaded and the app stays usable with no route to a font CDN.
+- [x] 8.8 Mirror the story scene's place caption as an inline `isPlace` entry, emitted only when
+      the location changes and only for the standalone story scene (a mid-battle cutscene drives
+      a different `StoryManager` whose label is never populated). Reset the dedupe record on
+      clear so a new episode still captions its opening location.
+- [x] 8.9 `cd mod && dotnet build` and `cd mod/mod.tests && dotnet test` pass; `cd frontend &&
+      npm test` and `npm run check` pass.

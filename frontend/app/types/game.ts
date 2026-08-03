@@ -972,6 +972,12 @@ export const StoryLogEntrySchema = z.object({
   isChoice: z.optional(z.boolean()),
   /** Accent colour for a choice row. Meaningful only alongside `isChoice`. */
   choiceIsRed: z.optional(z.boolean()),
+  /**
+   * Marks a place caption. The story scene shows the current location above the
+   * dialogue and it can change mid-episode, so captions are logged inline at the
+   * point they change. Battle cutscenes carry no place and never emit these.
+   */
+  isPlace: z.optional(z.boolean()),
 });
 export type StoryLogEntry = z.infer<typeof StoryLogEntrySchema>;
 

@@ -571,6 +571,7 @@
     "story_cutscene": {
       "scene": "story",
       "storyLog": [
+        { "content": "The Library", "isPlace": true },
         {
           "teller": "Roland",
           "title": "Ex-Grade 1 Fixer",

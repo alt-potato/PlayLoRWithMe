@@ -237,6 +237,25 @@ namespace PlayLoRWithMe
             return slug;
         }
 
+        /// <summary>
+        /// Records the story scene's place caption when it has changed since the last
+        /// line, so a mid-episode change of location lands inline between the lines it
+        /// separates.
+        /// </summary>
+        /// <remarks>
+        /// Restricted to the standalone story scene by comparing against
+        /// <c>StoryRoot</c>'s own manager. Only that surface shows a place caption; a
+        /// mid-battle cutscene drives a different <c>StoryManager</c> whose label is
+        /// never populated, and reading it could surface a stale location in combat.
+        /// </remarks>
+        private static void AppendPlaceIfChanged(DialogLogManager log)
+        {
+            var manager = log?.storyManager;
+            if (manager == null || manager != StoryScene.StoryRoot.Instance?.storyManager)
+                return;
+            StoryLog.AppendPlace(manager.txtCurPlace?.text);
+        }
+
         [HarmonyPatch(typeof(DialogLogManager), "Init")]
         static class Patch_DialogLogInit
         {
@@ -249,10 +268,11 @@ namespace PlayLoRWithMe
         [HarmonyPatch(typeof(DialogLogManager), "AddDialog")]
         static class Patch_DialogLogAddDialog
         {
-            static void Postfix(WorkParser.Dialog _dialog)
+            static void Postfix(DialogLogManager __instance, WorkParser.Dialog _dialog)
             {
                 if (_dialog == null)
                     return;
+                AppendPlaceIfChanged(__instance);
                 StoryLog.Append(
                     _dialog.Teller,
                     _dialog.Title,

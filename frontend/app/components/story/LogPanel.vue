@@ -87,6 +87,7 @@ watch(
         :class="{
           'slog-row--choice': isChoiceEntry(entry),
           'slog-row--red': isChoiceEntry(entry) && entry.choiceIsRed,
+          'slog-row--place': isPlaceEntry(entry),
         }"
       >
         <!--
@@ -106,9 +107,16 @@ watch(
           </div>
         </div>
         <div class="slog-body">
-          <p v-if="showsSpeaker(entry)" class="slog-name">
-            <span v-if="entry.title" class="slog-title">{{ entry.title }}</span>
-            <span class="slog-teller">{{ entry.teller }}</span>
+          <!--
+            The name line is a reserved row, not a conditional one: monologue rows
+            render nothing into it but still occupy it, so their content sits at the
+            same height as every other row's, as it does in game.
+          -->
+          <p v-if="reservesNameRow(entry)" class="slog-name">
+            <template v-if="showsSpeaker(entry)">
+              <span v-if="entry.title" class="slog-title">{{ entry.title }}</span>
+              <span class="slog-teller">{{ entry.teller }}</span>
+            </template>
           </p>
           <p class="slog-content">{{ entry.content }}</p>
         </div>
@@ -140,8 +148,19 @@ watch(
      Tuned by eye against the extracted sprites: CharacterDialogLog only assigns
      the sprite, and the game's real framing lives in prefab data that cannot be
      decompiled — so these are approximations, kept as tokens to stay adjustable. */
-  --story-log-portrait-zoom: 1.25;
-  --story-log-portrait-offset-y: 14%;
+  --story-log-portrait-zoom: 1.1;
+  --story-log-portrait-offset-y: 10%;
+
+  /* Comfortable reading measure for the dialogue itself. The panel cap alone does
+     not deliver this: 1277px is near a typical laptop's viewport, so lines still
+     ran the full width of the screen. Bounding the text column is what actually
+     makes long passages readable. */
+  --story-log-measure: 68ch;
+
+  /* Bounds the scroller so it scrolls internally. Without a bound the panel grows
+     to fit its content and the page scrolls instead, which silently breaks
+     auto-scroll — scrollTop on a non-scrolling element does nothing. */
+  --story-log-scroll-max-h: 68dvh;
 
   display: flex;
   flex-direction: column;
@@ -203,6 +222,16 @@ watch(
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
+  /* Keeps the newest line in view as content grows, so the viewport stays stuck
+     to the bottom without fighting the JS auto-scroll. */
+  overflow-anchor: auto;
+}
+
+/* On the story scene the panel is a plain block child with no height to fill, so
+   it needs its own bound to scroll internally rather than growing the page. The
+   overlay variant already gets one from its own max-height. */
+.slog:not(.slog--overlay) .slog-scroll {
+  max-height: var(--story-log-scroll-max-h);
 }
 
 .slog-row {
@@ -222,7 +251,9 @@ watch(
   align-items: center;
   justify-content: center;
   clip-path: var(--hex-pointy);
-  background: var(--border-mid);
+  /* Gold outline, matching the accent the base game uses on the log's hexes and
+     the rest of this UI. */
+  background: var(--gold);
 }
 
 /* Inner layer holds the fill and does the cropping. clip-path applies to the
@@ -251,38 +282,54 @@ watch(
   flex: 1;
 }
 
+/* Reserved row: monologue rows leave it empty but still occupy it, so min-height
+   holds the slot open and keeps content aligned across rows.
+
+   The base game separates this line with a trapezoid tabbed into the top of the
+   hexagon. That shape depends on the name plate abutting the portrait, which it
+   does not here — the name sits in a separate column — so the separator is a gold
+   hairline rule along the line instead, which is the accent language this UI
+   already uses elsewhere. */
 .slog-name {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: var(--sp-2);
-  margin: 0 0 var(--sp-1);
+  margin: 0 0 var(--sp-2);
+  min-height: var(--fs-md);
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--gold-dim);
 }
 
 /* Title before name and smaller, mirroring the in-game log's name line — which
-   composes both from one string, so both share the display face. */
+   composes both from one string, so both share a face and differ only in size.
+   The reading serif rather than the display face: Cinzel's lowercase reads as
+   small caps, which misrepresents character names. */
 .slog-title {
-  font-family: var(--font-display);
-  font-size: var(--fs-4xs);
+  font-family: var(--font-serif);
+  font-size: var(--fs-2xs);
   color: var(--text-3);
-  letter-spacing: 0.03em;
 }
 
 .slog-teller {
-  font-family: var(--font-display);
-  font-size: var(--fs-sm);
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
+  font-weight: 600;
   color: var(--text-1);
-  letter-spacing: 0.03em;
 }
 
 /* Serif, matching the in-game dialogue face — the game renders story text in a
    serif and switches only the localized font, never to a sans. */
 .slog-content {
-  font-family: var(--font-display);
-  font-size: var(--fs-sm);
+  font-family: var(--font-serif);
+  font-size: var(--fs-md);
   color: var(--text-2);
-  line-height: 1.5;
+  line-height: 1.6;
   margin: 0;
+  max-width: var(--story-log-measure);
+  /* Long unbroken runs (URLs, CJK without spaces) must not force a horizontal
+     scrollbar on the row. */
+  overflow-wrap: break-word;
   /* preserve newlines from the game text; incidental whitespace still collapses */
   white-space: pre-line;
 }
@@ -304,6 +351,37 @@ watch(
 
 .slog-row--red .slog-content {
   color: var(--crimson-hi);
+}
+
+/* Place captions mark a change of location mid-episode. Rendered as a centred
+   interstitial rule rather than a row, since they belong between lines rather
+   than to any speaker. */
+.slog-row--place {
+  align-items: center;
+  gap: var(--sp-3);
+  margin: var(--sp-2) 0;
+}
+
+.slog-row--place::before,
+.slog-row--place::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--gold-dim);
+}
+
+.slog-row--place .slog-body {
+  flex: 0 1 auto;
+}
+
+.slog-row--place .slog-content {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  max-width: none;
+  text-align: center;
 }
 
 @media (max-width: 600px) {

@@ -17,15 +17,32 @@ import { resolve } from "path";
 const source = readFileSync(resolve(__dirname, "LogPanel.vue"), "utf-8");
 
 describe("LogPanel rendering rules", () => {
-  it("renders the name line only when showsSpeaker allows it", () => {
-    // Monologue and choice suppression both route through this one helper, so
-    // the template must not reimplement the condition.
+  it("reserves the name row for spoken lines and fills it only when there is a speaker", () => {
+    // Two separate conditions on purpose: the row is reserved for every spoken
+    // line (so monologue content stays aligned with the rest), while the name
+    // text inside it is gated on there being a speaker to show.
+    expect(source).toMatch(/v-if="reservesNameRow\(entry\)"/);
     expect(source).toMatch(/v-if="showsSpeaker\(entry\)"/);
+    const nameRule = source.match(/\.slog-name \{[\s\S]*?\n\}/);
+    expect(nameRule, "expected a .slog-name style block").not.toBeNull();
+    // Without a min-height the reserved row would collapse when empty.
+    expect(nameRule![0]).toMatch(/min-height:/);
+  });
+
+  it("separates the name line with a gold rule", () => {
+    const nameRule = source.match(/\.slog-name \{[\s\S]*?\n\}/);
+    expect(nameRule![0]).toMatch(/border-bottom:[^;]*var\(--gold-dim\)/);
+  });
+
+  it("renders place captions as a centred interstitial, not a speaker row", () => {
+    expect(source).toMatch(/'slog-row--place': isPlaceEntry\(entry\)/);
+    const placeRule = source.match(/\.slog-row--place \{[\s\S]*?\n\}/);
+    expect(placeRule, "expected a .slog-row--place style block").not.toBeNull();
   });
 
   it("orders the name line as title-then-teller, matching the in-game log", () => {
     const nameLine = source.match(
-      /<p v-if="showsSpeaker\(entry\)"[\s\S]*?<\/p>/,
+      /<p v-if="reservesNameRow\(entry\)"[\s\S]*?<\/p>/,
     );
     expect(nameLine, "expected a .slog-name block").not.toBeNull();
     expect(nameLine![0].indexOf("slog-title")).toBeLessThan(
@@ -92,10 +109,32 @@ describe("LogPanel rendering rules", () => {
     expect(frame![0]).toMatch(/overflow:\s*hidden/);
   });
 
-  it("renders dialogue text in the serif display face, as the game does", () => {
+  it("renders dialogue in a reading serif, not the small-caps display face", () => {
+    // Cinzel is Trajan-derived: its lowercase reads as small caps, which is fine
+    // for short headings and wrong for paragraphs of dialogue.
     const contentRule = source.match(/\.slog-content \{[\s\S]*?\n\}/);
     expect(contentRule, "expected a .slog-content style block").not.toBeNull();
-    expect(contentRule![0]).toMatch(/font-family:\s*var\(--font-display\)/);
+    expect(contentRule![0]).toMatch(/font-family:\s*var\(--font-serif\)/);
+    for (const rule of [/\.slog-teller \{[\s\S]*?\n\}/, /\.slog-title \{[\s\S]*?\n\}/]) {
+      expect(source.match(rule)![0]).toMatch(/font-family:\s*var\(--font-serif\)/);
+    }
+  });
+
+  it("bounds the dialogue to a reading measure, not just the panel width", () => {
+    // The 1277px panel cap sits near a typical laptop viewport, so on its own it
+    // left lines running the full width of the screen.
+    const contentRule = source.match(/\.slog-content \{[\s\S]*?\n\}/);
+    expect(contentRule![0]).toMatch(/max-width:\s*var\(--story-log-measure\)/);
+    expect(contentRule![0]).toMatch(/overflow-wrap:\s*break-word/);
+  });
+
+  it("bounds the story-scene scroller so it scrolls internally", () => {
+    // Unbounded, the panel grows to fit and the page scrolls instead — which
+    // silently breaks auto-scroll, since scrollTop does nothing on an element
+    // that is not itself scrolling.
+    expect(source).toMatch(
+      /\.slog:not\(\.slog--overlay\) \.slog-scroll \{[\s\S]*?max-height:\s*var\(--story-log-scroll-max-h\)/,
+    );
   });
 
   it("keeps the battle overlay opaque, since a cutscene blocks combat input", () => {
@@ -105,13 +144,17 @@ describe("LogPanel rendering rules", () => {
     expect(overlay![0]).not.toMatch(/transparent/);
   });
 
-  it("renders the name and the title in the same display face", () => {
+  it("renders the name and the title in the same face, differing only in size", () => {
+    // Vanilla composes both from one string and varies only the size tag, so a
+    // differing typeface would not mirror it. Which face is asserted separately.
     const title = source.match(/\.slog-title \{[\s\S]*?\n\}/);
     const teller = source.match(/\.slog-teller \{[\s\S]*?\n\}/);
     expect(title, "expected a .slog-title style block").not.toBeNull();
     expect(teller, "expected a .slog-teller style block").not.toBeNull();
-    expect(title![0]).toMatch(/font-family:\s*var\(--font-display\)/);
-    expect(teller![0]).toMatch(/font-family:\s*var\(--font-display\)/);
+    const face = (rule: string) => rule.match(/font-family:\s*([^;]+);/)?.[1];
+    expect(face(title![0])).toBe(face(teller![0]));
+    expect(title![0]).toMatch(/font-size:/);
+    expect(teller![0]).toMatch(/font-size:/);
   });
 
   it("exposes a collapse control only in the overlay variant", () => {

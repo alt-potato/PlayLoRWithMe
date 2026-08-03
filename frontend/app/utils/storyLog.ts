@@ -29,14 +29,35 @@ export function isChoiceEntry(entry: StoryLogEntry): boolean {
   return entry.isChoice === true;
 }
 
+/** Whether an entry is a place caption marking a change of location. */
+export function isPlaceEntry(entry: StoryLogEntry): boolean {
+  return entry.isPlace === true;
+}
+
+/**
+ * Whether a row is an ordinary spoken line — the only kind that carries a speaker
+ * and a portrait. Choice outcomes and place captions are both interstitials.
+ */
+export function isSpokenEntry(entry: StoryLogEntry): boolean {
+  return !isChoiceEntry(entry) && !isPlaceEntry(entry);
+}
+
 /**
  * Whether a row reserves its portrait frame. Spoken lines always do, even when the
  * speaker has no portrait asset — the in-game log disables only the image and
  * leaves its hex frame standing, which also keeps rows aligned down the column.
- * Choice rows render through a different slot in vanilla and have no frame.
  */
 export function showsPortraitFrame(entry: StoryLogEntry): boolean {
-  return !isChoiceEntry(entry);
+  return isSpokenEntry(entry);
+}
+
+/**
+ * Whether a row reserves its name line. Every spoken row does, including monologue
+ * rows that render no text into it — the in-game layout keeps the slot, so
+ * collapsing it would make monologue rows sit at a different height than the rest.
+ */
+export function reservesNameRow(entry: StoryLogEntry): boolean {
+  return isSpokenEntry(entry);
 }
 
 /**
@@ -44,7 +65,7 @@ export function showsPortraitFrame(entry: StoryLogEntry): boolean {
  * rows deliberately suppress theirs to match the in-game log.
  */
 export function showsSpeaker(entry: StoryLogEntry): boolean {
-  if (isChoiceEntry(entry)) return false;
+  if (!isSpokenEntry(entry)) return false;
   return !!entry.teller && entry.teller !== MONOLOGUE_TELLER;
 }
 
@@ -54,7 +75,7 @@ export function showsSpeaker(entry: StoryLogEntry): boolean {
  * that a malformed value cannot break out of the path segment.
  */
 export function portraitUrl(entry: StoryLogEntry): string | null {
-  if (isChoiceEntry(entry) || !entry.portrait) return null;
+  if (!isSpokenEntry(entry) || !entry.portrait) return null;
   return `${PORTRAIT_BASE_PATH}${encodeURIComponent(entry.portrait)}.png`;
 }
 

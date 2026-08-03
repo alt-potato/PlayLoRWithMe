@@ -3509,6 +3509,9 @@
               },
               "choiceIsRed": {
                 "type": "boolean"
+              },
+              "isPlace": {
+                "type": "boolean"
               }
             },
             "required": [
@@ -7091,6 +7094,9 @@
                         "type": "boolean"
                       },
                       "choiceIsRed": {
+                        "type": "boolean"
+                      },
+                      "isPlace": {
                         "type": "boolean"
                       }
                     },

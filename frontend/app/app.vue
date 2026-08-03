@@ -501,6 +501,12 @@ const connPanelOpen = ref(false);
 
   /* ── Fonts ── */
   --font-display: "Cinzel", "Palatino Linotype", serif;
+  /* Reading serif for running prose. Cinzel is Trajan-derived — its lowercase
+     reads as small caps, which suits short headings but not paragraphs, so
+     story dialogue uses this instead. System faces only: no download, and it
+     keeps the app usable with no route to a font CDN. */
+  --font-serif: "Palatino Linotype", "Book Antiqua", Palatino, Georgia,
+    "Times New Roman", serif;
   --font-body: "Noto Sans", system-ui, sans-serif;
   --font-mono: "Courier New", Courier, monospace;
 

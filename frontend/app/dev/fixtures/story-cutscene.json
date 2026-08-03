@@ -1,7 +1,8 @@
 {
-  "_comment": "Story scene carrying a mirrored cutscene dialogue log — exercises components/story/LogPanel.vue via the scene === 'story' branch in app.vue. Covers every row variant the panel distinguishes: a speaker with both title and portrait, a speaker with a portrait but no title, embedded newlines rendered via white-space: pre-line, a speaker whose portrait slug resolves to nothing (404 fallback to name-only), a Monologue row whose name line is suppressed, and both choice-outcome accents.",
+  "_comment": "Story scene carrying a mirrored cutscene dialogue log — exercises components/story/LogPanel.vue via the scene === 'story' branch in app.vue. Covers every row variant the panel distinguishes: place captions (including a mid-episode change of location), a speaker with both title and portrait, a speaker with a portrait but no title, embedded newlines rendered via white-space: pre-line, a speaker whose portrait slug resolves to nothing (404 leaves an empty hex), a Monologue row whose name line is reserved but blank, a long passage exercising the reading measure, and both choice-outcome accents.",
   "scene": "story",
   "storyLog": [
+    { "content": "The Library, Floor of General Works", "isPlace": true },
     {
       "teller": "Roland",
       "title": "Ex-Grade 1 Fixer",
@@ -23,10 +24,12 @@
       "teller": "Monologue",
       "content": "The lights dim. Somewhere far below, a page turns on its own."
     },
+    { "content": "Backstreets of District 23", "isPlace": true },
     {
       "teller": "Roland",
       "title": "Ex-Grade 1 Fixer",
-      "content": "...Fine. Let's get on with it."
+      "content": "You want the long version? Fine. The Fixers came through here first, and by the time anyone thought to count what was missing there was nobody left who remembered what had been here to begin with. That's the trouble with this district — it forgets faster than it burns, and it burns fairly often.",
+      "portrait": "Roland_3a1f77c2"
     },
     { "content": "Forgive", "isChoice": true, "choiceIsRed": false },
     { "content": "Kill", "isChoice": true, "choiceIsRed": true }
