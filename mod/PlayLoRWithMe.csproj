@@ -175,14 +175,35 @@
   <Target Name="AfterBuild" DependsOnTargets="NpmInstall">
     <!-- Build the Vue frontend if it has been scaffolded. `npm run generate`
          always runs because Nuxt's incremental build is faster than tracking
-         every frontend source file from MSBuild; the Copy step below uses
-         SkipUnchangedFiles to keep deploy-side I/O minimal when nothing
-         actually changed in the static output. -->
+         every frontend source file from MSBuild. -->
     <Exec
       Command="npm run generate --logLevel=silent"
       WorkingDirectory="$(FrontendDir)"
       Condition="Exists('$(FrontendDir)\package.json')"
     />
+
+    <!--
+      Clear the staged mod folder before re-populating it. Every Copy below
+      only ever adds or overwrites, so a file that disappears from the sources
+      lingers in the output forever. Nuxt makes that routine rather than rare:
+      it emits content-hashed filenames under wwwroot\_nuxt\, so each rebuild
+      writes new names beside the old ones instead of replacing them. Deleted
+      assets behave the same way — retiring a self-hosted font left its woff2
+      staged here indefinitely.
+
+      Stale files are inert (nothing references them) but they are shipped:
+      build_and_run.sh copies this whole folder into the game's Mods\ dir, so
+      whatever accumulates here reaches the install and makes the deployed
+      output misleading to inspect.
+
+      Everything under PlayLoRWithMe\ is reproduced by the copies that follow
+      (ModData, the frontend dist, and Assemblies), and nothing writes here at
+      runtime — the game runs from the deployed copy, not from bin — so a full
+      clean is safe. It does mean SkipUnchangedFiles no longer spares any I/O,
+      which costs roughly two megabytes of copying per build; correctness of
+      the staged output is worth more than that.
+    -->
+    <RemoveDir Directories="$(OutputPath)PlayLoRWithMe" />
 
     <!-- Copy ModData contents (everything except wwwroot) into the output root.
          %(RecursiveDir) is relative to the ModData\ wildcard base, so the
