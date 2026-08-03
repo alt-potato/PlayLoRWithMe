@@ -18,7 +18,10 @@ context: |
   - Strong TypeScript typing throughout frontend
   - Document "why" not "what"; sentence case for block comments, lowercase for inline
   - No magic numbers — use const/CSS variables
-  - Unit tests for frontend logic; no automated tests exist yet for C#
+  - Unit tests for frontend logic (Vitest, `cd frontend && npm test`)
+  - Unit tests for the mod's Unity-free source (xUnit, `cd mod/mod.tests && dotnet test`);
+    a file becomes testable by taking primitives at its boundary and being linked in as a
+    `Compile` item, as `StoryLog.cs` and the transport layer already are
 
   Key constraints:
   - Must run on .NET 4.8 (Unity Mono) — no modern C# features that require newer runtimes
