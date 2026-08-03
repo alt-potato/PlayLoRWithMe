@@ -56,7 +56,12 @@ Rendering reference, from `CharacterDialogLog.Init`:
 
 Layout constants, from `DialogLogManager`'s serialized fields: `slotWidth = 1500f`,
 `slotHeight = 220f`, `row = 4`, `column = 1`. On LoR's 1920-wide design canvas that makes a
-log row 78.125% of canvas width, with four rows visible at a time.
+log-history row 78.125% of canvas width, with four rows visible at a time.
+
+`StoryManager` separately declares the width of the *normal* dialogue box —
+`origintextdialogsize = new Vector3(1277f, 230f)`, with the monologue variant
+`monotextdialogsize` matching at `1277f` wide. This is the measure a player actually reads
+against during a cutscene; the 1500 figure describes the log-history overlay's rows.
 
 ## Decisions
 
@@ -156,13 +161,28 @@ Rows mirror `CharacterDialogLog`: portrait left, name line, content. Vanilla's t
 cases carry over — `Teller === "Monologue"` renders no name, and choice rows render centered
 with a red or blue accent per `choiceIsRed`.
 
-Width uses the game's log width as a ceiling only: one token,
-`--story-log-max-width: 1500px` (`DialogLogManager.slotWidth`). Below that the panel simply
-fills the width available to it.
+Title and speaker share the display face. Vanilla composes both from a single string
+(`"<size=25>" + Title + "</size>  <size=36>" + Teller + "</size>"`), so they differ in size,
+not typeface.
 
-Scaling the panel proportionally to the game's 78.125% canvas ratio was considered and
-rejected — on a phone it would surrender a fifth of an already narrow viewport to margins for
-no reason. The ceiling is what carries the "matches the game" intent; the proportion does not.
+Portraits are framed in a pointy-top hexagon to match the in-game log's crop, via a
+`--hex-pointy` token alongside the existing flat-top `--hex`. The frame is built from two
+clipped layers rather than a CSS border, since `clip-path` cuts a real border away — the same
+technique `DieRow` already uses for speed dice. The box is sized on both axes because a
+pointy-top hexagon is taller than wide.
+
+Width uses the game's *normal dialogue box* as a ceiling only: one token,
+`--story-log-max-width: 1277px` (`StoryManager.origintextdialogsize.x`). Below that the panel
+simply fills the width available to it.
+
+The reference is deliberately not `DialogLogManager.slotWidth` (1500). That figure sizes the
+rows of the log-history overlay, which is a different surface from the one a player reads
+during a cutscene. Our panel plays the role of the normal view, so it takes the normal view's
+measure.
+
+Scaling the panel proportionally to the game's canvas ratio was considered and rejected — on a
+phone it would surrender a fifth of an already narrow viewport to margins for no reason. The
+ceiling is what carries the "matches the game" intent; the proportion does not.
 
 Scrolling is newest-at-bottom with auto-scroll to latest on each new entry, suppressed while
 the reader has scrolled up. This is the one behavior the vanilla log does not need and this

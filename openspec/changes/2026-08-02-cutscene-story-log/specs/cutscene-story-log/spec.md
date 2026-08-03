@@ -181,6 +181,15 @@ Choice entries MUST render centered with a red or blue accent selected by `choic
 Content MUST render with `white-space: pre-line` so the newlines preserved in transport are
 displayed, consistent with the convention already applied to passive and card descriptions.
 
+Title and speaker MUST share the same display typeface, differing in size only. Vanilla
+composes the whole name line from one string and varies the size tag alone, so a differing
+typeface would not mirror it.
+
+Portraits MUST be framed in a pointy-top hexagon, matching how the in-game log crops them. The
+frame MUST be built from two clipped layers rather than a CSS border, because a clip path cuts
+a real border away; the outer layer's fill stands in as the outline. The frame MUST be sized on
+both axes, since a pointy-top hexagon is taller than it is wide.
+
 When an entry has no portrait value, or its image fails to load, the row MUST fall back to a
 name-only layout rather than reserving empty space or showing a broken image.
 
@@ -196,6 +205,18 @@ name-only layout rather than reserving empty space or showing a broken image.
 - **THEN** the row renders centered with the red accent
 - **AND** an entry with `choiceIsRed` false renders with the blue accent
 
+#### Scenario: A speaker has both a title and a name
+
+- **WHEN** an entry carries both `title` and `teller`
+- **THEN** both render in the display typeface
+- **AND** the title renders smaller and ahead of the name
+
+#### Scenario: A portrait is rendered
+
+- **WHEN** an entry's portrait asset loads
+- **THEN** it is clipped to a pointy-top hexagon
+- **AND** the hexagonal outline is drawn by a second clipped layer behind it, not a CSS border
+
 #### Scenario: A portrait image fails to load
 
 - **WHEN** an entry's portrait asset returns 404
@@ -204,9 +225,13 @@ name-only layout rather than reserving empty space or showing a broken image.
 
 ### Requirement: The panel SHALL match the game's log width and follow new lines
 
-The panel MUST cap its width at the in-game log's width, which `DialogLogManager` declares as
-`slotWidth = 1500f`. That value MUST be declared as a CSS custom property rather than an inline
-literal.
+The panel MUST cap its width at the width of the game's normal dialogue box, which
+`StoryManager` declares as `origintextdialogsize` (`1277f` wide). That value MUST be declared as
+a CSS custom property rather than an inline literal.
+
+The cap MUST NOT be taken from `DialogLogManager.slotWidth` (`1500f`). That figure sizes the
+rows of the log-history overlay, a different surface from the one a player reads during a
+cutscene; this panel stands in for the normal view and so takes the normal view's measure.
 
 The cap is a ceiling only. Below it the panel MUST fill the width available to it, and MUST NOT
 be scaled to the game's canvas proportion — reserving proportional margins would waste space on
@@ -219,12 +244,12 @@ advancing — the case this feature exists to serve.
 
 #### Scenario: The panel is viewed on a wide display
 
-- **WHEN** the viewport is wider than the game's log width
-- **THEN** the panel stops growing at `1500px`
+- **WHEN** the viewport is wider than the game's normal dialogue box
+- **THEN** the panel stops growing at `1277px`
 
 #### Scenario: The panel is viewed below the cap
 
-- **WHEN** the viewport is narrower than the game's log width
+- **WHEN** the viewport is narrower than the game's normal dialogue box
 - **THEN** the panel fills the width available to it
 - **AND** no proportional side margin is reserved
 

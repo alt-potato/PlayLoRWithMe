@@ -506,6 +506,9 @@ const connPanelOpen = ref(false);
 
   /* Flat-top hexagon: wider than tall, pointy sides */
   --hex: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  /* Pointy-top hexagon: taller than wide, flat sides. Used for story-log
+     speaker portraits, which the in-game log frames this way round. */
+  --hex-pointy: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 
   /* ── Clash/stagger ── */
   --health: #e56031;

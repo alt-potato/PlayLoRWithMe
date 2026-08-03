@@ -51,13 +51,37 @@ describe("LogPanel rendering rules", () => {
     expect(source).toMatch(/v-if="visiblePortrait\(entry\)"/);
   });
 
-  it("treats the game's log width as a ceiling, not a proportional scale", () => {
+  it("caps at the game's normal dialogue width as a ceiling, not a proportional scale", () => {
     const rootRule = source.match(/\.slog \{[\s\S]*?\n\}/);
     expect(rootRule, "expected a .slog style block").not.toBeNull();
-    expect(rootRule![0]).toMatch(/--story-log-max-width:\s*1500px/);
+    // StoryManager.origintextdialogsize.x — the normal dialogue box the player
+    // reads against, NOT DialogLogManager.slotWidth (1500), which sizes the
+    // log-history rows and is the wrong reference for this panel.
+    expect(rootRule![0]).toMatch(/--story-log-max-width:\s*1277px/);
     expect(rootRule![0]).toMatch(/max-width:\s*var\(--story-log-max-width\)/);
     // A percentage width would reintroduce the rejected proportional scaling.
     expect(rootRule![0]).toMatch(/width:\s*100%/);
+  });
+
+  it("frames portraits in a pointy-top hexagon, as the in-game log does", () => {
+    // Two layers both clipped: a real CSS border would be cut away by clip-path,
+    // so the outer element's background stands in as the outline.
+    const frame = source.match(/\.slog-portrait \{[\s\S]*?\n\}/);
+    const image = source.match(/\.slog-portrait-img \{[\s\S]*?\n\}/);
+    expect(frame, "expected a .slog-portrait style block").not.toBeNull();
+    expect(image, "expected a .slog-portrait-img style block").not.toBeNull();
+    expect(frame![0]).toMatch(/clip-path:\s*var\(--hex-pointy\)/);
+    expect(image![0]).toMatch(/clip-path:\s*var\(--hex-pointy\)/);
+    expect(frame![0]).not.toMatch(/border:/);
+  });
+
+  it("renders the name and the title in the same display face", () => {
+    const title = source.match(/\.slog-title \{[\s\S]*?\n\}/);
+    const teller = source.match(/\.slog-teller \{[\s\S]*?\n\}/);
+    expect(title, "expected a .slog-title style block").not.toBeNull();
+    expect(teller, "expected a .slog-teller style block").not.toBeNull();
+    expect(title![0]).toMatch(/font-family:\s*var\(--font-display\)/);
+    expect(teller![0]).toMatch(/font-family:\s*var\(--font-display\)/);
   });
 
   it("exposes a collapse control only in the overlay variant", () => {

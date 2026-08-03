@@ -89,13 +89,14 @@ watch(
           'slog-row--red': isChoiceEntry(entry) && entry.choiceIsRed,
         }"
       >
-        <img
-          v-if="visiblePortrait(entry)"
-          class="slog-portrait"
-          :src="visiblePortrait(entry)!"
-          alt=""
-          @error="onPortraitError(entry)"
-        />
+        <div v-if="visiblePortrait(entry)" class="slog-portrait">
+          <img
+            class="slog-portrait-img"
+            :src="visiblePortrait(entry)!"
+            alt=""
+            @error="onPortraitError(entry)"
+          />
+        </div>
         <div class="slog-body">
           <p v-if="showsSpeaker(entry)" class="slog-name">
             <span v-if="entry.title" class="slog-title">{{ entry.title }}</span>
@@ -110,11 +111,18 @@ watch(
 
 <style scoped>
 .slog {
-  /* Matches DialogLogManager.slotWidth (1500 on LoR's 1920-wide design canvas).
+  /* Matches StoryManager.origintextdialogsize.x — the width of the game's normal
+     dialogue box, which is what a player actually reads against. Deliberately not
+     DialogLogManager.slotWidth (1500), which sizes the log-history rows.
      A ceiling only — below it the panel fills whatever width it is given, since
      reserving the game's proportional margin would waste space on a phone. */
-  --story-log-max-width: 1500px;
-  --story-log-portrait-size: 3.25rem;
+  --story-log-max-width: 1277px;
+
+  /* Pointy-top hexagons are taller than wide (1 : 2/sqrt(3)), so the portrait box
+     is sized on both axes rather than kept square. */
+  --story-log-portrait-w: 3rem;
+  --story-log-portrait-h: 3.46rem;
+  --story-log-portrait-border: 2px;
 
   display: flex;
   flex-direction: column;
@@ -182,12 +190,25 @@ watch(
   align-items: flex-start;
 }
 
+/* Pointy-top hexagonal frame, matching how the in-game log crops portraits.
+   Two layers of clip-path fake the outline, because clip-path would cut away a
+   real CSS border — the same technique DieRow uses for speed dice. */
 .slog-portrait {
-  width: var(--story-log-portrait-size);
-  height: var(--story-log-portrait-size);
-  object-fit: cover;
+  width: var(--story-log-portrait-w);
+  height: var(--story-log-portrait-h);
   flex-shrink: 0;
-  border: 1px solid var(--border-mid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: var(--hex-pointy);
+  background: var(--border-mid);
+}
+
+.slog-portrait-img {
+  width: calc(100% - var(--story-log-portrait-border) * 2);
+  height: calc(100% - var(--story-log-portrait-border) * 2);
+  object-fit: cover;
+  clip-path: var(--hex-pointy);
   background: var(--bg-card-3);
 }
 
@@ -204,11 +225,13 @@ watch(
   margin: 0 0 var(--sp-1);
 }
 
-/* Title before name and smaller, mirroring the in-game log's name line. */
+/* Title before name and smaller, mirroring the in-game log's name line — which
+   composes both from one string, so both share the display face. */
 .slog-title {
-  font-family: var(--font-body);
+  font-family: var(--font-display);
   font-size: var(--fs-4xs);
   color: var(--text-3);
+  letter-spacing: 0.03em;
 }
 
 .slog-teller {
@@ -249,7 +272,8 @@ watch(
 
 @media (max-width: 600px) {
   .slog {
-    --story-log-portrait-size: 2.5rem;
+    --story-log-portrait-w: 2.25rem;
+    --story-log-portrait-h: 2.6rem;
   }
 
   .slog--overlay {

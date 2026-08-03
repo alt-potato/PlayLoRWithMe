@@ -72,9 +72,15 @@
       line; choice rows render centered with a red or blue accent per `choiceIsRed`.
 - [x] 5.3 Render `content` with `white-space: pre-line`, consistent with the passive and
       card-description convention.
-- [x] 5.4 Add `--story-log-max-width: 1500px` as a token and apply it as a ceiling only. Below
+- [x] 5.4 Add `--story-log-max-width: 1277px` as a token and apply it as a ceiling only. Below
       that width the panel fills the space available to it; do not scale it to the game's
-      canvas proportion.
+      canvas proportion. Corrected after review from `DialogLogManager.slotWidth` (1500, the
+      log-history rows) to `StoryManager.origintextdialogsize.x` (1277, the normal dialogue
+      box) — this panel stands in for the normal view, so it takes the normal view's measure.
+- [x] 5.8 Match the in-game log's name line and portrait framing: title and speaker share the
+      display typeface (vanilla varies only the size tag), and portraits are clipped to a
+      pointy-top hexagon via a new `--hex-pointy` token, built from two clipped layers since
+      `clip-path` cuts a real CSS border away.
 - [x] 5.5 Render portraits from `/assets/portraits/<portrait>.png`, falling back to a name-only
       row when `portrait` is absent or the image fails to load.
 - [x] 5.6 Implement newest-at-bottom auto-scroll, suppressed while the reader has scrolled away
