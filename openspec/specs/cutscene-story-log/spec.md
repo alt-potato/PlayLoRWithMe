@@ -210,10 +210,13 @@ Title and speaker MUST share the same display typeface, differing in size only. 
 composes the whole name line from one string and varies the size tag alone, so a differing
 typeface would not mirror it.
 
-Dialogue text, speaker names, and titles MUST all render in a reading serif rather than the
-UI's display face. The game renders story text in a serif and swaps only the localized font,
-never to a sans face — but the display face is Trajan-derived, so its lowercase reads as small
-capitals, which suits short headings and misrepresents both dialogue and character names.
+Dialogue text, speaker names, and titles MUST all render in a serif face with true lowercase
+forms, matching how the game itself renders story text — the game renders story text in a serif
+and swaps only the localized font, never to a sans face. These call sites MUST reference the
+reading-serif token specifically rather than the display token directly. The two currently name
+the same face, but a future change to the display face MUST NOT be able to silently regress
+dialogue into an unsuitable face (e.g. a small-caps or otherwise all-caps-reading display face)
+just because the call sites pointed at the wrong token.
 
 The name line MUST be a reserved row rather than a conditional one. Rows that render no name
 into it — monologue rows — MUST still occupy it, so their content sits at the same height as

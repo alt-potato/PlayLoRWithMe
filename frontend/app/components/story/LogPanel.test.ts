@@ -148,9 +148,10 @@ describe("LogPanel rendering rules", () => {
     expect(frame![0]).toMatch(/overflow:\s*hidden/);
   });
 
-  it("renders dialogue in a reading serif, not the small-caps display face", () => {
-    // Cinzel is Trajan-derived: its lowercase reads as small caps, which is fine
-    // for short headings and wrong for paragraphs of dialogue.
+  it("renders dialogue via the reading-serif token, not the display token directly", () => {
+    // --font-serif and --font-display now name the same face, but the dialogue
+    // rules should still reference the serif token: that stays correct even if
+    // a future change reintroduces a distinct display face.
     const contentRule = source.match(/\.slog-content \{[\s\S]*?\n\}/);
     expect(contentRule, "expected a .slog-content style block").not.toBeNull();
     expect(contentRule![0]).toMatch(/font-family:\s*var\(--font-serif\)/);

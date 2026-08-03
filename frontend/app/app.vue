@@ -298,26 +298,28 @@ const connPanelOpen = ref(false);
    Self-hosted fonts
    ==========================================================================
 
-   Cinzel and Noto Sans served from the mod's HTTP server (public/fonts/) so
-   the app stays fully usable when the host machine has no route to
+   Noto Serif and Noto Sans served from the mod's HTTP server (public/fonts/)
+   so the app stays fully usable when the host machine has no route to
    fonts.gstatic.com (LAN-only co-op, captive portal, etc.). Both are variable
    fonts; each subset is one woff2 file shared across the weight range, so
    four files cover the entire weight palette the UI uses.
    ========================================================================== */
 @font-face {
-  font-family: "Cinzel";
+  font-family: "Noto Serif";
   font-style: normal;
   font-weight: 400 700;
+  font-stretch: 100%;
   font-display: swap;
-  src: url("/fonts/cinzel-latin.woff2") format("woff2");
+  src: url("/fonts/noto-serif-latin.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: "Cinzel";
+  font-family: "Noto Serif";
   font-style: normal;
   font-weight: 400 700;
+  font-stretch: 100%;
   font-display: swap;
-  src: url("/fonts/cinzel-latin-ext.woff2") format("woff2");
+  src: url("/fonts/noto-serif-latin-ext.woff2") format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
@@ -344,8 +346,8 @@ const connPanelOpen = ref(false);
    ==========================================================================
 
    Aesthetic target: Library of Ruina's in-game UI — near-black canvas with
-   a very faint cool undertone, hairline gold rules, ornamental Cinzel
-   display type, warm parchment body text. Deep blacks, not navy, not purple.
+   a very faint cool undertone, hairline gold rules, serif display type,
+   warm parchment body text. Deep blacks, not navy, not purple.
    ========================================================================== */
 :root {
   /* ── Canvas: near-black with a faint cool undertone ──
@@ -547,13 +549,14 @@ const connPanelOpen = ref(false);
   --duration-slow: 0.3s;
 
   /* ── Fonts ── */
-  --font-display: "Cinzel", "Palatino Linotype", serif;
-  /* Reading serif for running prose. Cinzel is Trajan-derived — its lowercase
-     reads as small caps, which suits short headings but not paragraphs, so
-     story dialogue uses this instead. System faces only: no download, and it
-     keeps the app usable with no route to a font CDN. */
-  --font-serif: "Palatino Linotype", "Book Antiqua", Palatino, Georgia,
-    "Times New Roman", serif;
+  /* Display and reading serif are deliberately the same face: the game's own
+     LocalizedFontSetter pairs Noto Serif with Noto Sans in its default
+     (non-KR/EN, non-JP) locale branch, using Noto Serif for both headings and
+     body copy, so there is no reason to keep two serif tokens here either.
+     --font-serif is kept only as a self-documenting alias for call sites that
+     read as "prose" rather than "heading" - do not restore a second face. */
+  --font-display: "Noto Serif", Georgia, "Times New Roman", serif;
+  --font-serif: var(--font-display);
   --font-body: "Noto Sans", system-ui, sans-serif;
   --font-mono: "Courier New", Courier, monospace;
 
