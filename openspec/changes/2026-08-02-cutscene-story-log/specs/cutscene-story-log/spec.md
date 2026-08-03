@@ -199,15 +199,16 @@ The name line MUST be a reserved row rather than a conditional one. Rows that re
 into it — monologue rows — MUST still occupy it, so their content sits at the same height as
 every other row's, as the in-game layout does.
 
-The name line MUST carry a visual separator in the interface's gold accent. The base game
-tabs a trapezoid into the top of the portrait hexagon and runs it the length of the name; that
-shape depends on the name plate abutting the portrait, which does not hold here because the
-name occupies its own column, so an equivalent gold rule MAY be substituted.
+The name line MUST carry a visual separator in the interface's gold accent, and that separator
+MUST begin at the portrait hexagon's edge and end where the name ends. The base game tabs a
+trapezoid into the top of the hexagon and runs it the length of the name; a gold rule MAY be
+substituted for the shape, but it MUST keep the same two attachments, so that it reads as part
+of the name plate rather than ruling off the passage beneath it.
 
-Dialogue MUST additionally be bounded to a comfortable reading measure, independent of the
-panel's own width cap. The cap alone does not deliver one: it sits near a typical laptop
-viewport, so lines still run the full width of the screen. Long unbroken runs MUST wrap rather
-than force horizontal scrolling.
+Rows that render no name MUST retain the reserved row's exact height while suppressing the
+rule, so that suppressing it does not shift the content below.
+
+Long unbroken runs MUST wrap rather than force horizontal scrolling.
 
 Portraits MUST be framed in a pointy-top hexagon, matching how the in-game log crops them. The
 frame MUST be built from two clipped layers rather than a CSS border, because a clip path cuts
@@ -244,12 +245,13 @@ NOT reserve a frame — vanilla renders them through a separate slot that has no
 - **WHEN** an entry carries both `title` and `teller`
 - **THEN** both render in the same reading serif
 - **AND** the title renders smaller and ahead of the name
-- **AND** the name line carries a gold separator rule
+- **AND** a gold separator rule runs from the portrait hexagon's edge to the end of the name
 
 #### Scenario: A monologue row sits among speaker rows
 
 - **WHEN** a monologue entry renders between two rows that have speakers
 - **THEN** its name line is still occupied, rendering no name text
+- **AND** no separator rule is visible on it
 - **AND** its content sits at the same height as the surrounding rows' content
 
 #### Scenario: A long passage is rendered on a wide display
@@ -282,36 +284,52 @@ NOT reserve a frame — vanilla renders them through a separate slot that has no
 
 ### Requirement: The panel SHALL match the game's log width and follow new lines
 
-The panel MUST cap its width at the width of the game's normal dialogue box, which
-`StoryManager` declares as `origintextdialogsize` (`1277f` wide). That value MUST be declared as
-a CSS custom property rather than an inline literal.
+The reading column MUST be sized from the dialogue's reading measure — measure plus portrait
+plus the gap between them — so that a row's text spans the column exactly rather than trailing
+off inside a much wider panel. Both the measure and the derived column width MUST be declared
+as CSS custom properties rather than inline literals.
 
-The cap MUST NOT be taken from `DialogLogManager.slotWidth` (`1500f`). That figure sizes the
-rows of the log-history overlay, a different surface from the one a player reads during a
-cutscene; this panel stands in for the normal view and so takes the normal view's measure.
+The column MUST NOT be sized from either of the game's own width constants. Matching
+`StoryManager.origintextdialogsize` (`1277f`) was tried and abandoned: it sits near a typical
+laptop viewport, so it never actually constrained a line, and it left the text far narrower
+than the panel around it. `DialogLogManager.slotWidth` (`1500f`) is wider still and describes
+the log-history overlay rather than the reading view.
 
-The cap is a ceiling only. Below it the panel MUST fill the width available to it, and MUST NOT
-be scaled to the game's canvas proportion — reserving proportional margins would waste space on
+The `ch` unit used by the measure MUST resolve against the same font the dialogue is set in.
+Left to an inherited face, the column would be sized from one font's advance width while the
+text is bounded by another's, and the two would not agree.
+
+The column is a ceiling only. Below it the panel MUST fill the width available to it, and MUST
+NOT be scaled to any fixed proportion — reserving proportional margins would waste space on
 narrow viewports, which the mobile-first frontend cannot afford.
+
+The scroll container MUST span the full width available to the panel, with the column centred
+inside it, so that the scrollbar rides the page edge rather than sitting alongside the text.
 
 The panel MUST scroll with the newest entry at the bottom and MUST auto-scroll to the newest
 entry as lines arrive. Auto-scroll MUST be suppressed while the viewer has scrolled away from
 the bottom, so that reading back through earlier dialogue is not interrupted by the host
 advancing — the case this feature exists to serve.
 
-The panel MUST scroll within itself rather than growing the page. Auto-scroll depends on it: an
-element that is not itself scrolling silently ignores a scroll position being set, so an
-unbounded panel would let the page scroll instead and the newest line would never be brought
-into view.
+The panel MUST fill the height available below the page chrome and scroll within itself rather
+than growing the page. Auto-scroll depends on it: an element that is not itself scrolling
+silently ignores a scroll position being set, so an unbounded panel would let the page scroll
+instead and the newest line would never be brought into view. Filling the available height also
+means the log reaches the bottom of the page rather than stopping short of it.
+
+Whatever layout context this requires MUST be scoped to the scene that needs it, rather than
+applied to the shared page region, so that scenes relying on normal block flow are unaffected.
 
 #### Scenario: The panel is viewed on a wide display
 
-- **WHEN** the viewport is wider than the game's normal dialogue box
-- **THEN** the panel stops growing at `1277px`
+- **WHEN** the viewport is wider than the reading column
+- **THEN** the column stops growing and is centred
+- **AND** the scrollbar remains at the page edge, not beside the text
+- **AND** a spoken row's text spans the column rather than ending short of it
 
-#### Scenario: The panel is viewed below the cap
+#### Scenario: The panel is viewed below the column width
 
-- **WHEN** the viewport is narrower than the game's normal dialogue box
+- **WHEN** the viewport is narrower than the reading column
 - **THEN** the panel fills the width available to it
 - **AND** no proportional side margin is reserved
 

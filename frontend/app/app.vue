@@ -155,6 +155,14 @@ const showLibrarians = computed(
       gameState.value.uiPhase === "BattleSetting"),
 );
 
+// The story log fills the remaining viewport height so it scrolls against the
+// page edge rather than growing the page. That needs `main` to become a flex
+// column, which is scoped to this scene alone so the battle and library layouts
+// keep their normal block flow.
+const showStoryLog = computed(
+  () => gameState.value?.scene === "story" && !!gameState.value.storyLog?.length,
+);
+
 const isDebugOpen = ref(false);
 const rawJson = computed(() =>
   isDebugOpen.value && gameState.value ? JSON.stringify(gameState.value, null, 2) : "—",
@@ -199,7 +207,7 @@ const connPanelOpen = ref(false);
       </div>
     </header>
 
-    <main>
+    <main :class="{ 'main--fill': showStoryLog }">
       <!--
         BattleSetting phase: pre-battle formation/claim screen shown while the
         main menu is in its BattleSetting UI phase (before the battle scene loads).
@@ -243,8 +251,8 @@ const connPanelOpen = ref(false);
         rendering an empty panel.
       -->
       <LazyStoryLogPanel
-        v-else-if="gameState?.scene === 'story' && gameState.storyLog?.length"
-        :entries="gameState.storyLog"
+        v-else-if="showStoryLog"
+        :entries="gameState!.storyLog!"
       />
 
       <div v-else-if="gameState" class="scene-idle">
@@ -678,6 +686,15 @@ body {
 
 main {
   flex: 1;
+}
+
+/* Lets a scene fill the remaining viewport height instead of growing the page.
+   Applied per-scene rather than to `main` outright, so scenes that rely on
+   normal block flow are untouched. */
+main.main--fill {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .scene-idle {

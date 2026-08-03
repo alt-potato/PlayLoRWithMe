@@ -144,3 +144,23 @@
       clear so a new episode still captions its opening location.
 - [x] 8.9 `cd mod && dotnet build` and `cd mod/mod.tests && dotnet test` pass; `cd frontend &&
       npm test` and `npm run check` pass.
+
+## 9. Layout pass
+
+- [x] 9.1 Fill the remaining viewport height so the log reaches the bottom of the page, via a
+      `main--fill` flex context scoped to the story scene alone — applying it to `main` outright
+      would change the block flow the battle and library scenes rely on.
+- [x] 9.2 Move the scrollbar to the page edge: the scroller now spans full width with a centred
+      `.slog-inner` column inside it, instead of the whole panel being capped and centred.
+- [x] 9.3 Size the column from the reading measure (`measure + portrait + gap`) so a row's text
+      spans it edge to edge. Drops `--story-log-max-width` (1277px), which the maintainer
+      approved dropping: it sat near a typical laptop viewport, so it never constrained a line
+      and left the text far narrower than the panel around it.
+- [x] 9.4 Set `font-family` on the panel root so the `ch` in the measure resolves against the
+      font the dialogue is actually set in. Otherwise the column is sized from the inherited
+      sans's advance width while the text is bounded by the serif's, and the two disagree.
+- [x] 9.5 Run the name rule from the hexagon's edge to the end of the name: negative start
+      margin reaches back across the row gap, `width: fit-content` stops it at the name. Rows
+      with no name keep the reserved height with the rule made transparent.
+- [x] 9.6 Shift the portrait crop right via a new `--story-log-portrait-offset-x`.
+- [x] 9.7 `cd frontend && npm test` and `npm run check` pass; `cd mod && dotnet build` passes.

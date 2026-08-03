@@ -74,71 +74,73 @@ watch(
       </button>
     </header>
 
-    <div
-      v-show="!collapsed"
-      ref="scrollEl"
-      class="slog-scroll"
-      @scroll.passive="onScroll"
-    >
-      <article
-        v-for="(entry, index) in entries"
-        :key="index"
-        class="slog-row"
-        :class="{
-          'slog-row--choice': isChoiceEntry(entry),
-          'slog-row--red': isChoiceEntry(entry) && entry.choiceIsRed,
-          'slog-row--place': isPlaceEntry(entry),
-        }"
-      >
-        <!--
+    <!--
+      The scroller spans the full width so its scrollbar rides the page edge; the
+      column inside it is what bounds the reading measure.
+    -->
+    <div v-show="!collapsed" ref="scrollEl" class="slog-scroll" @scroll.passive="onScroll">
+      <div class="slog-inner">
+        <article
+          v-for="(entry, index) in entries"
+          :key="index"
+          class="slog-row"
+          :class="{
+            'slog-row--choice': isChoiceEntry(entry),
+            'slog-row--red': isChoiceEntry(entry) && entry.choiceIsRed,
+            'slog-row--place': isPlaceEntry(entry),
+          }"
+        >
+          <!--
           The frame stands whether or not an image loads: the in-game log disables
           only the portrait image and leaves its hex in place, and keeping it also
           holds the text column aligned down the list.
         -->
-        <div v-if="showsPortraitFrame(entry)" class="slog-portrait">
-          <div class="slog-portrait-frame">
-            <img
-              v-if="visiblePortrait(entry)"
-              class="slog-portrait-img"
-              :src="visiblePortrait(entry)!"
-              alt=""
-              @error="onPortraitError(entry)"
-            />
+          <div v-if="showsPortraitFrame(entry)" class="slog-portrait">
+            <div class="slog-portrait-frame">
+              <img
+                v-if="visiblePortrait(entry)"
+                class="slog-portrait-img"
+                :src="visiblePortrait(entry)!"
+                alt=""
+                @error="onPortraitError(entry)"
+              />
+            </div>
           </div>
-        </div>
-        <div class="slog-body">
-          <!--
+          <div class="slog-body">
+            <!--
             The name line is a reserved row, not a conditional one: monologue rows
             render nothing into it but still occupy it, so their content sits at the
             same height as every other row's, as it does in game.
           -->
-          <p v-if="reservesNameRow(entry)" class="slog-name">
-            <template v-if="showsSpeaker(entry)">
-              <span v-if="entry.title" class="slog-title">{{ entry.title }}</span>
-              <span class="slog-teller">{{ entry.teller }}</span>
-            </template>
-          </p>
-          <p class="slog-content">{{ entry.content }}</p>
-        </div>
-      </article>
+            <p
+              v-if="reservesNameRow(entry)"
+              class="slog-name"
+              :class="{ 'slog-name--empty': !showsSpeaker(entry) }"
+            >
+              <template v-if="showsSpeaker(entry)">
+                <span v-if="entry.title" class="slog-title">{{ entry.title }}</span>
+                <span class="slog-teller">{{ entry.teller }}</span>
+              </template>
+            </p>
+            <p class="slog-content">{{ entry.content }}</p>
+          </div>
+        </article>
+      </div>
     </div>
   </section>
 </template>
 
 <style scoped>
 .slog {
-  /* Matches StoryManager.origintextdialogsize.x — the width of the game's normal
-     dialogue box, which is what a player actually reads against. Deliberately not
-     DialogLogManager.slotWidth (1500), which sizes the log-history rows.
-     A ceiling only — below it the panel fills whatever width it is given, since
-     reserving the game's proportional margin would waste space on a phone. */
-  --story-log-max-width: 1277px;
-
   /* Pointy-top hexagons are taller than wide (1 : 2/sqrt(3)), so the portrait box
      is sized on both axes rather than kept square. */
   --story-log-portrait-w: 3rem;
   --story-log-portrait-h: 3.46rem;
   --story-log-portrait-border: 2px;
+
+  /* Gap between the portrait and the text column. Named because the name-line
+     rule has to reach back across it to meet the hexagon. */
+  --story-log-portrait-gap: var(--sp-3);
 
   /* Portrait art is a head-and-shoulders bust whose face centres at roughly a
      third of the image height, so plain `cover` frames the whole bust and lets
@@ -149,24 +151,36 @@ watch(
      the sprite, and the game's real framing lives in prefab data that cannot be
      decompiled — so these are approximations, kept as tokens to stay adjustable. */
   --story-log-portrait-zoom: 1.1;
+  --story-log-portrait-offset-x: 5%;
   --story-log-portrait-offset-y: 10%;
 
-  /* Comfortable reading measure for the dialogue itself. The panel cap alone does
-     not deliver this: 1277px is near a typical laptop's viewport, so lines still
-     ran the full width of the screen. Bounding the text column is what actually
-     makes long passages readable. */
-  --story-log-measure: 68ch;
+  /* Comfortable reading measure for the dialogue. This, not the game's dialogue
+     box width, is what bounds the layout: 1277px sits near a typical laptop
+     viewport and so never actually constrained a line. */
+  --story-log-measure: 66ch;
 
-  /* Bounds the scroller so it scrolls internally. Without a bound the panel grows
-     to fit its content and the page scrolls instead, which silently breaks
-     auto-scroll — scrollTop on a non-scrolling element does nothing. */
-  --story-log-scroll-max-h: 68dvh;
+  /* The column is sized to exactly what a row needs, so the text fills it edge to
+     edge instead of trailing off inside a much wider panel. */
+  --story-log-column: calc(
+    var(--story-log-measure) + var(--story-log-portrait-w) +
+      var(--story-log-portrait-gap)
+  );
 
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: var(--story-log-max-width);
-  margin: 0 auto;
+  min-height: 0;
+  /* Set here, not just on the text, so the `ch` unit in --story-log-measure
+     resolves against the same font the dialogue is set in. Left on the inherited
+     sans, the column would be sized from one font's advance width and the text
+     bounded by another's, and the two would not line up. */
+  font-family: var(--font-serif);
+}
+
+/* Fills the height `main.main--fill` hands it, so the log runs to the bottom of
+   the page and scrolls internally rather than growing the document. */
+.slog:not(.slog--overlay) {
+  flex: 1;
   min-height: 0;
 }
 
@@ -219,24 +233,25 @@ watch(
   overflow-y: auto;
   min-height: 0;
   padding: var(--sp-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
   /* Keeps the newest line in view as content grows, so the viewport stays stuck
      to the bottom without fighting the JS auto-scroll. */
   overflow-anchor: auto;
 }
 
-/* On the story scene the panel is a plain block child with no height to fill, so
-   it needs its own bound to scroll internally rather than growing the page. The
-   overlay variant already gets one from its own max-height. */
-.slog:not(.slog--overlay) .slog-scroll {
-  max-height: var(--story-log-scroll-max-h);
+/* The reading column. Centred inside the full-width scroller, which is what puts
+   the scrollbar at the page edge rather than alongside the text. */
+.slog-inner {
+  width: 100%;
+  max-width: var(--story-log-column);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
 }
 
 .slog-row {
   display: flex;
-  gap: var(--sp-3);
+  gap: var(--story-log-portrait-gap);
   align-items: flex-start;
 }
 
@@ -273,7 +288,7 @@ watch(
   object-fit: cover;
   /* Independent transforms: translate applies before scale, so the bias is
      magnified by the zoom — which is the intent, both push toward the face. */
-  translate: 0 var(--story-log-portrait-offset-y);
+  translate: var(--story-log-portrait-offset-x) var(--story-log-portrait-offset-y);
   scale: var(--story-log-portrait-zoom);
 }
 
@@ -286,19 +301,31 @@ watch(
    holds the slot open and keeps content aligned across rows.
 
    The base game separates this line with a trapezoid tabbed into the top of the
-   hexagon. That shape depends on the name plate abutting the portrait, which it
-   does not here — the name sits in a separate column — so the separator is a gold
-   hairline rule along the line instead, which is the accent language this UI
-   already uses elsewhere. */
+   hexagon. A gold hairline stands in for it: same accent language, and it still
+   springs from the hexagon's edge and ends with the name, so it reads as part of
+   the name plate rather than ruling off the passage below. */
 .slog-name {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: var(--sp-2);
-  margin: 0 0 var(--sp-2);
   min-height: var(--fs-md);
   padding-bottom: var(--sp-1);
   border-bottom: 1px solid var(--gold-dim);
+
+  /* Reaches back across the row gap so the rule meets the flat right edge of the
+     hexagon, and stops at the end of the name so it underlines the speaker rather
+     than ruling off the whole passage. */
+  margin: 0 0 var(--sp-2) calc(-1 * var(--story-log-portrait-gap));
+  padding-left: var(--story-log-portrait-gap);
+  width: fit-content;
+  max-width: 100%;
+}
+
+/* Monologue rows keep the reserved height but drop the rule — there is no name
+   for it to underline. Transparent rather than `none` so the box does not shift. */
+.slog-name--empty {
+  border-bottom-color: transparent;
 }
 
 /* Title before name and smaller, mirroring the in-game log's name line — which

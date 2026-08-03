@@ -29,9 +29,24 @@ describe("LogPanel rendering rules", () => {
     expect(nameRule![0]).toMatch(/min-height:/);
   });
 
-  it("separates the name line with a gold rule", () => {
+  it("runs the name rule from the hexagon's edge to the end of the name", () => {
     const nameRule = source.match(/\.slog-name \{[\s\S]*?\n\}/);
     expect(nameRule![0]).toMatch(/border-bottom:[^;]*var\(--gold-dim\)/);
+    // Negative start margin reaches back across the row gap to meet the hexagon;
+    // fit-content stops the rule at the name instead of ruling off the passage.
+    expect(nameRule![0]).toMatch(
+      /margin:[^;]*calc\(-1 \* var\(--story-log-portrait-gap\)\)/,
+    );
+    expect(nameRule![0]).toMatch(/width:\s*fit-content/);
+  });
+
+  it("drops the rule on rows with no name while keeping the row reserved", () => {
+    expect(source).toMatch(/'slog-name--empty': !showsSpeaker\(entry\)/);
+    const emptyRule = source.match(/\.slog-name--empty \{[\s\S]*?\n\}/);
+    expect(emptyRule, "expected a .slog-name--empty style block").not.toBeNull();
+    // Transparent, not `none`: removing the border would change the box height
+    // and break the alignment the reserved row exists to preserve.
+    expect(emptyRule![0]).toMatch(/border-bottom-color:\s*transparent/);
   });
 
   it("renders place captions as a centred interstitial, not a speaker row", () => {
@@ -42,7 +57,7 @@ describe("LogPanel rendering rules", () => {
 
   it("orders the name line as title-then-teller, matching the in-game log", () => {
     const nameLine = source.match(
-      /<p v-if="reservesNameRow\(entry\)"[\s\S]*?<\/p>/,
+      /<p\s+v-if="reservesNameRow\(entry\)"[\s\S]*?<\/p>/,
     );
     expect(nameLine, "expected a .slog-name block").not.toBeNull();
     expect(nameLine![0].indexOf("slog-title")).toBeLessThan(
@@ -71,16 +86,29 @@ describe("LogPanel rendering rules", () => {
     expect(source).toMatch(/@error="onPortraitError\(entry\)"/);
   });
 
-  it("caps at the game's normal dialogue width as a ceiling, not a proportional scale", () => {
+  it("sizes the column from the reading measure so text fills it edge to edge", () => {
     const rootRule = source.match(/\.slog \{[\s\S]*?\n\}/);
     expect(rootRule, "expected a .slog style block").not.toBeNull();
-    // StoryManager.origintextdialogsize.x — the normal dialogue box the player
-    // reads against, NOT DialogLogManager.slotWidth (1500), which sizes the
-    // log-history rows and is the wrong reference for this panel.
-    expect(rootRule![0]).toMatch(/--story-log-max-width:\s*1277px/);
-    expect(rootRule![0]).toMatch(/max-width:\s*var\(--story-log-max-width\)/);
-    // A percentage width would reintroduce the rejected proportional scaling.
-    expect(rootRule![0]).toMatch(/width:\s*100%/);
+    // The column is measure + portrait + gap, so a row's text spans the column
+    // exactly rather than trailing off inside a much wider panel.
+    expect(rootRule![0]).toMatch(/--story-log-column:\s*calc\(/);
+    expect(rootRule![0]).toMatch(/--story-log-measure/);
+    expect(rootRule![0]).toMatch(/--story-log-portrait-w/);
+    // `ch` must resolve against the font the dialogue is actually set in, or the
+    // column and the text measure would be computed from different advances.
+    expect(rootRule![0]).toMatch(/font-family:\s*var\(--font-serif\)/);
+  });
+
+  it("puts the scrollbar at the page edge by centring a column inside a full-width scroller", () => {
+    const inner = source.match(/\.slog-inner \{[\s\S]*?\n\}/);
+    expect(inner, "expected a .slog-inner style block").not.toBeNull();
+    expect(inner![0]).toMatch(/max-width:\s*var\(--story-log-column\)/);
+    expect(inner![0]).toMatch(/margin:\s*0 auto/);
+    // The scroller itself must stay full width — bounding it there would move the
+    // scrollbar back alongside the text.
+    const scroll = source.match(/\.slog-scroll \{[\s\S]*?\n\}/);
+    expect(scroll![0]).toMatch(/overflow-y:\s*auto/);
+    expect(scroll![0]).not.toMatch(/max-width/);
   });
 
   it("frames portraits in a pointy-top hexagon, as the in-game log does", () => {
@@ -102,7 +130,7 @@ describe("LogPanel rendering rules", () => {
     expect(image, "expected a .slog-portrait-img style block").not.toBeNull();
     expect(image![0]).toMatch(/scale:\s*var\(--story-log-portrait-zoom\)/);
     expect(image![0]).toMatch(
-      /translate:\s*0 var\(--story-log-portrait-offset-y\)/,
+      /translate:\s*var\(--story-log-portrait-offset-x\) var\(--story-log-portrait-offset-y\)/,
     );
     // The zoomed image must be cropped by the frame, not spill past it.
     const frame = source.match(/\.slog-portrait-frame \{[\s\S]*?\n\}/);
@@ -128,12 +156,12 @@ describe("LogPanel rendering rules", () => {
     expect(contentRule![0]).toMatch(/overflow-wrap:\s*break-word/);
   });
 
-  it("bounds the story-scene scroller so it scrolls internally", () => {
+  it("fills the height it is given so it scrolls internally and reaches the page bottom", () => {
     // Unbounded, the panel grows to fit and the page scrolls instead — which
     // silently breaks auto-scroll, since scrollTop does nothing on an element
     // that is not itself scrolling.
     expect(source).toMatch(
-      /\.slog:not\(\.slog--overlay\) \.slog-scroll \{[\s\S]*?max-height:\s*var\(--story-log-scroll-max-h\)/,
+      /\.slog:not\(\.slog--overlay\) \{[\s\S]*?flex:\s*1[\s\S]*?min-height:\s*0/,
     );
   });
 
