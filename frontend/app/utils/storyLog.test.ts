@@ -7,6 +7,7 @@ import {
   isChoiceEntry,
   isPinnedToBottom,
   portraitUrl,
+  showsPortraitFrame,
   showsSpeaker,
 } from "./storyLog";
 
@@ -49,6 +50,23 @@ describe("showsSpeaker", () => {
   it("suppresses the name when the teller is absent or empty", () => {
     expect(showsSpeaker({ content: "x" })).toBe(false);
     expect(showsSpeaker(spoken({ teller: "" }))).toBe(false);
+  });
+});
+
+describe("showsPortraitFrame", () => {
+  it("reserves the frame for a spoken line even with no portrait asset", () => {
+    // The in-game log disables the image but leaves the hex standing, and it
+    // keeps the text column aligned down the list.
+    expect(showsPortraitFrame(spoken())).toBe(true);
+    expect(showsPortraitFrame(spoken({ portrait: "Roland_3a1f77c2" }))).toBe(true);
+  });
+
+  it("reserves the frame for monologue rows", () => {
+    expect(showsPortraitFrame(spoken({ teller: MONOLOGUE_TELLER }))).toBe(true);
+  });
+
+  it("omits the frame for choice rows, which vanilla renders through another slot", () => {
+    expect(showsPortraitFrame(choice())).toBe(false);
   });
 });
 

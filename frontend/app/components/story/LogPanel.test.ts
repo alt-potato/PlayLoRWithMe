@@ -46,9 +46,12 @@ describe("LogPanel rendering rules", () => {
     expect(contentRule![0]).toMatch(/white-space:\s*pre-line/);
   });
 
-  it("falls back to a name-only row when a portrait fails to load", () => {
-    expect(source).toMatch(/@error="onPortraitError\(entry\)"/);
+  it("keeps the empty hex frame when a portrait is missing or fails to load", () => {
+    // The in-game log disables only the image and leaves its frame standing, so
+    // the frame is gated on the row type while the image is gated on the asset.
+    expect(source).toMatch(/v-if="showsPortraitFrame\(entry\)"/);
     expect(source).toMatch(/v-if="visiblePortrait\(entry\)"/);
+    expect(source).toMatch(/@error="onPortraitError\(entry\)"/);
   });
 
   it("caps at the game's normal dialogue width as a ceiling, not a proportional scale", () => {
@@ -64,15 +67,42 @@ describe("LogPanel rendering rules", () => {
   });
 
   it("frames portraits in a pointy-top hexagon, as the in-game log does", () => {
-    // Two layers both clipped: a real CSS border would be cut away by clip-path,
-    // so the outer element's background stands in as the outline.
-    const frame = source.match(/\.slog-portrait \{[\s\S]*?\n\}/);
-    const image = source.match(/\.slog-portrait-img \{[\s\S]*?\n\}/);
-    expect(frame, "expected a .slog-portrait style block").not.toBeNull();
-    expect(image, "expected a .slog-portrait-img style block").not.toBeNull();
+    // Two clipped layers: a real CSS border would be cut away by clip-path, so
+    // the outer element's background stands in as the outline.
+    const outline = source.match(/\.slog-portrait \{[\s\S]*?\n\}/);
+    const frame = source.match(/\.slog-portrait-frame \{[\s\S]*?\n\}/);
+    expect(outline, "expected a .slog-portrait style block").not.toBeNull();
+    expect(frame, "expected a .slog-portrait-frame style block").not.toBeNull();
+    expect(outline![0]).toMatch(/clip-path:\s*var\(--hex-pointy\)/);
     expect(frame![0]).toMatch(/clip-path:\s*var\(--hex-pointy\)/);
-    expect(image![0]).toMatch(/clip-path:\s*var\(--hex-pointy\)/);
-    expect(frame![0]).not.toMatch(/border:/);
+    expect(outline![0]).not.toMatch(/border:/);
+  });
+
+  it("crops the portrait onto the face rather than framing the whole bust", () => {
+    // Plain `cover` fits the full bust and lets the hex's point cut through the
+    // chest, because the art centres the face at roughly a third of its height.
+    const image = source.match(/\.slog-portrait-img \{[\s\S]*?\n\}/);
+    expect(image, "expected a .slog-portrait-img style block").not.toBeNull();
+    expect(image![0]).toMatch(/scale:\s*var\(--story-log-portrait-zoom\)/);
+    expect(image![0]).toMatch(
+      /translate:\s*0 var\(--story-log-portrait-offset-y\)/,
+    );
+    // The zoomed image must be cropped by the frame, not spill past it.
+    const frame = source.match(/\.slog-portrait-frame \{[\s\S]*?\n\}/);
+    expect(frame![0]).toMatch(/overflow:\s*hidden/);
+  });
+
+  it("renders dialogue text in the serif display face, as the game does", () => {
+    const contentRule = source.match(/\.slog-content \{[\s\S]*?\n\}/);
+    expect(contentRule, "expected a .slog-content style block").not.toBeNull();
+    expect(contentRule![0]).toMatch(/font-family:\s*var\(--font-display\)/);
+  });
+
+  it("keeps the battle overlay opaque, since a cutscene blocks combat input", () => {
+    const overlay = source.match(/\.slog--overlay \{[\s\S]*?\n\}/);
+    expect(overlay, "expected a .slog--overlay style block").not.toBeNull();
+    expect(overlay![0]).toMatch(/background:\s*var\(--bg-card-2\)/);
+    expect(overlay![0]).not.toMatch(/transparent/);
   });
 
   it("renders the name and the title in the same display face", () => {

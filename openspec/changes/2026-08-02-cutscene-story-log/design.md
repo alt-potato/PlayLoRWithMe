@@ -165,11 +165,34 @@ Title and speaker share the display face. Vanilla composes both from a single st
 (`"<size=25>" + Title + "</size>  <size=36>" + Teller + "</size>"`), so they differ in size,
 not typeface.
 
+Dialogue text uses the serif display face, not the body sans. The game renders story text in a
+serif and swaps only the localized font.
+
 Portraits are framed in a pointy-top hexagon to match the in-game log's crop, via a
 `--hex-pointy` token alongside the existing flat-top `--hex`. The frame is built from two
 clipped layers rather than a CSS border, since `clip-path` cuts a real border away — the same
 technique `DieRow` already uses for speed dice. The box is sized on both axes because a
 pointy-top hexagon is taller than wide.
+
+The crop is zoomed and biased upward rather than a plain `cover` fit. Inspecting the extracted
+sprites shows head-and-shoulders busts at roughly 0.75-0.97 aspect whose face centres near a
+third of the image height, so `cover` in a taller-than-wide hexagon frames the entire bust and
+puts the hexagon's lower point through the chest. `--story-log-portrait-zoom` and
+`--story-log-portrait-offset-y` carry the correction.
+
+Those two values are tuned by eye, not derived. `CharacterDialogLog.Init` only assigns
+`PortraitImage.sprite`; the RectTransform and Image settings that determine the game's real
+framing live in prefab data inside `resources.assets`, which is not decompilable. Keeping them
+as custom properties makes the approximation adjustable without hunting through the stylesheet.
+
+The frame is reserved for every spoken row, including speakers with no portrait. Vanilla sets
+`PortraitImage.enabled = false` and leaves the surrounding hexagon in place, and matching that
+also keeps the text column aligned. Choice rows get no frame — vanilla renders them through
+`extraLogRoot`, a separate slot without one.
+
+The battle overlay is fully opaque. A cutscene blocks combat input, so there is nothing
+actionable behind the panel and translucency would only cost dialogue legibility against a busy
+stage; collapsing is the way to look underneath.
 
 Width uses the game's *normal dialogue box* as a ceiling only: one token,
 `--story-log-max-width: 1277px` (`StoryManager.origintextdialogsize.x`). Below that the panel

@@ -148,6 +148,10 @@ The battle overlay MUST be collapsible. `BattleStoryUI.OpenStory` accepts a `blo
 parameter that is not always true, so an uncollapsible overlay could hide a stage the host can
 still act on. It MUST default to open, since the blocking case is the common one.
 
+The battle overlay MUST be fully opaque. A cutscene blocks combat input, so there is nothing
+actionable to read through the panel, and a translucent one only makes the dialogue harder to
+read against the stage behind it. Collapsing is the means of seeing the stage.
+
 The panel MUST be read-only. It MUST NOT offer skip, advance, or any other control over the
 host's cutscene playback.
 
@@ -162,6 +166,7 @@ host's cutscene playback.
 - **WHEN** the state payload reports `scene: "battle"` with a populated `storyLog`
 - **THEN** the log panel is shown as an overlay above the battle stage
 - **AND** the overlay starts expanded
+- **AND** the overlay is fully opaque
 - **AND** the viewer can collapse it to see the stage beneath
 
 #### Scenario: A cutscene begins before any line is spoken
@@ -185,13 +190,25 @@ Title and speaker MUST share the same display typeface, differing in size only. 
 composes the whole name line from one string and varies the size tag alone, so a differing
 typeface would not mirror it.
 
+Dialogue text MUST render in the same serif display face as the name line. The game renders
+story text in a serif and swaps only the localized font, never to a sans face.
+
 Portraits MUST be framed in a pointy-top hexagon, matching how the in-game log crops them. The
 frame MUST be built from two clipped layers rather than a CSS border, because a clip path cuts
 a real border away; the outer layer's fill stands in as the outline. The frame MUST be sized on
 both axes, since a pointy-top hexagon is taller than it is wide.
 
-When an entry has no portrait value, or its image fails to load, the row MUST fall back to a
-name-only layout rather than reserving empty space or showing a broken image.
+The crop MUST be biased toward the speaker's face rather than fitting the whole bust. Portrait
+art is a head-and-shoulders bust whose face centres at roughly a third of the image height, so
+a plain cover fit lets the hexagon's lower point cut through the chest. The zoom and vertical
+bias MUST be expressed as adjustable custom properties, because the game's true framing lives
+in prefab data that cannot be decompiled and these values are therefore tuned approximations.
+
+Every spoken row MUST reserve its portrait frame, including rows whose speaker has no portrait
+asset and rows whose portrait image fails to load. The in-game log disables only the image and
+leaves its hexagon standing, and reserving it keeps the text column aligned down the list. A
+failed image MUST leave an empty frame rather than a broken-image placeholder. Choice rows MUST
+NOT reserve a frame — vanilla renders them through a separate slot that has none.
 
 #### Scenario: A monologue line is rendered
 
@@ -220,8 +237,19 @@ name-only layout rather than reserving empty space or showing a broken image.
 #### Scenario: A portrait image fails to load
 
 - **WHEN** an entry's portrait asset returns 404
-- **THEN** the row renders name and content with no portrait slot
+- **THEN** the row keeps its empty hexagonal frame
 - **AND** no broken-image placeholder is visible
+
+#### Scenario: A speaker has no portrait at all
+
+- **WHEN** a spoken entry carries no portrait value
+- **THEN** the row still reserves its empty hexagonal frame
+- **AND** the text column stays aligned with rows that do have portraits
+
+#### Scenario: A choice row is rendered
+
+- **WHEN** an entry is a story-choice outcome
+- **THEN** no portrait frame is reserved for it
 
 ### Requirement: The panel SHALL match the game's log width and follow new lines
 

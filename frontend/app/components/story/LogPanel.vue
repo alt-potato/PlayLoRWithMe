@@ -89,13 +89,21 @@ watch(
           'slog-row--red': isChoiceEntry(entry) && entry.choiceIsRed,
         }"
       >
-        <div v-if="visiblePortrait(entry)" class="slog-portrait">
-          <img
-            class="slog-portrait-img"
-            :src="visiblePortrait(entry)!"
-            alt=""
-            @error="onPortraitError(entry)"
-          />
+        <!--
+          The frame stands whether or not an image loads: the in-game log disables
+          only the portrait image and leaves its hex in place, and keeping it also
+          holds the text column aligned down the list.
+        -->
+        <div v-if="showsPortraitFrame(entry)" class="slog-portrait">
+          <div class="slog-portrait-frame">
+            <img
+              v-if="visiblePortrait(entry)"
+              class="slog-portrait-img"
+              :src="visiblePortrait(entry)!"
+              alt=""
+              @error="onPortraitError(entry)"
+            />
+          </div>
         </div>
         <div class="slog-body">
           <p v-if="showsSpeaker(entry)" class="slog-name">
@@ -124,6 +132,17 @@ watch(
   --story-log-portrait-h: 3.46rem;
   --story-log-portrait-border: 2px;
 
+  /* Portrait art is a head-and-shoulders bust whose face centres at roughly a
+     third of the image height, so plain `cover` frames the whole bust and lets
+     the hex's point cut through the chest. Zooming past cover and biasing the
+     crop upward puts the face in the frame instead.
+
+     Tuned by eye against the extracted sprites: CharacterDialogLog only assigns
+     the sprite, and the game's real framing lives in prefab data that cannot be
+     decompiled — so these are approximations, kept as tokens to stay adjustable. */
+  --story-log-portrait-zoom: 1.25;
+  --story-log-portrait-offset-y: 14%;
+
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -138,7 +157,9 @@ watch(
   inset: 0 0 auto 0;
   z-index: 5;
   max-height: 60%;
-  background: color-mix(in srgb, var(--bg-card-2) 94%, transparent);
+  /* Fully opaque: a cutscene blocks combat input, so there is nothing useful to
+     read through the panel. Collapsing it is the way to see the stage. */
+  background: var(--bg-card-2);
   border-bottom: 1px solid var(--border-mid);
   box-shadow: var(--shadow-lg);
 }
@@ -204,12 +225,25 @@ watch(
   background: var(--border-mid);
 }
 
-.slog-portrait-img {
+/* Inner layer holds the fill and does the cropping. clip-path applies to the
+   whole subtree, so the zoomed image is cut to the hexagon without needing the
+   image itself to be clipped (which would scale the hexagon along with it). */
+.slog-portrait-frame {
   width: calc(100% - var(--story-log-portrait-border) * 2);
   height: calc(100% - var(--story-log-portrait-border) * 2);
-  object-fit: cover;
   clip-path: var(--hex-pointy);
   background: var(--bg-card-3);
+  overflow: hidden;
+}
+
+.slog-portrait-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Independent transforms: translate applies before scale, so the bias is
+     magnified by the zoom — which is the intent, both push toward the face. */
+  translate: 0 var(--story-log-portrait-offset-y);
+  scale: var(--story-log-portrait-zoom);
 }
 
 .slog-body {
@@ -241,8 +275,10 @@ watch(
   letter-spacing: 0.03em;
 }
 
+/* Serif, matching the in-game dialogue face — the game renders story text in a
+   serif and switches only the localized font, never to a sans. */
 .slog-content {
-  font-family: var(--font-body);
+  font-family: var(--font-display);
   font-size: var(--fs-sm);
   color: var(--text-2);
   line-height: 1.5;

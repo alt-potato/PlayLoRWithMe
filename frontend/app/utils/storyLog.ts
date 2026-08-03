@@ -30,6 +30,16 @@ export function isChoiceEntry(entry: StoryLogEntry): boolean {
 }
 
 /**
+ * Whether a row reserves its portrait frame. Spoken lines always do, even when the
+ * speaker has no portrait asset — the in-game log disables only the image and
+ * leaves its hex frame standing, which also keeps rows aligned down the column.
+ * Choice rows render through a different slot in vanilla and have no frame.
+ */
+export function showsPortraitFrame(entry: StoryLogEntry): boolean {
+  return !isChoiceEntry(entry);
+}
+
+/**
  * Whether a row renders a name line. Choice rows have no speaker, and monologue
  * rows deliberately suppress theirs to match the in-game log.
  */

@@ -45,7 +45,7 @@
       `(forcely || inGame) && storyUI.activeSelf` and is a no-op when that fails, so the
       postfix re-checks `storyUI.activeSelf` and skips the clear — otherwise a rejected call
       would wipe the log of a cutscene still on screen.
-- [ ] 3.5 Verify in-game that a standalone cutscene and a mid-battle cutscene both populate and
+- [x] 3.5 Verify in-game that a standalone cutscene and a mid-battle cutscene both populate and
       both clear. This needs a running game — if it cannot be driven from the CLI, stop and ask
       the maintainer to exercise both paths.
 
@@ -81,8 +81,10 @@
       display typeface (vanilla varies only the size tag), and portraits are clipped to a
       pointy-top hexagon via a new `--hex-pointy` token, built from two clipped layers since
       `clip-path` cuts a real CSS border away.
-- [x] 5.5 Render portraits from `/assets/portraits/<portrait>.png`, falling back to a name-only
-      row when `portrait` is absent or the image fails to load.
+- [x] 5.5 Render portraits from `/assets/portraits/<portrait>.png`. Superseded during review:
+      rather than falling back to a name-only row, a spoken row keeps its empty hex frame when
+      `portrait` is absent or the image fails to load, matching vanilla (which disables the
+      image but leaves its frame) and keeping the text column aligned. See 6.6.
 - [x] 5.6 Implement newest-at-bottom auto-scroll, suppressed while the reader has scrolled away
       from the bottom.
 - [x] 5.7 Add the `LogPanel` Vitest suite per the design's testing table. Split from what the
@@ -100,8 +102,14 @@
       `storyLog` is present. Defaults to open; collapsing reveals the stage underneath.
 - [x] 6.3 Add the `story-cutscene.json` dev fixture covering a dialogue row with a portrait, one
       without, a monologue row, and both choice colours. Confirm `fixtures.test.ts` validates it.
-- [ ] 6.4 Check the panel at phone width: rows stay legible, the portrait does not crowd out the
-      content, and the battle overlay's collapse control stays reachable.
+- [x] 6.4 Check the panel at phone width: rows stay legible, the portrait does not crowd out the
+      content, and the battle overlay's collapse control stays reachable. Confirmed by the
+      maintainer, along with 3.5 (both cutscene types populate and clear in-game).
+- [x] 6.6 Post-review fidelity pass against the in-game appearance: make the battle overlay
+      fully opaque (a cutscene blocks combat input, so nothing actionable sits behind it),
+      render dialogue text in the serif display face, bias the portrait crop onto the face
+      rather than fitting the whole bust, and reserve the empty hex frame for speakers with no
+      portrait as vanilla does.
 - [x] 6.5 `cd mod && dotnet build` runs `0 Warning(s) 0 Error(s)` and `cd frontend && npm test`
       passes.
 
