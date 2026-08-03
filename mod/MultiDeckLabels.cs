@@ -1,17 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
-using UI;
-using UnityEngine;
 
 namespace PlayLoRWithMe
 {
     /// <summary>
-    /// Resolves localized deck labels for known multi-deck key pages.
+    /// Resolves localized deck labels for known multi-deck key pages, given only the
+    /// identifying primitives a caller can pull off a book (package id, book id,
+    /// whether it is multi-deck) plus a text-resolution callback.
     ///
     /// Two label sources, checked in order:
     ///
-    /// 1. <c>RecordLabels</c> cache, populated by
+    /// 1. <c>RecordLabels</c> cache, populated by the game-coupled adapter in
     ///    <see cref="MultiDeckLabelHook"/> after every
     ///    <c>UIEquipDeckCardList.SetDeckLayout</c> invocation. This captures
     ///    whatever any mod's Harmony patches resolved <em>after</em> the
@@ -21,48 +20,80 @@ namespace PlayLoRWithMe
     ///    the in-game deck editor for that librarian, so the cache is empty
     ///    until then.
     ///
-    /// 2. <c>LabelTextIds</c> static table, mapping known key pages to
-    ///    <see cref="TextDataModel"/> ids that ship with localized strings
-    ///    in every supported language. The engine's deck-editor prefab uses
-    ///    these ids by default (see the Binah mod's
-    ///    <c>SetDeckLayout</c> pre-patch, workshop 2788324005), so vanilla
-    ///    multi-deck books like The Purple Tear resolve correctly here even
-    ///    before the player has opened the editor.
+    /// 2. A static text-id table, mapping known key pages to
+    ///    <c>TextDataModel</c> ids that ship with localized strings in every
+    ///    supported language. The engine's deck-editor prefab uses these ids
+    ///    by default (see the Binah mod's <c>SetDeckLayout</c> pre-patch,
+    ///    workshop 2788324005), so vanilla multi-deck books like The Purple
+    ///    Tear resolve correctly here even before the player has opened the
+    ///    editor. Resolution goes through a caller-supplied delegate rather
+    ///    than <c>TextDataModel</c> directly, which is what keeps this file
+    ///    free of game types and lets it link into the headless test project.
     ///
     /// Books missing from both sources fall through to the frontend's
     /// generic <c>Deck N</c> placeholder.
+    ///
+    /// Deliberately free of Unity and Assembly-CSharp types, mirroring
+    /// StoryLog.cs, so this file can be linked into the headless mod.tests
+    /// project. <see cref="MultiDeckLabelsAdapter"/> and
+    /// <see cref="MultiDeckLabelHook"/> own the mapping from the game's
+    /// <c>BookModel</c>/<c>UnitDataModel</c> types and the UI reflection
+    /// needed to synthesize a deck-layout invocation.
     /// </summary>
-    public static class MultiDeckLabels
+    internal static class MultiDeckLabels
     {
-        // Cache populated by MultiDeckLabelHook on each SetDeckLayout call.
-        // Length-4 arrays; individual entries may be null/empty when a
-        // multi-deck book hides some of its tabs (the engine constructs the
-        // tab strip with all four buttons but mods deactivate unused ones).
+        // Cache populated (via RecordLabels) by the game-coupled adapter on each
+        // SetDeckLayout observation. Length-4 arrays; individual entries may be
+        // null/empty when a multi-deck book hides some of its tabs (the engine
+        // constructs the tab strip with all four buttons but mods deactivate
+        // unused ones).
         // Locked because Harmony patches and the broadcast thread can both
         // read; writes only come from the main-thread postfix.
         private static readonly object CacheLock = new object();
-        private static readonly Dictionary<KpKey, string[]> Cache =
-            new Dictionary<KpKey, string[]>();
+        private static readonly Dictionary<BookKey, string[]> Cache =
+            new Dictionary<BookKey, string[]>();
 
         // Length of a multi-deck label vector; mirrors BookModel._deckList's
         // fixed size (4 slots regardless of how many a key page actually uses).
-        public const int LabelCount = 4;
+        internal const int LabelCount = 4;
+
+        // True while the adapter is inside a synthetic SetDeckLayout invocation.
+        // MultiDeckLabelHook checks this so it doesn't trigger a broadcast from
+        // within the serializer (which is already preparing one) — that would
+        // recursively fan out one broadcast per multi-deck book on the first
+        // state push. Only the adapter (the one caller that knows when a
+        // synthetic invocation starts and ends) toggles this.
+        private static bool _inSynthetic;
+        internal static bool InSyntheticInvoke => _inSynthetic;
+
+        /// <summary>Toggled by <see cref="MultiDeckLabelsAdapter.EnsureLabelsCached"/> around its synthetic invocation.</summary>
+        internal static void SetInSyntheticInvoke(bool value) => _inSynthetic = value;
 
         /// <summary>
-        /// Records the tab labels observed for a book by
-        /// <see cref="MultiDeckLabelHook"/>. <paramref name="tabLabels"/> may
-        /// be shorter than <see cref="LabelCount"/> or contain null/empty
+        /// Test-only: empties the label cache so xUnit tests can isolate cache state
+        /// between cases, including cases that must reuse the one book key present in
+        /// <see cref="LabelTextIds"/>. Production code never calls this — the cache is
+        /// meant to persist for the lifetime of the game process.
+        /// </summary>
+        internal static void ClearCacheForTests()
+        {
+            lock (CacheLock)
+                Cache.Clear();
+        }
+
+        /// <summary>
+        /// Records the tab labels observed for a book. <paramref name="tabLabels"/>
+        /// may be shorter than <see cref="LabelCount"/> or contain null/empty
         /// entries for hidden tabs; both are preserved as-is. Returns true
         /// when the cache contents changed, so the caller can trigger a
         /// state broadcast — without that, the just-cached labels would
         /// only reach connected clients on the next unrelated state push.
         /// </summary>
-        public static bool RecordLabels(BookModel book, string[] tabLabels)
+        internal static bool RecordLabels(string packageId, int bookId, string[] tabLabels)
         {
-            if (book == null || tabLabels == null)
+            if (tabLabels == null)
                 return false;
-            var lid = book.GetBookClassInfoId();
-            var k = new KpKey(lid.packageId ?? "", lid.id);
+            var k = new BookKey(packageId, bookId);
 
             var snapshot = new string[LabelCount];
             for (int i = 0; i < LabelCount && i < tabLabels.Length; i++)
@@ -87,114 +118,31 @@ namespace PlayLoRWithMe
             return true;
         }
 
-        // Reflected once: SetDeckLayout is private on UIEquipDeckCardList.
-        private static readonly MethodInfo SetDeckLayoutMethod =
-            typeof(UIEquipDeckCardList).GetMethod(
-                "SetDeckLayout",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-
-        // True while we're inside a synthetic SetDeckLayout invocation. The
-        // hook checks this so it doesn't trigger a broadcast from within
-        // the serializer (which is already preparing one) — that would
-        // recursively fan out one broadcast per multi-deck book on the
-        // first state push.
-        private static bool _inSynthetic;
-        public static bool InSyntheticInvoke => _inSynthetic;
-
-        /// <summary>
-        /// Synthesizes the patch chain on <c>UIEquipDeckCardList.SetDeckLayout</c>
-        /// for a multi-deck book that the player hasn't opened in-game yet.
-        /// Mods like Binah Multi-Deck only assign their custom tab labels via
-        /// Harmony postfixes on that method; without invoking it, the
-        /// <see cref="MultiDeckLabelHook"/> postfix has no event to attach
-        /// to and the cache stays empty. We swap the panel's
-        /// <c>currentunit</c> to <paramref name="unitData"/>, run the
-        /// private method via reflection to fire all postfixes (including
-        /// ours), then restore — visual flicker is bounded to the rare
-        /// case where the in-game panel happens to be visible at broadcast
-        /// time, and the panel's next natural <c>SetData</c> call resets it.
-        /// </summary>
-        public static void EnsureLabelsCached(BookModel book, UnitDataModel unitData)
+        /// <summary>Whether the cache already has an entry for this book, so the adapter can skip a redundant synthetic invocation.</summary>
+        internal static bool HasCachedLabels(string packageId, int bookId)
         {
-            if (book == null || unitData == null)
-                return;
-            if (!book.IsMultiDeck())
-                return;
-
-            var lid = book.GetBookClassInfoId();
-            var k = new KpKey(lid.packageId ?? "", lid.id);
             lock (CacheLock)
-            {
-                if (Cache.ContainsKey(k))
-                    return;
-            }
-
-            if (SetDeckLayoutMethod == null)
-                return;
-            // Retry every broadcast until the panel is in the scene and
-            // we get a successful fill. The fast path is FindObjectsOfTypeAll
-            // returning empty / our cache hit short-circuit, so the cost
-            // is negligible during the title screen / pre-library phases.
-
-            UIEquipDeckCardList panel = null;
-            try
-            {
-                // FindObjectsOfTypeAll returns active+inactive scene objects
-                // and prefabs already loaded into memory. Either works for
-                // our purposes — we just need any instance whose private
-                // multiDeckLayout field has been wired up.
-                var panels = Resources.FindObjectsOfTypeAll<UIEquipDeckCardList>();
-                if (panels != null && panels.Length > 0)
-                    panel = panels[0];
-            }
-            catch
-            {
-                return;
-            }
-            if (panel == null)
-                return;
-
-            var saved = panel.currentunit;
-            _inSynthetic = true;
-            try
-            {
-                panel.currentunit = unitData;
-                SetDeckLayoutMethod.Invoke(panel, null);
-            }
-            catch
-            {
-                // Best-effort: if invoking the patch chain throws (e.g.
-                // because some other mod's prefix/postfix can't handle
-                // the synthetic invocation), the cache stays empty and we
-                // retry on the next broadcast.
-            }
-            finally
-            {
-                panel.currentunit = saved;
-                _inSynthetic = false;
-            }
+                return Cache.ContainsKey(new BookKey(packageId, bookId));
         }
 
         /// <summary>
         /// Effective deck count for a multi-deck book — the number of slots
         /// the in-game editor actually exposes. Resolution order:
         ///
-        /// 1. Cache (populated by <see cref="MultiDeckLabelHook"/>): returns
-        ///    "highest non-null label index + 1" so observed mod overrides
-        ///    that hide unused tabs win immediately.
+        /// 1. Cache: returns "highest non-null label index + 1" so observed
+        ///    mod overrides that hide unused tabs win immediately.
         /// 2. <see cref="DeckCountOverrides"/> static table: lets known
         ///    mod-multi-deck books surface the correct shape on the first
         ///    state push, before the in-game panel has had a chance to
         ///    populate the cache.
         /// 3. <see cref="LabelCount"/> (4) as the conservative default.
         /// </summary>
-        public static int GetEffectiveDeckCount(BookModel book)
+        internal static int GetEffectiveDeckCount(string packageId, int bookId, bool isMultiDeck)
         {
-            if (book == null || !book.IsMultiDeck())
+            if (!isMultiDeck)
                 return 1;
 
-            var lid = book.GetBookClassInfoId();
-            var k = new KpKey(lid.packageId ?? "", lid.id);
+            var k = new BookKey(packageId, bookId);
 
             string[] cached;
             lock (CacheLock)
@@ -225,14 +173,14 @@ namespace PlayLoRWithMe
             { "ui_slash_form", "ui_penetrate_form", "ui_hit_form", "ui_defense_form" };
 
         // Maps (packageId, bookId) -> array of TextDataModel ids in deck
-        // index order 0..3. We resolve each id through TextDataModel at
-        // serialization time so the wire payload carries strings in the
-        // player's game language.
-        private static readonly Dictionary<KpKey, string[]> LabelTextIds =
-            new Dictionary<KpKey, string[]>
+        // index order 0..3. The caller resolves each id through its own
+        // text-resolution delegate at serialization time so the wire payload
+        // carries strings in the player's game language.
+        private static readonly Dictionary<BookKey, string[]> LabelTextIds =
+            new Dictionary<BookKey, string[]>
             {
                 // The Purple Tear uses the engine's standard stance ids.
-                { new KpKey("", 250035), StanceFormTextIds },
+                { new BookKey("", 250035), StanceFormTextIds },
             };
 
         // Extension point for static deck-count overrides. Intentionally
@@ -243,8 +191,8 @@ namespace PlayLoRWithMe
         // case a future case turns up where a key page is universally
         // multi-deck and the engine's UI never renders the right shape
         // — until then deck count is detected from the cache alone.
-        private static readonly Dictionary<KpKey, int> DeckCountOverrides =
-            new Dictionary<KpKey, int>();
+        private static readonly Dictionary<BookKey, int> DeckCountOverrides =
+            new Dictionary<BookKey, int>();
 
         /// <summary>
         /// Resolves the deck labels for the given book. Returns false when
@@ -253,19 +201,24 @@ namespace PlayLoRWithMe
         /// but individual entries may be <c>null</c> or empty — callers
         /// SHOULD check each entry before emitting <c>label</c> on the wire.
         ///
-        /// Resolution order: cache (populated by the SetDeckLayout hook;
+        /// Resolution order: cache (populated from the SetDeckLayout hook;
         /// captures custom mod overrides) wins where present; otherwise
-        /// the static text-id table runs through TextDataModel for known
-        /// vanilla pages.
+        /// the static text-id table runs through <paramref name="resolveText"/>
+        /// for known vanilla pages.
         /// </summary>
-        public static bool TryGetLabels(BookModel book, out string[] labels)
+        internal static bool TryGetLabels(
+            string packageId,
+            int bookId,
+            bool isMultiDeck,
+            Func<string, string> resolveText,
+            out string[] labels
+        )
         {
             labels = null;
-            if (book == null || !book.IsMultiDeck())
+            if (!isMultiDeck)
                 return false;
 
-            var lid = book.GetBookClassInfoId();
-            var k = new KpKey(lid.packageId ?? "", lid.id);
+            var k = new BookKey(packageId, bookId);
 
             string[] cached;
             lock (CacheLock)
@@ -286,10 +239,10 @@ namespace PlayLoRWithMe
                 string text;
                 try
                 {
-                    // GetText returns "" and logs an error if the id isn't
-                    // known; it can also throw when textDic hasn't been
-                    // populated yet. Both mean "not ready, skip the label".
-                    text = TextDataModel.GetText(textIds[i]);
+                    // The resolver returns "" (and the game logs an error) if the id
+                    // isn't known; it can also throw when the caller's backing table
+                    // hasn't been populated yet. Both mean "not ready, skip the label".
+                    text = resolveText(textIds[i]);
                 }
                 catch
                 {
@@ -306,22 +259,22 @@ namespace PlayLoRWithMe
         // Tuples as keys would need .NET 4.7+ ValueTuple; the mod targets
         // 4.8 but pinning a custom struct keeps the dictionary usage
         // self-contained and avoids depending on the framework's tuple impl.
-        private struct KpKey : IEquatable<KpKey>
+        private struct BookKey : IEquatable<BookKey>
         {
             public readonly string PackageId;
             public readonly int BookId;
 
-            public KpKey(string packageId, int bookId)
+            public BookKey(string packageId, int bookId)
             {
                 PackageId = packageId ?? "";
                 BookId = bookId;
             }
 
-            public bool Equals(KpKey other) =>
+            public bool Equals(BookKey other) =>
                 BookId == other.BookId && PackageId == other.PackageId;
 
             public override bool Equals(object obj) =>
-                obj is KpKey k && Equals(k);
+                obj is BookKey k && Equals(k);
 
             public override int GetHashCode()
             {

@@ -79,7 +79,7 @@ namespace PlayLoRWithMe
                         continue;
                     labels[i] = tn.text;
                 }
-                bool changed = MultiDeckLabels.RecordLabels(book, labels);
+                bool changed = MultiDeckLabelsAdapter.RecordLabels(book, labels);
                 // Broadcast on first observation (or any later change) so
                 // open web-UI deck editors update without requiring a
                 // close+reopen. Skip when we're inside a synthetic

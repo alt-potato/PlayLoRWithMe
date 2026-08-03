@@ -32,6 +32,7 @@
     <Compile Include="..\DeltaEngine.cs"     Link="src\DeltaEngine.cs" />
     <Compile Include="..\ModLog.cs"          Link="src\ModLog.cs" />
     <Compile Include="..\StoryLog.cs"        Link="src\StoryLog.cs" />
+    <Compile Include="..\MultiDeckLabels.cs" Link="src\MultiDeckLabels.cs" />
   </ItemGroup>
 
   <ItemGroup>
