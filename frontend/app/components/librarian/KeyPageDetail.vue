@@ -58,13 +58,13 @@ const hasSpeed = computed(() => kp.value.speedMin != null && kp.value.speedMax !
 
     <!-- Resistances -->
     <template v-if="resistances && !props.compact">
-      <div class="section-label">Resistances</div>
+      <div class="panel-heading">Resistances</div>
       <UnitResistanceTable :resistances="resistances" />
     </template>
 
     <!-- Passives -->
     <template v-if="passives.length">
-      <div class="section-label">Passives</div>
+      <div class="panel-heading">Passives</div>
       <UnitPassiveList :passives="passives" />
     </template>
   </div>
@@ -101,25 +101,16 @@ const hasSpeed = computed(() => kp.value.speedMin != null && kp.value.speedMax !
   gap: var(--sp-1);
 }
 
-.stat-icon {
-  width: 1.1rem;
-  height: 1.1rem;
-  object-fit: contain;
-  opacity: 0.9;
-}
-
 .stat-value {
   font-size: var(--fs-md);
   color: var(--text-1);
   font-family: var(--font-display);
 }
 
-.section-label {
-  font-size: var(--fs-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-2);
-  font-family: var(--font-display);
+/* base heading styling is shared via app.vue's global .panel-heading; only
+   the extra top gap (this component nests inside other panels that don't
+   already provide one) is local. */
+.panel-heading {
   margin-top: var(--sp-1);
 }
 </style>

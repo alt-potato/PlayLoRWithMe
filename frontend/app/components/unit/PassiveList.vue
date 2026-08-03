@@ -106,14 +106,6 @@ details.passive-entry > .passive-header {
   cursor: pointer;
 }
 
-.chevron {
-  font-size: var(--fs-4xs);
-  color: var(--text-3);
-  flex-shrink: 0;
-  display: inline-block;
-  transition: transform 0.18s ease;
-}
-
 details[open].passive-entry > .passive-header .chevron {
   transform: rotate(90deg);
 }

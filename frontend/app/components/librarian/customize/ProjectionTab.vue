@@ -124,7 +124,7 @@ const hasBodyTypeToggle = computed(
     <div class="section-label" style="margin-top: 0.75rem">
       X Page Fashion
       <button
-        class="unequip-btn"
+        class="unequip-toggle-btn"
         :class="{ active: customBookId < 0 && workshopSkin === '' }"
         :disabled="busy"
         @click="emit('update:customBookId', -1); emit('update:customBookPackageId', ''); emit('update:workshopSkin', '')"
@@ -197,17 +197,10 @@ const hasBodyTypeToggle = computed(
 </template>
 
 <style scoped>
+/* base column-flex layout is shared via app.vue's global .tab-inner; only
+   this tab's row gap is local. */
 .tab-inner {
-  display: flex;
-  flex-direction: column;
   gap: 0.3rem;
-}
-
-.section-label {
-  font-size: var(--fs-4xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-3);
 }
 
 .range-hint {
@@ -244,7 +237,7 @@ const hasBodyTypeToggle = computed(
 .type-btn.active {
   border-color: var(--gold);
   color: var(--gold);
-  background: rgba(201, 162, 39, 0.08);
+  background: var(--gold-a08);
 }
 
 .type-btn:disabled {
@@ -281,7 +274,7 @@ const hasBodyTypeToggle = computed(
   padding: 0.25rem 0;
 }
 
-.unequip-btn {
+.unequip-toggle-btn {
   margin-left: 0.5rem;
   padding: 0.1rem 0.4rem;
   border-radius: 3px;
@@ -296,17 +289,17 @@ const hasBodyTypeToggle = computed(
   vertical-align: middle;
 }
 
-.unequip-btn:hover:not(:disabled) {
+.unequip-toggle-btn:hover:not(:disabled) {
   border-color: var(--gold-dim);
   color: var(--text-2);
 }
 
-.unequip-btn.active {
+.unequip-toggle-btn.active {
   border-color: var(--gold);
   color: var(--gold);
 }
 
-.unequip-btn:disabled {
+.unequip-toggle-btn:disabled {
   opacity: 0.4;
   cursor: default;
 }
@@ -338,7 +331,7 @@ const hasBodyTypeToggle = computed(
 .ftoggle-btn.active {
   border-color: var(--gold);
   color: var(--gold);
-  background: rgba(201, 162, 39, 0.08);
+  background: var(--gold-a08);
 }
 
 .fashion-list {
@@ -382,7 +375,7 @@ const hasBodyTypeToggle = computed(
 .fashion-item.active {
   border-color: var(--gold);
   color: var(--gold);
-  background: rgba(201, 162, 39, 0.08);
+  background: var(--gold-a08);
 }
 
 .fashion-item:disabled {

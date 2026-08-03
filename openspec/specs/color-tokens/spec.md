@@ -104,3 +104,53 @@ These tokens MUST be declared, not just referenced, so that omitting an inline o
 - **THEN** all four `--rarity-color` / `--rarity-range-icon-color` / `--rarity-ability-color` / `--rarity-keyword-color` defaults are declared
 - **AND** their values match the pre-change visual rendering
 
+### Requirement: Components SHALL use a centralized `--z-*` scale for stacking order
+
+Component `<style>` blocks in `frontend/app/components/**/*.vue` and `frontend/app/dev/**/*.vue` MUST reference `z-index` via `var(--z-token-name)` where `--z-token-name` is defined in the `:root` block of `frontend/app/app.vue`. Bare numeric `z-index` literals in `<style>` blocks are forbidden.
+
+Tokens MUST be named by the role they play in the stacking order (e.g. `--z-arrows`, `--z-overlay`, `--z-modal`), not by their numeric value, so the name documents intent independently of the number chosen. Two layers that are visually or functionally distinct MUST NOT share a token merely because they happen to use the same number — each layer that can be reasoned about independently gets its own named token, even if two tokens end up with adjacent or equal-looking values.
+
+When two overlays are known to never render at the same time (e.g. one belongs to a battle-scene surface and the other to a library-scene surface), they MAY still share a numeric value only if that is a deliberate choice recorded at the point of definition; the default is to give every named layer a distinct value so the scale stays self-documenting.
+
+#### Scenario: A component raises an element above its siblings
+
+- **WHEN** a Vue component declares `z-index: var(--z-tooltip);` in its `<style>` block
+- **AND** `--z-tooltip` is defined in `app.vue`'s `:root` block
+- **THEN** the component renders at the layer the token names
+- **AND** changing the central token value updates the component without a per-file edit
+
+#### Scenario: A component uses a bare numeric z-index
+
+- **WHEN** a Vue component declares `z-index: 200;` in its `<style>` block
+- **THEN** the change is non-compliant with this requirement
+- **AND** code review SHOULD ask the author to add or reuse a named `--z-*` token in `app.vue` instead
+
+#### Scenario: Two overlays coincidentally share a number
+
+- **WHEN** two components each need a full-viewport blocking overlay and neither can ever be visible while the other is
+- **THEN** each MUST still get its own named `--z-*` token
+- **AND** the token declarations MUST record why the values were chosen (equal, adjacent, or otherwise) so a future change that makes the two surfaces coexist does not have to rediscover the reasoning
+
+### Requirement: Colors SHALL NOT be re-derived by hand as `rgba()`/`rgb()` literals
+
+Component `<style>` blocks in `frontend/app/components/**/*.vue` MUST NOT restate a tokenized colour's channels as a hand-typed `rgba()` or `rgb()` literal (e.g. `rgba(201, 162, 39, 0.12)` for the `--gold` colour). When a component needs a translucent variant of an existing colour token, the value MUST come from a named alpha-variant token declared in `app.vue`'s `:root` block (e.g. `--gold-a12`, following the same suffix convention as `-hover`/`-deep`/`-hi`), not from restating the base token's RGB channels at the point of use.
+
+This rule applies the same two exceptions as the base color-token requirement: `rgba(0, 0, 0, α)` and `rgba(255, 255, 255, α)` (pure black/white at any alpha) MAY appear inline, since they are not re-deriving a brand token. A `<style>` block MAY also declare a full-page backdrop scrim via a shared `--bg-scrim*` token rather than a per-component literal, so that near-duplicate scrim values do not drift apart unintentionally.
+
+#### Scenario: A component needs a translucent brand colour
+
+- **WHEN** a Vue component needs a faint gold wash for a hover state
+- **THEN** the `<style>` block MUST reference an alpha-variant token such as `var(--gold-a12)`
+- **AND** MUST NOT declare `background: rgba(201, 162, 39, 0.12);` inline
+
+#### Scenario: A component uses neutral black/white shading
+
+- **WHEN** a Vue component declares `filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.7));` for a non-brand neutral shadow
+- **THEN** the rule is compliant with this requirement, matching the existing pure-black/white exception
+
+#### Scenario: A component re-derives a brand colour by hand
+
+- **WHEN** a Vue component declares `background: rgba(198, 40, 40, 0.08);` where `#c62828` (`--crimson-hi`) is already a token
+- **THEN** the change is non-compliant with this requirement
+- **AND** code review SHOULD ask the author to add or reuse a `--crimson-hi-aXX` alpha-variant token instead
+

@@ -164,7 +164,7 @@ async function onConfirm() {
               <div class="stats-inner">
                 <img
                   src="/assets/stats/health.png"
-                  class="stat-icon"
+                  class="mini-stat-icon"
                   alt="HP"
                 /><span class="stat-v" :style="{ color: hpColor(unit) }"
                   >{{ unit.hp
@@ -174,7 +174,7 @@ async function onConfirm() {
                   <span class="stat-sep">·</span>
                   <img
                     src="/assets/stats/stagger.png"
-                    class="stat-icon"
+                    class="mini-stat-icon"
                     alt="Stagger"
                   /><span class="stat-v">{{ unit.maxStaggerGauge }}</span>
                 </template>
@@ -182,7 +182,7 @@ async function onConfirm() {
                   <span class="stat-sep">·</span>
                   <img
                     src="/assets/stats/speed.png"
-                    class="stat-icon"
+                    class="mini-stat-icon"
                     alt="Speed"
                   /><span class="stat-v"
                     >{{ unit.keyPage.speedMin }}–{{
@@ -294,7 +294,7 @@ async function onConfirm() {
               <div class="stats-inner stats-inner--ally">
                 <img
                   src="/assets/stats/health.png"
-                  class="stat-icon"
+                  class="mini-stat-icon"
                   alt="HP"
                 /><span class="stat-v" :style="{ color: hpColor(ally) }"
                   >{{ ally.hp
@@ -304,7 +304,7 @@ async function onConfirm() {
                   <span class="stat-sep">·</span>
                   <img
                     src="/assets/stats/stagger.png"
-                    class="stat-icon"
+                    class="mini-stat-icon"
                     alt="Stagger"
                   /><span class="stat-v">{{ ally.maxStaggerGauge }}</span>
                 </template>
@@ -312,7 +312,7 @@ async function onConfirm() {
                   <span class="stat-sep">·</span>
                   <img
                     src="/assets/stats/speed.png"
-                    class="stat-icon"
+                    class="mini-stat-icon"
                     alt="Speed"
                   /><span class="stat-v"
                     >{{ ally.keyPage.speedMin }}–{{
@@ -643,7 +643,10 @@ async function onConfirm() {
   color: var(--text-3);
 }
 
-.stat-icon {
+/* smaller than the shared app.vue .stat-icon — the formation preview is a
+   dense compact card, so this keeps its own reduced footprint rather than
+   overriding the shared class. */
+.mini-stat-icon {
   height: 0.85rem;
   width: auto;
   vertical-align: middle;
@@ -754,7 +757,7 @@ async function onConfirm() {
 }
 
 .claim-btn:hover {
-  background: rgba(201, 162, 39, 0.12);
+  background: var(--gold-a12);
   border-color: var(--gold);
 }
 

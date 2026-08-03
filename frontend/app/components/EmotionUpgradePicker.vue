@@ -261,11 +261,11 @@ function egoChoiceToCard(choice: EgoChoice): Card {
 .ab-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.78);
+  background: var(--bg-scrim);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 200;
+  z-index: var(--z-modal-battle);
   padding: 1rem;
 }
 

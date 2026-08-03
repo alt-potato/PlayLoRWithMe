@@ -150,7 +150,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
           <span v-else-if="!hasLock && lockBusy" class="lock-badge lock-badge--pending">
             Acquiring lock…
           </span>
-          <button class="close-btn" title="Close" aria-label="Close edit panel" @click="onClose">✕</button>
+          <button class="modal-close-btn" title="Close" aria-label="Close edit panel" @click="onClose">✕</button>
         </div>
 
         <!-- Tab bar -->
@@ -237,7 +237,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
                 />
               </div>
 
-              <div class="section-label">Name</div>
+              <div class="panel-heading">Name</div>
               <div class="rename-row">
                 <input
                   v-model="editName"
@@ -264,7 +264,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
                 Customize Appearance &amp; Dialogue…
               </button>
 
-              <div class="section-label" style="margin-top: 0.75rem;">Key Page</div>
+              <div class="panel-heading" style="margin-top: 0.75rem;">Key Page</div>
               <LibrarianKeyPageDetail :key-page="lib.keyPage" />
             </div>
           </div>
@@ -273,7 +273,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
     </div>
   </Teleport>
 
-  <!-- Customize overlay — stacks above EditPanel (z-index: 300) -->
+  <!-- Customize overlay — stacks above EditPanel: --z-modal-nested sits above --z-modal (see app.vue :root) -->
   <LazyLibrarianCustomizePanel
     v-if="showCustomize"
     :lib="lib"
@@ -291,8 +291,8 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
 .edit-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  z-index: 200;
+  background: var(--bg-scrim);
+  z-index: var(--z-modal);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -349,7 +349,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
 .lock-badge {
   font-size: var(--fs-3xs);
   color: var(--crimson-hi);
-  background: rgba(198, 40, 40, 0.12);
+  background: var(--crimson-hi-a12);
   border-radius: var(--radius-md);
   padding: var(--sp-1) var(--sp-2);
 }
@@ -359,7 +359,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
   background: transparent;
 }
 
-.close-btn {
+.modal-close-btn {
   background: transparent;
   border: none;
   color: var(--text-3);
@@ -370,7 +370,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
   transition: color var(--duration-fast) var(--ease-out);
 }
 
-.close-btn:hover {
+.modal-close-btn:hover {
   color: var(--text-1);
 }
 
@@ -378,23 +378,15 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
  * Tab bar — horizontal on mobile (default). At desktop sizes the rail
  * inside .panel-body switches it to a vertical settings-style nav.
  */
+/* base flex strip / button styling comes from app.vue's shared .tab-bar /
+   .tab-btn; this panel never wraps its tabs onto multiple rows, so it owns
+   one shared bottom border and shifts the active tab's border color rather
+   than growing its width (contrast with CustomizePanel below). */
 .tab-bar {
-  display: flex;
-  gap: 0;
   border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
 }
 
 .tab-btn {
-  padding: var(--sp-2) var(--sp-4);
-  background: transparent;
-  border: none;
-  color: var(--text-3);
-  cursor: pointer;
-  font-size: var(--fs-sm);
-  font-family: var(--font-display);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   transition: color var(--duration-fast) var(--ease-out),
@@ -410,7 +402,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
   padding: var(--sp-2) var(--sp-4);
   font-size: var(--fs-xs);
   color: var(--crimson-hi);
-  background: rgba(198, 40, 40, 0.08);
+  background: var(--crimson-hi-a08);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -547,14 +539,6 @@ onBeforeUnmount(() => window.removeEventListener("keydown", handleKeyDown));
   flex-direction: column;
   gap: var(--sp-2);
   overflow-y: auto;
-}
-
-.section-label {
-  font-size: var(--fs-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-2);
-  font-family: var(--font-display);
 }
 
 .rename-row {

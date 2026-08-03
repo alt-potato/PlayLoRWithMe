@@ -51,18 +51,18 @@ const detailCard = ref<Card | null>(null);
 <template>
   <div class="detail-panel" :class="{ 'detail-panel--flip': flip }">
     <!-- Resistance table -->
-    <div class="section-label">Resistances</div>
+    <div class="row-label">Resistances</div>
     <UnitResistanceTable v-if="kp?.resistances" :resistances="kp.resistances" />
 
     <!-- Passives -->
     <template v-if="passives.length">
-      <div class="section-label">Passives</div>
+      <div class="row-label">Passives</div>
       <UnitPassiveList :passives="passives" />
     </template>
 
     <!-- Deck preview — uses HandCard tiles; long-press opens CardDetail -->
     <template v-if="deck.length">
-      <div class="section-label">Deck</div>
+      <div class="row-label">Deck</div>
       <div class="deck-cards">
         <HandCard
           v-for="(card, i) in deck"
@@ -90,25 +90,20 @@ const detailCard = ref<Card | null>(null);
   gap: 0.35rem;
 }
 
-/* ── Section labels ───────────────────────────────────────────────────────── */
-.section-label {
-  font-family: var(--font-display);
-  font-size: var(--fs-4xs);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+/* ── Section labels ─────────────────────────────────────────────────────────
+   Base flex-row/typography styling is shared via app.vue's global
+   .row-label; color and the extra top gap are local to this panel. */
+.row-label {
   color: var(--text-3);
   margin-top: 0.1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.3em;
 }
 
-.detail-panel--flip .section-label {
+.detail-panel--flip .row-label {
   justify-content: flex-end;
 }
 
 @media (max-width: 599px) {
-  .detail-panel--flip .section-label {
+  .detail-panel--flip .row-label {
     justify-content: flex-start;
   }
 }

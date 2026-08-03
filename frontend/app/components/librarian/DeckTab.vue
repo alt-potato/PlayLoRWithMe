@@ -20,6 +20,8 @@
 import type { LibrarianEntry, GameState, AvailableCard, DeckCardPreview, Card, ActionResult } from "~/types/game";
 import { STATE_GENERATION } from "~/composables/useStateGeneration";
 import { resolveDeckLabels } from "~/utils/multiDeckLabels";
+import { DECK_MAX, pendingKey, dropOldest } from "~/composables/useDeckEditStaging";
+import type { PendingDeckEdit } from "~/composables/useDeckEditStaging";
 
 const props = defineProps<{
   lib: LibrarianEntry;
@@ -29,29 +31,33 @@ const props = defineProps<{
   onRemoveCard: (card: DeckCardPreview, deckIndex: number) => Promise<ActionResult>;
 }>();
 
-/**
- * Active deck slot index. Local to the editor — the wire shape carries
- * `deckIndex` on every action, so the server has no notion of "currently
- * selected tab". Defaults to 0 (the first slot, always present).
- */
-const activeDeckIndex = ref(0);
-
 /** True when the equipped key page exposes more than one deck slot. */
 const isMultiDeck = computed(() => props.lib.keyPage.isMultiDeck === true);
 
-/**
- * Snapshot of the librarian's deck slots. `decks` is guaranteed by the
- * serializer to have length 1 or 4, but consumers defensively fall back to a
- * single empty slot rather than crash if a malformed payload arrives.
- */
-const decks = computed(() =>
-  props.lib.decks?.length ? props.lib.decks : [{ index: 0, cards: [] }],
-);
-
-/** Cards in the active tab's deck slot. */
-const activeDeckCards = computed<DeckCardPreview[]>(
-  () => decks.value.find((d) => d.index === activeDeckIndex.value)?.cards ?? [],
-);
+// The pending-edit FIFO queues, the decks-diff reconciliation watcher, the
+// active-tab clamp, the connection-reset cleanup, and the cap/limit math all
+// live in the composable; this component only supplies server truth and the
+// state-generation signal, and keeps presentation concerns (card view-model
+// conversion, filtering, deck labels) local.
+const stateGeneration = inject(STATE_GENERATION, ref(0));
+const staging = useDeckEditStaging({
+  lib: computed(() => props.lib),
+  stateGeneration,
+});
+const {
+  activeDeckIndex,
+  decks,
+  deckCardCounts,
+  pendingAdds,
+  pendingRemoves,
+  pendingAddsForActive,
+  pendingRemoveCounts,
+  expandedDeck,
+  renderedDeck,
+  effectiveDeckCount,
+  emptySlotCount,
+  isAtLimit,
+} = staging;
 
 /**
  * Fallback stance/deck labels, indexed by deck index 0..3. Resolved
@@ -71,11 +77,6 @@ function deckLabelFor(deckIndex: number): string {
   return fallbackDeckLabels.value[deckIndex] ?? `Deck ${deckIndex + 1}`;
 }
 
-/**
- * Cards compatible with this librarian's key page range type.
- * Melee pages can only equip Near range cards; Range pages can only equip
- * non-Near cards; Hybrid pages can equip anything.
- */
 /**
  * Cards available to add to this librarian's deck.
  * Page-exclusive (OnlyPage) cards for this key page are prepended so they
@@ -97,218 +98,6 @@ const allAvailableCards = computed(() => {
   return [...onlyCards, ...filtered];
 });
 const filteredCards = ref<AvailableCard[]>([]);
-
-/**
- * In-flight deck edit waiting for the server to broadcast the matching
- * `decks[deckIndex]` mutation. Each entry stands in for one optimistic
- * copy change (add or remove) on a specific deck slot. Reconciliation is
- * FIFO per (deckIndex, cardId, packageId) — the oldest pending edit for a
- * key clears first when the matching delta lands on that slot.
- *
- * `card` carries the pre-converted Card payload so pending-add tiles can
- * render without re-looking-up the source AvailableCard / DeckCardPreview.
- */
-type PendingDeckEdit = {
-  deckIndex: number;
-  cardId: number;
-  packageId: string;
-  card: Card;
-  addedAt: number;
-};
-
-const pendingAdds = ref<PendingDeckEdit[]>([]);
-const pendingRemoves = ref<PendingDeckEdit[]>([]);
-
-/** Compose the (deckIndex, cardId, packageId) FIFO key. */
-function pendingKey(deckIndex: number, cardId: number, packageId: string): string {
-  return `${deckIndex}_${cardId}_${packageId}`;
-}
-
-/**
- * Removes the oldest pending edit whose key matches. Mutates in place
- * because pending arrays are FIFO; entries are appended on tap and
- * removed front-to-back as deltas arrive. Returns true if a match was
- * found and dropped.
- */
-function dropOldest(arr: PendingDeckEdit[], key: string): boolean {
-  for (let i = 0; i < arr.length; i++) {
-    const e = arr[i];
-    if (e && pendingKey(e.deckIndex, e.cardId, e.packageId) === key) {
-      arr.splice(i, 1);
-      return true;
-    }
-  }
-  return false;
-}
-
-/** Maximum copies of a card allowed in a deck, by rarity. */
-function cardLimit(rarity: string): number {
-  return rarity === "Unique" ? 1 : 3;
-}
-
-/**
- * Maximum cards a deck can hold. Mirrors `DeckModel.maxDeckCount` in the
- * game DLL — slots beyond what the player explicitly equips are filled
- * with default cards before combat starts, so we surface them visually
- * as placeholder tiles.
- */
-const DECK_MAX = 9;
-
-/**
- * Builds a per-deck-slot count map keyed by `pendingKey(deckIndex, cardId, packageId)`.
- * Shared between the reactive `deckCardCounts` and the reconciliation
- * watcher's snapshot so both diff against the same shape.
- */
-function countDecks(decksArr: { index: number; cards: DeckCardPreview[] }[]): Map<string, number> {
-  const map = new Map<string, number>();
-  for (const deck of decksArr) {
-    for (const entry of deck.cards) {
-      if (!entry.cardId) continue;
-      const key = pendingKey(deck.index, entry.cardId.id, entry.cardId.packageId);
-      map.set(key, (map.get(key) ?? 0) + entry.count);
-    }
-  }
-  return map;
-}
-
-/** Map of `(deckIndex, cardId, packageId)` → confirmed copies. */
-const deckCardCounts = computed(() => countDecks(decks.value));
-
-/**
- * Mutable snapshot of the previous per-deck counts, used by the
- * reconciliation watcher to compute per-key deltas. Initialised from the
- * current decks array so the first mutation after mount diffs against the
- * mounted state, not an empty map.
- */
-let prevDeckCounts = countDecks(decks.value);
-
-/**
- * Reconciliation watcher: every `decks` mutation produces per-key count
- * deltas, which clear pending edits FIFO on the matching deck slot. A
- * positive delta on `(deckIndex, cardId, packageId)` (server confirmed an
- * add to that slot) drops the oldest pending-add for that key; negative
- * delta drops the oldest pending-remove. The action-promise is
- * intentionally not consulted — the diff alone is the source of truth.
- */
-// Shallow watch — the wire patch path in `applyDelta` always reassigns
-// `props.lib.decks` to a new array reference when any deck slot changes, so
-// deep tracking would only add overhead. Falls back to a single-empty-slot
-// shape if the payload omits the field.
-watch(
-  () => props.lib.decks,
-  (next) => {
-    const nextDecks = next?.length ? next : [{ index: 0, cards: [] }];
-    const nextCounts = countDecks(nextDecks);
-    const keys = new Set<string>([...prevDeckCounts.keys(), ...nextCounts.keys()]);
-    for (const key of keys) {
-      const delta = (nextCounts.get(key) ?? 0) - (prevDeckCounts.get(key) ?? 0);
-      if (delta > 0) {
-        for (let i = 0; i < delta; i++) dropOldest(pendingAdds.value, key);
-      } else if (delta < 0) {
-        for (let i = 0; i < -delta; i++) dropOldest(pendingRemoves.value, key);
-      }
-    }
-    prevDeckCounts = nextCounts;
-  },
-);
-
-/**
- * Clamp `activeDeckIndex` to a slot that actually exists. If the librarian
- * gets re-equipped with a single-deck key page while the editor is open on
- * tab 2, we'd otherwise render an empty deck and dispatch addCardToDeck
- * with an out-of-range deckIndex.
- */
-watch(decks, (next) => {
-  const valid = new Set(next.map((d) => d.index));
-  if (!valid.has(activeDeckIndex.value)) activeDeckIndex.value = 0;
-});
-
-/**
- * Connection-reset cleanup: a fresh full-state replacement (initial
- * connect, reconnect, or resync) bumps STATE_GENERATION. Any pending
- * edits queued before the bump may have been lost server-side, so we
- * discard them rather than leave phantom tiles. The new full state is
- * the new authoritative baseline; the diff watcher resets to it on the
- * next decks tick.
- */
-const stateGeneration = inject(STATE_GENERATION, ref(0));
-watch(stateGeneration, () => {
-  pendingAdds.value = [];
-  pendingRemoves.value = [];
-  prevDeckCounts = countDecks(decks.value);
-});
-
-/**
- * Expands the active tab's grouped card list (one entry per unique card with
- * a `count`) into one tile per physical copy. The deck-editor surface
- * mirrors the 9-slot deck the game actually equips, so duplicates need to
- * occupy distinct visible slots rather than collapse behind a ×N badge.
- */
-const expandedDeck = computed(() =>
-  activeDeckCards.value.flatMap((entry) =>
-    Array.from({ length: entry.count }, () => entry),
-  ),
-);
-
-/** Pending adds that target the active tab. */
-const pendingAddsForActive = computed(() =>
-  pendingAdds.value.filter((p) => p.deckIndex === activeDeckIndex.value),
-);
-
-/** Pending removes that target the active tab. */
-const pendingRemovesForActive = computed(() =>
-  pendingRemoves.value.filter((p) => p.deckIndex === activeDeckIndex.value),
-);
-
-/**
- * Deck size the cap math reasons about for the active tab — mirrors what
- * the active deck slot WILL be once pending edits reconcile. Per-deck-slot
- * because each `DeckModel` independently caps at `DECK_MAX`.
- */
-const effectiveDeckCount = computed(() =>
-  Math.max(
-    0,
-    expandedDeck.value.length
-      + pendingAddsForActive.value.length
-      - pendingRemovesForActive.value.length,
-  ),
-);
-
-/** Empty slots remaining on the active tab; auto-filled with default cards before combat. */
-const emptySlotCount = computed(() =>
-  Math.max(0, DECK_MAX - effectiveDeckCount.value),
-);
-
-/**
- * Per-card copy count on the active deck slot, adjusted for in-flight
- * edits. Per-deck-slot rather than per-key-page because the engine's
- * `DeckModel.AddCardFromInventory` enforces copy limits independently for
- * each slot — a Rare card (limit 3) can sit at limit in deck 0 *and* deck
- * 1 simultaneously. Inventory `unusable` gating keys off this.
- */
-const effectiveDeckCardCounts = computed(() => {
-  const map = new Map<string, number>();
-  for (const entry of activeDeckCards.value) {
-    if (!entry.cardId) continue;
-    const k = `${entry.cardId.id}_${entry.cardId.packageId}`;
-    map.set(k, (map.get(k) ?? 0) + entry.count);
-  }
-  for (const p of pendingAddsForActive.value) {
-    const k = `${p.cardId}_${p.packageId}`;
-    map.set(k, (map.get(k) ?? 0) + 1);
-  }
-  for (const p of pendingRemovesForActive.value) {
-    const k = `${p.cardId}_${p.packageId}`;
-    map.set(k, (map.get(k) ?? 0) - 1);
-  }
-  return map;
-});
-
-function isAtLimit(card: AvailableCard): boolean {
-  const key = `${card.cardId.id}_${card.cardId.packageId}`;
-  return (effectiveDeckCardCounts.value.get(key) ?? 0) >= cardLimit(card.rarity);
-}
-
 
 const detailCard = ref<Card | null>(null);
 
@@ -357,45 +146,6 @@ async function handleAddCard(card: AvailableCard) {
     dropOldest(pendingAdds.value, pendingKey(deckIndex, entry.cardId, entry.packageId));
   }
 }
-
-/**
- * Per-key count of in-flight pending-removes on the active deck slot.
- * Used to gate enqueueing a duplicate remove for an already-pending tile
- * and to drive the optimistic-hide rendering of the rendered deck.
- */
-const pendingRemoveCounts = computed(() => {
-  const map = new Map<string, number>();
-  for (const p of pendingRemovesForActive.value) {
-    const key = `${p.cardId}_${p.packageId}`;
-    map.set(key, (map.get(key) ?? 0) + 1);
-  }
-  return map;
-});
-
-/**
- * Walks `expandedDeck` and filters out one tile per pending-remove for
- * each card key (leftmost-first). Optimistic-hide model: the tapped tile
- * vanishes immediately, remaining tiles shift to close the gap, and
- * tapping the same physical position again hits the next card.
- */
-const renderedDeck = computed(() => {
-  const remaining = new Map(pendingRemoveCounts.value);
-  const out: DeckCardPreview[] = [];
-  for (const preview of expandedDeck.value) {
-    if (!preview.cardId) {
-      out.push(preview);
-      continue;
-    }
-    const key = `${preview.cardId.id}_${preview.cardId.packageId}`;
-    const left = remaining.get(key) ?? 0;
-    if (left > 0) {
-      remaining.set(key, left - 1);
-      continue; // tile is pending-remove and hidden
-    }
-    out.push(preview);
-  }
-  return out;
-});
 
 // Pair each rendered deck preview with its Card view-model, built once per
 // recompute so the template hands the same object to :card and @detail instead
@@ -554,13 +304,10 @@ async function handleRemoveCard(preview: DeckCardPreview) {
   min-height: 0;
 }
 
+/* base uppercase heading styling is shared via app.vue's global .col-header;
+   this tab additionally lays it out as a flex row so the "N / MAX" count
+   badge (.deck-count below) sits inline next to the heading text. */
 .col-header {
-  font-size: var(--fs-md);
-  font-family: var(--font-display);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--gold-bright);
-  flex-shrink: 0;
   display: flex;
   align-items: baseline;
   gap: var(--sp-2);
@@ -576,11 +323,6 @@ async function handleRemoveCard(preview: DeckCardPreview) {
   color: var(--text-3);
 }
 
-.col-empty {
-  font-size: var(--fs-xs);
-  color: var(--text-3);
-  padding: var(--sp-2) 0;
-}
 
 .card-grid {
   /* explicit shorthand: horizontal is clipped (no scrollbar even when a

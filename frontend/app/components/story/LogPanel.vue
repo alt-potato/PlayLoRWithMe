@@ -189,8 +189,18 @@ onBeforeUnmount(() => contentObserver?.disconnect());
 
   /* Comfortable reading measure for the dialogue. This, not the game's dialogue
      box width, is what bounds the layout: 1277px sits near a typical laptop
-     viewport and so never actually constrained a line. */
-  --story-log-measure: 66ch;
+     viewport and so never actually constrained a line.
+
+     `ch` is the advance of the "0" glyph, which is not the same fraction of a
+     typeface's average letter width in every font, so a fixed ch count does
+     not carry the same characters-per-line target across a font swap. Noto
+     Serif's "0" is 0.559em versus Palatino's 0.5em (about 12% wider), but its
+     letter-frequency-weighted lowercase average is only about 8% wider
+     (0.527em versus 0.487em) — so leaving this at 66ch would let roughly 70
+     characters fit per line instead of the ~66 the original value targeted.
+     64ch under Noto Serif's own letter-to-zero ratio lands back at ~66
+     characters per line, so the value is lowered here rather than left as-is. */
+  --story-log-measure: 64ch;
 
   /* The column is sized to exactly what a row needs, so the text fills it edge to
      edge instead of trailing off inside a much wider panel. */
@@ -221,7 +231,7 @@ onBeforeUnmount(() => contentObserver?.disconnect());
 .slog--overlay {
   position: absolute;
   inset: 0 0 auto 0;
-  z-index: 5;
+  z-index: var(--z-raised);
   max-height: 60%;
   /* Fully opaque: a cutscene blocks combat input, so there is nothing useful to
      read through the panel. Collapsing it is the way to see the stage. */
@@ -374,8 +384,8 @@ onBeforeUnmount(() => contentObserver?.disconnect());
 
 /* Title before name and smaller, mirroring the in-game log's name line — which
    composes both from one string, so both share a face and differ only in size.
-   The reading serif rather than the display face: Cinzel's lowercase reads as
-   small caps, which misrepresents character names. */
+   Uses --font-serif rather than --font-display for clarity at the call site,
+   even though the two tokens now name the same face. */
 .slog-title {
   font-family: var(--font-serif);
   font-size: var(--fs-2xs);

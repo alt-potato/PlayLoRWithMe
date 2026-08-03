@@ -298,26 +298,28 @@ const connPanelOpen = ref(false);
    Self-hosted fonts
    ==========================================================================
 
-   Cinzel and Noto Sans served from the mod's HTTP server (public/fonts/) so
-   the app stays fully usable when the host machine has no route to
+   Noto Serif and Noto Sans served from the mod's HTTP server (public/fonts/)
+   so the app stays fully usable when the host machine has no route to
    fonts.gstatic.com (LAN-only co-op, captive portal, etc.). Both are variable
    fonts; each subset is one woff2 file shared across the weight range, so
    four files cover the entire weight palette the UI uses.
    ========================================================================== */
 @font-face {
-  font-family: "Cinzel";
+  font-family: "Noto Serif";
   font-style: normal;
   font-weight: 400 700;
+  font-stretch: 100%;
   font-display: swap;
-  src: url("/fonts/cinzel-latin.woff2") format("woff2");
+  src: url("/fonts/noto-serif-latin.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: "Cinzel";
+  font-family: "Noto Serif";
   font-style: normal;
   font-weight: 400 700;
+  font-stretch: 100%;
   font-display: swap;
-  src: url("/fonts/cinzel-latin-ext.woff2") format("woff2");
+  src: url("/fonts/noto-serif-latin-ext.woff2") format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 @font-face {
@@ -344,8 +346,8 @@ const connPanelOpen = ref(false);
    ==========================================================================
 
    Aesthetic target: Library of Ruina's in-game UI — near-black canvas with
-   a very faint cool undertone, hairline gold rules, ornamental Cinzel
-   display type, warm parchment body text. Deep blacks, not navy, not purple.
+   a very faint cool undertone, hairline gold rules, serif display type,
+   warm parchment body text. Deep blacks, not navy, not purple.
    ========================================================================== */
 :root {
   /* ── Canvas: near-black with a faint cool undertone ──
@@ -363,8 +365,8 @@ const connPanelOpen = ref(false);
   --border-mid: #323944;
   --border-hi: #475060;
   /* faint gold hairline for ornamental dividers */
-  --border-gold: rgba(201, 162, 39, 0.28);
-  --border-gold-hi: rgba(232, 194, 71, 0.5);
+  --border-gold: var(--gold-a28);
+  --border-gold-hi: var(--gold-bright-a50);
   /* solid buff borders for status-chip outlines */
   --border-gold-buff: #4a2800;
   --border-crimson-buff: #5c1a1a;
@@ -374,12 +376,31 @@ const connPanelOpen = ref(false);
   --gold-dim: #7a6118;
   --gold-bright: #e8c247;
   --gold-ink: #2a2210;
-  --gold-glow: rgba(201, 162, 39, 0.15);
+  --gold-glow: var(--gold-a15);
+
+  /* Alpha variants of --gold (and --gold-bright), named by opacity so every
+     hand-tinted gold wash in the app (hover fills, glows, selection rings)
+     reads from one place instead of each component restating the r,g,b
+     channels itself. Declared once here; every consumer below and across
+     components references these instead of a literal rgba(201, 162, 39, …). */
+  --gold-a03: rgba(201, 162, 39, 0.03);
+  --gold-a08: rgba(201, 162, 39, 0.08);
+  --gold-a12: rgba(201, 162, 39, 0.12);
+  --gold-a15: rgba(201, 162, 39, 0.15);
+  --gold-a18: rgba(201, 162, 39, 0.18);
+  --gold-a25: rgba(201, 162, 39, 0.25);
+  --gold-a28: rgba(201, 162, 39, 0.28);
+  --gold-bright-a50: rgba(232, 194, 71, 0.5);
 
   /* ── Combat red ── */
   --crimson: #8b1a1a;
   --crimson-hi: #c62828;
   --crimson-dim: #3d0a0a;
+
+  /* Alpha variants of --crimson-hi, same rationale as the gold family above. */
+  --crimson-hi-a08: rgba(198, 40, 40, 0.08);
+  --crimson-hi-a12: rgba(198, 40, 40, 0.12);
+  --crimson-hi-a18: rgba(198, 40, 40, 0.18);
 
   /* Deeper crimson surface for ego-tag and error-banner backgrounds */
   --bg-crimson-deep: #1a0505;
@@ -404,7 +425,11 @@ const connPanelOpen = ref(false);
   --bg-green: #0a1a0a;
   --bg-green-2: #0c1e0c;
   --bg-green-3: #102010;
+  /* one-off alpha variant — conn-panel's "connected" status dot glow */
+  --green-a15: rgba(76, 175, 80, 0.15);
   --amber: #f0a020;
+  /* one-off alpha variant — conn-panel's "connecting" status dot glow */
+  --amber-a18: rgba(240, 160, 32, 0.18);
   --red-hi: #e53935;
   --text-red: #ef9a9a;
   --orange: #ff9800;
@@ -497,9 +522,25 @@ const connPanelOpen = ref(false);
   --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.4);
   --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.55);
   --shadow-lg: 0 6px 24px rgba(0, 0, 0, 0.65);
-  --shadow-gold: 0 0 0 1px rgba(201, 162, 39, 0.18),
-    0 0 18px rgba(201, 162, 39, 0.08);
+  --shadow-gold: 0 0 0 1px var(--gold-a18),
+    0 0 18px var(--gold-a08);
   --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+  /* ── Backdrop scrims ──
+     Full-viewport dimming layers behind sheets/modals. --bg-scrim is the
+     shared "dim the page behind a modal" role; three components (EditPanel,
+     CustomizePanel, EmotionUpgradePicker) previously hand-typed near-duplicate
+     values (0.6 / 0.7 / 0.78) for this exact role — collapsed to one value
+     here since the drift was unintentional. --bg-scrim-cool keeps its own
+     tint (rgb(2, 3, 12) rather than pure black) because CardDetail and
+     TargetPicker already agreed on it exactly — a deliberate cooler backdrop
+     for the mobile bottom-sheet pickers, not drift. --bg-hud is unrelated to
+     the modal-dimming role: it is the dev DiagnosticPanel's own translucent
+     panel fill (not a full-page dim), kept as a distinct value so tokenizing
+     it does not change its contrast. */
+  --bg-scrim: rgba(0, 0, 0, 0.7);
+  --bg-scrim-cool: rgba(2, 3, 12, 0.7);
+  --bg-hud: rgba(0, 0, 0, 0.85);
 
   /* ── Motion ── */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -508,13 +549,14 @@ const connPanelOpen = ref(false);
   --duration-slow: 0.3s;
 
   /* ── Fonts ── */
-  --font-display: "Cinzel", "Palatino Linotype", serif;
-  /* Reading serif for running prose. Cinzel is Trajan-derived — its lowercase
-     reads as small caps, which suits short headings but not paragraphs, so
-     story dialogue uses this instead. System faces only: no download, and it
-     keeps the app usable with no route to a font CDN. */
-  --font-serif: "Palatino Linotype", "Book Antiqua", Palatino, Georgia,
-    "Times New Roman", serif;
+  /* Display and reading serif are deliberately the same face: the game's own
+     LocalizedFontSetter pairs Noto Serif with Noto Sans in its default
+     (non-KR/EN, non-JP) locale branch, using Noto Serif for both headings and
+     body copy, so there is no reason to keep two serif tokens here either.
+     --font-serif is kept only as a self-documenting alias for call sites that
+     read as "prose" rather than "heading" - do not restore a second face. */
+  --font-display: "Noto Serif", Georgia, "Times New Roman", serif;
+  --font-serif: var(--font-display);
   --font-body: "Noto Sans", system-ui, sans-serif;
   --font-mono: "Courier New", Courier, monospace;
 
@@ -544,6 +586,32 @@ const connPanelOpen = ref(false);
 
   /* Broken die inner hex fill (distinct from --crimson-dim outer) */
   --bg-broken: #230808;
+
+  /* ── Z-index scale ──
+     Named layers instead of raw numbers, ordered low to high, so stacking
+     intent lives in one place rather than in 17 separate component-local
+     literals. A token later in this list always renders above one earlier
+     in it.
+
+     --z-modal and --z-modal-battle are deliberately different values even
+     though both are full-viewport blocking overlays: EditPanel (library
+     scene) and EmotionUpgradePicker (battle scene) can never be open at the
+     same time, so they never actually compete for a layer, but reusing the
+     same number by coincidence would leave the next reader unable to tell
+     that apart from an unresolved collision. --z-modal-battle sits below
+     --z-modal-nested on purpose — nothing in the battle scene needs to
+     stack above a nested librarian modal, so the scale stays monotonic. */
+  --z-raised: 5;             /* content lifted above its immediate siblings — cutscene log overlay (story/LogPanel), per-die rejection flash (unit/DieRow) */
+  --z-tooltip: 10;           /* floating detail popover anchored to inline content (buff-expanded tooltip, unit/DisplayCard) */
+  --z-hover-lift: 20;        /* hovered hand card lifted above later siblings so its detail pane paints on top (HandCard) */
+  --z-arrows: 50;            /* targeting-arrow SVG overlay above the battle stage (ArrowOverlay) */
+  --z-banner: 99;            /* fixed bottom targeting banner — above the stage, below the topbar (battle/Stage.vue) */
+  --z-overlay: 100;          /* topbar popovers and mobile bottom-sheet backdrops (app.vue conn-panel, SessionPanel, CardDetail, TargetPicker) */
+  --z-overlay-surface: 101;  /* sheet surface stacked directly above --z-overlay's backdrop (CardDetail, TargetPicker) */
+  --z-modal: 200;            /* full-viewport librarian modal (librarian/EditPanel) */
+  --z-modal-battle: 250;     /* full-viewport battle overlay (EmotionUpgradePicker) — see rationale above */
+  --z-modal-nested: 300;     /* nested modal stacked above --z-modal (librarian/CustomizePanel, opened from EditPanel) */
+  --z-dev: 9999;             /* dev-only tooling, always on top (dev/DevFixturePicker, dev/DiagnosticPanel) */
 }
 
 *,
@@ -572,7 +640,7 @@ body {
   background-image:
     radial-gradient(
       ellipse 80% 60% at 50% 0%,
-      rgba(201, 162, 39, 0.03),
+      var(--gold-a03),
       transparent 70%
     );
   background-attachment: fixed;
@@ -625,6 +693,161 @@ body {
 .collapse summary::marker,
 .collapse summary::-webkit-details-marker {
   display: none;
+}
+
+/* ==========================================================================
+   Shared component classes
+   ==========================================================================
+
+   Vue's `<style scoped>` cannot be shared across components, so several
+   small presentational classes (tab strips, close buttons, section labels,
+   stat icons, etc.) were independently re-declared in many components'
+   scoped blocks and drifted out of sync with each other over time. The
+   groups below were verified to render identically (or differ only by a
+   documented, deliberate override) across every component that uses them;
+   the shared declaration lives here and each component keeps only the
+   local overrides/additions it genuinely needs in its own scoped block.
+   Classes that turned out to represent *different* visual roles despite
+   sharing a name were renamed instead of merged — see the components that
+   still declare their own locally-scoped version of the old name.
+   ========================================================================== */
+
+/* Micro caption used above a labelled field or short value (librarian
+   customize tabs: Face/Hairstyle/Name-Title/Projection). */
+.section-label {
+  font-size: var(--fs-4xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+
+/* Larger uppercase heading above a whole panel section (librarian EditPanel,
+   KeyPageDetail). Distinct from .section-label above — same generic name
+   before this cleanup covered two different sizes/colors; KeyPageDetail
+   layers its own margin-top since only it needs the extra top gap. */
+.panel-heading {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+  font-family: var(--font-display);
+}
+
+/* Small flex-row label (optionally holding a chevron/icon) used as a
+   disclosure/section heading (unit/DisplayCard's hand header + collapsed
+   details summary, battle/SettingDetailPanel's static section headers).
+   Color and the extra local property are genuinely per-surface (brighter
+   text-2 on the interactive hand-header vs dimmer text-3 on the static
+   detail panel) so each component keeps its own override. */
+.row-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  font-family: var(--font-display);
+  font-size: var(--fs-4xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* Vertical stack layout for a librarian customize tab's content. Every tab
+   shares the column-flex shell; only the row gap varies by tab (denser
+   field lists use the smaller gap, tabs with fewer/larger blocks use more
+   breathing room), so gap stays a local per-component override. */
+.tab-inner {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Small "X" dismiss button used by the two mobile bottom-sheet pickers
+   (TargetPicker, CardDetail) — identical in both, so fully shared with no
+   local override needed. EditPanel/CustomizePanel have their own
+   differently-sized close buttons for their modal chrome (renamed to
+   .modal-close-btn / .nested-modal-close-btn to avoid implying they were
+   the same thing). */
+.close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  padding: 0 0.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.close-btn:hover {
+  color: var(--crimson-hi);
+}
+
+/* Small stat icon (HP/stagger/speed glyphs) shown next to a stat value
+   (librarian KeyPageDetail, LibrarianManager roster rows). ResistanceTable
+   reuses the same footprint but overrides opacity/vertical-align locally
+   for its inline table-cell layout; battle/SettingView's compact formation
+   preview needs a visibly smaller icon so it keeps its own
+   .mini-stat-icon instead of overriding this one. */
+.stat-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  object-fit: contain;
+  opacity: 0.9;
+}
+
+/* Small rotating disclosure arrow used inside a native <details> header
+   (unit/PassiveList, unit/AbnormalityList — both toggle via the browser's
+   details[open] state). LibrarianManager's larger accordion caret is a
+   different interaction (class-toggled, not <details>-based) and keeps its
+   own .accordion-chevron. */
+.chevron {
+  font-size: var(--fs-4xs);
+  color: var(--text-3);
+  flex-shrink: 0;
+  display: inline-block;
+  transition: transform 0.18s ease;
+}
+
+/* Underline tab strip shared by the two librarian modal surfaces
+   (EditPanel, CustomizePanel). Each component layers its own border/active
+   treatment locally: EditPanel never wraps its tabs so the strip owns one
+   shared bottom border and the active tab shifts an inline border color;
+   CustomizePanel's tab set wraps onto multiple rows so each button must own
+   its own bottom border for the divider line to stay seamless across wraps
+   (see the comment in CustomizePanel.vue). SessionPanel's compact
+   equal-width segmented control is a different interaction pattern and
+   keeps its own .segment-bar / .segment-btn. */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+}
+.tab-btn {
+  padding: var(--sp-2) var(--sp-4);
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Uppercase heading above one column of a two-column librarian editor
+   (PassivesTab, DeckTab, KeyPageTab — key page / deck / passive pickers).
+   DeckTab lays its heading out as a flex row locally so it can place the
+   "N / MAX" count badge inline next to the text. */
+.col-header {
+  font-size: var(--fs-md);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gold-bright);
+  flex-shrink: 0;
+}
+
+/* Empty-state placeholder text for one of the two columns above. */
+.col-empty {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  padding: var(--sp-2) 0;
 }
 </style>
 
@@ -810,7 +1033,7 @@ main.main--fill {
   /* inset box-shadow for the faux-border so adding it does not shift
      interior content (border would, even with box-sizing: border-box). */
   box-shadow: inset 0 0 0 1px var(--border), var(--shadow-md);
-  z-index: 100;
+  z-index: var(--z-overlay);
 }
 
 .conn-label {
@@ -844,15 +1067,15 @@ main.main--fill {
 }
 .conn-panel.connecting .conn-dot {
   background: var(--amber);
-  box-shadow: 0 0 0 2px rgba(240, 160, 32, 0.18);
+  box-shadow: 0 0 0 2px var(--amber-a18);
 }
 .conn-panel.connected .conn-dot {
   background: var(--green);
-  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.15);
+  box-shadow: 0 0 0 2px var(--green-a15);
 }
 .conn-panel.disconnected .conn-dot {
   background: var(--crimson-hi);
-  box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.18);
+  box-shadow: 0 0 0 2px var(--crimson-hi-a18);
 }
 /* ── Responsive: tighter on small screens ── */
 @media (max-width: 600px) {

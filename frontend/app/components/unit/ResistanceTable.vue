@@ -107,10 +107,10 @@ defineProps<{ resistances: Resistances | undefined }>();
   padding: 0.1rem 0.3rem;
 }
 
+/* width/height/object-fit come from app.vue's shared .stat-icon; this
+   table needs the icon vertical-centered inline and slightly dimmer than
+   the shared default to stay legible against the tinted resistance cells. */
 .stat-icon {
-  width: 1.1rem;
-  height: 1.1rem;
-  object-fit: contain;
   vertical-align: middle;
   opacity: 0.85;
 }

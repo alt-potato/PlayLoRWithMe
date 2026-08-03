@@ -598,7 +598,7 @@ function targetLabel(sc: SlottedCardEntry | undefined): string {
   clip-path: var(--hex);
   pointer-events: none;
   animation: hex-reject-flash 380ms ease-out forwards;
-  z-index: 5;
+  z-index: var(--z-raised);
 }
 @keyframes hex-reject-flash {
   0% {

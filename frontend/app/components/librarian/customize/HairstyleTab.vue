@@ -62,17 +62,10 @@ function step(field: "frontHairID" | "backHairID", delta: number): void {
 </template>
 
 <style scoped>
+/* base column-flex layout is shared via app.vue's global .tab-inner; only
+   this tab's row gap is local. */
 .tab-inner {
-  display: flex;
-  flex-direction: column;
   gap: 0.3rem;
-}
-
-.section-label {
-  font-size: var(--fs-4xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-3);
 }
 
 .stepper-row {

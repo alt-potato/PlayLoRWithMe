@@ -333,7 +333,7 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
             <span class="section-toggle-count">{{
               activeFloorData.emotionCards.length
             }}</span>
-            <span class="chevron" :class="{ open: emotionCardsOpen }">▸</span>
+            <span class="accordion-chevron" :class="{ open: emotionCardsOpen }">▸</span>
           </div>
 
           <div v-if="emotionCardsOpen" class="emotion-groups">
@@ -388,7 +388,7 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
             <span class="section-toggle-count">{{
               activeFloorData.egoCards.length
             }}</span>
-            <span class="chevron" :class="{ open: egoCardsOpen }">▸</span>
+            <span class="accordion-chevron" :class="{ open: egoCardsOpen }">▸</span>
           </div>
 
           <div v-if="egoCardsOpen" class="emotion-groups">
@@ -800,7 +800,7 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
   line-height: 1.6;
 }
 
-.chevron {
+.accordion-chevron {
   font-size: var(--fs-md);
   color: var(--text-2);
   display: inline-block;
@@ -808,7 +808,7 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
   margin-left: auto;
 }
 
-.chevron.open {
+.accordion-chevron.open {
   transform: rotate(90deg);
   color: var(--gold);
 }
@@ -978,13 +978,6 @@ function egoCardToCard(p: DeckCardPreview, i: number): Card {
   align-items: center;
   gap: var(--sp-1);
   font-family: var(--font-display);
-}
-
-.stat-icon {
-  width: 1.1rem;
-  height: 1.1rem;
-  object-fit: contain;
-  opacity: 0.9;
 }
 
 .stat-value {

@@ -111,38 +111,23 @@
       <Private>False</Private>
     </Reference>
   </ItemGroup>
+  <!--
+    Glob every .cs file under the project instead of listing them one by one.
+    The old explicit item list silently dropped any new file that wasn't
+    added to it: no build warning, no error, the file just never compiles.
+    That already cost a debugging session once (StoryLog.cs had to be added
+    here by hand, and it was easy to miss).
+
+    Excludes:
+      - bin/, obj/  build output; obj\ also holds MSBuild-generated files
+        (e.g. AssemblyAttributes.cs) that must not be compiled twice.
+      - mod.tests\  a separate SDK-style test project (mod.tests.csproj)
+        that links a subset of these same files in directly (see its
+        Compile items with Link=). Excluding it here stops this project
+        from also swallowing them into a second assembly.
+  -->
   <ItemGroup>
-    <Compile Include="ActionInjector.cs" />
-    <Compile Include="AppearanceCache.cs" />
-    <Compile Include="AppearanceCache.BodyComposite.cs" />
-    <Compile Include="AppearanceCache.FashionBodies.cs" />
-    <Compile Include="AppearanceCache.PatronHeads.cs" />
-    <Compile Include="AppearanceCache.Sprites.cs" />
-    <Compile Include="GiftCache.cs" />
-    <Compile Include="IconCache.cs" />
-    <Compile Include="JsonReader.cs" />
-    <Compile Include="JsonWriter.cs" />
-    <Compile Include="ModLog.cs" />
-    <Compile Include="MultiDeckLabels.cs" />
-    <Compile Include="MultiDeckLabelHook.cs" />
-    <Compile Include="GameStateSerializer.cs" />
-    <Compile Include="GameStateSerializer.Battle.cs" />
-    <Compile Include="GameStateSerializer.Inventory.cs" />
-    <Compile Include="GameStateSerializer.Librarian.cs" />
-    <Compile Include="GameStateSerializer.Library.cs" />
-    <Compile Include="Initializer.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Server.cs" />
-    <Compile Include="ServerLibrarianHandlers.cs" />
-    <Compile Include="StateBroadcaster.cs" />
-    <Compile Include="StoryLog.cs" />
-    <Compile Include="ThemeProbe.cs" />
-    <Compile Include="CustomDiceColorProbe.cs" />
-    <Compile Include="CustomRarityProbe.cs" />
-    <Compile Include="DeltaEngine.cs" />
-    <Compile Include="SessionManager.cs" />
-    <Compile Include="WebSocketClient.cs" />
-    <Compile Include="WebSocketCodec.cs" />
+    <Compile Include="**\*.cs" Exclude="bin\**\*.cs;obj\**\*.cs;mod.tests\**\*.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -190,14 +175,35 @@
   <Target Name="AfterBuild" DependsOnTargets="NpmInstall">
     <!-- Build the Vue frontend if it has been scaffolded. `npm run generate`
          always runs because Nuxt's incremental build is faster than tracking
-         every frontend source file from MSBuild; the Copy step below uses
-         SkipUnchangedFiles to keep deploy-side I/O minimal when nothing
-         actually changed in the static output. -->
+         every frontend source file from MSBuild. -->
     <Exec
       Command="npm run generate --logLevel=silent"
       WorkingDirectory="$(FrontendDir)"
       Condition="Exists('$(FrontendDir)\package.json')"
     />
+
+    <!--
+      Clear the staged mod folder before re-populating it. Every Copy below
+      only ever adds or overwrites, so a file that disappears from the sources
+      lingers in the output forever. Nuxt makes that routine rather than rare:
+      it emits content-hashed filenames under wwwroot\_nuxt\, so each rebuild
+      writes new names beside the old ones instead of replacing them. Deleted
+      assets behave the same way — retiring a self-hosted font left its woff2
+      staged here indefinitely.
+
+      Stale files are inert (nothing references them) but they are shipped:
+      build_and_run.sh copies this whole folder into the game's Mods\ dir, so
+      whatever accumulates here reaches the install and makes the deployed
+      output misleading to inspect.
+
+      Everything under PlayLoRWithMe\ is reproduced by the copies that follow
+      (ModData, the frontend dist, and Assemblies), and nothing writes here at
+      runtime — the game runs from the deployed copy, not from bin — so a full
+      clean is safe. It does mean SkipUnchangedFiles no longer spares any I/O,
+      which costs roughly two megabytes of copying per build; correctness of
+      the staged output is worth more than that.
+    -->
+    <RemoveDir Directories="$(OutputPath)PlayLoRWithMe" />
 
     <!-- Copy ModData contents (everything except wwwroot) into the output root.
          %(RecursiveDir) is relative to the ModData\ wildcard base, so the

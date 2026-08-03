@@ -251,12 +251,12 @@ namespace PlayLoRWithMe
                         // labels (Binah's "Philosophy" / "Arbiter") and tab-deactivation never
                         // reach the cache because their patches only run when the in-game
                         // panel renders.
-                        MultiDeckLabels.EnsureLabelsCached(book, unit);
+                        MultiDeckLabelsAdapter.EnsureLabelsCached(book, unit);
                     }
-                    int deckCount = isMulti ? MultiDeckLabels.GetEffectiveDeckCount(book) : 1;
+                    int deckCount = isMulti ? MultiDeckLabelsAdapter.GetEffectiveDeckCount(book) : 1;
                     string[] localizedLabels = null;
                     if (isMulti)
-                        MultiDeckLabels.TryGetLabels(book, out localizedLabels);
+                        MultiDeckLabelsAdapter.TryGetLabels(book, out localizedLabels);
                     int prevIdx = isMulti ? book.GetCurrentDeckIndex() : 0;
                     try
                     {

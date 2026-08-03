@@ -261,7 +261,7 @@ function handleClick() {
 /* selection highlight is a glow ring; no translate so the card doesn't
    intrude into the sticky filter chrome above the deck list. */
 .hcard--selected {
-  box-shadow: 0 0 0 2px var(--glow, rgba(201, 162, 39, 0.25));
+  box-shadow: 0 0 0 2px var(--glow, var(--gold-a25));
 }
 .hcard--dim {
   opacity: 0.28;
@@ -509,7 +509,7 @@ function handleClick() {
      paints on top of the next cards in the row (they also have
      position: relative and would otherwise paint in dom order). */
   .hcard--mode-compact:hover {
-    z-index: 20;
+    z-index: var(--z-hover-lift);
   }
 }
 
