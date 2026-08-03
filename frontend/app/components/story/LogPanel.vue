@@ -280,12 +280,23 @@ watch(
   clip-path: var(--hex-pointy);
   background: var(--bg-card-3);
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* Scaled to the frame's height, never its width.
+   The source art is tightly cropped per character, so native sizes differ a lot
+   (roughly 0.70 to 1.03 aspect). `cover` therefore scaled narrow portraits by
+   width to fill the frame, zooming those heads well past the wide ones'. Head
+   size tracks bust height, so fitting height alone keeps every character at a
+   consistent scale; narrow portraits simply leave the hexagon's flanks empty and
+   wide ones overflow into the clip. */
 .slog-portrait-img {
-  width: 100%;
   height: 100%;
-  object-fit: cover;
+  width: auto;
+  max-width: none;
+  flex: none;
   /* Independent transforms: translate applies before scale, so the bias is
      magnified by the zoom — which is the intent, both push toward the face. */
   translate: var(--story-log-portrait-offset-x) var(--story-log-portrait-offset-y);
@@ -335,7 +346,9 @@ watch(
 .slog-title {
   font-family: var(--font-serif);
   font-size: var(--fs-2xs);
-  color: var(--text-3);
+  /* Same colour as the name: the game composes both from one Text component and
+     varies only the size tag, so size is the whole of the distinction. */
+  color: var(--text-1);
 }
 
 .slog-teller {

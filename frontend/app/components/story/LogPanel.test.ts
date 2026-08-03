@@ -123,9 +123,20 @@ describe("LogPanel rendering rules", () => {
     expect(outline![0]).not.toMatch(/border:/);
   });
 
+  it("scales portraits on height alone so every character reads at one size", () => {
+    // The art is tightly cropped per character, so native aspects vary widely.
+    // `object-fit: cover` scaled the narrow ones by width and zoomed their heads
+    // past the wide ones'; fitting height alone normalises them.
+    const image = source.match(/\.slog-portrait-img \{[\s\S]*?\n\}/);
+    expect(image, "expected a .slog-portrait-img style block").not.toBeNull();
+    expect(image![0]).toMatch(/height:\s*100%/);
+    expect(image![0]).toMatch(/width:\s*auto/);
+    expect(image![0]).not.toMatch(/object-fit:\s*cover/);
+  });
+
   it("crops the portrait onto the face rather than framing the whole bust", () => {
-    // Plain `cover` fits the full bust and lets the hex's point cut through the
-    // chest, because the art centres the face at roughly a third of its height.
+    // The art centres the face at roughly a third of its height, so an unbiased
+    // fit puts the hexagon's lower point through the chest.
     const image = source.match(/\.slog-portrait-img \{[\s\S]*?\n\}/);
     expect(image, "expected a .slog-portrait-img style block").not.toBeNull();
     expect(image![0]).toMatch(/scale:\s*var\(--story-log-portrait-zoom\)/);
@@ -179,8 +190,11 @@ describe("LogPanel rendering rules", () => {
     const teller = source.match(/\.slog-teller \{[\s\S]*?\n\}/);
     expect(title, "expected a .slog-title style block").not.toBeNull();
     expect(teller, "expected a .slog-teller style block").not.toBeNull();
-    const face = (rule: string) => rule.match(/font-family:\s*([^;]+);/)?.[1];
-    expect(face(title![0])).toBe(face(teller![0]));
+    const prop = (rule: string, name: string) =>
+      rule.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1];
+    expect(prop(title![0], "font-family")).toBe(prop(teller![0], "font-family"));
+    // Colour too: one Text component draws both in game, so only size differs.
+    expect(prop(title![0], "color")).toBe(prop(teller![0], "color"));
     expect(title![0]).toMatch(/font-size:/);
     expect(teller![0]).toMatch(/font-size:/);
   });

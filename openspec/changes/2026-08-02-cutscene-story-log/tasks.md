@@ -164,3 +164,22 @@
       with no name keep the reserved height with the rule made transparent.
 - [x] 9.6 Shift the portrait crop right via a new `--story-log-portrait-offset-x`.
 - [x] 9.7 `cd frontend && npm test` and `npm run check` pass; `cd mod && dotnet build` passes.
+
+## 10. Portrait scale and name colour
+
+- [x] 10.1 Give the title the same colour as the speaker name. In game a single `Text` draws
+      both and varies only the size tag, so size is the whole of the distinction.
+- [x] 10.2 Scale portraits to the frame's height alone rather than `object-fit: cover`. Measured
+      the extracted sprites: they are tight crops with only ~2px transparent margin and native
+      aspects from roughly 0.70 to 1.03, so `cover` scaled the narrow ones by width and zoomed
+      those heads past the wide ones'. Head size tracks bust height, so fitting height alone
+      normalises them.
+- [x] 10.3 Pad portrait extraction to the sprite's logical rect
+      (`IconCache.SpriteToPaddedPng`), so sprites authored on a shared canvas but trimmed to
+      differing bounds keep a common frame of reference. Inert where a sprite is untrimmed,
+      which the measurements above suggest is the case here — kept because it is correct by
+      construction and costs nothing at runtime.
+- [x] 10.4 Log each portrait's rect/crop/offset/pivot geometry once, so whether 10.3 ever
+      engages can be confirmed from the player log rather than assumed.
+- [x] 10.5 `cd mod && dotnet build`, `cd mod/mod.tests && dotnet test`, `cd frontend && npm test`
+      and `npm run check` all pass.

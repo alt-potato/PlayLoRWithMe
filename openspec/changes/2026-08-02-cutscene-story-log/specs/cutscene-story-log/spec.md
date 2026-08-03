@@ -100,6 +100,10 @@ The mod MUST extract each speaker's portrait sprite to `wwwroot/assets/portraits
 `IconCache`'s existing sprite-extraction primitive, and MUST do so lazily — the first time a
 given model key is encountered — rather than in an upfront pass over the portrait directory.
 
+Extraction MUST pad the sprite to its logical rect rather than exporting its tight crop, so
+that sprites authored on a shared canvas but trimmed to differing bounds retain a common frame
+of reference. Where a sprite is untrimmed the two regions coincide and the padding is inert.
+
 The mod MUST derive both the on-disk filename and the wire value from an ASCII-safe slug,
 because model keys are not guaranteed to be ASCII. The slug maps every character outside
 `[A-Za-z0-9_-]` to `_` and appends a short hex hash of the original UTF-8 bytes. It MUST be
@@ -216,11 +220,19 @@ a real border away; the outer layer's fill stands in as the outline. That outlin
 interface's gold accent, matching the base game. The frame MUST be sized on both axes, since a
 pointy-top hexagon is taller than it is wide.
 
-The crop MUST be biased toward the speaker's face rather than fitting the whole bust. Portrait
+Portraits MUST be scaled to the frame's height alone, never to its width. The source art is
+tightly cropped per character, so native aspect ratios vary widely; scaling to fill both axes
+makes narrow portraits scale by width and renders their heads markedly larger than those of
+wide ones. Head size tracks bust height, so fitting height alone holds every character at a
+consistent scale. Portraits narrower than the frame MAY leave its flanks empty rather than
+being zoomed to cover them.
+
+The crop MUST be biased toward the speaker's face rather than centring the whole bust. Portrait
 art is a head-and-shoulders bust whose face centres at roughly a third of the image height, so
-a plain cover fit lets the hexagon's lower point cut through the chest. The zoom and vertical
-bias MUST be expressed as adjustable custom properties, because the game's true framing lives
-in prefab data that cannot be decompiled and these values are therefore tuned approximations.
+an unbiased fit lets the hexagon's lower point cut through the chest. The zoom and the
+horizontal and vertical biases MUST be expressed as adjustable custom properties, because the
+game's true framing lives in prefab data that cannot be decompiled and these values are
+therefore tuned approximations.
 
 Every spoken row MUST reserve its portrait frame, including rows whose speaker has no portrait
 asset and rows whose portrait image fails to load. The in-game log disables only the image and
@@ -264,6 +276,12 @@ NOT reserve a frame — vanilla renders them through a separate slot that has no
 - **WHEN** an entry's portrait asset loads
 - **THEN** it is clipped to a pointy-top hexagon
 - **AND** the hexagonal outline is drawn by a second clipped layer behind it, not a CSS border
+
+#### Scenario: Portraits of differing native aspect appear together
+
+- **WHEN** a narrow portrait and a wide portrait render in the same log
+- **THEN** both are scaled to the same frame height
+- **AND** neither speaker's head reads as noticeably larger than the other's
 
 #### Scenario: A portrait image fails to load
 
