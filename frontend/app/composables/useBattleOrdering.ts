@@ -6,8 +6,10 @@
  * synced automatically via watchers.
  */
 
+import { computed, ref, watch } from "vue";
 import type { Ref, ComputedRef } from "vue";
 import type { AllyUnit, Unit } from "~/types/game";
+import { isDead } from "~/composables/useBattleDisplay";
 
 interface BattleOrderingOptions {
   /** Reactive allies array from the game state. */

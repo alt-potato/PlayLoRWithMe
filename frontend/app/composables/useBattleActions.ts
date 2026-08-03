@@ -5,6 +5,7 @@
  * Returns handler functions compatible with BattleCtx.
  */
 
+import { onScopeDispose, ref, watch } from "vue";
 import type { Ref } from "vue";
 import type {
   AllyUnit,
