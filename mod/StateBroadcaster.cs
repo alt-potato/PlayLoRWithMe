@@ -194,6 +194,130 @@ namespace PlayLoRWithMe
             static void Postfix() => Broadcast();
         }
 
+        // ------------------------------------------------------------------
+        // Cutscene dialogue log
+        //
+        // The game's own DialogLogManager is the source of truth for what the host
+        // has already been shown, so we mirror its mutations rather than tracking
+        // cutscene progress independently. StoryRoot (standalone cutscenes) and
+        // BattleStoryUI (cutscenes that interrupt a battle) both drive a StoryManager
+        // that routes through this one type, so these patches cover both surfaces
+        // without any surface-specific branching.
+        // ------------------------------------------------------------------
+
+        private const string PortraitResourcePath = "StoryResource/CharacterPortraits/";
+
+        // model key -> portrait slug, with a null value recording a key that has no
+        // portrait asset. Without the negative entries, a speaker who has no portrait
+        // would trigger a Resources.Load on every one of their lines. Main-thread only
+        // (every writer is a Harmony postfix), so no synchronization is needed.
+        private static readonly Dictionary<string, string> _portraitSlugs =
+            new Dictionary<string, string>();
+
+        /// <summary>
+        /// Resolves a dialogue model key to the slug naming its extracted portrait PNG,
+        /// or null when the speaker has no portrait asset. A missing portrait is normal,
+        /// not an error — the entry is still logged, just without an image.
+        /// </summary>
+        private static string ResolvePortrait(string model)
+        {
+            if (string.IsNullOrEmpty(model))
+                return null;
+
+            string slug;
+            if (_portraitSlugs.TryGetValue(model, out slug))
+                return slug;
+
+            var sprite = Resources.Load<Sprite>(PortraitResourcePath + model);
+            slug =
+                sprite == null
+                    ? null
+                    : IconCache.EnsurePortrait(sprite, StoryLog.SlugifyPortraitKey(model));
+            _portraitSlugs[model] = slug;
+            return slug;
+        }
+
+        /// <summary>
+        /// Records the story scene's place caption when it has changed since the last
+        /// line, so a mid-episode change of location lands inline between the lines it
+        /// separates.
+        /// </summary>
+        /// <remarks>
+        /// Restricted to the standalone story scene by comparing against
+        /// <c>StoryRoot</c>'s own manager. Only that surface shows a place caption; a
+        /// mid-battle cutscene drives a different <c>StoryManager</c> whose label is
+        /// never populated, and reading it could surface a stale location in combat.
+        /// </remarks>
+        private static void AppendPlaceIfChanged(DialogLogManager log)
+        {
+            var manager = log?.storyManager;
+            if (manager == null || manager != StoryScene.StoryRoot.Instance?.storyManager)
+                return;
+            StoryLog.AppendPlace(manager.txtCurPlace?.text);
+        }
+
+        [HarmonyPatch(typeof(DialogLogManager), "Init")]
+        static class Patch_DialogLogInit
+        {
+            // Vanilla's per-episode reset, reached via StoryManager.InitDialogs. No
+            // broadcast here: the episode's first AddDialog follows immediately and
+            // pushes, so an extra empty-log snapshot would only add churn.
+            static void Postfix() => StoryLog.Clear();
+        }
+
+        [HarmonyPatch(typeof(DialogLogManager), "AddDialog")]
+        static class Patch_DialogLogAddDialog
+        {
+            static void Postfix(DialogLogManager __instance, WorkParser.Dialog _dialog)
+            {
+                if (_dialog == null)
+                    return;
+                AppendPlaceIfChanged(__instance);
+                StoryLog.Append(
+                    _dialog.Teller,
+                    _dialog.Title,
+                    _dialog.Content,
+                    ResolvePortrait(_dialog.Model)
+                );
+                Broadcast();
+            }
+        }
+
+        [HarmonyPatch(typeof(DialogLogManager), "AddExtraLog")]
+        static class Patch_DialogLogAddExtraLog
+        {
+            static void Postfix(string text, bool isRed)
+            {
+                StoryLog.AppendChoice(text, isRed);
+                Broadcast();
+            }
+        }
+
+        [HarmonyPatch(typeof(StoryScene.StoryRoot), "EndStory")]
+        static class Patch_StoryRootEndStory
+        {
+            static void Postfix(StoryScene.StoryRoot __instance)
+            {
+                // EndStory is a no-op when its own guard rejects the call, which can
+                // leave the cutscene on screen. Only mirror an end that actually took
+                // the story UI down, or a still-running cutscene would lose its log.
+                if (__instance?.storyUI != null && __instance.storyUI.activeSelf)
+                    return;
+                StoryLog.Clear();
+                Broadcast();
+            }
+        }
+
+        [HarmonyPatch(typeof(BattleStoryUI), "EndStory")]
+        static class Patch_BattleStoryEndStory
+        {
+            static void Postfix()
+            {
+                StoryLog.Clear();
+                Broadcast();
+            }
+        }
+
         // Fires whenever the player toggles a librarian slot in the BattleSetting screen.
         // SelectedToggles calls SetYesToggleState / SetNoToggleState, which write
         // IsAddedBattle on the UnitBattleDataModel, so we broadcast after it returns to

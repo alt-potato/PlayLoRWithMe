@@ -98,6 +98,10 @@ namespace PlayLoRWithMe
             // ThemeProbe.IsReady pick up the colours via the next push
             // (DeltaEngine drops the block when unchanged between pushes).
             WriteTheme(w);
+            // Emitted at top level rather than from a scene writer: a cutscene driven by
+            // BattleStoryUI overlays a live battle, so the log can accompany any scene.
+            // Absence of the field is what tells the frontend no cutscene is running.
+            StoryLog.WriteTo(w);
 
             if (gsm.battleScene != null && gsm.battleScene.gameObject.activeSelf)
             {
@@ -134,8 +138,9 @@ namespace PlayLoRWithMe
         private static void WriteTitleScene(JsonWriter w) { }
 
         /// <summary>
-        /// Serializes the story/cutscene scene. Currently a no-op placeholder;
-        /// the scene tag is already written by the dispatcher.
+        /// Serializes the story/cutscene scene. Intentionally empty: the scene tag comes
+        /// from the dispatcher and the dialogue log is written at top level by
+        /// <see cref="StoryLog.WriteTo"/>, since a cutscene can also overlay a battle.
         /// </summary>
         private static void WriteStoryScene(JsonWriter w) { }
 

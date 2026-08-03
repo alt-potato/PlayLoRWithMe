@@ -155,6 +155,14 @@ const showLibrarians = computed(
       gameState.value.uiPhase === "BattleSetting"),
 );
 
+// The story log fills the remaining viewport height so it scrolls against the
+// page edge rather than growing the page. That needs `main` to become a flex
+// column, which is scoped to this scene alone so the battle and library layouts
+// keep their normal block flow.
+const showStoryLog = computed(
+  () => gameState.value?.scene === "story" && !!gameState.value.storyLog?.length,
+);
+
 const isDebugOpen = ref(false);
 const rawJson = computed(() =>
   isDebugOpen.value && gameState.value ? JSON.stringify(gameState.value, null, 2) : "—",
@@ -165,7 +173,7 @@ const connPanelOpen = ref(false);
 </script>
 
 <template>
-  <div class="app">
+  <div class="app" :class="{ 'app--fill': showStoryLog }">
     <header class="topbar">
       <div class="topbar-left">
         <span class="brand-mark" aria-hidden="true" />
@@ -199,7 +207,7 @@ const connPanelOpen = ref(false);
       </div>
     </header>
 
-    <main>
+    <main :class="{ 'main--fill': showStoryLog }">
       <!--
         BattleSetting phase: pre-battle formation/claim screen shown while the
         main menu is in its BattleSetting UI phase (before the battle scene loads).
@@ -235,6 +243,16 @@ const connPanelOpen = ref(false);
         :claim-unit="claimUnit"
         :release-unit="releaseUnit"
         :rename-player="renamePlayer"
+      />
+
+      <!--
+        Cutscene dialogue. Gated on a non-empty log so a cutscene that has not yet
+        spoken a line falls through to the scene placeholder below rather than
+        rendering an empty panel.
+      -->
+      <LazyStoryLogPanel
+        v-else-if="showStoryLog"
+        :entries="gameState!.storyLog!"
       />
 
       <div v-else-if="gameState" class="scene-idle">
@@ -491,11 +509,20 @@ const connPanelOpen = ref(false);
 
   /* ── Fonts ── */
   --font-display: "Cinzel", "Palatino Linotype", serif;
+  /* Reading serif for running prose. Cinzel is Trajan-derived — its lowercase
+     reads as small caps, which suits short headings but not paragraphs, so
+     story dialogue uses this instead. System faces only: no download, and it
+     keeps the app usable with no route to a font CDN. */
+  --font-serif: "Palatino Linotype", "Book Antiqua", Palatino, Georgia,
+    "Times New Roman", serif;
   --font-body: "Noto Sans", system-ui, sans-serif;
   --font-mono: "Courier New", Courier, monospace;
 
   /* Flat-top hexagon: wider than tall, pointy sides */
   --hex: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  /* Pointy-top hexagon: taller than wide, flat sides. Used for story-log
+     speaker portraits, which the in-game log frames this way round. */
+  --hex-pointy: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 
   /* ── Clash/stagger ── */
   --health: #e56031;
@@ -610,6 +637,15 @@ body {
   gap: var(--sp-2);
 }
 
+/* Pins the shell to exactly one viewport so a scene using `main--fill` gets a
+   definite height to divide up. `min-height` alone is not enough: the shell would
+   still grow with its content, `main`'s flex:1 would grow with it, and a scene
+   asking to fill would never actually be bounded — its own scroller would never
+   scroll and the page would scroll instead. */
+.app--fill {
+  height: 100dvh;
+}
+
 /* ── Top ribbon ──
    Hairline gold top border reinforces the book-ribbon feel. The inset
    shadow on the bottom creates a subtle page-edge lift without adding
@@ -659,6 +695,15 @@ body {
 
 main {
   flex: 1;
+}
+
+/* Lets a scene fill the remaining viewport height instead of growing the page.
+   Applied per-scene rather than to `main` outright, so scenes that rely on
+   normal block flow are untouched. */
+main.main--fill {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .scene-idle {

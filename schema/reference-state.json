@@ -566,6 +566,37 @@
       },
       "allies": [],
       "enemies": []
+    },
+
+    "story_cutscene": {
+      "scene": "story",
+      "storyLog": [
+        { "content": "The Library", "isPlace": true },
+        {
+          "teller": "Roland",
+          "title": "Ex-Grade 1 Fixer",
+          "content": "Well, that's one way to open a book.",
+          "portrait": "Roland_3a1f77c2"
+        },
+        {
+          "teller": "Angela",
+          "content": "Line one.\nLine two.",
+          "portrait": "Angela_9c04be51"
+        },
+        { "teller": "Monologue", "content": "The Library falls silent." },
+        { "content": "Forgive", "isChoice": true, "choiceIsRed": false },
+        { "content": "Kill", "isChoice": true, "choiceIsRed": true }
+      ]
+    },
+
+    "battle_cutsceneOverlay": {
+      "scene": "battle",
+      "phase": "ApplyLibrarianCardPhase",
+      "allies": [],
+      "enemies": [],
+      "storyLog": [
+        { "teller": "Roland", "content": "Not yet. Not like this." }
+      ]
     }
   }
 }
