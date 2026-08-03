@@ -39,6 +39,14 @@ import type { Ref } from "vue";
 import type { AppearanceData, FashionBook, GiftSlot } from "~/types/game";
 import { ASSETS_READY } from "~/composables/useAssetsReady";
 import { FACE_CANVAS_DIMS } from "~/composables/useFaceCanvasDims";
+import {
+  computeFaceRotStyle,
+  computeFashionBodyHeightCss,
+  computeFeetYCss,
+  computeFloorY,
+  computeHeightScale,
+  computeZoomCompensateY,
+} from "~/utils/appearanceGeometry";
 
 const props = defineProps<{
   appearance: AppearanceData;
@@ -333,131 +341,41 @@ const showFaceHairLayers = computed(
   () => !hasPatronHead.value && !fashionReplacesHead.value,
 );
 
-/**
- * CSS transform applied to face/hair layers when the active fashion book has a
- * non-zero head tilt.  The origin is set to the canonical librarian pivot so the
- * rotation matches what the game shows.
- *
- * Unity's left-hand screen space means a positive eulerAngles.z value is
- * counter-clockwise on screen, opposite to CSS rotate(+deg), so the angle is negated.
- */
-const faceRotStyle = computed(() => {
-  const fb = props.fashionBook;
-  if (!fb || !fb.headTiltDeg || Math.abs(fb.headTiltDeg) < 0.05) return {};
-
-  const fracX = fb.pivotFracX ?? 0.5;
-  const fracY = fb.pivotFracY ?? 0.5;
-  // CSS canvas height at PREVIEW_W: scale = PREVIEW_W / dims.w, height = dims.h * scale.
-  const previewW = PREVIEW_W.value;
-  const canvasCssH = dims.value
-    ? previewW * (dims.value.h / dims.value.w)
-    : PREVIEW_H.value; // fallback: assume square face canvas
-
-  const originX = previewW * fracX;
-  const originY = canvasCssH * fracY;
-
-  return {
-    transform: `rotate(${-fb.headTiltDeg}deg)`,
-    transformOrigin: `${originX}px ${originY}px`,
-  };
-});
-
-/**
- * Uniform scale factor applied to all sprite layers, matching the game's own
- * character scaling: `UICharacterRenderer.GetRenderTextureByIndexAndSize` sets
- * `unitAppearance.localScale` to `Vector2.one * customizeData.height * 0.005`,
- * so height=200 is the 1.0 reference and a 170-height librarian renders at 0.85x.
- *
- * The scale is anchored at each body's natural feet position (see `feetYCss`,
- * driven by the per-book `feetYFrac` exported by AppearanceCache) so resizing
- * keeps feet planted on a shared floor line — matching the in-game behavior
- * where the prefab's transform origin sits at the feet and scaling about the
- * transform origin trivially preserves foot alignment.
- */
-const HEIGHT_SCALE_FACTOR = 0.005;
-const DEFAULT_ZOOM = 2.25;
-/**
- * Fraction of the preview height reserved as breathing room between the
- * shared floor line and the bottom edge of the viewport.
- */
-const FOOT_BUFFER_FRACTION = 0;
-const baseHeightScale = computed(
-  () => (props.appearance.height ?? 170) * HEIGHT_SCALE_FACTOR,
+// Head-tilt rotation, height scaling, and feet-anchored floor alignment are pure
+// functions of props/dims — see utils/appearanceGeometry.ts for the rationale
+// behind each (largely reverse-engineered from the game's own renderer), kept
+// there so this math is unit-tested without mounting the component.
+const faceRotStyle = computed(() =>
+  computeFaceRotStyle(props.fashionBook, dims.value, PREVIEW_W.value, PREVIEW_H.value),
 );
-const zoomFactor = computed(() => props.zoom ?? DEFAULT_ZOOM);
-const heightScale = computed(() => baseHeightScale.value * zoomFactor.value);
 
-/**
- * Y coordinate (CSS px) of the shared floor line — the position in the
- * viewport where every librarian's feet land.
- */
-const floorY = computed(() => PREVIEW_H.value * (1 - FOOT_BUFFER_FRACTION));
+const heightScale = computed(() =>
+  computeHeightScale(props.appearance.height, props.zoom),
+);
 
-/**
- * Vertical translation (CSS px) applied before the scale.  Pins each
- * librarian's `feetYCss` (the transform-origin Y) to the shared `floorY`,
- * so all librarians stand on the same floor regardless of body aspect or
- * height — taller librarians have heads correspondingly higher, shorter
- * ones lower, mirroring the in-game fixed-camera view.
- */
-const zoomCompensateY = computed(() => floorY.value - feetYCss.value);
+const floorY = computed(() => computeFloorY(PREVIEW_H.value));
 
-/**
- * Y coordinate (CSS px) of the character's feet within the preview box, used
- * as the scale transform origin so the feet stay pinned across height changes.
- *
- * The per-book `feetYFrac` (exported by AppearanceCache; defaults to 1.0 when
- * omitted = feet at PNG bottom) marks where feet actually sit inside the PNG,
- * letting us offset inward when the PNG extends below feet (weapons/props).
- *
- * Layout specifics:
- * - Non-replacesHead bodies share the face canvas width and are drawn with
- *   `background-size: 100% auto; background-position: left top`, so the CSS
- *   height of the body PNG = PREVIEW_W * (naturalH / naturalW).  Feet CSS Y
- *   is that height times feetYFrac.
- * - ReplacesHead bodies use `background-size: contain; background-position:
- *   top center`, which fits the whole body inside PREVIEW_W x PREVIEW_H.
- *   The rendered height is `min(PREVIEW_H, PREVIEW_W * aspect)`; feet CSS Y
- *   is that height times feetYFrac.
- * - When no body PNG is loaded (face-only librarians), fall back to the
- *   bottom of the preview box so scaling still behaves reasonably.
- */
-const feetYCss = computed(() => {
-  const previewW = PREVIEW_W.value;
-  const previewH = PREVIEW_H.value;
-  const bd = fashionBodyDims.value;
-  if (!bd || !props.fashionBook) return previewH;
+const feetYCss = computed(() =>
+  computeFeetYCss(
+    fashionBodyDims.value,
+    props.fashionBook?.feetYFrac,
+    fashionReplacesHead.value,
+    PREVIEW_W.value,
+    PREVIEW_H.value,
+  ),
+);
 
-  const aspect = bd.h / bd.w;
-  const feetFrac = props.fashionBook.feetYFrac ?? 1;
-  const renderedH = fashionReplacesHead.value
-    // `contain` fits the image fully inside the box while preserving aspect.
-    ? (aspect >= previewH / previewW ? previewH : previewW * aspect)
-    // Non-replacesHead: width pinned to previewW, height scales with aspect.
-    : previewW * aspect;
-  return renderedH * feetFrac;
-});
+const zoomCompensateY = computed(() =>
+  computeZoomCompensateY(floorY.value, feetYCss.value),
+);
 
-/**
- * Explicit CSS pixel height for non-replacesHead body/skin/front layer divs.
- * Without this, `inset: 0` constrains the div to PREVIEW_H while the PNG
- * painted via `background-size: 100% auto` has natural rendered height
- * `PREVIEW_W * aspect`.  When aspect > 1 (body PNG taller than wide — common
- * when the book has a tall hat or a feet-at-PNG-bottom layout with no weapon
- * extending below), the background image is clipped at the element's border
- * box *before* the feet-anchored transform applies, chopping off the feet.
- * Extending the layer height to the PNG's natural rendered height keeps the
- * full body painted so the feet land correctly on the shared floor line after
- * the transform.  Returns null for replacesHead bodies (those use
- * `background-size: contain` which never exceeds the element's bounds).
- */
-const fashionBodyHeightCss = computed<number | null>(() => {
-  if (fashionReplacesHead.value) return null;
-  const bd = fashionBodyDims.value;
-  if (!bd) return null;
-  const aspect = bd.h / bd.w;
-  return PREVIEW_W.value * aspect;
-});
+const fashionBodyHeightCss = computed(() =>
+  computeFashionBodyHeightCss(
+    fashionReplacesHead.value,
+    fashionBodyDims.value,
+    PREVIEW_W.value,
+  ),
+);
 
 /** Z-index per position so overlapping gifts layer in a natural order. */
 const POSITION_Z: Record<string, number> = {
