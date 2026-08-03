@@ -121,14 +121,6 @@ details.abn-entry > .abn-header {
   white-space: nowrap;
 }
 
-.chevron {
-  font-size: var(--fs-4xs);
-  color: var(--text-3);
-  flex-shrink: 0;
-  display: inline-block;
-  transition: transform 0.18s ease;
-}
-
 details[open].abn-entry > .abn-header .chevron {
   transform: rotate(90deg);
 }

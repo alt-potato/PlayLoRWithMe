@@ -282,7 +282,7 @@ const detailsLabel = computed(() => {
     <template v-if="isAlly && isSelectPhase && (ally.hand?.length || hasEgo)">
       <div class="hand-section">
         <div class="hand-header" @click.stop="handExpanded = !handExpanded">
-          <span class="section-label">
+          <span class="row-label">
             <span class="hand-chevron" :class="{ open: showHandCards }">▸</span>
             {{ egoMode ? "EGO hand" : "Hand" }}
             <span class="hand-count"
@@ -351,7 +351,7 @@ const detailsLabel = computed(() => {
 
     <!-- ── Collapsed details ── -->
     <details v-if="hasDetails" class="collapse">
-      <summary class="section-label"><span class="hand-chevron">▸</span>{{ detailsLabel }}</summary>
+      <summary class="row-label"><span class="hand-chevron">▸</span>{{ detailsLabel }}</summary>
 
       <!-- Passives -->
       <template v-if="unit.passives?.length">
@@ -611,17 +611,12 @@ const detailsLabel = computed(() => {
   cursor: pointer;
   user-select: none;
 }
-.hand-header:hover .section-label {
+.hand-header:hover .row-label {
   color: var(--text-1);
 }
-.section-label {
-  display: flex;
-  align-items: center;
-  gap: 0.3em;
-  font-family: var(--font-display);
-  font-size: var(--fs-4xs);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+/* base flex-row/typography styling is shared via app.vue's global
+   .row-label; color and the hover transition are local to this surface. */
+.row-label {
   color: var(--text-2);
   transition: color 0.15s;
 }
@@ -632,7 +627,7 @@ const detailsLabel = computed(() => {
   transition: transform 0.18s ease;
 }
 .hand-chevron.open,
-details[open] > .section-label .hand-chevron {
+details[open] > .row-label .hand-chevron {
   transform: rotate(90deg);
 }
 .hand-count {

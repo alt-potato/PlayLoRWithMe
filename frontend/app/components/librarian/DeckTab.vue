@@ -554,13 +554,10 @@ async function handleRemoveCard(preview: DeckCardPreview) {
   min-height: 0;
 }
 
+/* base uppercase heading styling is shared via app.vue's global .col-header;
+   this tab additionally lays it out as a flex row so the "N / MAX" count
+   badge (.deck-count below) sits inline next to the heading text. */
 .col-header {
-  font-size: var(--fs-md);
-  font-family: var(--font-display);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--gold-bright);
-  flex-shrink: 0;
   display: flex;
   align-items: baseline;
   gap: var(--sp-2);
@@ -576,11 +573,6 @@ async function handleRemoveCard(preview: DeckCardPreview) {
   color: var(--text-3);
 }
 
-.col-empty {
-  font-size: var(--fs-xs);
-  color: var(--text-3);
-  padding: var(--sp-2) 0;
-}
 
 .card-grid {
   /* explicit shorthand: horizontal is clipped (no scrollbar even when a

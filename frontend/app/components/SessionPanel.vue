@@ -121,16 +121,16 @@ const unclaimedCount = computed(
     <Transition name="session-drop">
       <div v-if="expanded" class="session-body">
         <!-- Segmented tab control — only shown in battle where both tabs exist -->
-        <div v-if="showLibrarians" class="tab-bar">
+        <div v-if="showLibrarians" class="segment-bar">
           <button
-            class="tab-btn"
+            class="segment-btn"
             :class="{ active: activeTab === 'players' }"
             @click="activeTab = 'players'"
           >
             Players
           </button>
           <button
-            class="tab-btn"
+            class="segment-btn"
             :class="{ active: activeTab === 'librarians' }"
             @click="activeTab = 'librarians'"
           >
@@ -295,13 +295,17 @@ const unclaimedCount = computed(
   flex-direction: column;
 }
 
-/* ── Segmented tab bar ── */
-.tab-bar {
+/* ── Segmented tab bar ──
+   Compact equal-width segmented control — visually and structurally
+   distinct from the underline tab strip shared by EditPanel/CustomizePanel
+   (app.vue's .tab-bar/.tab-btn), so this keeps its own local names rather
+   than overriding the shared classes. */
+.segment-bar {
   display: flex;
   border-bottom: 1px solid var(--border);
 }
 
-.tab-btn {
+.segment-btn {
   flex: 1;
   padding: 0.3rem 0.5rem;
   background: none;
@@ -319,11 +323,11 @@ const unclaimedCount = computed(
     border-color 0.15s;
 }
 
-.tab-btn:hover {
+.segment-btn:hover {
   color: var(--text-2);
 }
 
-.tab-btn.active {
+.segment-btn.active {
   color: var(--gold);
   border-bottom-color: var(--gold);
 }

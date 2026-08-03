@@ -557,21 +557,6 @@ function unequipSource(instanceId: number) {
   min-height: 0;
 }
 
-.col-header {
-  font-size: var(--fs-md);
-  font-family: var(--font-display);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--gold-bright);
-  flex-shrink: 0;
-}
-
-.col-empty {
-  font-size: var(--fs-xs);
-  color: var(--text-3);
-  padding: var(--sp-2) 0;
-}
-
 .chapter-pills {
   display: flex;
   flex-wrap: wrap;

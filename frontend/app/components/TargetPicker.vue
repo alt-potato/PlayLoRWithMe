@@ -170,20 +170,6 @@ function dieState(
   white-space: nowrap;
   font-family: var(--font-body);
 }
-.close-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-2);
-  font-size: var(--fs-md);
-  cursor: pointer;
-  padding: 0 0.2rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-.close-btn:hover {
-  color: var(--crimson-hi);
-}
-
 /* ── Enemy list ──────────────────────────────────────────────────────────── */
 .enemy-list {
   display: flex;

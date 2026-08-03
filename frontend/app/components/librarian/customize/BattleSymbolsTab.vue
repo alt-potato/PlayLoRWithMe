@@ -212,7 +212,7 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
             </span>
           </div>
           <button
-            class="unequip-btn"
+            class="gift-unequip-btn"
             :disabled="isBusy"
             @click="unequip(POSITIONS.find(p => p.name === openPosition)!.idx)"
           >
@@ -277,9 +277,9 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
 </template>
 
 <style scoped>
+/* base column-flex layout is shared via app.vue's global .tab-inner; only
+   this tab's row gap is local. */
 .tab-inner {
-  display: flex;
-  flex-direction: column;
   gap: 0.75rem;
 }
 
@@ -439,7 +439,7 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
   border-color: var(--crimson-hi);
 }
 
-.unequip-btn {
+.gift-unequip-btn {
   align-self: flex-start;
   padding: 0.2rem 0.5rem;
   font-size: var(--fs-4xs);
@@ -453,12 +453,12 @@ async function toggleVisibility(idx: GiftIdx, currentlyVisible: boolean): Promis
     border-color 0.1s;
 }
 
-.unequip-btn:hover:not(:disabled) {
+.gift-unequip-btn:hover:not(:disabled) {
   color: var(--crimson-hi);
   border-color: var(--crimson-hi);
 }
 
-.unequip-btn:disabled {
+.gift-unequip-btn:disabled {
   opacity: 0.4;
   cursor: default;
 }

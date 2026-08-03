@@ -240,7 +240,7 @@ const isBusy = computed(() => props.busy || saveBusy.value);
         <!-- Header -->
         <div class="panel-header">
           <span class="panel-title">Customize — {{ lib.name }}</span>
-          <button class="close-btn" title="Cancel" aria-label="Close customize panel" @click="onClose">✕</button>
+          <button class="nested-modal-close-btn" title="Cancel" aria-label="Close customize panel" @click="onClose">✕</button>
         </div>
 
         <!-- Body: preview + tab area -->
@@ -423,18 +423,18 @@ const isBusy = computed(() => props.busy || saveBusy.value);
   color: var(--gold);
 }
 
-.close-btn {
+.nested-modal-close-btn {
   background: transparent;
   border: none;
   color: var(--text-3);
   font-size: var(--fs-xs);
   cursor: pointer;
   padding: 0.1rem 0.3rem;
-  border-radius: 4px;
+  border-radius: var(--radius-md);
   transition: color 0.1s;
 }
 
-.close-btn:hover {
+.nested-modal-close-btn:hover {
   color: var(--text-1);
 }
 
@@ -486,27 +486,18 @@ const isBusy = computed(() => props.busy || saveBusy.value);
 /* ── Sub-tab bar ───────────────────────────────────────────────────────────── */
 
 /*
- * Tab bar wraps to as many rows as needed — no horizontal scroll. Each
- * button owns its own bottom border so wrapped rows render a seamless
- * divider line even when the underline drops to the next row.
+ * Base flex strip / button styling comes from app.vue's shared .tab-bar /
+ * .tab-btn. Tab bar wraps to as many rows as needed — no horizontal
+ * scroll. Each button owns its own bottom border so wrapped rows render a
+ * seamless divider line even when the underline drops to the next row
+ * (contrast with EditPanel, which never wraps and so can use one shared
+ * border on the strip itself).
  */
 .tab-bar {
-  display: flex;
   flex-wrap: wrap;
-  gap: 0;
-  flex-shrink: 0;
 }
 
 .tab-btn {
-  padding: var(--sp-2) var(--sp-4);
-  background: transparent;
-  border: none;
-  color: var(--text-3);
-  cursor: pointer;
-  font-size: var(--fs-sm);
-  font-family: var(--font-display);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
   border-bottom: 1px solid var(--border);
   transition: color var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),

@@ -691,6 +691,161 @@ body {
 .collapse summary::-webkit-details-marker {
   display: none;
 }
+
+/* ==========================================================================
+   Shared component classes
+   ==========================================================================
+
+   Vue's `<style scoped>` cannot be shared across components, so several
+   small presentational classes (tab strips, close buttons, section labels,
+   stat icons, etc.) were independently re-declared in many components'
+   scoped blocks and drifted out of sync with each other over time. The
+   groups below were verified to render identically (or differ only by a
+   documented, deliberate override) across every component that uses them;
+   the shared declaration lives here and each component keeps only the
+   local overrides/additions it genuinely needs in its own scoped block.
+   Classes that turned out to represent *different* visual roles despite
+   sharing a name were renamed instead of merged — see the components that
+   still declare their own locally-scoped version of the old name.
+   ========================================================================== */
+
+/* Micro caption used above a labelled field or short value (librarian
+   customize tabs: Face/Hairstyle/Name-Title/Projection). */
+.section-label {
+  font-size: var(--fs-4xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+
+/* Larger uppercase heading above a whole panel section (librarian EditPanel,
+   KeyPageDetail). Distinct from .section-label above — same generic name
+   before this cleanup covered two different sizes/colors; KeyPageDetail
+   layers its own margin-top since only it needs the extra top gap. */
+.panel-heading {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-2);
+  font-family: var(--font-display);
+}
+
+/* Small flex-row label (optionally holding a chevron/icon) used as a
+   disclosure/section heading (unit/DisplayCard's hand header + collapsed
+   details summary, battle/SettingDetailPanel's static section headers).
+   Color and the extra local property are genuinely per-surface (brighter
+   text-2 on the interactive hand-header vs dimmer text-3 on the static
+   detail panel) so each component keeps its own override. */
+.row-label {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  font-family: var(--font-display);
+  font-size: var(--fs-4xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* Vertical stack layout for a librarian customize tab's content. Every tab
+   shares the column-flex shell; only the row gap varies by tab (denser
+   field lists use the smaller gap, tabs with fewer/larger blocks use more
+   breathing room), so gap stays a local per-component override. */
+.tab-inner {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Small "X" dismiss button used by the two mobile bottom-sheet pickers
+   (TargetPicker, CardDetail) — identical in both, so fully shared with no
+   local override needed. EditPanel/CustomizePanel have their own
+   differently-sized close buttons for their modal chrome (renamed to
+   .modal-close-btn / .nested-modal-close-btn to avoid implying they were
+   the same thing). */
+.close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  padding: 0 0.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.close-btn:hover {
+  color: var(--crimson-hi);
+}
+
+/* Small stat icon (HP/stagger/speed glyphs) shown next to a stat value
+   (librarian KeyPageDetail, LibrarianManager roster rows). ResistanceTable
+   reuses the same footprint but overrides opacity/vertical-align locally
+   for its inline table-cell layout; battle/SettingView's compact formation
+   preview needs a visibly smaller icon so it keeps its own
+   .mini-stat-icon instead of overriding this one. */
+.stat-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  object-fit: contain;
+  opacity: 0.9;
+}
+
+/* Small rotating disclosure arrow used inside a native <details> header
+   (unit/PassiveList, unit/AbnormalityList — both toggle via the browser's
+   details[open] state). LibrarianManager's larger accordion caret is a
+   different interaction (class-toggled, not <details>-based) and keeps its
+   own .accordion-chevron. */
+.chevron {
+  font-size: var(--fs-4xs);
+  color: var(--text-3);
+  flex-shrink: 0;
+  display: inline-block;
+  transition: transform 0.18s ease;
+}
+
+/* Underline tab strip shared by the two librarian modal surfaces
+   (EditPanel, CustomizePanel). Each component layers its own border/active
+   treatment locally: EditPanel never wraps its tabs so the strip owns one
+   shared bottom border and the active tab shifts an inline border color;
+   CustomizePanel's tab set wraps onto multiple rows so each button must own
+   its own bottom border for the divider line to stay seamless across wraps
+   (see the comment in CustomizePanel.vue). SessionPanel's compact
+   equal-width segmented control is a different interaction pattern and
+   keeps its own .segment-bar / .segment-btn. */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+}
+.tab-btn {
+  padding: var(--sp-2) var(--sp-4);
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Uppercase heading above one column of a two-column librarian editor
+   (PassivesTab, DeckTab, KeyPageTab — key page / deck / passive pickers).
+   DeckTab lays its heading out as a flex row locally so it can place the
+   "N / MAX" count badge inline next to the text. */
+.col-header {
+  font-size: var(--fs-md);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gold-bright);
+  flex-shrink: 0;
+}
+
+/* Empty-state placeholder text for one of the two columns above. */
+.col-empty {
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  padding: var(--sp-2) 0;
+}
 </style>
 
 <style scoped>

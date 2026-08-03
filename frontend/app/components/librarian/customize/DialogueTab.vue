@@ -134,9 +134,9 @@ function applyPreset(key: string, preset: string): void {
 </template>
 
 <style scoped>
+/* base column-flex layout is shared via app.vue's global .tab-inner; only
+   this tab's row gap is local. */
 .tab-inner {
-  display: flex;
-  flex-direction: column;
   gap: 0.8rem;
 }
 
