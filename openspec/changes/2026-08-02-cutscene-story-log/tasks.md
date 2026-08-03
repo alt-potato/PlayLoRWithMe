@@ -183,3 +183,20 @@
       engages can be confirmed from the player log rather than assumed.
 - [x] 10.5 `cd mod && dotnet build`, `cd mod/mod.tests && dotnet test`, `cd frontend && npm test`
       and `npm run check` all pass.
+
+## 11. Portrait framing, from measured geometry
+
+- [x] 11.1 Confirmed the shared-canvas hypothesis from the runtime log: every portrait sprite
+      declares `rect=256x256` while stored crops range from ~146x196 to ~223x217, with the
+      horizontal offset carrying placement. The padding added in 10.3 is therefore the actual
+      fix, not the inert safeguard the earlier PNG measurements suggested.
+- [x] 11.2 Retune the framing against the padded canvas. Measured across the extracted sprites:
+      figure bottom-anchored with a transparent band above, head centred at ~35% of canvas
+      height and ~3% right of centre, ~42% of canvas wide. Zoom 1.1 -> 1.4 (head now ~40% of
+      frame height, between the sizes previously judged too large and too small), horizontal
+      bias +5% -> -3% (the old positive value compensated for the unpadded crop and now pushes
+      the wrong way), vertical bias -> 0 (nudging down drags the transparent band into view
+      faster than it gains).
+- [x] 11.3 Keep the geometry log as a runtime contract check, since the shared-canvas
+      assumption the framing depends on cannot be asserted at build time.
+- [x] 11.4 `cd mod && dotnet build`, `cd frontend && npm test` and `npm run check` pass.

@@ -142,17 +142,21 @@ watch(
      rule has to reach back across it to meet the hexagon. */
   --story-log-portrait-gap: var(--sp-3);
 
-  /* Portrait art is a head-and-shoulders bust whose face centres at roughly a
-     third of the image height, so plain `cover` frames the whole bust and lets
-     the hex's point cut through the chest. Zooming past cover and biasing the
-     crop upward puts the face in the frame instead.
+  /* Framing for the 256x256 portrait canvas. Measured across the extracted
+     sprites rather than guessed: the figure is bottom-anchored on the canvas with
+     a transparent band above it, and the head centres at ~35% of canvas height,
+     ~3% right of centre, at ~42% of canvas width.
 
-     Tuned by eye against the extracted sprites: CharacterDialogLog only assigns
-     the sprite, and the game's real framing lives in prefab data that cannot be
-     decompiled — so these are approximations, kept as tokens to stay adjustable. */
-  --story-log-portrait-zoom: 1.1;
-  --story-log-portrait-offset-x: 5%;
-  --story-log-portrait-offset-y: 10%;
+     Zoom is a compromise. Larger closes the transparent band at the hexagon's top
+     point but pushes the head past the size the game shows; this lands the head at
+     roughly 40% of the frame's height, leaving the band inside the narrow tip
+     where the frame's own fill reads as part of the border.
+
+     The vertical bias is deliberately zero: the head sits above centre, but
+     nudging it down drags that transparent band into view faster than it gains. */
+  --story-log-portrait-zoom: 1.4;
+  --story-log-portrait-offset-x: -3%;
+  --story-log-portrait-offset-y: 0%;
 
   /* Comfortable reading measure for the dialogue. This, not the game's dialogue
      box width, is what bounds the layout: 1277px sits near a typical laptop
@@ -286,12 +290,11 @@ watch(
 }
 
 /* Scaled to the frame's height, never its width.
-   The source art is tightly cropped per character, so native sizes differ a lot
-   (roughly 0.70 to 1.03 aspect). `cover` therefore scaled narrow portraits by
-   width to fill the frame, zooming those heads well past the wide ones'. Head
-   size tracks bust height, so fitting height alone keeps every character at a
-   consistent scale; narrow portraits simply leave the hexagon's flanks empty and
-   wide ones overflow into the clip. */
+   Every portrait now extracts onto the same 256x256 canvas, so this is mostly
+   belt-and-braces — but it keeps the scale stable if a sprite ever arrives with a
+   different canvas, which `cover` would not: it scales by whichever axis needs
+   more, so a narrower source would be blown up by width and its head would read
+   far larger than the rest. */
 .slog-portrait-img {
   height: 100%;
   width: auto;

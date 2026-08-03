@@ -73,10 +73,14 @@ namespace PlayLoRWithMe
         /// <see cref="StoryLog.SlugifyPortraitKey"/>.
         /// </summary>
         /// <remarks>
-        /// Padded to the sprite's logical rect rather than exported as a tight crop:
-        /// portraits are authored on a shared canvas, so trimming each to its own
-        /// bounds leaves every character at a different size with no common frame of
-        /// reference, and heads land at different scales in the UI's fixed frame.
+        /// Padded to the sprite's logical rect rather than exported as a tight crop.
+        /// Portraits are authored on a shared 256x256 canvas and stored trimmed to
+        /// each character's own bounds (confirmed from sprite geometry: identical
+        /// <c>rect</c>, crops varying from roughly 146x196 to 223x217, with the
+        /// horizontal offset carrying the placement). Exporting the crop alone
+        /// discarded that placement, leaving every character a different size with no
+        /// common frame of reference, so heads landed at different scales in the UI's
+        /// fixed frame.
         /// </remarks>
         internal static string EnsurePortrait(Sprite sprite, string id)
         {
@@ -92,8 +96,10 @@ namespace PlayLoRWithMe
             );
         }
 
-        // One line per distinct portrait, so the logical-rect-vs-crop geometry can be
-        // confirmed from the player log if portraits still render inconsistently.
+        // One line per distinct portrait. The shared-canvas assumption the frontend's
+        // framing is tuned against is not something we can assert at compile time, so
+        // this leaves it checkable from the player log if a game update ever changes
+        // the canvas size or starts shipping portraits untrimmed.
         private static void LogPortraitGeometry(Sprite sprite, string id)
         {
             ModLog.Info(
